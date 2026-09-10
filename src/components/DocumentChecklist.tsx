@@ -45,7 +45,14 @@ export function DocumentChecklist({
               )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-ink-900">{doc.nombre}</p>
+              <p className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+                <span className="truncate">{doc.nombre}</span>
+                {doc.categoria && (
+                  <span className="shrink-0 rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+                    {doc.categoria}
+                  </span>
+                )}
+              </p>
               <p
                 className={`mt-0.5 truncate text-xs ${
                   cargado ? "font-medium text-success-700" : "text-ink-500"

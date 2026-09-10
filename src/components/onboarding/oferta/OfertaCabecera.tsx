@@ -1,10 +1,12 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
+import { getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
 import { formatARS, formatDNI } from "@/lib/format";
+import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { IconSparkles } from "@/components/icons";
 
+// Cabecera de la oferta (Guía §5.1): cliente, ID de Cliente e ID de Crédito.
 export function OfertaCabecera() {
   const { app } = useApplication();
   if (!app.cliente) return null;
@@ -18,26 +20,43 @@ export function OfertaCabecera() {
           </p>
           <p className="text-sm text-ink-500">DNI {formatDNI(app.cliente.dni)}</p>
         </div>
-        <div className="text-right text-xs">
-          <p className="font-semibold text-ink-600">Cliente #{app.numeroCliente}</p>
-          <p className="font-mono font-semibold text-brand-700">Crédito {app.numeroCredito}</p>
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <div className="text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+              ID de Cliente
+            </p>
+            <p className="font-mono font-semibold text-ink-700">{app.numeroCliente}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+              ID de Crédito
+            </p>
+            <p className="font-mono font-semibold text-brand-700">{app.numeroCredito}</p>
+          </div>
+          <EstadoBadge estado={app.estado} />
         </div>
       </div>
       <div className="bg-gradient-to-br from-brand-600 to-brand-800 px-5 py-6 text-center sm:py-7">
-        <p className="text-sm font-medium text-brand-100">Oferta disponible · capital máximo</p>
-        <p className="mt-1.5 text-4xl font-bold tracking-tight tabular-nums text-white sm:text-5xl">
+        <p className="text-sm font-medium text-brand-100">Capital máximo otorgable</p>
+        <p
+          key={app.oferta.capitalMaximoActual}
+          className="mt-1.5 animate-pop text-4xl font-bold tracking-tight tabular-nums text-white sm:text-5xl"
+        >
           {formatARS(app.oferta.capitalMaximoActual)}
         </p>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-brand-50">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1">
             <IconSparkles width={13} height={13} />
-            Generada por el motor de riesgo
+            Motor aprobado · plan de cuotas
           </span>
           <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
             {nombreOpcion(PRODUCTOS, app.configuracion.productoId)}
           </span>
           <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
             {nombreOpcion(ORGANISMOS, app.configuracion.organismoId)}
+          </span>
+          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+            {getPlan(app.configuracion.organismoId).nombre}
           </span>
         </div>
       </div>

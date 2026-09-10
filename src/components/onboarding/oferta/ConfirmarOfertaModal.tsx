@@ -1,7 +1,7 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
+import { getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
 import {
   importeTerceros,
   netoAAcreditar,
@@ -24,19 +24,39 @@ export function ConfirmarOfertaModal({
   const o = app.oferta;
   const precancel = totalPrecancelaciones(o);
   const terceros = importeTerceros(o);
+  const renovados = o.creditosActivos.filter((c) => c.precancelar).map((c) => c.id);
 
   const rows: { label: string; value: string; tone?: "success" | "danger" }[] = [
+    { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
     { label: "Cliente", value: `${app.cliente?.nombre ?? ""} ${app.cliente?.apellido ?? ""}` },
-    { label: "Producto", value: nombreOpcion(PRODUCTOS, app.configuracion.productoId) },
-    { label: "Organismo", value: nombreOpcion(ORGANISMOS, app.configuracion.organismoId) },
-    { label: "Importe solicitado", value: formatARS(o.montoSolicitado) },
+    {
+      label: "Producto / organismo",
+      value: `${nombreOpcion(PRODUCTOS, app.configuracion.productoId)} · ${nombreOpcion(
+        ORGANISMOS,
+        app.configuracion.organismoId
+      )}`,
+    },
+    { label: "Plan de cuotas", value: getPlan(app.configuracion.organismoId).nombre },
+    { label: "Capital solicitado", value: formatARS(o.montoSolicitado) },
     ...(precancel > 0
-      ? [{ label: "Importe a precancelar", value: `−${formatARS(precancel)}`, tone: "danger" as const }]
+      ? [
+          {
+            label: `Renovación ${renovados.join(", ")}`,
+            value: `−${formatARS(precancel)}`,
+            tone: "danger" as const,
+          },
+        ]
       : []),
     ...(terceros > 0
-      ? [{ label: "Cancelación terceros", value: `−${formatARS(terceros)}`, tone: "danger" as const }]
+      ? [
+          {
+            label: `Cancelación ${o.deudaTerceros.entidad}`,
+            value: `−${formatARS(terceros)}`,
+            tone: "danger" as const,
+          },
+        ]
       : []),
-    { label: "Neto a acreditar", value: formatARS(netoAAcreditar(o)), tone: "success" },
+    { label: "Acreditación neta", value: formatARS(netoAAcreditar(o)), tone: "success" },
     { label: "Plazo", value: `${o.plazo} cuotas` },
     { label: "Valor cuota", value: formatARS(o.valorCuota) },
     { label: "Primer vencimiento", value: o.primeraCuotaVencimiento },
@@ -60,7 +80,8 @@ export function ConfirmarOfertaModal({
       }
     >
       <p className="text-sm text-ink-600">
-        Al confirmar, aceptás la oferta en nombre del cliente y comienza la carga post-oferta.
+        Al confirmar, el cliente acepta la oferta y comienza la carga post-oferta. Las condiciones
+        cotizadas se conservan por 30 días.
       </p>
       <dl className="mt-4 divide-y divide-ink-100 rounded-xl border border-ink-200 bg-ink-25">
         {rows.map((row) => (

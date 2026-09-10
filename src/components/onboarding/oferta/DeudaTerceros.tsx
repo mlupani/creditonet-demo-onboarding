@@ -1,58 +1,82 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { getProductoConfig } from "@/lib/config";
-import { formatARS } from "@/lib/format";
+import { configEfectiva } from "@/lib/config";
+import { DEUDA_TERCEROS_DEMO } from "@/lib/mocks";
+import { ENTIDADES_ACREEDORAS, validarDeudaTerceros } from "@/lib/validation";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { SelectField } from "@/components/ui/SelectField";
 import { DemoTag } from "@/components/ui/DemoTag";
-import { IconInfo, IconLandmark } from "@/components/icons";
+import { IconLandmark } from "@/components/icons";
 
+// Cancelación de deudas con terceros (Guía §5.4): entidad, monto y CBU de destino.
 export function DeudaTerceros() {
   const { app, setDeudaTerceros } = useApplication();
-  const config = getProductoConfig(app.configuracion.productoId);
-  if (!config.permiteDeudaTerceros) return null;
+  if (!configEfectiva(app.configuracion).permiteDeudaTerceros) return null;
 
-  const o = app.oferta;
-  const activa = o.deudaTerceros.importe > 0;
+  const d = app.oferta.deudaTerceros;
+  const err = validarDeudaTerceros(d);
 
   return (
     <Card>
       <CardHeader
-        title="Cancelación de deudas externas"
-        description="Disponible sólo para productos que lo permiten."
+        title="Cancelación de deudas con terceros"
+        description="Destiná parte del préstamo a cancelar deudas en otras entidades financieras."
         icon={<IconLandmark width={18} height={18} />}
         action={
           <DemoTag
             variant="config"
-            detalle="Qué productos permiten destinar fondos a cancelar deuda de terceros es una definición pendiente. En la demo está habilitado."
+            detalle="Qué productos permiten cancelar deuda de terceros se define por producto / organismo. En la demo está habilitado."
           />
         }
       />
       <div className="space-y-3 p-5 sm:p-6">
         <Checkbox
-          checked={activa}
-          onChange={(v) => setDeudaTerceros(v ? 100_000 : 0)}
-          label="Destinar parte del crédito a cancelar una deuda externa"
-          description="Este importe será destinado a cancelar una deuda externa y reduce el dinero neto que recibe el cliente."
+          checked={d.habilitado}
+          onChange={(v) =>
+            setDeudaTerceros(
+              v
+                ? { habilitado: true, ...DEUDA_TERCEROS_DEMO }
+                : { habilitado: false, entidad: "", importe: 0, cbu: "" }
+            )
+          }
+          label="Cancelar una deuda con otra entidad"
+          description="El monto se transfiere al CBU de la entidad acreedora y reduce la acreditación neta."
         />
-        {activa && (
-          <div className="animate-fade-up border-t border-ink-100 pt-3">
-            <MoneyInput
-              id="importe-terceros"
-              label="Importe destinado a cancelación"
-              value={o.deudaTerceros.importe}
-              onChange={(v) => setDeudaTerceros(v)}
-              hint="Se descuenta del neto a acreditar."
+        {d.habilitado && (
+          <div className="animate-fade-up grid gap-x-5 gap-y-1 border-t border-ink-100 pt-3 sm:grid-cols-2">
+            <SelectField
+              id="terceros-entidad"
+              label="Entidad acreedora"
+              required
+              value={d.entidad}
+              onChange={(v) => setDeudaTerceros({ entidad: v })}
+              options={ENTIDADES_ACREEDORAS.map((e) => ({ value: e, label: e }))}
+              error={err.entidad}
             />
-            <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-500">
-              <IconInfo width={13} height={13} className="mt-0.5 shrink-0 text-brand-500" />
-              No se ejecuta una transferencia real en la demo. El importe de {formatARS(
-                o.deudaTerceros.importe
-              )}{" "}
-              reduce el neto que recibe el cliente.
-            </p>
+            <MoneyInput
+              id="terceros-importe"
+              label="Monto a cancelar"
+              required
+              value={d.importe}
+              onChange={(v) => setDeudaTerceros({ importe: v })}
+              error={err.importe}
+              hint="Se descuenta de la acreditación neta."
+            />
+            <FormField
+              id="terceros-cbu"
+              label="CBU de destino"
+              required
+              value={d.cbu}
+              onChange={(v) => setDeudaTerceros({ cbu: v.replace(/\D/g, "").slice(0, 22) })}
+              inputMode="numeric"
+              error={err.cbu}
+              hint="22 dígitos. En la demo no se ejecuta ninguna transferencia."
+              className="sm:col-span-2"
+            />
           </div>
         )}
       </div>

@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import { pantallasVisibles, resumenConfigProducto } from "@/lib/config";
-import {
-  estadoPantallasPostOferta,
-  pendientesFinalizarCarga,
-} from "@/lib/validation";
+import { pantallasVisibles, resumenConfig } from "@/lib/config";
+import { estadoPantallasPostOferta, pendientesFinalizarCarga } from "@/lib/validation";
+import { sumarDias } from "@/lib/format";
 import type { PantallaPostOfertaId } from "@/lib/types";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { StepperLibre, type PasoLibre } from "@/components/ui/StepperLibre";
 import { DemoTag } from "@/components/ui/DemoTag";
 import {
@@ -19,6 +18,7 @@ import {
   IconArrowRight,
   IconCheck,
   IconCheckCircle,
+  IconSend,
 } from "@/components/icons";
 
 import { PantallaLaboral } from "./PantallaLaboral";
@@ -40,24 +40,17 @@ const PANTALLAS: Record<PantallaPostOfertaId, () => React.ReactNode> = {
 };
 
 export function PostOfertaShell() {
-  const router = useRouter();
-  const {
-    app,
-    pantallaActual,
-    setPantallaActual,
-    visitarPantalla,
-    finalizarCarga,
-  } = useApplication();
-  const [modal, setModal] = useState<"pendientes" | "ok" | null>(null);
+  const { app, pantallaActual, setPantallaActual, visitarPantalla, finalizarCarga } =
+    useApplication();
+  const [confirmar, setConfirmar] = useState(false);
 
-  const visibles = useMemo(
-    () => pantallasVisibles(app.configuracion.productoId),
-    [app.configuracion.productoId]
-  );
+  const visibles = useMemo(() => pantallasVisibles(app.configuracion), [app.configuracion]);
   const estados = useMemo(() => estadoPantallasPostOferta(app), [app]);
   const pendientes = useMemo(() => pendientesFinalizarCarga(app), [app]);
-  const resumen = resumenConfigProducto(app.configuracion.productoId);
+  const resumen = resumenConfig(app.configuracion);
   const completadas = estados.filter((e) => e.completa).length;
+  const observada = app.estado === "OBSERVADO";
+  const obs = app.analista.observacion;
 
   // Normaliza la pantalla actual si no está en las visibles.
   useEffect(() => {
@@ -70,47 +63,66 @@ export function PostOfertaShell() {
     visitarPantalla(pantallaActual);
   }, [pantallaActual, visitarPantalla]);
 
-  const pasos: PasoLibre[] = visibles.map((p) => {
-    const est = estados.find((e) => e.id === p.id);
-    return {
-      id: p.id,
-      label: p.label,
-      obligatoria: p.obligatoria,
-      completa: est?.completa ?? false,
-    };
-  });
+  const pasos: PasoLibre[] = estados.map((e) => ({
+    id: e.id,
+    numero: e.numero,
+    label: e.label,
+    obligatoria: e.obligatoria,
+    estado: e.estadoVisual,
+  }));
 
   const PantallaActiva = PANTALLAS[pantallaActual];
-
-  function onFinalizar() {
-    setModal(pendientes.length === 0 ? "ok" : "pendientes");
-  }
-
-  function irA(id: PantallaPostOfertaId) {
-    setPantallaActual(id);
-    setModal(null);
-  }
+  const puedeFinalizar = pendientes.length === 0;
+  const accionLabel = observada ? "Reenviar correcciones" : "Finalizar carga";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <div className="animate-fade-in flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-            Completar solicitud · Post-oferta
+            Solicitar crédito · Post-oferta
           </p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight text-ink-900 sm:text-2xl">
-            {app.cliente?.nombre} {app.cliente?.apellido} · {app.numeroCredito}
+          <h1 className="mt-1 flex flex-wrap items-center gap-2 text-xl font-bold tracking-tight text-ink-900 sm:text-2xl">
+            {app.cliente?.nombre} {app.cliente?.apellido}
+            <span className="font-mono text-base font-semibold text-brand-700">
+              {app.numeroCredito}
+            </span>
+            <EstadoBadge estado={app.estado} />
           </h1>
           <p className="mt-1 text-sm text-ink-500">
-            {completadas} de {estados.length} pantallas completas. Podés navegar libremente entre
-            ellas.
+            {completadas} de {estados.length} pantallas completas. Podés navegar entre ellas en
+            cualquier orden.
           </p>
         </div>
-        <Button size="lg" onClick={onFinalizar}>
-          Finalizar carga
-          <IconArrowRight width={16} height={16} />
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            size="lg"
+            variant={puedeFinalizar ? "success" : "primary"}
+            disabled={!puedeFinalizar}
+            onClick={() => setConfirmar(true)}
+          >
+            {observada ? <IconSend width={16} height={16} /> : null}
+            {accionLabel}
+            {!observada && <IconArrowRight width={16} height={16} />}
+          </Button>
+          <p className="text-[11px] font-medium text-ink-400">
+            {puedeFinalizar
+              ? "Todas las pantallas obligatorias están en verde."
+              : `Se habilita con el 100 % de las obligatorias en verde · ${pendientes.length} pendiente${
+                  pendientes.length === 1 ? "" : "s"
+                }`}
+          </p>
+        </div>
       </div>
+
+      {observada && obs && (
+        <div className="mt-5">
+          <Banner tone="warning" title={`Observada por el analista · ${obs.motivo}`}>
+            {obs.nota} Corregí lo necesario y reenviá la solicitud antes del{" "}
+            <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días) para que no expire.
+          </Banner>
+        </div>
+      )}
 
       <div className="mt-5">
         <StepperLibre pasos={pasos} actual={pantallaActual} onSelect={setPantallaActual} />
@@ -123,17 +135,56 @@ export function PostOfertaShell() {
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <Card className="p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+              Estado de la carga
+            </p>
+            {pendientes.length === 0 ? (
+              <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-success-700">
+                <IconCheckCircle width={15} height={15} />
+                Todo completo. Podés {observada ? "reenviar" : "finalizar"}.
+              </p>
+            ) : (
+              <>
+                <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-warning-700">
+                  <IconAlertTriangle width={15} height={15} />
+                  {pendientes.length}{" "}
+                  {pendientes.length === 1 ? "elemento pendiente" : "elementos pendientes"}
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {pendientes.map((p, i) => (
+                    <li key={`${p.pantallaId}-${p.campo}-${i}`}>
+                      <button
+                        type="button"
+                        onClick={() => setPantallaActual(p.pantallaId)}
+                        className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-ink-600 transition hover:bg-ink-100 hover:text-brand-700"
+                      >
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600" />
+                        <span className="font-medium">{p.pantallaLabel}</span>
+                        <IconArrowRight width={11} height={11} className="text-ink-400" />
+                        <span>{p.campo}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Card>
+
+          <Card className="p-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                Configuración del producto
+                Configuración aplicada
               </p>
               <DemoTag
                 variant="config"
-                detalle="La cantidad, el orden y la obligatoriedad de estas pantallas se definen por producto en Parámetros. En la demo la configuración es fija."
+                detalle="El producto define el catálogo de hasta 7 pantallas, su orden y obligatoriedad. El organismo sólo parametriza excepciones; lo que no define se hereda del producto."
               />
             </div>
-            <p className="mt-2 text-sm font-semibold text-ink-900">{resumen.nombre}</p>
-            <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
+            <p className="mt-2 text-sm font-semibold text-ink-900">{resumen.producto}</p>
+            <p className="text-xs text-ink-500">
+              {resumen.organismo} · {resumen.herencia}
+            </p>
+            <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-lg bg-ink-50 py-2">
                 <dt className="text-[10px] font-medium text-ink-500">Pantallas</dt>
                 <dd className="text-base font-bold tabular-nums text-ink-900">{resumen.total}</dd>
@@ -152,103 +203,28 @@ export function PostOfertaShell() {
               </div>
             </dl>
           </Card>
-
-          <Card className="p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-              Estado de la carga
-            </p>
-            {pendientes.length === 0 ? (
-              <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-success-700">
-                <IconCheckCircle width={15} height={15} />
-                Todo completo. Podés finalizar.
-              </p>
-            ) : (
-              <>
-                <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-warning-700">
-                  <IconAlertTriangle width={15} height={15} />
-                  {pendientes.length}{" "}
-                  {pendientes.length === 1 ? "elemento pendiente" : "elementos pendientes"}
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {pendientes.map((p, i) => (
-                    <li key={`${p.pantallaId}-${p.campo}-${i}`}>
-                      <button
-                        type="button"
-                        onClick={() => irA(p.pantallaId)}
-                        className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-ink-600 transition hover:bg-ink-100 hover:text-brand-700"
-                      >
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning-500" />
-                        <span className="font-medium">{p.pantallaLabel}</span>
-                        <IconArrowRight width={11} height={11} className="text-ink-400" />
-                        <span>{p.campo}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </Card>
         </aside>
       </div>
 
       <Modal
-        open={modal === "pendientes"}
-        onClose={() => setModal(null)}
-        title="No se puede finalizar todavía"
-        maxWidth="max-w-md"
-        footer={
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setModal(null)}>
-              Seguir cargando
-            </Button>
-          </div>
-        }
-      >
-        <p className="text-sm text-ink-600">
-          Hay {pendientes.length}{" "}
-          {pendientes.length === 1 ? "elemento pendiente" : "elementos pendientes"}. Tocá cada uno
-          para ir directo a la pantalla y completarlo.
-        </p>
-        <ul className="mt-4 space-y-2">
-          {pendientes.map((p, i) => (
-            <li key={`${p.pantallaId}-${p.campo}-${i}`}>
-              <button
-                type="button"
-                onClick={() => irA(p.pantallaId)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-ink-200 bg-white px-4 py-3 text-left transition hover:border-brand-300 hover:bg-brand-50/40"
-              >
-                <span>
-                  <span className="block text-sm font-semibold text-ink-900">
-                    {p.pantallaLabel}
-                  </span>
-                  <span className="block text-xs text-ink-500">{p.campo}</span>
-                </span>
-                <IconArrowRight width={16} height={16} className="text-brand-600" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </Modal>
-
-      <Modal
-        open={modal === "ok"}
-        onClose={() => setModal(null)}
-        title="Carga completa"
+        open={confirmar}
+        onClose={() => setConfirmar(false)}
+        title={observada ? "Reenviar correcciones" : "Carga completa"}
         maxWidth="max-w-md"
         footer={
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setModal(null)}>
+            <Button variant="outline" onClick={() => setConfirmar(false)}>
               Volver
             </Button>
             <Button
               variant="success"
               autoFocus
               onClick={() => {
+                setConfirmar(false);
                 finalizarCarga();
-                router.push("/analisis");
               }}
             >
-              Continuar
+              {observada ? "Reenviar a análisis" : "Enviar a análisis"}
             </Button>
           </div>
         }
@@ -258,8 +234,9 @@ export function PostOfertaShell() {
             <IconCheck width={20} height={20} strokeWidth={2.6} />
           </span>
           <p className="text-sm leading-relaxed text-ink-700">
-            El crédito ha sido debidamente cargado y pasa a análisis de riesgo. El crédito dejará
-            de aparecer en la bandeja del vendedor.
+            {observada
+              ? "Las correcciones se reenvían al analista de riesgo. La solicitud pasa de Observado a En análisis."
+              : "El crédito ha sido debidamente cargado y pasa a análisis de riesgo. La solicitud pasa de En trámite a En análisis."}
           </p>
         </div>
       </Modal>

@@ -1,22 +1,21 @@
 import type {
-  CampoAdicionalLaboral,
   CreditApplication,
   DatosLaboralesPost,
   DatosPersonalesPost,
+  DeudaTerceros,
   Garante,
   LaboralIngresos,
   PantallaPostOfertaId,
   Referencia,
 } from "./types";
 import {
-  formatARS,
   isValidCBU,
-  isValidCUIL,
   isValidDNI,
   isValidEmail,
   isValidPhone,
+  parseFecha,
 } from "./format";
-import { getProductoConfig, pantallasVisibles } from "./config";
+import { configEfectiva, pantallasVisibles } from "./config";
 
 // --- Catálogos de opciones (simulan venir de Parámetros) ---
 
@@ -63,92 +62,65 @@ export const PROVINCIAS = [
   "CABA",
 ];
 export const MARCAS_TARJETA = ["Visa", "Mastercard", "American Express", "Cabal"];
+export const GENEROS = ["Femenino", "Masculino", "No binario"];
+export const ENTIDADES_ACREEDORAS = [
+  "Tarjeta Naranja",
+  "Banco Macro",
+  "Banco Santander",
+  "Tarjeta Cabal",
+  "Otra entidad",
+];
 
-// --- Etapa 1: datos laborales e ingresos ---
+// Motivos codificados del analista (Guía §7.2, §8).
+export const MOTIVOS_RECHAZO = [
+  { codigo: "RA-01", label: "Inconsistencia documental insalvable" },
+  { codigo: "RA-02", label: "Sospecha de fraude o suplantación de identidad" },
+  { codigo: "RA-03", label: "Ingresos no verificables con el empleador" },
+  { codigo: "RA-04", label: "Otro motivo (detallar en la observación)" },
+];
+export const MOTIVOS_OBSERVACION = [
+  "Documentación ilegible",
+  "Datos inconsistentes",
+  "Falta documentación",
+  "Otro",
+];
+
+// --- Pre-oferta: datos laborales y financieros mínimos ---
 
 export type ErroresLaboral = Partial<Record<keyof LaboralIngresos, string>>;
 
-export function validarLaboral(l: LaboralIngresos, productoId: string): ErroresLaboral {
+export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
   const e: ErroresLaboral = {};
-  if (!l.bancoSueldo.trim())
-    e.bancoSueldo = "Seleccioná el banco donde el cliente cobra el sueldo.";
-  if (!isValidCBU(l.cbu)) e.cbu = "El CBU debe contener 22 dígitos.";
-  if (l.ingresoNeto <= 0)
-    e.ingresoNeto = "No puede ser $0. Ingresá el ingreso neto mensual del cliente.";
-  if (l.ingresoBruto > 0 && l.ingresoBruto < l.ingresoNeto)
-    e.ingresoBruto = "El ingreso bruto no puede ser menor al neto. Revisá los valores.";
   if (!l.fechaInicioLaboral.trim())
     e.fechaInicioLaboral = "Ingresá la fecha de inicio laboral (dd/mm/aaaa).";
-
-  const oblig = getProductoConfig(productoId).camposAdicionalesObligatorios;
-  if (oblig.includes("email")) {
-    if (!l.email.trim()) e.email = "El producto requiere el email del cliente.";
-    else if (!isValidEmail(l.email))
-      e.email = "El formato del email no es válido. Ej.: nombre@dominio.com";
-  } else if (l.email.trim() && !isValidEmail(l.email)) {
-    e.email = "El formato del email no es válido. Ej.: nombre@dominio.com";
-  }
-  if (oblig.includes("cuitEmpleador")) {
-    if (!l.cuitEmpleador.trim())
-      e.cuitEmpleador = "El producto requiere el CUIT del empleador.";
-    else if (!isValidCUIL(l.cuitEmpleador))
-      e.cuitEmpleador = "El CUIT debe tener el formato 30-12345678-9.";
-  }
+  else if (!parseFecha(l.fechaInicioLaboral))
+    e.fechaInicioLaboral = "La fecha debe tener el formato dd/mm/aaaa.";
+  if (!l.bancoCobro.trim()) e.bancoCobro = "Seleccioná el banco donde el cliente cobra.";
+  if (l.ingresoNeto <= 0)
+    e.ingresoNeto = "No puede ser $0. Ingresá el ingreso neto mensual del cliente.";
+  if (l.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto mensual del cliente.";
+  else if (l.ingresoBruto < l.ingresoNeto)
+    e.ingresoBruto = "El ingreso bruto no puede ser menor al neto. Revisá los valores.";
+  if (l.montoExtraidoDiaCobro <= 0)
+    e.montoExtraidoDiaCobro = "Ingresá el monto extraído o transferido el día de cobro.";
   return e;
 }
 
-export function laboralCompleto(l: LaboralIngresos, productoId: string): boolean {
-  return Object.keys(validarLaboral(l, productoId)).length === 0;
+export function laboralCompleto(l: LaboralIngresos): boolean {
+  return Object.keys(validarLaboral(l)).length === 0;
 }
 
-export interface CampoAdicionalEstado {
-  id: CampoAdicionalLaboral;
-  label: string;
-  completo: boolean;
-  obligatorioPorProducto: boolean;
-  valor: string;
-}
+// --- Oferta: cancelación de deudas con terceros ---
 
-export function estadoCamposAdicionales(
-  l: LaboralIngresos,
-  productoId: string
-): CampoAdicionalEstado[] {
-  const oblig = getProductoConfig(productoId).camposAdicionalesObligatorios;
-  const mk = (
-    id: CampoAdicionalLaboral,
-    label: string,
-    completo: boolean,
-    valor: string
-  ): CampoAdicionalEstado => ({
-    id,
-    label,
-    completo,
-    obligatorioPorProducto: oblig.includes(id),
-    valor: completo ? valor : "No informado",
-  });
-  return [
-    mk("email", "Email", !!l.email.trim(), l.email),
-    mk("cuitEmpleador", "CUIT del empleador", !!l.cuitEmpleador.trim(), l.cuitEmpleador),
-    mk(
-      "extracciones",
-      "Extracciones (fecha e importe)",
-      !!l.extraccionesFecha.trim() && l.extraccionesImporte > 0,
-      `${l.extraccionesFecha} · ${formatARS(l.extraccionesImporte)}`
-    ),
-    mk(
-      "transferencias",
-      "Transferencias (fecha e importe)",
-      !!l.transferenciasFecha.trim() && l.transferenciasImporte > 0,
-      `${l.transferenciasFecha} · ${formatARS(l.transferenciasImporte)}`
-    ),
-    mk("disponible", "Disponible", l.disponible > 0, formatARS(l.disponible)),
-    mk(
-      "debitosNoRemunerativos",
-      "Débitos no remunerativos",
-      l.debitosNoRemunerativos > 0,
-      formatARS(l.debitosNoRemunerativos)
-    ),
-  ];
+export function validarDeudaTerceros(
+  d: DeudaTerceros
+): Partial<Record<"entidad" | "importe" | "cbu", string>> {
+  const e: Partial<Record<"entidad" | "importe" | "cbu", string>> = {};
+  if (!d.habilitado) return e;
+  if (!d.entidad.trim()) e.entidad = "Seleccioná la entidad acreedora.";
+  if (d.importe <= 0) e.importe = "Ingresá el monto a cancelar.";
+  if (!isValidCBU(d.cbu)) e.cbu = "El CBU de destino debe contener 22 dígitos.";
+  return e;
 }
 
 // --- Etapa 2: validadores por pantalla ---
@@ -186,7 +158,7 @@ export function validarLaboralPost(
 
 const LABEL_PERSONALES: Record<keyof DatosPersonalesPost, string> = {
   email: "Email",
-  domicilioCompleto: "Domicilio completo",
+  domicilioReal: "Domicilio real",
   telefonoCelular: "Teléfono celular",
   nacionalidad: "Nacionalidad",
   estadoCivil: "Estado civil",
@@ -202,8 +174,7 @@ export function validarPersonalesPost(
   if (!p.email.trim()) e.email = "Ingresá el email del cliente.";
   else if (!isValidEmail(p.email))
     e.email = "El formato del email no es válido. Ej.: nombre@dominio.com";
-  if (!p.domicilioCompleto.trim())
-    e.domicilioCompleto = "Ingresá el domicilio particular completo.";
+  if (!p.domicilioReal.trim()) e.domicilioReal = "Ingresá el domicilio real del cliente.";
   if (!p.telefonoCelular.trim())
     e.telefonoCelular = "Ingresá el teléfono celular del cliente.";
   else if (!isValidPhone(p.telefonoCelular))
@@ -258,6 +229,10 @@ export function validarGarante(g: Garante): Partial<Record<keyof Garante, string
 
 // --- Estado consolidado de las pantallas post-oferta ---
 
+// Semántica visual de la Guía §6.1: verde = completa y validada; azul = iniciada con
+// obligatorios pendientes; gris = no iniciada.
+export type EstadoVisualPantalla = "COMPLETA" | "INICIADA" | "NO_INICIADA";
+
 export interface PendienteItem {
   pantallaId: PantallaPostOfertaId;
   pantallaLabel: string;
@@ -266,23 +241,26 @@ export interface PendienteItem {
 
 export interface PantallaEstado {
   id: PantallaPostOfertaId;
+  numero: number;
   label: string;
   descripcion: string;
   obligatoria: boolean;
   completa: boolean;
-  visitada: boolean;
+  estadoVisual: EstadoVisualPantalla;
   pendientes: PendienteItem[];
 }
 
+const tieneTexto = (obj: object) =>
+  Object.values(obj).some((v) => typeof v === "string" && v.trim().length > 0);
+
 export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstado[] {
-  const { productoId } = app.configuracion;
-  const config = getProductoConfig(productoId);
+  const config = configEfectiva(app.configuracion);
   const po = app.postOferta;
 
-  return pantallasVisibles(productoId).map((pantalla) => {
-    const visitada = app.pantallasVisitadas.includes(pantalla.id);
+  return pantallasVisibles(app.configuracion).map((pantalla, index) => {
     const pendientes: PendienteItem[] = [];
     let completa = true;
+    let conDatos = false;
 
     const push = (campo: string) =>
       pendientes.push({
@@ -298,6 +276,7 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
           push(LABEL_LABORAL_POST[k])
         );
         completa = pendientes.length === 0;
+        conDatos = tieneTexto(po.laboral);
         break;
       }
       case "personales": {
@@ -306,14 +285,17 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
           push(LABEL_PERSONALES[k])
         );
         completa = pendientes.length === 0;
+        conDatos = tieneTexto(po.personales);
         break;
       }
       case "tokenizacion": {
         completa = po.tokenizacion.tokenizada;
         if (!completa) push("Tarjeta sin tokenizar");
+        conDatos = po.tokenizacion.tokenizada || po.tokenizacion.numero.trim().length > 0;
         break;
       }
       case "referencias": {
+        conDatos = po.referencias.some((r) => tieneTexto({ ...r, id: "" }));
         if (po.referencias.length === 0) {
           push("Al menos una referencia");
           completa = false;
@@ -333,6 +315,9 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
         break;
       }
       case "garantias": {
+        conDatos =
+          po.garante.nombre.trim().length > 0 ||
+          po.garanteDocs.some((d) => d.estado === "CARGADO");
         if (!config.requiereGarante) {
           completa = true;
           break;
@@ -349,22 +334,26 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
           .filter((d) => d.estado !== "CARGADO")
           .forEach((d) => push(d.nombre));
         completa = pendientes.length === 0;
+        conDatos = po.legajo.some((d) => d.estado === "CARGADO");
         break;
       }
       case "impresion": {
         completa = po.impresionGenerada;
         if (!completa) push("Legajo sin imprimir");
+        conDatos = po.impresionGenerada;
         break;
       }
     }
 
+    const iniciada = conDatos || app.pantallasVisitadas.includes(pantalla.id);
     return {
       id: pantalla.id,
+      numero: index + 1,
       label: pantalla.label,
       descripcion: pantalla.descripcion,
       obligatoria: pantalla.obligatoria,
       completa,
-      visitada,
+      estadoVisual: completa ? "COMPLETA" : iniciada ? "INICIADA" : "NO_INICIADA",
       pendientes,
     };
   });
@@ -379,12 +368,3 @@ export function pendientesFinalizarCarga(app: CreditApplication): PendienteItem[
 export function puedeFinalizarCarga(app: CreditApplication): boolean {
   return pendientesFinalizarCarga(app).length === 0;
 }
-
-export const RESULTADO_REGLA_TONE: Record<
-  "CUMPLE" | "ADVERTENCIA" | "NO_CUMPLE",
-  "success" | "warning" | "danger"
-> = {
-  CUMPLE: "success",
-  ADVERTENCIA: "warning",
-  NO_CUMPLE: "danger",
-};

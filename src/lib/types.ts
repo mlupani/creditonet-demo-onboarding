@@ -1,27 +1,30 @@
 // Modelo de datos de la demo CreditoNet — Onboarding en dos etapas.
-// Ver docs/superpowers/specs/2026-09-06-onboarding-dos-etapas-design.md
+// Ver docs/superpowers/specs/2026-09-10-onboarding-alineacion-doc-final-design.md
 
 export type EtapaFlujo = "ORIGINACION" | "TRANSICION" | "POST_OFERTA" | "ENVIADA";
 
+// Máquina de estados de la solicitud (Guía Definitiva §8). "Expirado" y "Activo" no se
+// simulan en la demo. ANALISIS_TOMADO es un sub-estado visual de "En análisis".
 export type EstadoCredito =
   | "BORRADOR"
+  | "EN_TRAMITE"
   | "EN_ANALISIS"
   | "ANALISIS_TOMADO"
-  | "OBSERVADA"
-  | "APROBADO"
-  | "RECHAZADO";
+  | "OBSERVADO"
+  | "RECHAZADO"
+  | "PARA_LIQUIDAR";
 
-export type TipoPersona = "FISICA" | "JURIDICA";
 export type TipoCliente = "NUEVO" | "EXISTENTE";
 export type OrigenDato = "API pública" | "Base interna" | "Manual";
 
 // --- Motor de riesgo ---
 
 export type RuleOutcome = "CUMPLE" | "ADVERTENCIA" | "NO_CUMPLE";
-export type RiskResultado = "GENERAR_OFERTA" | "PASAR_A_ANALISTA" | "RECHAZAR";
+export type RiskResultado = "APROBADO" | "VERIFICACION_MANUAL" | "RECHAZADO";
 
 export interface RiskRule {
   id: string;
+  codigo: string;
   nombre: string;
   detalle: string;
   valorEvaluado: string;
@@ -36,60 +39,50 @@ export interface ClienteDatos {
   nombre: string;
   dni: string;
   cuil: string;
-  sexo: string;
+  genero: string;
   fechaNacimiento: string;
-  // datos adicionales (paso 5)
-  estadoCivil: string;
   domicilio: string;
-  localidad: string;
-  provincia: string;
-  telefono: string;
-  nacionalidad: string;
 }
 
 export type OrigenCampos = Partial<Record<keyof ClienteDatos, OrigenDato>>;
 
-// --- Datos laborales e ingresos (etapa 1) ---
+// --- Datos laborales y financieros mínimos (pre-oferta) ---
 
 export interface LaboralIngresos {
-  // obligatorios
-  bancoSueldo: string;
-  cbu: string;
-  ingresoNeto: number;
-  ingresoBruto: number;
   fechaInicioLaboral: string;
-  // información adicional (configurable por producto)
-  email: string;
-  cuitEmpleador: string;
-  extraccionesFecha: string;
-  extraccionesImporte: number;
-  transferenciasFecha: string;
-  transferenciasImporte: number;
-  disponible: number;
-  debitosNoRemunerativos: number;
+  bancoCobro: string;
+  ingresoBruto: number;
+  ingresoNeto: number;
+  montoExtraidoDiaCobro: number;
 }
-
-export type CampoAdicionalLaboral =
-  | "email"
-  | "cuitEmpleador"
-  | "extracciones"
-  | "transferencias"
-  | "disponible"
-  | "debitosNoRemunerativos";
 
 // --- Oferta ---
 
-export type Plazo = 12 | 18 | 24;
+export type Plazo = 12 | 18 | 24 | 36;
 
 export interface CreditoActivo {
   id: string;
   capitalOriginal: number;
   capitalResidual: number;
   montoCancelacion: number;
-  desglose: { capital: number; intereses: number; iva: number; cargos: number };
+  desglose: {
+    capitalResidual: number;
+    interesesAVencer: number;
+    iva: number;
+    cargosCancelacion: number;
+    punitorios: number;
+  };
   cuotasOriginales: number;
-  cuotaActual: number;
+  cuotasAbonadas: number;
+  valorCuota: number;
   precancelar: boolean;
+}
+
+export interface DeudaTerceros {
+  habilitado: boolean;
+  entidad: string;
+  importe: number;
+  cbu: string;
 }
 
 export interface Oferta {
@@ -102,7 +95,7 @@ export interface Oferta {
   totalAPagar: number;
   primeraCuotaVencimiento: string;
   creditosActivos: CreditoActivo[];
-  deudaTerceros: { habilitado: boolean; importe: number };
+  deudaTerceros: DeudaTerceros;
   aceptada: boolean;
 }
 
@@ -122,7 +115,7 @@ export interface DatosLaboralesPost {
 
 export interface DatosPersonalesPost {
   email: string;
-  domicilioCompleto: string;
+  domicilioReal: string;
   telefonoCelular: string;
   nacionalidad: string;
   estadoCivil: string;
@@ -131,7 +124,7 @@ export interface DatosPersonalesPost {
   tarjetaCredito: string;
 }
 
-export type TipoTarjeta = "DEBITO" | "PREPAGA" | "CREDITO";
+export type TipoTarjeta = "DEBITO" | "CREDITO";
 
 export interface Tokenizacion {
   tipoTarjeta: TipoTarjeta;
@@ -164,6 +157,7 @@ export interface Garante {
 export interface DocItem {
   id: string;
   nombre: string;
+  categoria?: string;
   estado: "PENDIENTE" | "CARGADO";
   archivo?: string;
   detalle?: string;
@@ -189,6 +183,22 @@ export type PantallaPostOfertaId =
   | "legajo"
   | "impresion";
 
+// --- Análisis ---
+
+export interface Observacion {
+  motivo: string;
+  nota: string;
+  fecha: string;
+}
+
+export interface Rechazo {
+  origen: "MOTOR" | "ANALISTA";
+  codigos: string[];
+  motivo: string;
+  observacion: string;
+  fecha: string;
+}
+
 // --- Aplicación ---
 
 export interface CreditApplication {
@@ -196,8 +206,6 @@ export interface CreditApplication {
   numeroCliente: string | null;
   estado: EstadoCredito;
   etapa: EtapaFlujo;
-
-  tipoPersona: TipoPersona | null;
 
   identificacion: {
     documento: string;
@@ -221,7 +229,8 @@ export interface CreditApplication {
     estado: "PENDIENTE" | "EVALUANDO" | "COMPLETO";
     reglas: RiskRule[];
     resultado: RiskResultado | null;
-    evaluadoConIngresoNeto: number | null;
+    // Datos con los que se evaluó, para detectar cambios posteriores.
+    evaluadoCon: { ingresoNeto: number; fechaNacimiento: string } | null;
     fecha: string | null;
   };
 
@@ -232,10 +241,12 @@ export interface CreditApplication {
 
   analista: {
     tomado: boolean;
-    observacion: string | null;
-    motivoRechazo: string | null;
+    observacion: Observacion | null;
+    reenviada: boolean;
   };
+  rechazo: Rechazo | null;
 
+  fechaSolicitud: string | null;
   fechaEnvioAnalisis: string | null;
   fechaAprobacion: string | null;
 }

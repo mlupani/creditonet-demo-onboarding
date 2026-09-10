@@ -125,6 +125,7 @@ function Timeline({ items }: { items: TimelineItem[] }) {
 
 export function SuccessScreen({
   variant,
+  titulo,
   numero,
   capital,
   neto,
@@ -136,6 +137,7 @@ export function SuccessScreen({
   children,
 }: {
   variant: "aprobado" | "enviada";
+  titulo?: string;
   numero?: string | null;
   capital?: number;
   neto?: number;
@@ -162,21 +164,22 @@ export function SuccessScreen({
           <CheckDraw className="h-8 w-8" />
         </div>
         <h1 className="mt-5 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
-          {aprobado ? (
-            <span className="text-success-700">✓ CRÉDITO APROBADO</span>
-          ) : (
-            "Solicitud enviada correctamente"
-          )}
+          {titulo ??
+            (aprobado ? (
+              <span className="text-success-700">✓ CRÉDITO APROBADO</span>
+            ) : (
+              "Solicitud enviada a análisis"
+            ))}
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-600">
           {aprobado
-            ? "El crédito fue aprobado correctamente. En el sistema real, el siguiente paso sería la acreditación por Caja y Bancos."
-            : "La solicitud quedó en la bandeja del equipo de análisis. En el sistema real, un analista revisaría el legajo completo."}
+            ? "La solicitud pasó a estado Para liquidar y quedó en la Bandeja de Liquidación (Tesorería) para el desembolso."
+            : "La solicitud quedó en la bandeja del analista de riesgo, que puede aprobarla, observarla o rechazarla."}
         </p>
         {aprobado && numero && (
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-4 py-1.5 shadow-card">
             <span className="font-mono text-sm font-semibold text-ink-900">{numero}</span>
-            <StatusBadge tone="success">APROBADO</StatusBadge>
+            <StatusBadge tone="success">Para liquidar</StatusBadge>
           </div>
         )}
       </div>
@@ -186,7 +189,7 @@ export function SuccessScreen({
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
               { label: "Capital aprobado", value: formatARS(capital ?? 0), tone: "text-ink-900" },
-              { label: "Neto a acreditar", value: formatARS(neto ?? 0), tone: "text-success-700" },
+              { label: "Acreditación neta", value: formatARS(neto ?? 0), tone: "text-success-700" },
               { label: "Cuotas", value: `${cuotas ?? 0}`, tone: "text-ink-900" },
               { label: "Valor de cuota", value: formatARS(valorCuota ?? 0), tone: "text-brand-700" },
             ].map((stat) => (

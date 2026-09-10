@@ -23,13 +23,14 @@ export function AprobacionModal({
     <ConfirmationModal
       open={open}
       title="Confirmar aprobación"
-      descripcion="Al confirmar, el crédito queda aprobado y pasa a Caja y Bancos para la liquidación."
+      descripcion="Al confirmar, la solicitud pasa de En análisis a Para liquidar y se envía a la Bandeja de Liquidación (Tesorería)."
       rows={[
+        { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
         { label: "Cliente", value: `${app.cliente?.nombre ?? ""} ${app.cliente?.apellido ?? ""}` },
         { label: "Capital", value: formatARS(o.montoSolicitado) },
         { label: "Cuotas", value: `${o.plazo}` },
         { label: "Cuota", value: formatARS(o.valorCuota) },
-        { label: "Neto a acreditar", value: formatARS(netoAAcreditar(o)) },
+        { label: "Acreditación neta", value: formatARS(netoAAcreditar(o)) },
       ]}
       confirmLabel="Confirmar aprobación"
       cancelLabel="Cancelar"

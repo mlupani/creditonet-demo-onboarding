@@ -11,13 +11,14 @@ import type {
 } from "./types";
 import { CAPITAL_MAXIMO_BASE, recalcularOferta } from "./credit";
 
-// --- Datos que devuelve la consulta por DNI (simula API pública + base interna) ---
+// --- Datos que devuelve la consulta por DNI / CUIL (simula API pública + base interna) ---
 
 export interface RespuestaConsultaCliente {
   datos: ClienteDatos;
   origen: OrigenCampos;
   numeroCliente: string;
   tipoCliente: TipoCliente;
+  // Cliente existente: datos laborales del último trámite, precargados y editables.
   laboral: LaboralIngresos;
 }
 
@@ -27,57 +28,40 @@ export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = {
     nombre: "María Fernanda",
     dni: "27456890",
     cuil: "27-27456890-4",
-    sexo: "Femenino",
+    genero: "Femenino",
     fechaNacimiento: "14/05/1982",
-    estadoCivil: "Casada/o",
-    domicilio: "Av. Rafael Núñez 3245, 3° B",
-    localidad: "Córdoba",
-    provincia: "Córdoba",
-    telefono: "351 512-4478",
-    nacionalidad: "Argentina",
+    domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
   },
   origen: {
     apellido: "API pública",
     nombre: "API pública",
     dni: "API pública",
     cuil: "API pública",
-    sexo: "API pública",
+    genero: "API pública",
     fechaNacimiento: "API pública",
-    estadoCivil: "Base interna",
-    domicilio: "Base interna",
-    localidad: "Base interna",
-    provincia: "Base interna",
-    telefono: "Base interna",
-    nacionalidad: "Base interna",
+    domicilio: "API pública",
   },
   numeroCliente: "000928",
   tipoCliente: "EXISTENTE",
   laboral: {
-    bancoSueldo: "Banco Galicia",
-    cbu: "0170299940000052135212",
-    ingresoNeto: 1_000_000,
-    ingresoBruto: 1_250_000,
     fechaInicioLaboral: "12/03/2019",
-    email: "mariafernanda.gonzalez@gmail.com",
-    cuitEmpleador: "30-70891234-5",
-    extraccionesFecha: "",
-    extraccionesImporte: 0,
-    transferenciasFecha: "",
-    transferenciasImporte: 0,
-    disponible: 0,
-    debitosNoRemunerativos: 0,
+    bancoCobro: "Banco Galicia",
+    ingresoBruto: 1_250_000,
+    ingresoNeto: 1_000_000,
+    montoExtraidoDiaCobro: 820_000,
   },
 };
 
+// Campos que autocompleta la API pública (Guía §3.1).
 export const DATOS_API_PUBLICA: { campo: keyof ClienteDatos; label: string }[] = [
-  { campo: "apellido", label: "Apellido" },
   { campo: "nombre", label: "Nombre" },
-  { campo: "cuil", label: "CUIL" },
-  { campo: "sexo", label: "Sexo" },
+  { campo: "apellido", label: "Apellido" },
+  { campo: "domicilio", label: "Domicilio" },
   { campo: "fechaNacimiento", label: "Fecha de nacimiento" },
+  { campo: "genero", label: "Género" },
 ];
 
-// --- Crédito activo para precancelación ---
+// --- Crédito propio vigente, elegible para renovación / precancelación ---
 
 function creditoActivoInicial(): CreditoActivo {
   return {
@@ -85,14 +69,28 @@ function creditoActivoInicial(): CreditoActivo {
     capitalOriginal: 1_500_000,
     capitalResidual: 850_000,
     montoCancelacion: 1_000_000,
-    desglose: { capital: 850_000, intereses: 100_000, iva: 30_000, cargos: 20_000 },
+    desglose: {
+      capitalResidual: 850_000,
+      interesesAVencer: 100_000,
+      iva: 30_000,
+      cargosCancelacion: 20_000,
+      punitorios: 0,
+    },
     cuotasOriginales: 24,
-    cuotaActual: 14,
+    cuotasAbonadas: 13,
+    valorCuota: 108_700,
     precancelar: false,
   };
 }
 
-// --- Post-oferta: estado inicial con 3 ítems pendientes a propósito (D2) ---
+// Valores que se proponen al activar la cancelación de deuda con terceros.
+export const DEUDA_TERCEROS_DEMO = {
+  entidad: "Tarjeta Naranja",
+  importe: 100_000,
+  cbu: "2850590940090418135201",
+};
+
+// --- Post-oferta: estado inicial con 3 ítems pendientes a propósito ---
 
 function crearPostOfertaInicial(): PostOferta {
   return {
@@ -109,7 +107,7 @@ function crearPostOfertaInicial(): PostOferta {
     },
     personales: {
       email: "mariafernanda.gonzalez@gmail.com",
-      domicilioCompleto: "Av. Rafael Núñez 3245, 3° B, Córdoba",
+      domicilioReal: "Av. Rafael Núñez 3245, 3° B, Córdoba",
       telefonoCelular: "", // PENDIENTE
       nacionalidad: "Argentina",
       estadoCivil: "Casada/o",
@@ -164,6 +162,7 @@ function crearPostOfertaInicial(): PostOferta {
       {
         id: "dni-frente",
         nombre: "DNI frente",
+        categoria: "Identidad",
         estado: "CARGADO",
         archivo: "dni_frente_demo.jpg",
         detalle: "1.2 MB · Hoy",
@@ -171,6 +170,7 @@ function crearPostOfertaInicial(): PostOferta {
       {
         id: "dni-dorso",
         nombre: "DNI dorso",
+        categoria: "Identidad",
         estado: "CARGADO",
         archivo: "dni_dorso_demo.jpg",
         detalle: "1.1 MB · Hoy",
@@ -178,13 +178,15 @@ function crearPostOfertaInicial(): PostOferta {
       {
         id: "recibo-sueldo",
         nombre: "Recibo de sueldo",
+        categoria: "Ingresos",
         estado: "CARGADO",
         archivo: "recibo_sueldo_demo.pdf",
         detalle: "380 KB · Hoy",
       },
       {
-        id: "certificacion-domicilio",
-        nombre: "Certificación de domicilio",
+        id: "comprobante-servicio",
+        nombre: "Comprobante de servicio",
+        categoria: "Domicilio",
         estado: "PENDIENTE", // PENDIENTE
       },
     ],
@@ -200,7 +202,6 @@ export function crearAplicacionInicial(): CreditApplication {
     numeroCliente: null,
     estado: "BORRADOR",
     etapa: "ORIGINACION",
-    tipoPersona: null,
     identificacion: { documento: "", consultado: false, tipoCliente: null },
     cliente: null,
     origenCampos: {},
@@ -212,25 +213,17 @@ export function crearAplicacionInicial(): CreditApplication {
       vendedorId: "juan-perez",
     },
     laboral: {
-      bancoSueldo: "",
-      cbu: "",
-      ingresoNeto: 0,
-      ingresoBruto: 0,
       fechaInicioLaboral: "",
-      email: "",
-      cuitEmpleador: "",
-      extraccionesFecha: "",
-      extraccionesImporte: 0,
-      transferenciasFecha: "",
-      transferenciasImporte: 0,
-      disponible: 0,
-      debitosNoRemunerativos: 0,
+      bancoCobro: "",
+      ingresoBruto: 0,
+      ingresoNeto: 0,
+      montoExtraidoDiaCobro: 0,
     },
     riesgo: {
       estado: "PENDIENTE",
       reglas: [],
       resultado: null,
-      evaluadoConIngresoNeto: null,
+      evaluadoCon: null,
       fecha: null,
     },
     oferta: recalcularOferta({
@@ -243,75 +236,49 @@ export function crearAplicacionInicial(): CreditApplication {
       totalAPagar: 0,
       primeraCuotaVencimiento: "10/10/2026",
       creditosActivos: [creditoActivoInicial()],
-      deudaTerceros: { habilitado: true, importe: 0 },
+      deudaTerceros: { habilitado: false, entidad: "", importe: 0, cbu: "" },
       aceptada: false,
     }),
     postOferta: crearPostOfertaInicial(),
     pantallasVisitadas: [],
-    analista: { tomado: false, observacion: null, motivoRechazo: null },
+    analista: { tomado: false, observacion: null, reenviada: false },
+    rechazo: null,
+    fechaSolicitud: null,
     fechaEnvioAnalisis: null,
     fechaAprobacion: null,
   };
 }
 
-// --- Pasos de la etapa de originación ---
+// --- Pasos de la etapa pre-oferta (Guía §3–§5) ---
 
 export const STEPS_ORIGINACION: WizardStepMeta[] = [
   {
-    id: "tipo-persona",
-    numero: 1,
-    titulo: "Tipo de persona",
-    tituloPantalla: "¿Qué tipo de persona querés registrar?",
-    descripcion: "Elegí si la solicitud corresponde a una persona física o jurídica.",
-  },
-  {
     id: "identificacion",
-    numero: 2,
+    numero: 1,
     titulo: "Identificación",
     tituloPantalla: "Identificación del cliente",
-    descripcion: "Ingresá el DNI para consultar los datos disponibles.",
+    descripcion: "Ingresá el DNI o CUIL. Los datos se autocompletan desde fuentes externas.",
   },
   {
-    id: "configuracion",
+    id: "datos-minimos",
+    numero: 2,
+    titulo: "Producto y datos mínimos",
+    tituloPantalla: "Selección comercial y datos mínimos",
+    descripcion: "Producto, organismo y los datos laborales y financieros que requiere el producto.",
+  },
+  {
+    id: "solicitar",
     numero: 3,
-    titulo: "Configuración",
-    tituloPantalla: "Configuración de la solicitud",
-    descripcion: "Producto, organismo, canal y vendedor. Las opciones dependen de la configuración de CreditoNet.",
-  },
-  {
-    id: "laboral",
-    numero: 4,
-    titulo: "Datos laborales",
-    tituloPantalla: "Datos laborales e ingresos",
-    descripcion: "Datos de ingresos y del empleador. Los campos obligatorios habilitan la evaluación.",
-  },
-  {
-    id: "adicionales",
-    numero: 5,
-    titulo: "Datos adicionales",
-    tituloPantalla: "Datos adicionales del cliente",
-    descripcion: "Información complementaria. Algunos datos provienen de la base interna del cliente.",
-  },
-  {
-    id: "verificacion",
-    numero: 6,
-    titulo: "Verificación",
-    tituloPantalla: "Verificación de identidad",
-    descripcion: "Cotejo de la imagen archivada con la persona presente.",
-  },
-  {
-    id: "riesgo",
-    numero: 7,
-    titulo: "Motor de riesgo",
-    tituloPantalla: "Evaluación de riesgo",
-    descripcion: "El motor evalúa la solicitud y genera las condiciones de la oferta.",
+    titulo: "Solicitar",
+    tituloPantalla: "Solicitar y evaluar",
+    descripcion: "Se genera el ID de Crédito. El motor de riesgo filtra y el plan de cuotas calcula la oferta.",
   },
   {
     id: "oferta",
-    numero: 8,
+    numero: 4,
     titulo: "Oferta",
     tituloPantalla: "Oferta de crédito",
-    descripcion: "Revisá y ajustá el importe, el plazo y las cancelaciones antes de aceptar.",
+    descripcion: "Ajustá el importe, el plazo, las renovaciones y las cancelaciones antes de continuar.",
   },
 ];
 
@@ -321,15 +288,15 @@ export const NOTIFICACIONES: AppNotification[] = [
   {
     id: "n1",
     titulo: "Solicitudes esperando análisis",
-    detalle: "La bandeja de análisis tiene solicitudes pendientes de revisión.",
+    detalle: "La bandeja del analista de riesgo tiene solicitudes pendientes de revisión.",
     hace: "Hace 12 min",
     tone: "info",
     leida: false,
   },
   {
     id: "n2",
-    titulo: "Nueva regla para Empleados de salud",
-    detalle: "Se actualizó el ingreso mínimo requerido por el organismo.",
+    titulo: "Línea Salud 2026 actualizada",
+    detalle: "Se ajustó el tope de relación cuota-ingreso (RCI) del plan de cuotas.",
     hace: "Hace 1 h",
     tone: "warning",
     leida: false,
@@ -337,7 +304,7 @@ export const NOTIFICACIONES: AppNotification[] = [
   {
     id: "n3",
     titulo: "Motor de riesgo actualizado",
-    detalle: "Se incorporó la regla de comportamiento interno a la evaluación.",
+    detalle: "Se incorporó la regla de carencia por rechazo a la evaluación.",
     hace: "Ayer 18:40",
     tone: "success",
     leida: true,

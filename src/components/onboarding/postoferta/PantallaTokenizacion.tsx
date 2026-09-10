@@ -14,7 +14,6 @@ import { IconCheck, IconCreditCard, IconKey, IconLoader } from "@/components/ico
 
 const TIPOS: { id: TipoTarjeta; label: string }[] = [
   { id: "DEBITO", label: "Tarjeta de débito" },
-  { id: "PREPAGA", label: "Tarjeta prepaga" },
   { id: "CREDITO", label: "Tarjeta de crédito" },
 ];
 
@@ -42,7 +41,7 @@ export function PantallaTokenizacion() {
       <Card>
         <CardHeader
           title="Tokenización de tarjeta"
-          description="Medio de pago tokenizado por el proveedor configurado."
+          description="Alta de tarjeta de débito o crédito para el cobro automático de las cuotas."
           icon={<IconCreditCard width={18} height={18} />}
           action={<DemoTag variant="config" detalle="Pantalla opcional para este producto. El proveedor de tokenización es simulado; no se envían datos reales." />}
         />
@@ -63,7 +62,7 @@ export function PantallaTokenizacion() {
               <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
                 Tipo de tarjeta
               </p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {TIPOS.map((tipo) => (
                   <button
                     key={tipo.id}

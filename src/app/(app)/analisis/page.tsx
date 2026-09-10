@@ -3,15 +3,28 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { netoAAcreditar } from "@/lib/credit";
+import { importeTerceros, netoAAcreditar } from "@/lib/credit";
+import { formatARS, sumarDias } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
 import { BandejaAnalista } from "@/components/analisis/BandejaAnalista";
 import { AnalisisCredito } from "@/components/analisis/AnalisisCredito";
 import { AprobacionModal } from "@/components/analisis/AprobacionModal";
-import { IconFileText, IconLoader, IconRefresh, IconX } from "@/components/icons";
+import {
+  IconAlertTriangle,
+  IconClock,
+  IconFileText,
+  IconLandmark,
+  IconLoader,
+  IconX,
+} from "@/components/icons";
+
+function ultimos(cbu: string) {
+  return cbu ? `CBU ···${cbu.slice(-4)}` : "CBU —";
+}
 
 export default function AnalisisPage() {
   const router = useRouter();
@@ -22,7 +35,6 @@ export default function AnalisisPage() {
     observarCredito,
     rechazarCredito,
     aprobarCredito,
-    reanudarAnalisis,
     reiniciarDemo,
   } = useApplication();
   const [aprobarModal, setAprobarModal] = useState(false);
@@ -36,12 +48,14 @@ export default function AnalisisPage() {
     );
   }
 
+  // Un rechazo del motor nunca llega al analista (Guía §7.2).
+  const rechazoAnalista = app.estado === "RECHAZADO" && app.rechazo?.origen === "ANALISTA";
   const enBandeja =
     app.estado === "EN_ANALISIS" ||
     app.estado === "ANALISIS_TOMADO" ||
-    app.estado === "OBSERVADA" ||
-    app.estado === "APROBADO" ||
-    app.estado === "RECHAZADO";
+    app.estado === "OBSERVADO" ||
+    app.estado === "PARA_LIQUIDAR" ||
+    rechazoAnalista;
 
   if (!enBandeja || !app.cliente || !app.numeroCredito) {
     return (
@@ -51,14 +65,14 @@ export default function AnalisisPage() {
             <IconFileText width={22} height={22} />
           </span>
           <h1 className="mt-4 text-xl font-bold tracking-tight text-ink-900">
-            La bandeja de análisis está vacía
+            La bandeja del analista está vacía
           </h1>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
-            Cuando finalices la carga de una solicitud desde el onboarding, aparecerá acá para su
-            revisión y aprobación.
+            Cuando el canal de venta finalice la carga de una solicitud, aparecerá acá en estado En
+            análisis.
           </p>
           <div className="mt-6">
-            <Button onClick={() => router.push("/")}>Ir al inicio</Button>
+            <Button onClick={() => router.push("/")}>Ir a la bandeja del canal de venta</Button>
           </div>
         </Card>
       </div>
@@ -85,15 +99,40 @@ export default function AnalisisPage() {
             Procesando aprobación…
           </h1>
           <p className="mt-1.5 text-sm text-ink-500">
-            Se genera el comprobante y la orden de acreditación para Caja y Bancos.
+            La solicitud se envía a la Bandeja de Liquidación (Tesorería).
           </p>
         </Card>
       </div>
     );
   }
 
-  if (app.estado === "APROBADO") {
+  if (app.estado === "PARA_LIQUIDAR") {
     const o = app.oferta;
+    const terceros = importeTerceros(o);
+    const operaciones = [
+      {
+        titulo: "Transferencia neta al cliente",
+        detalle: `${app.postOferta.laboral.bancoCobro} · ${ultimos(app.postOferta.laboral.cbu)}`,
+        monto: netoAAcreditar(o),
+      },
+      ...(terceros > 0
+        ? [
+            {
+              titulo: "Orden de pago a terceros",
+              detalle: `${o.deudaTerceros.entidad} · ${ultimos(o.deudaTerceros.cbu)}`,
+              monto: terceros,
+            },
+          ]
+        : []),
+      ...o.creditosActivos
+        .filter((c) => c.precancelar)
+        .map((c) => ({
+          titulo: "Cancelación de crédito propio renovado",
+          detalle: c.id,
+          monto: c.montoCancelacion,
+        })),
+    ];
+
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         <SuccessScreen
@@ -105,14 +144,14 @@ export default function AnalisisPage() {
           valorCuota={o.valorCuota}
           timeline={[
             { label: "Solicitud", estado: "done" },
-            { label: "Riesgo", estado: "done" },
+            { label: "Motor de riesgo", estado: "done" },
             { label: "Oferta", estado: "done" },
-            { label: "Onboarding", estado: "done" },
+            { label: "Carga post-oferta", estado: "done" },
             { label: "Análisis", estado: "done" },
-            { label: "Aprobación", estado: "done" },
-            { label: "Caja y Bancos", estado: "pending" },
+            { label: "Para liquidar", estado: "current" },
+            { label: "Activo", estado: "pending" },
           ]}
-          primaryAction={{ label: "Volver al inicio", onClick: () => router.push("/") }}
+          primaryAction={{ label: "Ir a la bandeja del canal de venta", onClick: () => router.push("/") }}
           secondaryAction={{
             label: "Iniciar nueva demo",
             onClick: () => {
@@ -121,16 +160,52 @@ export default function AnalisisPage() {
             },
           }}
         >
-          <p className="mt-4 text-center text-sm text-ink-500">
-            Tras la aprobación, el crédito pasa a <strong>Caja y Bancos</strong> para la
-            liquidación (fuera del alcance de esta demo).
+          <div className="mt-6 rounded-xl border border-ink-200 bg-white">
+            <div className="flex items-center gap-2.5 border-b border-ink-100 px-5 py-3.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <IconLandmark width={16} height={16} />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-ink-900">
+                  Próximo paso · Bandeja de Liquidación (Tesorería)
+                </p>
+                <p className="text-xs text-ink-500">
+                  Al confirmar el desembolso, la solicitud pasa a estado Activo.
+                </p>
+              </div>
+            </div>
+            <ul className="divide-y divide-ink-100">
+              {operaciones.map((op) => (
+                <li
+                  key={`${op.titulo}-${op.detalle}`}
+                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink-800">{op.titulo}</p>
+                    <p className="text-xs text-ink-500">{op.detalle}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold tabular-nums text-ink-900">
+                      {formatARS(op.monto)}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+                      <IconClock width={11} height={11} />
+                      Pendiente
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="mt-3 text-center text-xs text-ink-400">
+            La operatoria de Tesorería queda fuera del alcance de esta demo.
           </p>
         </SuccessScreen>
       </div>
     );
   }
 
-  if (app.estado === "RECHAZADO") {
+  if (rechazoAnalista && app.rechazo) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
         <Card className="animate-fade-up overflow-hidden">
@@ -141,16 +216,17 @@ export default function AnalisisPage() {
             <h1 className="mt-4 text-2xl font-bold tracking-tight text-danger-700">
               Solicitud rechazada
             </h1>
-            <p className="mx-auto mt-2 max-w-md text-sm text-danger-600">
-              La solicitud {app.numeroCredito} fue rechazada por el analista.
+            <p className="mx-auto mt-2 flex max-w-md flex-wrap items-center justify-center gap-2 text-sm text-danger-600">
+              {app.numeroCredito} · rechazo manual del analista de riesgo
+              <EstadoBadge estado="RECHAZADO" />
             </p>
           </div>
           <div className="p-6">
-            <Banner tone="error" title="Motivo del rechazo">
-              {app.analista.motivoRechazo}
+            <Banner tone="error" title={`${app.rechazo.codigos.join(", ")} · ${app.rechazo.motivo}`}>
+              {app.rechazo.observacion}
             </Banner>
             <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
-              <Button onClick={() => router.push("/")}>Volver al inicio</Button>
+              <Button onClick={() => router.push("/")}>Ir a la bandeja del canal de venta</Button>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -172,45 +248,58 @@ export default function AnalisisPage() {
       <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-            Equipo de análisis
+            Analista de riesgo
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
-            Bandeja de análisis
+            Bandeja del analista
           </h1>
           <p className="mt-1 text-sm text-ink-500">
-            Solicitudes enviadas por los vendedores esperando revisión.
+            Solicitudes enviadas por el canal de venta en estado En análisis.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => router.push("/")}>
-          Volver al inicio
+          Bandeja del canal de venta
         </Button>
       </div>
 
       <div className="mt-6 space-y-5">
-        {app.estado === "OBSERVADA" && (
-          <Banner tone="warning" title="Solicitud observada">
-            <span>
-              {app.analista.observacion ??
-                "La solicitud quedó marcada para revisión posterior."}{" "}
-              En el sistema real volvería al vendedor para subsanar las observaciones.
-            </span>
-            <div className="mt-3">
-              <Button size="sm" variant="outline" onClick={reanudarAnalisis}>
-                <IconRefresh width={14} height={14} />
-                Reanudar análisis
-              </Button>
+        {app.estado === "OBSERVADO" && (
+          <Card className="animate-fade-up p-6">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning-50 text-warning-600">
+                <IconAlertTriangle width={20} height={20} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-ink-900">
+                  {app.numeroCredito} devuelta al canal de venta
+                  <EstadoBadge estado="OBSERVADO" />
+                </p>
+                {app.analista.observacion && (
+                  <p className="mt-1 text-sm text-ink-600">
+                    <strong>{app.analista.observacion.motivo}:</strong>{" "}
+                    {app.analista.observacion.nota}
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-ink-500">
+                  Volverá a esta bandeja cuando el vendedor reenvíe las correcciones
+                  {app.analista.observacion &&
+                    ` (plazo: ${sumarDias(app.analista.observacion.fecha, 15)})`}
+                  .
+                </p>
+                <Button className="mt-4" size="sm" variant="outline" onClick={() => router.push("/")}>
+                  Ver en la bandeja del canal de venta
+                </Button>
+              </div>
             </div>
-          </Banner>
+          </Card>
         )}
 
         {app.estado === "EN_ANALISIS" && <BandejaAnalista onTomar={tomarAnalisis} />}
 
-        {(app.estado === "ANALISIS_TOMADO" || app.estado === "OBSERVADA") && (
+        {app.estado === "ANALISIS_TOMADO" && (
           <AnalisisCredito
-            onObservar={() =>
-              observarCredito("Solicitud observada por el analista para revisión posterior.")
-            }
-            onRechazar={(motivo) => rechazarCredito(motivo)}
+            onObservar={observarCredito}
+            onRechazar={rechazarCredito}
             onAprobar={() => setAprobarModal(true)}
           />
         )}

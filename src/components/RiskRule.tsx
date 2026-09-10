@@ -35,7 +35,12 @@ export function RiskRule({ rule, index }: { rule: RiskRuleType; index: number })
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-ink-900">{rule.nombre}</p>
+            <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-900">
+              <span className="rounded-md border border-ink-200 bg-ink-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-ink-500">
+                {rule.codigo}
+              </span>
+              {rule.nombre}
+            </p>
             <StatusBadge tone={tone}>
               {cumple ? "✓ " : ""}
               {OUTCOME_LABEL[rule.resultado]}

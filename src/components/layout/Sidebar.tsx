@@ -24,14 +24,15 @@ interface NavItem {
   disponible?: boolean;
 }
 
+// Bandejas operativas de la Guía §7: canal de venta → analista de riesgo → liquidación.
 const NAV: NavItem[] = [
-  { label: "Inicio", href: "/", icon: IconHome, disponible: true },
+  { label: "Bandeja canal de venta", href: "/", icon: IconHome, disponible: true },
   { label: "Solicitar crédito", href: "/onboarding", icon: IconClipboardPlus, disponible: true },
-  { label: "Bandeja de análisis", href: "/analisis", icon: IconFileStack, disponible: true },
+  { label: "Bandeja del analista", href: "/analisis", icon: IconFileStack, disponible: true },
+  { label: "Liquidación", icon: IconLandmark },
   { label: "Clientes", icon: IconUsers },
   { label: "Créditos", icon: IconCreditCard },
-  { label: "Riesgo", icon: IconShieldCheck },
-  { label: "Caja y Bancos", icon: IconLandmark },
+  { label: "Motor de riesgo", icon: IconShieldCheck },
   { label: "Reportes", icon: IconBarChart },
   { label: "Parámetros", icon: IconSettings },
 ];
@@ -105,7 +106,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           Reiniciar demo
         </button>
         <p className="mt-3 text-center text-[11px] font-medium text-ink-400">
-          Demo interactiva · v0.2
+          Demo interactiva · v0.3
         </p>
       </div>
     </div>

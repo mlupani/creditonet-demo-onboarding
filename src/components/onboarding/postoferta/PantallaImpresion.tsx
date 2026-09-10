@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
+import { getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
 import { netoAAcreditar } from "@/lib/credit";
 import { formatARS, formatDNI } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
@@ -38,7 +38,7 @@ export function PantallaImpresion() {
       <Card>
         <CardHeader
           title="Impresión de legajo"
-          description="Vista previa del legajo para firma."
+          description="Documento unificado para lectura y firma del cliente."
           icon={<IconPrinter width={18} height={18} />}
         />
         <div className="p-5 sm:p-6">
@@ -47,7 +47,10 @@ export function PantallaImpresion() {
               CreditoNet · Legajo de solicitud
             </p>
             <p className="mt-1 text-center font-mono text-sm font-semibold text-brand-700">
-              {app.numeroCredito}
+              ID de Crédito {app.numeroCredito} · ID de Cliente {app.numeroCliente}
+            </p>
+            <p className="mt-1 text-center text-xs text-ink-500">
+              Incluye solicitud, pagaré y autorización de descuento de haberes.
             </p>
 
             <div className="mt-4 border-t border-ink-100 pt-3">
@@ -58,8 +61,8 @@ export function PantallaImpresion() {
               <Fila label="DNI" value={formatDNI(app.cliente?.dni ?? "")} />
               <Fila label="CUIL" value={app.cliente?.cuil ?? "—"} />
               <Fila
-                label="Domicilio"
-                value={app.postOferta.personales.domicilioCompleto || "—"}
+                label="Domicilio real"
+                value={app.postOferta.personales.domicilioReal || "—"}
               />
             </div>
 
@@ -75,8 +78,9 @@ export function PantallaImpresion() {
                 label="Organismo"
                 value={nombreOpcion(ORGANISMOS, app.configuracion.organismoId)}
               />
+              <Fila label="Plan de cuotas" value={getPlan(app.configuracion.organismoId).nombre} />
               <Fila label="Capital solicitado" value={formatARS(o.montoSolicitado)} />
-              <Fila label="Neto a acreditar" value={formatARS(netoAAcreditar(o))} />
+              <Fila label="Acreditación neta" value={formatARS(netoAAcreditar(o))} />
               <Fila label="Plazo" value={`${o.plazo} cuotas`} />
               <Fila label="Valor de cuota" value={formatARS(o.valorCuota)} />
               <Fila label="TNA" value={`${o.tna}%`} />

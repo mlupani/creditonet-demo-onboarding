@@ -14,6 +14,7 @@ import type {
   CreditApplication,
   DatosLaboralesPost,
   DatosPersonalesPost,
+  DeudaTerceros,
   Garante,
   LaboralIngresos,
   Oferta,
@@ -21,14 +22,13 @@ import type {
   Referencia,
   RiskResultado,
   RiskRule,
-  TipoPersona,
   Tokenizacion,
 } from "./types";
 import { crearAplicacionInicial, CONSULTA_CLIENTE_MOCK } from "./mocks";
 import { recalcularOferta } from "./credit";
-import { selloTiempo } from "./format";
+import { fechaHoy, selloTiempo } from "./format";
 
-const STORAGE_KEY = "creditonet.demo.v2";
+const STORAGE_KEY = "creditonet.demo.v3";
 
 interface EstadoPersistido {
   app: CreditApplication;
@@ -48,17 +48,16 @@ interface ApplicationContextValue {
   setMenuAbierto: (abierto: boolean) => void;
 
   patchApp: (patch: Partial<CreditApplication>) => void;
-  setTipoPersona: (t: TipoPersona) => void;
   consultarCliente: () => void;
   patchCliente: (patch: Partial<ClienteDatos>) => void;
   patchLaboral: (patch: Partial<LaboralIngresos>) => void;
   verificarIdentidad: () => void;
+  solicitar: () => void;
   finalizarRiesgo: (reglas: RiskRule[], resultado: RiskResultado) => void;
-  reiniciarRiesgo: () => void;
 
   patchOferta: (patch: Partial<Oferta>) => void;
   togglePrecancelar: (id: string) => void;
-  setDeudaTerceros: (importe: number) => void;
+  setDeudaTerceros: (patch: Partial<DeudaTerceros>) => void;
   aceptarOferta: () => void;
   irAPostOferta: () => void;
 
@@ -74,10 +73,10 @@ interface ApplicationContextValue {
   finalizarCarga: () => void;
 
   tomarAnalisis: () => void;
-  observarCredito: (observacion: string) => void;
-  rechazarCredito: (motivo: string) => void;
+  observarCredito: (motivo: string, nota: string) => void;
+  retomarObservada: () => void;
+  rechazarCredito: (codigo: string, motivo: string, observacion: string) => void;
   aprobarCredito: () => void;
-  reanudarAnalisis: () => void;
 
   reiniciarDemo: () => void;
 }
@@ -126,10 +125,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setApp((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  const setTipoPersona = useCallback((t: TipoPersona) => {
-    setApp((prev) => ({ ...prev, tipoPersona: t }));
-  }, []);
-
   const consultarCliente = useCallback(() => {
     setApp((prev) => ({
       ...prev,
@@ -164,34 +159,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setApp((prev) => ({ ...prev, identidadVerificada: true }));
   }, []);
 
-  const finalizarRiesgo = useCallback(
-    (reglas: RiskRule[], resultado: RiskResultado) => {
-      setApp((prev) => ({
+  // "Solicitar" (Guía §8): genera el ID de Crédito inalterable y la solicitud pasa a En trámite.
+  const solicitar = useCallback(() => {
+    setApp((prev) => ({
+      ...prev,
+      numeroCredito: prev.numeroCredito ?? "CR-000184",
+      estado: "EN_TRAMITE",
+      fechaSolicitud: prev.fechaSolicitud ?? fechaHoy(),
+      riesgo: { ...prev.riesgo, estado: "EVALUANDO" },
+    }));
+  }, []);
+
+  const finalizarRiesgo = useCallback((reglas: RiskRule[], resultado: RiskResultado) => {
+    setApp((prev) => {
+      const rechazado = resultado === "RECHAZADO";
+      return {
         ...prev,
-        numeroCredito: prev.numeroCredito ?? "CR-000184",
+        estado: rechazado ? "RECHAZADO" : prev.estado,
+        rechazo: rechazado
+          ? {
+              origen: "MOTOR",
+              codigos: reglas.filter((r) => r.resultado === "NO_CUMPLE").map((r) => r.codigo),
+              motivo: "Regla dura del motor de riesgo no superada",
+              observacion: reglas
+                .filter((r) => r.resultado === "NO_CUMPLE")
+                .map((r) => `${r.nombre}: ${r.valorEvaluado}`)
+                .join(" · "),
+              fecha: fechaHoy(),
+            }
+          : null,
         riesgo: {
           estado: "COMPLETO",
           reglas,
           resultado,
-          evaluadoConIngresoNeto: prev.laboral.ingresoNeto,
+          evaluadoCon: {
+            ingresoNeto: prev.laboral.ingresoNeto,
+            fechaNacimiento: prev.cliente?.fechaNacimiento ?? "",
+          },
           fecha: selloTiempo(),
         },
-      }));
-    },
-    []
-  );
-
-  const reiniciarRiesgo = useCallback(() => {
-    setApp((prev) => ({
-      ...prev,
-      riesgo: {
-        estado: "PENDIENTE",
-        reglas: [],
-        resultado: null,
-        evaluadoConIngresoNeto: null,
-        fecha: null,
-      },
-    }));
+      };
+    });
   }, []);
 
   const patchOferta = useCallback((patch: Partial<Oferta>) => {
@@ -210,14 +218,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const setDeudaTerceros = useCallback((importe: number) => {
-    setApp((prev) => ({
-      ...prev,
-      oferta: recalcularOferta({
-        ...prev.oferta,
-        deudaTerceros: { ...prev.oferta.deudaTerceros, importe: Math.max(0, importe) },
-      }),
-    }));
+  const setDeudaTerceros = useCallback((patch: Partial<DeudaTerceros>) => {
+    setApp((prev) => {
+      const actual = { ...prev.oferta.deudaTerceros, ...patch };
+      return {
+        ...prev,
+        oferta: recalcularOferta({
+          ...prev.oferta,
+          deudaTerceros: { ...actual, importe: Math.max(0, actual.importe) },
+        }),
+      };
+    });
   }, []);
 
   const aceptarOferta = useCallback(() => {
@@ -325,12 +336,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // "Finalizar carga" (En trámite → En análisis) o "Reenviar correcciones" (Observado → En análisis).
   const finalizarCarga = useCallback(() => {
     setApp((prev) => ({
       ...prev,
       estado: "EN_ANALISIS",
       etapa: "ENVIADA",
       fechaEnvioAnalisis: selloTiempo(),
+      analista: {
+        ...prev.analista,
+        tomado: false,
+        reenviada: prev.estado === "OBSERVADO",
+      },
     }));
   }, []);
 
@@ -342,35 +359,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const observarCredito = useCallback((observacion: string) => {
+  // Observar devuelve la solicitud a la bandeja del canal de venta (Guía §7.3).
+  const observarCredito = useCallback((motivo: string, nota: string) => {
     setApp((prev) => ({
       ...prev,
-      estado: "OBSERVADA",
-      analista: { ...prev.analista, observacion },
+      estado: "OBSERVADO",
+      analista: {
+        tomado: false,
+        reenviada: false,
+        observacion: { motivo, nota, fecha: fechaHoy() },
+      },
     }));
   }, []);
 
-  const rechazarCredito = useCallback((motivo: string) => {
+  const retomarObservada = useCallback(() => {
+    setApp((prev) => ({ ...prev, etapa: "POST_OFERTA" }));
+  }, []);
+
+  const rechazarCredito = useCallback((codigo: string, motivo: string, observacion: string) => {
     setApp((prev) => ({
       ...prev,
       estado: "RECHAZADO",
-      analista: { ...prev.analista, motivoRechazo: motivo },
+      rechazo: { origen: "ANALISTA", codigos: [codigo], motivo, observacion, fecha: fechaHoy() },
     }));
   }, []);
 
   const aprobarCredito = useCallback(() => {
     setApp((prev) => ({
       ...prev,
-      estado: "APROBADO",
+      estado: "PARA_LIQUIDAR",
       fechaAprobacion: selloTiempo(),
-    }));
-  }, []);
-
-  const reanudarAnalisis = useCallback(() => {
-    setApp((prev) => ({
-      ...prev,
-      estado: "ANALISIS_TOMADO",
-      analista: { ...prev.analista, observacion: null },
     }));
   }, []);
 
@@ -392,13 +410,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPantallaActual,
       setMenuAbierto,
       patchApp,
-      setTipoPersona,
       consultarCliente,
       patchCliente,
       patchLaboral,
       verificarIdentidad,
+      solicitar,
       finalizarRiesgo,
-      reiniciarRiesgo,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
@@ -416,9 +433,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finalizarCarga,
       tomarAnalisis,
       observarCredito,
+      retomarObservada,
       rechazarCredito,
       aprobarCredito,
-      reanudarAnalisis,
       reiniciarDemo,
     }),
     [
@@ -428,13 +445,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       menuAbierto,
       hidratado,
       patchApp,
-      setTipoPersona,
       consultarCliente,
       patchCliente,
       patchLaboral,
       verificarIdentidad,
+      solicitar,
       finalizarRiesgo,
-      reiniciarRiesgo,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
@@ -452,9 +468,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finalizarCarga,
       tomarAnalisis,
       observarCredito,
+      retomarObservada,
       rechazarCredito,
       aprobarCredito,
-      reanudarAnalisis,
       reiniciarDemo,
     ]
   );

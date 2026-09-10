@@ -1,20 +1,23 @@
 import type {
   CreditApplication,
+  CreditoActivo,
   Oferta,
   Plazo,
   RiskResultado,
   RiskRule,
 } from "./types";
-import { formatARS } from "./format";
+import { calcularEdad } from "./format";
+import { getPlan, type PlanCuotas } from "./config";
 
-// --- Parámetros del motor (Configuración DEMO / Regla simulada) ---
+// --- Parámetros de la oferta (Configuración DEMO / Regla simulada) ---
 
 export const CAPITAL_MAXIMO_BASE = 2_500_000;
-// Regla simulada: si la precancelación libera capacidad, el motor recalcula un
-// capital máximo mayor. Valor fijo para la demo.
+// Regla simulada: al renovar un crédito propio el motor lo excluye de la exposición y el
+// plan emite un capital máximo mayor. Valor fijo para la demo.
 export const CAPITAL_MAXIMO_CON_PRECANCELACION = 2_850_000;
 
-export const INGRESO_MINIMO = 750_000;
+export const EDAD_MINIMA = 18;
+export const EDAD_MAXIMA = 75;
 
 export interface OfferTerm {
   plazo: Plazo;
@@ -28,6 +31,7 @@ export const OFFER_TERMS: OfferTerm[] = [
   { plazo: 12, tna: 58, recomendada: true, primeraCuota: "10/10/2026" },
   { plazo: 18, tna: 63, recomendada: false, primeraCuota: "25/10/2026" },
   { plazo: 24, tna: 67, recomendada: false, primeraCuota: "10/11/2026" },
+  { plazo: 36, tna: 72, recomendada: false, primeraCuota: "10/11/2026" },
 ];
 
 export function getTerm(plazo: Plazo): OfferTerm {
@@ -57,12 +61,22 @@ export function importeTerceros(oferta: Oferta): number {
   return oferta.deudaTerceros.habilitado ? oferta.deudaTerceros.importe : 0;
 }
 
+// Regla en cascada (Guía §5.5):
+// Acreditación neta = Capital solicitado − Σ cancelaciones propias − Σ cancelaciones terceros
 export function netoAAcreditar(oferta: Oferta): number {
   return oferta.montoSolicitado - totalPrecancelaciones(oferta) - importeTerceros(oferta);
 }
 
+export function cancelacionesExcedenCapital(oferta: Oferta): boolean {
+  return totalPrecancelaciones(oferta) + importeTerceros(oferta) > oferta.montoSolicitado;
+}
+
 export function ofertaExcedeMaximo(oferta: Oferta): boolean {
   return oferta.montoSolicitado > oferta.capitalMaximoActual;
+}
+
+export function cuotasAbonadasPct(c: CreditoActivo): number {
+  return Math.round((c.cuotasAbonadas / c.cuotasOriginales) * 100);
 }
 
 // Recalcula todos los derivados de la oferta a partir de sus entradas.
@@ -82,7 +96,7 @@ export function recalcularOferta(oferta: Oferta): Oferta {
   };
 }
 
-// --- Motor de riesgo ---
+// --- Motor de riesgo ("El Patovica"): filtro pasa / no pasa (Guía §4.1) ---
 
 export interface FaseRiesgo {
   id: string;
@@ -90,89 +104,66 @@ export interface FaseRiesgo {
 }
 
 export const FASES_RIESGO: FaseRiesgo[] = [
-  { id: "analizar", mensaje: "Analizando la solicitud…" },
-  { id: "crediticia", mensaje: "Consultando información crediticia…" },
-  { id: "reglas", mensaje: "Aplicando reglas…" },
-  { id: "condiciones", mensaje: "Generando condiciones de oferta…" },
+  { id: "id", mensaje: "Generando ID de crédito…" },
+  { id: "bcra", mensaje: "Consultando Vector BCRA…" },
+  { id: "mora", mensaje: "Consultando mora interna…" },
+  { id: "reglas", mensaje: "Aplicando reglas del motor…" },
 ];
 
 export function evaluarReglas(app: CreditApplication): RiskRule[] {
-  const neto = app.laboral.ingresoNeto;
-  const cumpleIngreso = neto >= INGRESO_MINIMO;
-  const nombreCliente = app.cliente
-    ? `${app.cliente.nombre} ${app.cliente.apellido}`
-    : "Cliente identificado";
+  const edad = calcularEdad(app.cliente?.fechaNacimiento ?? "");
+  const edadOk = edad !== null && edad >= EDAD_MINIMA && edad <= EDAD_MAXIMA;
 
   return [
     {
-      id: "identificacion",
-      nombre: "Identificación validada",
-      detalle: "Identidad confirmada contra la fuente pública y la imagen archivada.",
-      valorEvaluado: nombreCliente,
-      condicion: "Identidad verificada",
-      resultado: app.identidadVerificada ? "CUMPLE" : "ADVERTENCIA",
-    },
-    {
-      id: "duplicado",
-      nombre: "Cliente sin trámite duplicado",
-      detalle: "No existe otra solicitud de crédito en curso para este cliente.",
-      valorEvaluado: "0 solicitudes activas",
-      condicion: "0 solicitudes activas",
-      resultado: "CUMPLE",
-    },
-    {
-      id: "ingreso",
-      nombre: "Ingreso mínimo cumplido",
-      detalle: "El ingreso neto declarado supera el piso definido para el organismo.",
-      valorEvaluado: formatARS(neto),
-      condicion: `Mínimo ${formatARS(INGRESO_MINIMO)}`,
-      resultado: cumpleIngreso ? "CUMPLE" : "NO_CUMPLE",
+      id: "edad",
+      codigo: "MR-01",
+      nombre: "Edad dentro del rango permitido",
+      detalle: "Calculada a partir de la fecha de nacimiento informada por la API.",
+      valorEvaluado: edad !== null ? `${edad} años` : "Sin dato",
+      condicion: `Entre ${EDAD_MINIMA} y ${EDAD_MAXIMA} años`,
+      resultado: edadOk ? "CUMPLE" : "NO_CUMPLE",
     },
     {
       id: "bcra",
-      nombre: "Situación BCRA dentro de parámetros",
-      detalle: "Situación crediticia informada por el BCRA (simulada).",
+      codigo: "MR-02",
+      nombre: "Vector BCRA",
+      detalle: "Situación del cliente en la Central de Deudores del BCRA (simulada).",
       valorEvaluado: "Situación 1 · sin deudas reportadas",
       condicion: "Situación 1 o 2",
       resultado: "CUMPLE",
     },
     {
-      id: "comportamiento",
-      nombre: "Comportamiento interno favorable",
-      detalle: "Score de comportamiento en créditos anteriores de CreditoNet.",
-      valorEvaluado: "Score 82 / 100",
-      condicion: "Score ≥ 60",
-      resultado: "CUMPLE",
-    },
-    {
       id: "mora",
-      nombre: "Días de mora dentro del límite",
-      detalle: "Mora máxima admitida en créditos vigentes del cliente.",
-      valorEvaluado: "0 días",
-      condicion: "≤ 30 días",
+      codigo: "MR-03",
+      nombre: "Vector de mora interna",
+      detalle: "Historial de cumplimiento con la financiera.",
+      valorEvaluado: "0 días de atraso · CR-000102 al día",
+      condicion: "Hasta 30 días de atraso",
       resultado: "CUMPLE",
     },
     {
-      id: "historial",
-      nombre: "Historial de pagos compatible",
-      detalle: "Antigüedad del último pago registrado en créditos internos.",
-      valorEvaluado: "Último pago hace 25 días",
-      condicion: "≤ 60 días",
+      id: "carencia",
+      codigo: "MR-04",
+      nombre: "Sin trámite activo ni carencia vigente",
+      detalle: "Sin otra solicitud en curso ni rechazos del motor en los últimos 30 días.",
+      valorEvaluado: "0 solicitudes activas · sin rechazos",
+      condicion: "Sin carencia vigente",
       resultado: "CUMPLE",
     },
   ];
 }
 
 export function resolverResultado(reglas: RiskRule[]): RiskResultado {
-  if (reglas.some((r) => r.resultado === "NO_CUMPLE")) return "RECHAZAR";
-  if (reglas.some((r) => r.resultado === "ADVERTENCIA")) return "PASAR_A_ANALISTA";
-  return "GENERAR_OFERTA";
+  if (reglas.some((r) => r.resultado === "NO_CUMPLE")) return "RECHAZADO";
+  if (reglas.some((r) => r.resultado === "ADVERTENCIA")) return "VERIFICACION_MANUAL";
+  return "APROBADO";
 }
 
 export const RESULTADO_LABEL: Record<RiskResultado, string> = {
-  GENERAR_OFERTA: "Generar oferta",
-  PASAR_A_ANALISTA: "Pasar a analista",
-  RECHAZAR: "Rechazar solicitud",
+  APROBADO: "Aprobado",
+  VERIFICACION_MANUAL: "Requiere verificación manual",
+  RECHAZADO: "Rechazado",
 };
 
 export const OUTCOME_LABEL: Record<RiskRule["resultado"], string> = {
@@ -180,3 +171,48 @@ export const OUTCOME_LABEL: Record<RiskRule["resultado"], string> = {
   ADVERTENCIA: "Advertencia",
   NO_CUMPLE: "No cumple",
 };
+
+// --- Plan de cuotas / Línea: validación financiera (Guía §2.3, §4.3) ---
+
+export interface EvaluacionPlan {
+  plan: PlanCuotas;
+  ingresoNeto: number;
+  cuotaPlan: number;
+  cuotaMaximaRci: number;
+  rciPct: number;
+  cuotasVigentes: number;
+  endeudamientoPct: number;
+  ingresoBolsillo: number;
+  cumpleRci: boolean;
+  cumpleEndeudamiento: boolean;
+  cumpleSmvm: boolean;
+  capitalMaximo: number;
+}
+
+export function evaluarPlan(app: CreditApplication): EvaluacionPlan {
+  const plan = getPlan(app.configuracion.organismoId);
+  const o = app.oferta;
+  const neto = app.laboral.ingresoNeto;
+  // Los créditos marcados para renovar no cuentan en la exposición (Guía §5.3).
+  const cuotasVigentes = o.creditosActivos
+    .filter((c) => !c.precancelar)
+    .reduce((s, c) => s + c.valorCuota, 0);
+  const pct = (v: number) => (neto > 0 ? Math.round((v / neto) * 1000) / 10 : 0);
+  const rciPct = pct(o.valorCuota);
+  const endeudamientoPct = pct(o.valorCuota + cuotasVigentes);
+  const ingresoBolsillo = neto - o.valorCuota - cuotasVigentes;
+  return {
+    plan,
+    ingresoNeto: neto,
+    cuotaPlan: o.valorCuota,
+    cuotaMaximaRci: Math.round((neto * plan.rciMaxPct) / 100),
+    rciPct,
+    cuotasVigentes,
+    endeudamientoPct,
+    ingresoBolsillo,
+    cumpleRci: rciPct <= plan.rciMaxPct,
+    cumpleEndeudamiento: endeudamientoPct <= plan.endeudamientoMaxPct,
+    cumpleSmvm: ingresoBolsillo >= plan.smvmBolsillo,
+    capitalMaximo: o.capitalMaximoActual,
+  };
+}

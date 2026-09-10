@@ -1,6 +1,7 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
+import { getPlan } from "@/lib/config";
 import { OFFER_TERMS, calcularCuota } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
@@ -10,24 +11,29 @@ import { IconCheckCircle } from "@/components/icons";
 export function TablaCuotas() {
   const { app, patchOferta } = useApplication();
   const o = app.oferta;
+  const plan = getPlan(app.configuracion.organismoId);
+  const terms = OFFER_TERMS.filter((t) => plan.plazos.includes(t.plazo));
 
   return (
     <Card className="p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold tracking-tight text-ink-900">Plan de cuotas</h3>
+          <h3 className="text-sm font-semibold tracking-tight text-ink-900">
+            Grilla de cuotas · {plan.nombre}
+          </h3>
           <p className="mt-0.5 text-xs text-ink-500">
-            La selección cambia la cuota, el total y la primera fecha de vencimiento.
+            Sistema {plan.sistema.toLowerCase()}. La selección cambia la cuota, el total y la
+            primera fecha de vencimiento.
           </p>
         </div>
         <DemoTag
           variant="regla"
-          detalle="El formato y la fecha de vencimiento de la primera cuota son una decisión pendiente. Los valores mostrados son de demo."
+          detalle="Las tasas y la fecha de vencimiento de la primera cuota son valores de demo; su formato es una decisión pendiente."
         />
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        {OFFER_TERMS.map((term) => {
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {terms.map((term) => {
           const seleccionada = term.plazo === o.plazo;
           const cuota = calcularCuota(o.montoSolicitado, term.plazo, term.tna);
           return (

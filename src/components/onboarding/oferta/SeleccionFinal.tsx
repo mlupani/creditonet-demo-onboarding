@@ -11,7 +11,7 @@ export function SeleccionFinal() {
   const o = app.oferta;
 
   const condiciones = [
-    { label: "Importe del préstamo", value: formatARS(o.montoSolicitado) },
+    { label: "Capital solicitado", value: formatARS(o.montoSolicitado) },
     { label: "Cantidad de cuotas", value: `${o.plazo}` },
     { label: "Valor de la cuota", value: formatARS(o.valorCuota) },
   ];

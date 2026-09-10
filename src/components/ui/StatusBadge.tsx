@@ -11,13 +11,15 @@ const toneClasses: Record<Tone, string> = {
   brand: "bg-brand-600 text-white border-brand-600",
 };
 
-const ESTADO_META: Record<EstadoCredito, { label: string; tone: Tone }> = {
+// Etiquetas de la máquina de estados de la Guía Definitiva §8.
+export const ESTADO_META: Record<EstadoCredito, { label: string; tone: Tone }> = {
   BORRADOR: { label: "Borrador", tone: "neutral" },
+  EN_TRAMITE: { label: "En trámite", tone: "info" },
   EN_ANALISIS: { label: "En análisis", tone: "info" },
-  ANALISIS_TOMADO: { label: "Análisis en curso", tone: "info" },
-  OBSERVADA: { label: "Observada", tone: "warning" },
-  APROBADO: { label: "Aprobado", tone: "success" },
-  RECHAZADO: { label: "Rechazada", tone: "danger" },
+  ANALISIS_TOMADO: { label: "En análisis", tone: "info" },
+  OBSERVADO: { label: "Observado", tone: "warning" },
+  RECHAZADO: { label: "Rechazado", tone: "danger" },
+  PARA_LIQUIDAR: { label: "Para liquidar", tone: "success" },
 };
 
 export function StatusBadge({

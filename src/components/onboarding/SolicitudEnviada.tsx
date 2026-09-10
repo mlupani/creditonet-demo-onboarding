@@ -2,30 +2,70 @@
 
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
-import { formatARS } from "@/lib/format";
+import { formatARS, sumarDias } from "@/lib/format";
 import { netoAAcreditar } from "@/lib/credit";
-import { IconFileStack } from "@/components/icons";
+import { IconAlertTriangle, IconFileStack } from "@/components/icons";
 
 export function SolicitudEnviada() {
   const router = useRouter();
-  const { app, reiniciarDemo } = useApplication();
+  const { app, reiniciarDemo, retomarObservada } = useApplication();
 
-  if (app.estado === "APROBADO" || app.estado === "RECHAZADO") {
+  if (app.estado === "OBSERVADO") {
+    const obs = app.analista.observacion;
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+        <Card className="animate-fade-up overflow-hidden">
+          <div className="bg-warning-50 px-6 py-8 text-center">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-warning-500 text-white shadow-sm">
+              <IconAlertTriangle width={26} height={26} />
+            </span>
+            <h1 className="mt-4 text-xl font-bold tracking-tight text-warning-700">
+              La solicitud {app.numeroCredito} fue observada
+            </h1>
+            <p className="mx-auto mt-1.5 max-w-md text-sm text-warning-700/80">
+              El analista de riesgo la devolvió al canal de venta con correcciones requeridas.
+            </p>
+          </div>
+          <div className="space-y-5 p-6">
+            {obs && (
+              <Banner tone="warning" title={obs.motivo}>
+                {obs.nota} Corregí antes del <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días)
+                para que no expire.
+              </Banner>
+            )}
+            <div className="flex flex-col justify-center gap-2 sm:flex-row">
+              <Button onClick={retomarObservada}>Corregir y reenviar</Button>
+              <Button variant="outline" onClick={() => router.push("/")}>
+                Volver a la bandeja
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (app.estado === "PARA_LIQUIDAR" || app.estado === "RECHAZADO") {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12 text-center sm:px-6">
         <Card className="animate-fade-up p-8">
-          <h1 className="text-lg font-bold tracking-tight text-ink-900">
-            La solicitud {app.numeroCredito} ya fue {app.estado === "APROBADO" ? "aprobada" : "rechazada"}
+          <div className="flex justify-center">
+            <EstadoBadge estado={app.estado} />
+          </div>
+          <h1 className="mt-3 text-lg font-bold tracking-tight text-ink-900">
+            La solicitud {app.numeroCredito} ya fue{" "}
+            {app.estado === "PARA_LIQUIDAR" ? "aprobada" : "rechazada"}
           </h1>
           <p className="mx-auto mt-2 max-w-sm text-sm text-ink-500">
-            Podés ver el detalle en la bandeja de análisis o iniciar una nueva demo.
+            Podés ver el detalle en la bandeja del analista o iniciar una nueva demo.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
-            <Button onClick={() => router.push("/analisis")}>Ver bandeja de análisis</Button>
+            <Button onClick={() => router.push("/analisis")}>Ver bandeja del analista</Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -45,19 +85,21 @@ export function SolicitudEnviada() {
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <SuccessScreen
         variant="enviada"
+        titulo={app.analista.reenviada ? "Correcciones reenviadas a análisis" : undefined}
         timeline={[
           { label: "Solicitud", estado: "done" },
-          { label: "Riesgo", estado: "done" },
+          { label: "Motor de riesgo", estado: "done" },
           { label: "Oferta", estado: "done" },
-          { label: "Onboarding", estado: "done" },
+          { label: "Carga post-oferta", estado: "done" },
           { label: "Análisis", estado: "current" },
+          { label: "Liquidación", estado: "pending" },
         ]}
         primaryAction={{
-          label: "Ir a la bandeja de análisis",
+          label: "Ir a la bandeja del analista",
           onClick: () => router.push("/analisis"),
         }}
         secondaryAction={{
-          label: "Volver al inicio",
+          label: "Volver a la bandeja",
           onClick: () => router.push("/"),
         }}
       >
@@ -73,7 +115,7 @@ export function SolicitudEnviada() {
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-ink-100 pt-4 sm:grid-cols-3">
             <div>
-              <dt className="text-[11px] font-medium text-ink-500">Capital</dt>
+              <dt className="text-[11px] font-medium text-ink-500">Capital solicitado</dt>
               <dd className="text-sm font-semibold tabular-nums text-ink-900">
                 {formatARS(app.oferta.montoSolicitado)}
               </dd>
@@ -85,7 +127,7 @@ export function SolicitudEnviada() {
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] font-medium text-ink-500">Neto a acreditar</dt>
+              <dt className="text-[11px] font-medium text-ink-500">Acreditación neta</dt>
               <dd className="text-sm font-semibold tabular-nums text-success-700">
                 {formatARS(netoAAcreditar(app.oferta))}
               </dd>
@@ -94,7 +136,7 @@ export function SolicitudEnviada() {
         </div>
         <p className="mt-4 flex items-center justify-center gap-2 text-xs text-ink-500">
           <IconFileStack width={14} height={14} />
-          El crédito ya no aparece en la bandeja del vendedor.
+          Podés seguir su estado desde la bandeja del canal de venta.
         </p>
       </SuccessScreen>
     </div>

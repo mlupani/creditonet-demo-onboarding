@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { getProductoConfig } from "@/lib/config";
+import { configEfectiva } from "@/lib/config";
 import { validarGarante } from "@/lib/validation";
 import type { Garante } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
@@ -16,7 +16,7 @@ import { IconShieldCheck } from "@/components/icons";
 
 export function PantallaGarantias() {
   const { app, patchGarante, subirDocumento } = useApplication();
-  const config = getProductoConfig(app.configuracion.productoId);
+  const config = configEfectiva(app.configuracion);
   const g = app.postOferta.garante;
   const err = validarGarante(g);
   const [subiendo, setSubiendo] = useState<string | null>(null);

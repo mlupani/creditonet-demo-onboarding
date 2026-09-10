@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import { NOTIFICACIONES } from "@/lib/mocks";
-import { SESION } from "@/lib/config";
+import { SESION, SESION_ANALISTA } from "@/lib/config";
 import {
   IconAlertTriangle,
   IconBell,
@@ -13,11 +13,10 @@ import {
   IconMenu,
 } from "@/components/icons";
 
-function TituloRuta() {
-  const pathname = usePathname();
-  if (pathname === "/") return "Módulo Onboarding";
+function tituloRuta(pathname: string) {
+  if (pathname === "/") return "Bandeja del canal de venta";
   if (pathname.startsWith("/onboarding")) return "Solicitar crédito";
-  if (pathname.startsWith("/analisis")) return "Bandeja de análisis";
+  if (pathname.startsWith("/analisis")) return "Bandeja del analista de riesgo";
   return "CreditoNet";
 }
 
@@ -96,6 +95,9 @@ function Notificaciones() {
 
 export function Header() {
   const { menuAbierto, setMenuAbierto } = useApplication();
+  const pathname = usePathname();
+  // El usuario mostrado cambia según la bandeja (roles de la Guía §1).
+  const usuario = pathname.startsWith("/analisis") ? SESION_ANALISTA : SESION;
   return (
     <header className="sticky top-0 z-30 border-b border-ink-200 bg-white/85 backdrop-blur">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
@@ -108,9 +110,9 @@ export function Header() {
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold tracking-tight text-ink-900">
-            <TituloRuta />
+            {tituloRuta(pathname)}
           </p>
-          <p className="hidden text-xs text-ink-400 sm:block">{SESION.organizacion}</p>
+          <p className="hidden text-xs text-ink-400 sm:block">{usuario.organizacion}</p>
         </div>
 
         <span className="hidden items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-brand-700 sm:inline-flex">
@@ -124,12 +126,12 @@ export function Header() {
 
         <div className="ml-1 flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
-            {SESION.iniciales}
+            {usuario.iniciales}
           </span>
           <div className="hidden leading-tight md:block">
-            <p className="text-sm font-semibold text-ink-900">{SESION.nombre}</p>
+            <p className="text-sm font-semibold text-ink-900">{usuario.nombre}</p>
             <p className="text-xs text-ink-500">
-              {SESION.rol} · <span className="text-ink-400">CreditoNet</span>
+              {usuario.rol} · <span className="text-ink-400">CreditoNet</span>
             </p>
           </div>
         </div>

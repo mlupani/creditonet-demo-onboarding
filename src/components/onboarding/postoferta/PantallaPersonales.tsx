@@ -25,7 +25,7 @@ export function PantallaPersonales() {
       <Card>
         <CardHeader
           title="Datos personales"
-          description="Contacto, domicilio y situación personal del cliente."
+          description="Email, teléfono celular y domicilio real, más la situación personal del cliente."
           icon={<IconUser width={18} height={18} />}
           action={
             <DemoTag
@@ -47,12 +47,12 @@ export function PantallaPersonales() {
           />
           <FormField
             id="pp-domicilio"
-            label="Domicilio completo"
+            label="Domicilio real"
             required
             badge={<YaInformadoBadge />}
-            value={p.domicilioCompleto}
-            onChange={set("domicilioCompleto")}
-            error={err.domicilioCompleto}
+            value={p.domicilioReal}
+            onChange={set("domicilioReal")}
+            error={err.domicilioReal}
           />
           <FormField
             id="pp-celular"
