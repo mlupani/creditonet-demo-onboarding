@@ -75,7 +75,7 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
         ? { ok: true, razon: null }
         : {
             ok: false,
-            razon: "Completá los datos laborales y financieros mínimos para poder solicitar.",
+            razon: "Completá los datos mínimos y adjuntá el recibo para poder solicitar.",
           };
     case 5:
       if (app.riesgo.estado !== "COMPLETO")

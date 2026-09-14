@@ -64,6 +64,8 @@ export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
     e.ingresoBruto = "El ingreso bruto no puede ser menor al neto. Revisá los valores.";
   if (l.montoExtraidoDiaCobro <= 0)
     e.montoExtraidoDiaCobro = "Ingresá el monto extraído o transferido el día de cobro.";
+  if (l.recibos.length === 0)
+    e.recibos = "Adjuntá el recibo que respalda el ingreso declarado.";
   return e;
 }
 

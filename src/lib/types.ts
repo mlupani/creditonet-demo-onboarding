@@ -137,6 +137,9 @@ export interface LaboralIngresos {
   ingresoBruto: number;
   ingresoNeto: number;
   montoExtraidoDiaCobro: number;
+  // Respaldo del ingreso declarado. Se incorpora al legajo virtual post-oferta: no se
+  // vuelve a pedir después de la oferta (Onboarding §9).
+  recibos: ArchivoLegajo[];
 }
 
 // --- Oferta ---

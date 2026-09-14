@@ -88,6 +88,8 @@ export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = {
     ingresoBruto: 1_250_000,
     ingresoNeto: 1_000_000,
     montoExtraidoDiaCobro: 820_000,
+    // El recibo es del pedido actual: no se precarga aunque el cliente sea existente.
+    recibos: [],
   },
 };
 
@@ -247,14 +249,18 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     );
 
   const cfg = configEfectiva(app.configuracion);
+  // El recibo (sueldo o haberes, según el documento que pida el producto) ya se adjuntó en
+  // los datos mínimos: se reutiliza acá y no se vuelve a pedir (Onboarding §9).
+  const tipoRecibo = cfg.documentos.find((d) => d.tipoId === "recibo-sueldo" || d.tipoId === "recibo-haberes");
   const legajo = Object.fromEntries(
     cfg.documentos
-      .filter((d) => d.obligatorio && d.tipoId !== "comprobante-servicio") // PENDIENTE
+      .filter((d) => d.obligatorio && d !== tipoRecibo && d.tipoId !== "comprobante-servicio") // PENDIENTE
       .map((d) => [
         d.tipoId,
         [{ id: `${d.tipoId}-1`, nombre: `${d.tipoId.replace(/-/g, "_")}_1.jpg`, detalle: "1.1 MB · Hoy" }],
       ])
   );
+  if (tipoRecibo && app.laboral.recibos.length > 0) legajo[tipoRecibo.tipoId] = app.laboral.recibos;
   const conGarantias = cfg.pantallas.some((p) => p.id === "garantias" && p.visible);
   const garante: PersonaVinculada = {
     id: "garante-1",
@@ -329,6 +335,7 @@ export function crearAplicacionInicial(): CreditApplication {
       ingresoBruto: 0,
       ingresoNeto: 0,
       montoExtraidoDiaCobro: 0,
+      recibos: [],
     },
     riesgo: {
       estado: "PENDIENTE",
