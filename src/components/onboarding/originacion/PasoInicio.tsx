@@ -29,6 +29,9 @@ const ICONO_CANAL: Record<string, Icono> = {
   digital: IconSparkles,
 };
 
+// Canales que se pueden elegir en la demo. El canal digital se muestra pero no es navegable.
+const CANALES_HABILITADOS = new Set(["sucursal"]);
+
 const PERSONAS: {
   id: TipoPersona;
   titulo: string;
@@ -63,6 +66,7 @@ function Opcion({
   subtitulo,
   detalle,
   nota,
+  disabled = false,
 }: {
   seleccionada: boolean;
   onClick: () => void;
@@ -71,16 +75,20 @@ function Opcion({
   subtitulo: string;
   detalle?: string;
   nota?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={seleccionada}
       className={`relative rounded-xl border p-4 text-left transition-all ${
-        seleccionada
-          ? "border-brand-600 bg-brand-50/60 shadow-sm ring-1 ring-brand-600"
-          : "border-ink-200 bg-white hover:border-brand-300 hover:bg-brand-50/30"
+        disabled
+          ? "cursor-not-allowed border-ink-200 bg-ink-25 opacity-60"
+          : seleccionada
+            ? "border-brand-600 bg-brand-50/60 shadow-sm ring-1 ring-brand-600"
+            : "border-ink-200 bg-white hover:border-brand-300 hover:bg-brand-50/30"
       }`}
     >
       {seleccionada && (
@@ -137,6 +145,8 @@ export function PasoInicio() {
                 titulo={canal.nombre}
                 subtitulo={`${productos.length} producto${productos.length === 1 ? "" : "s"}`}
                 detalle={`${canal.detalle}. Ofrece: ${productos.map((p) => p.nombre).join(", ")}.`}
+                disabled={!CANALES_HABILITADOS.has(canal.id)}
+                nota={CANALES_HABILITADOS.has(canal.id) ? undefined : "No disponible en la demo"}
               />
             );
           })}
