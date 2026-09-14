@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { DATOS_API_PUBLICA } from "@/lib/mocks";
 import { GENEROS } from "@/lib/validation";
+import { evaluarInstitucionales, institucionalesBloquean } from "@/lib/reglas-institucionales";
 import { formatDNI, onlyDigits } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Banner } from "@/components/ui/Banner";
@@ -13,6 +14,7 @@ import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { DemoTag } from "@/components/ui/DemoTag";
 import { CampoCliente } from "./CampoCliente";
 import { VerificacionPresencial } from "./VerificacionPresencial";
+import { InstitucionalesPanel } from "../evaluacion/InstitucionalesPanel";
 import {
   IconCheck,
   IconCheckCircle,
@@ -37,6 +39,10 @@ export function PasoIdentificacion() {
   const [consultando, setConsultando] = useState(false);
 
   const encontrado = app.identificacion.consultado && app.cliente;
+  // Las reglas institucionales que ya tienen sus datos se evalúan acá, en vivo: si el
+  // vendedor rectifica un dato de la API, la regla se vuelve a evaluar (Motor §6 y §11).
+  const institucionales = evaluarInstitucionales(app, "IDENTIFICACION");
+  const descartada = institucionalesBloquean(institucionales);
 
   function consultar() {
     const err = validarDocumento(documento);
@@ -138,6 +144,38 @@ export function PasoIdentificacion() {
             </div>
           </div>
 
+          {app.situaciones && (
+            <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-card">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400">
+                  Situación traída con el documento
+                </p>
+                <DemoTag
+                  variant="regla"
+                  detalle="Se consulta junto con el DNI, antes de evaluar. Con la condición laboral son los tres limitantes que determinan qué línea aplica; si ninguna la acepta, la solicitud se rechaza sin llegar al motor."
+                />
+              </div>
+              <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-lg border border-ink-200 bg-ink-25 px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+                    Situación BCRA
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-ink-800">
+                    Situación {app.situaciones.bcra}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-ink-200 bg-ink-25 px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+                    Buró interno
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-ink-800">
+                    Situación {app.situaciones.interna}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <Card>
             <CardHeader
               title={`${app.cliente!.nombre} ${app.cliente!.apellido}`}
@@ -180,7 +218,23 @@ export function PasoIdentificacion() {
             </div>
           </Card>
 
-          <VerificacionPresencial />
+          <InstitucionalesPanel reglas={institucionales} />
+
+          {descartada ? (
+            <Banner tone="error" title="Solicitud descartada por una regla institucional">
+              <span className="flex flex-wrap items-center gap-2">
+                Con estos datos no se puede continuar: no se genera ID de Crédito ni se ejecuta el
+                motor. Si un dato vino mal de la API, corregilo arriba y la regla se vuelve a
+                evaluar.
+                <DemoTag
+                  variant="regla"
+                  detalle="Para mostrar el descarte temprano cambiá la fecha de nacimiento a 14/05/1955. Con 14/05/1982 la regla vuelve a pasar."
+                />
+              </span>
+            </Banner>
+          ) : (
+            <VerificacionPresencial />
+          )}
 
           <Banner tone="info">
             <span className="flex flex-wrap items-center gap-2">

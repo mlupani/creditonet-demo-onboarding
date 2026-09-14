@@ -3,6 +3,7 @@
 import { useApplication } from "@/lib/application-context";
 import { nombreOpcion, ORGANISMOS } from "@/lib/config";
 import { RESULTADO_LABEL } from "@/lib/credit";
+import { getMotor, reglaMarcada } from "@/lib/motores";
 import { formatARS, formatDNI } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -13,11 +14,21 @@ export function BandejaAnalista({ onTomar }: { onTomar: () => void }) {
   const { app } = useApplication();
   if (!app.cliente) return null;
   const o = app.oferta;
+  const motor = getMotor(app.riesgo.motorId);
+  const resultado = app.riesgo.resultado ? RESULTADO_LABEL[app.riesgo.resultado] : "—";
+  const marcadas = app.riesgo.reglas.filter(reglaMarcada).length;
+
   const checks = [
     "Carga post-oferta completa",
     "Legajo virtual completo",
-    "Oferta aceptada",
-    `Motor de riesgo: ${app.riesgo.resultado ? RESULTADO_LABEL[app.riesgo.resultado] : "—"}`,
+    "Oferta aceptada y preaprobada",
+    "Reglas institucionales: pasan",
+    `${motor.nombre}: ${resultado}`,
+    marcadas > 0
+      ? `${marcadas} regla${marcadas === 1 ? "" : "s"} no bloqueante${
+          marcadas === 1 ? "" : "s"
+        } marcada${marcadas === 1 ? "" : "s"} para revisión`
+      : "Sin reglas marcadas para revisión",
   ];
 
   return (
@@ -56,21 +67,24 @@ export function BandejaAnalista({ onTomar }: { onTomar: () => void }) {
             {o.plazo} cuotas de {formatARS(o.valorCuota)}
           </p>
           {app.fechaEnvioAnalisis && (
-            <p className="mt-0.5 text-xs text-ink-400">Enviada {app.fechaEnvioAnalisis}</p>
+            <p className="mt-0.5 text-xs text-ink-400">Recibida {app.fechaEnvioAnalisis}</p>
           )}
         </div>
       </div>
 
       <div className="grid gap-2 px-6 py-4 sm:grid-cols-2">
         {checks.map((c) => (
-          <div key={c} className="flex items-center gap-2 text-sm font-medium text-success-700">
-            <IconCheckCircle width={15} height={15} className="shrink-0" />
+          <div key={c} className="flex items-center gap-2 text-sm font-medium text-ink-700">
+            <IconCheckCircle width={15} height={15} className="shrink-0 text-success-600" />
             {c}
           </div>
         ))}
       </div>
 
-      <div className="flex justify-end border-t border-ink-100 px-6 py-4">
+      <div className="flex items-center justify-between gap-3 border-t border-ink-100 px-6 py-4">
+        <p className="text-xs text-ink-500">
+          Revisá el legajo completo antes de decidir.
+        </p>
         <Button size="lg" onClick={onTomar}>
           Tomar análisis
         </Button>

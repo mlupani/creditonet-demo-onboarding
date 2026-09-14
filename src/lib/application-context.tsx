@@ -10,35 +10,89 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  AccionLegajo,
+  ArchivoLegajo,
   ClienteDatos,
   CreditApplication,
-  DatosLaboralesPost,
-  DatosPersonalesPost,
   DeudaTerceros,
-  Garante,
+  EscenarioMotor,
   LaboralIngresos,
   Oferta,
   PantallaPostOfertaId,
-  Referencia,
+  PersonaVinculada,
+  Plazo,
+  PostOferta,
+  ReglaInstitucional,
+  ResultadoLimites,
   RiskResultado,
   RiskRule,
-  Tokenizacion,
+  TarjetaTokenizada,
+  TipoPersona,
+  TipoPersonaVinculada,
+  TipoTarjeta,
 } from "./types";
-import { crearAplicacionInicial, CONSULTA_CLIENTE_MOCK } from "./mocks";
-import { recalcularOferta } from "./credit";
-import { fechaHoy, selloTiempo } from "./format";
+import {
+  crearAplicacionInicial,
+  consultarPersonaMock,
+  CONSULTA_CLIENTE_MOCK,
+  precargarPostOferta,
+} from "./mocks";
+import { calcularLimites, recalcularOferta } from "./credit";
+import { primerProductoDelCanal, productoHabilitadoEnCanal } from "./config";
+import { reglaBloquea } from "./motores";
+import { institucionalesBloquean } from "./reglas-institucionales";
+import { aplicarCambioCampo, type PantallaConCampos } from "./campos-post-oferta";
+import { fechaHoy, onlyDigits, selloTiempo } from "./format";
 
-const STORAGE_KEY = "creditonet.demo.v3";
+const STORAGE_KEY = "creditonet.demo.v10";
+
+// Referencias y garantes comparten estructura (Onboarding §7–§8).
+function conPersonas(
+  po: PostOferta,
+  tipo: TipoPersonaVinculada,
+  cambiar: (lista: PersonaVinculada[]) => PersonaVinculada[]
+): PostOferta {
+  return tipo === "referencia"
+    ? { ...po, referencias: cambiar(po.referencias) }
+    : { ...po, garantes: cambiar(po.garantes) };
+}
 
 interface EstadoPersistido {
   app: CreditApplication;
   paso: number;
+  pasoMaximo: number;
   pantallaActual: PantallaPostOfertaId;
+}
+
+export interface ResultadoEvaluacion {
+  // Si alguna regla institucional bloqueante no pasa, la solicitud se rechaza sin ejecutar
+  // el motor: motorId y resultado quedan en null y no hay reglas del motor (Motor §6).
+  institucionales: ReglaInstitucional[];
+  motorId: string | null;
+  reglas: RiskRule[];
+  resultado: RiskResultado | null;
+  // Línea aplicable. Si es null, no había plan para la combinación del cliente y la
+  // solicitud se rechaza sin que el motor tenga nada que ver (reunión 11/09, 02:28).
+  planId: string | null;
+  sinLineaMotivo: string | null;
+  limites: ResultadoLimites | null;
+}
+
+// Cambio de oferta del analista (reunión 11/09, 01:14–01:35).
+export interface CambioOferta {
+  montoSolicitado: number;
+  plazo: Plazo;
+  ingresoBruto: number;
+  ingresoNeto: number;
+  nota: string;
 }
 
 interface ApplicationContextValue {
   app: CreditApplication;
   paso: number;
+  // Paso más avanzado alcanzado en la sesión. Volver atrás NO lo reduce: los pasos
+  // posteriores siguen completos y navegables (prompt de auditoría §5–§8).
+  pasoMaximo: number;
   pantallaActual: PantallaPostOfertaId;
   menuAbierto: boolean;
   hidratado: boolean;
@@ -48,12 +102,16 @@ interface ApplicationContextValue {
   setMenuAbierto: (abierto: boolean) => void;
 
   patchApp: (patch: Partial<CreditApplication>) => void;
+  setTipoPersona: (tipo: TipoPersona) => void;
+  setCanal: (canalId: string) => void;
   consultarCliente: () => void;
   patchCliente: (patch: Partial<ClienteDatos>) => void;
   patchLaboral: (patch: Partial<LaboralIngresos>) => void;
   verificarIdentidad: () => void;
   solicitar: () => void;
-  finalizarRiesgo: (reglas: RiskRule[], resultado: RiskResultado) => void;
+  setEscenarioMotor: (escenario: EscenarioMotor) => void;
+  finalizarRiesgo: (resultado: ResultadoEvaluacion) => void;
+  cambiarOferta: (cambio: CambioOferta) => void;
 
   patchOferta: (patch: Partial<Oferta>) => void;
   togglePrecancelar: (id: string) => void;
@@ -61,19 +119,28 @@ interface ApplicationContextValue {
   aceptarOferta: () => void;
   irAPostOferta: () => void;
 
-  patchLaboralPost: (patch: Partial<DatosLaboralesPost>) => void;
-  patchPersonalesPost: (patch: Partial<DatosPersonalesPost>) => void;
-  patchTokenizacion: (patch: Partial<Tokenizacion>) => void;
-  tokenizarTarjeta: () => void;
-  setReferencias: (refs: Referencia[]) => void;
-  patchGarante: (patch: Partial<Garante>) => void;
-  subirDocumento: (scope: "legajo" | "garante", id: string) => void;
-  generarImpresion: () => void;
+  setCampo: (pantalla: PantallaConCampos, campoId: string, valor: string) => void;
+  enviarLinkWhatsApp: () => void;
+  simularCompletaCliente: (tarjetaId: string) => void;
+  tokenizarPresencial: (datos: { tipo: TipoTarjeta; marca: string; numero: string }) => void;
+  quitarTarjeta: (tarjetaId: string) => void;
+  agregarPersona: (tipo: TipoPersonaVinculada) => void;
+  actualizarPersona: (
+    tipo: TipoPersonaVinculada,
+    id: string,
+    patch: Partial<PersonaVinculada>
+  ) => void;
+  buscarPersonaPorDni: (tipo: TipoPersonaVinculada, id: string) => void;
+  quitarPersona: (tipo: TipoPersonaVinculada, id: string) => void;
+  adjuntarDocumento: (tipoId: string) => void;
+  quitarArchivo: (tipoId: string, archivoId: string) => void;
+  registrarLegajo: (accion: AccionLegajo) => void;
   visitarPantalla: (id: PantallaPostOfertaId) => void;
   finalizarCarga: () => void;
 
   tomarAnalisis: () => void;
-  observarCredito: (motivo: string, nota: string) => void;
+  observarCredito: (motivo: string, nota: string, pantalla: PantallaPostOfertaId | null) => void;
+  anularCredito: (nota: string) => void;
   retomarObservada: () => void;
   rechazarCredito: (codigo: string, motivo: string, observacion: string) => void;
   aprobarCredito: () => void;
@@ -85,10 +152,18 @@ const ApplicationContext = createContext<ApplicationContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [app, setApp] = useState<CreditApplication>(() => crearAplicacionInicial());
-  const [paso, setPaso] = useState(1);
-  const [pantallaActual, setPantallaActual] = useState<PantallaPostOfertaId>("laboral");
+  const [paso, setPasoState] = useState(1);
+  const [pasoMaximo, setPasoMaximo] = useState(1);
+  const [pantallaActual, setPantallaActual] = useState<PantallaPostOfertaId>("personales");
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [hidratado, setHidratado] = useState(false);
+
+  // Navegar hacia atrás sólo mueve el paso actual. El máximo alcanzado nunca baja, por eso
+  // los pasos posteriores conservan su tilde y siguen siendo navegables.
+  const setPaso = useCallback((n: number) => {
+    setPasoState(n);
+    setPasoMaximo((max) => Math.max(max, n));
+  }, []);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -97,7 +172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<EstadoPersistido>;
           if (parsed.app) setApp(parsed.app);
-          if (typeof parsed.paso === "number") setPaso(parsed.paso);
+          if (typeof parsed.paso === "number") setPasoState(parsed.paso);
+          if (typeof parsed.pasoMaximo === "number") setPasoMaximo(parsed.pasoMaximo);
           if (parsed.pantallaActual) setPantallaActual(parsed.pantallaActual);
         }
       } catch {
@@ -114,15 +190,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ app, paso, pantallaActual } satisfies EstadoPersistido)
+        JSON.stringify({ app, paso, pasoMaximo, pantallaActual } satisfies EstadoPersistido)
       );
     } catch {
       /* noop */
     }
-  }, [app, paso, pantallaActual, hidratado]);
+  }, [app, paso, pasoMaximo, pantallaActual, hidratado]);
+
+  /**
+   * Recalcula la oferta con la selección actual de precancelaciones (Plan §9).
+   *
+   * La precancelación es posterior a la primera oferta: marcar un crédito propio libera su
+   * cuota, sube la cuota máxima y con ella el capital. Los límites de la primera oferta
+   * (`riesgo.limites` y `capitalMaximoBase`) no se tocan; sólo cambia el capital con
+   * cancelaciones, que `recalcularOferta` usa mientras haya algún crédito marcado.
+   */
+  function aplicarLimites(app: CreditApplication): CreditApplication {
+    if (app.riesgo.estado !== "COMPLETO" || app.riesgo.resultado !== "PASA") return app;
+    if (app.riesgo.planId === null) return app;
+    const conCancelaciones = calcularLimites(app, { conCancelaciones: true });
+    const oferta = recalcularOferta({
+      ...app.oferta,
+      capitalMaximoRenovacion: conCancelaciones.capitalConsiderado,
+    });
+    const cambioCapital = oferta.capitalMaximoActual !== app.oferta.capitalMaximoActual;
+    return {
+      ...app,
+      oferta: recalcularOferta({
+        ...oferta,
+        // Si la cancelación mueve el capital máximo se arma una nueva oferta sobre ese capital
+        // y con el importe se recalculan todas las cuotas. Si no lo mueve, se respeta el
+        // importe elegido, sin superar nunca el máximo.
+        montoSolicitado: cambioCapital
+          ? oferta.capitalMaximoActual
+          : Math.min(app.oferta.montoSolicitado, oferta.capitalMaximoActual),
+      }),
+    };
+  }
 
   const patchApp = useCallback((patch: Partial<CreditApplication>) => {
     setApp((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  const setTipoPersona = useCallback((tipoPersona: TipoPersona) => {
+    setApp((prev) => ({ ...prev, tipoPersona }));
+  }, []);
+
+  // El canal condiciona los productos disponibles (Producto §3): si el elegido deja de estar
+  // habilitado, se toma el primero que el canal ofrece.
+  const setCanal = useCallback((canalId: string) => {
+    setApp((prev) => ({
+      ...prev,
+      configuracion: {
+        ...prev.configuracion,
+        canalId,
+        productoId: productoHabilitadoEnCanal(prev.configuracion.productoId, canalId)
+          ? prev.configuracion.productoId
+          : primerProductoDelCanal(canalId),
+      },
+    }));
   }, []);
 
   const consultarCliente = useCallback(() => {
@@ -131,6 +257,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cliente: { ...CONSULTA_CLIENTE_MOCK.datos },
       origenCampos: { ...CONSULTA_CLIENTE_MOCK.origen },
       numeroCliente: CONSULTA_CLIENTE_MOCK.numeroCliente,
+      // Situación BCRA y de buró interno: se traen con el documento, antes de evaluar.
+      situaciones: { ...CONSULTA_CLIENTE_MOCK.situaciones },
       identificacion: {
         ...prev.identificacion,
         consultado: true,
@@ -170,36 +298,117 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const finalizarRiesgo = useCallback((reglas: RiskRule[], resultado: RiskResultado) => {
+  const setEscenarioMotor = useCallback((escenario: EscenarioMotor) => {
+    setApp((prev) => ({ ...prev, riesgo: { ...prev.riesgo, escenario } }));
+  }, []);
+
+  const finalizarRiesgo = useCallback((ev: ResultadoEvaluacion) => {
     setApp((prev) => {
-      const rechazado = resultado === "RECHAZADO";
-      return {
+      // Orden del flujo: reglas institucionales → motor → línea (Arquitectura §2).
+      const rechazoInstitucional = institucionalesBloquean(ev.institucionales);
+      const rechazadoPorMotor = !rechazoInstitucional && ev.resultado === "NO_PASA";
+      const sinLinea = !rechazoInstitucional && !rechazadoPorMotor && ev.planId === null;
+      const rechazado = rechazoInstitucional || rechazadoPorMotor || sinLinea;
+      const detalle = (reglas: { nombre: string; valorEvaluado: string }[]) =>
+        reglas.map((r) => `${r.nombre}: ${r.valorEvaluado}`).join(" · ");
+      const institucionalesNoPasan = ev.institucionales.filter(reglaBloquea);
+      const motorNoPasan = ev.reglas.filter(reglaBloquea);
+
+      const siguiente: CreditApplication = {
         ...prev,
         estado: rechazado ? "RECHAZADO" : prev.estado,
-        rechazo: rechazado
+        rechazo: rechazoInstitucional
           ? {
-              origen: "MOTOR",
-              codigos: reglas.filter((r) => r.resultado === "NO_CUMPLE").map((r) => r.codigo),
-              motivo: "Regla dura del motor de riesgo no superada",
-              observacion: reglas
-                .filter((r) => r.resultado === "NO_CUMPLE")
-                .map((r) => `${r.nombre}: ${r.valorEvaluado}`)
-                .join(" · "),
+              origen: "INSTITUCIONAL",
+              codigos: institucionalesNoPasan.map((r) => r.codigo),
+              motivo: "Regla institucional bloqueante no superada",
+              observacion: detalle(institucionalesNoPasan),
               fecha: fechaHoy(),
             }
-          : null,
+          : rechazadoPorMotor
+            ? {
+                origen: "MOTOR",
+                codigos: motorNoPasan.map((r) => r.codigo),
+                motivo: "Regla bloqueante del motor de riesgo no superada",
+                observacion: detalle(motorNoPasan),
+                fecha: fechaHoy(),
+              }
+            : sinLinea
+              ? {
+                  origen: "SIN_LINEA",
+                  codigos: ["LN-01"],
+                  motivo: "Sin línea disponible para la combinación del cliente",
+                  observacion: ev.sinLineaMotivo ?? "",
+                  fecha: fechaHoy(),
+                }
+              : null,
+        // La primera oferta se arma con el límite más restrictivo, sin cancelaciones.
+        oferta:
+          rechazado || !ev.limites
+            ? prev.oferta
+            : recalcularOferta({
+                ...prev.oferta,
+                capitalMaximoBase: ev.limites.capitalConsiderado,
+                capitalMaximoRenovacion: ev.limites.capitalConsiderado,
+                montoSolicitado: ev.limites.capitalConsiderado,
+              }),
         riesgo: {
+          ...prev.riesgo,
           estado: "COMPLETO",
-          reglas,
-          resultado,
+          motorId: ev.motorId,
+          reglas: ev.reglas,
+          institucionales: ev.institucionales,
+          resultado: ev.resultado,
+          planId: ev.planId,
+          limites: ev.limites,
           evaluadoCon: {
             ingresoNeto: prev.laboral.ingresoNeto,
             fechaNacimiento: prev.cliente?.fechaNacimiento ?? "",
+            genero: prev.cliente?.genero ?? "",
           },
           fecha: selloTiempo(),
         },
       };
+      // Si ya había créditos marcados (se volvió a evaluar desde la oferta), la selección se
+      // conserva y se reaplica sobre la primera oferta nueva.
+      return rechazado ? siguiente : aplicarLimites(siguiente);
     });
+  }, []);
+
+  /**
+   * El analista corrige la oferta y la devuelve al canal de venta (reunión 11/09, 01:14–01:35).
+   *
+   * Puede tocar el capital, el plazo y los sueldos que el vendedor cargó mal; la cuota se
+   * recalcula sola. El crédito vuelve al vendedor en estado Observado con el nuevo importe:
+   * "el analista dice un millón, se lo devuelve al pedido; va al vendedor, me viene observado".
+   */
+  const cambiarOferta = useCallback((cambio: CambioOferta) => {
+    setApp((prev) => ({
+      ...prev,
+      estado: "OBSERVADO",
+      laboral: {
+        ...prev.laboral,
+        ingresoBruto: cambio.ingresoBruto,
+        ingresoNeto: cambio.ingresoNeto,
+      },
+      oferta: recalcularOferta({
+        ...prev.oferta,
+        montoSolicitado: cambio.montoSolicitado,
+        plazo: cambio.plazo,
+        aceptada: false,
+      }),
+      analista: {
+        ...prev.analista,
+        tomado: false,
+        reenviada: false,
+        observacion: {
+          motivo: "Cambio de oferta del analista",
+          nota: cambio.nota,
+          fecha: fechaHoy(),
+          pantalla: null,
+        },
+      },
+    }));
   }, []);
 
   const patchOferta = useCallback((patch: Partial<Oferta>) => {
@@ -207,30 +416,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const togglePrecancelar = useCallback((id: string) => {
-    setApp((prev) => ({
-      ...prev,
-      oferta: recalcularOferta({
-        ...prev.oferta,
-        creditosActivos: prev.oferta.creditosActivos.map((c) =>
-          c.id === id ? { ...c, precancelar: !c.precancelar } : c
-        ),
-      }),
-    }));
+    setApp((prev) =>
+      aplicarLimites({
+        ...prev,
+        oferta: recalcularOferta({
+          ...prev.oferta,
+          creditosActivos: prev.oferta.creditosActivos.map((c) =>
+            c.id === id ? { ...c, precancelar: !c.precancelar } : c
+          ),
+        }),
+      })
+    );
   }, []);
 
   const setDeudaTerceros = useCallback((patch: Partial<DeudaTerceros>) => {
     setApp((prev) => {
       const actual = { ...prev.oferta.deudaTerceros, ...patch };
-      return {
+      return aplicarLimites({
         ...prev,
         oferta: recalcularOferta({
           ...prev.oferta,
           deudaTerceros: { ...actual, importe: Math.max(0, actual.importe) },
         }),
-      };
+      });
     });
   }, []);
 
+  // El cliente acepta la oferta y arranca la carga post-oferta. La solicitud sigue
+  // En trámite: recién al finalizar la carga queda preaprobada (reunión 11/09, 01:03:29).
   const aceptarOferta = useCallback(() => {
     setApp((prev) => ({
       ...prev,
@@ -240,91 +453,196 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const irAPostOferta = useCallback(() => {
-    setApp((prev) => ({ ...prev, etapa: "POST_OFERTA" }));
-  }, []);
-
-  const patchLaboralPost = useCallback((patch: Partial<DatosLaboralesPost>) => {
     setApp((prev) => ({
       ...prev,
-      postOferta: { ...prev.postOferta, laboral: { ...prev.postOferta.laboral, ...patch } },
+      etapa: "POST_OFERTA",
+      // La primera vez se precarga la carga; si ya existe, se conserva lo cargado.
+      postOferta:
+        Object.keys(prev.postOferta.precarga).length > 0
+          ? prev.postOferta
+          : precargarPostOferta(prev),
     }));
   }, []);
 
-  const patchPersonalesPost = useCallback((patch: Partial<DatosPersonalesPost>) => {
+  // --- Pantallas de datos (Onboarding §4–§5) ---
+
+  const setCampo = useCallback((pantalla: PantallaConCampos, campoId: string, valor: string) => {
     setApp((prev) => ({
       ...prev,
       postOferta: {
         ...prev.postOferta,
-        personales: { ...prev.postOferta.personales, ...patch },
+        [pantalla]: aplicarCambioCampo(prev.postOferta[pantalla], campoId, valor),
       },
     }));
   }, []);
 
-  const patchTokenizacion = useCallback((patch: Partial<Tokenizacion>) => {
+  // --- Tokenización (Onboarding §6) ---
+
+  // El link del formulario se comparte por WhatsApp al celular precargado: WhatsApp no es una
+  // integración del flujo, sólo el medio para compartirlo.
+  const enviarLinkWhatsApp = useCallback(() => {
+    setApp((prev) => {
+      const p = prev.postOferta.personales;
+      const tarjeta: TarjetaTokenizada = {
+        id: `tarjeta-${Date.now()}`,
+        via: "WHATSAPP",
+        estado: "ESPERANDO_CLIENTE",
+        enviadoA: `${p["telefono.caracteristica"] ?? ""} ${p["telefono.numero"] ?? ""}`.trim(),
+        tipo: null,
+        marca: null,
+        ultimos4: null,
+        token: null,
+      };
+      return {
+        ...prev,
+        postOferta: { ...prev.postOferta, tarjetas: [...prev.postOferta.tarjetas, tarjeta] },
+      };
+    });
+  }, []);
+
+  const simularCompletaCliente = useCallback((tarjetaId: string) => {
     setApp((prev) => ({
       ...prev,
       postOferta: {
         ...prev.postOferta,
-        tokenizacion: { ...prev.postOferta.tokenizacion, ...patch },
+        tarjetas: prev.postOferta.tarjetas.map((t) =>
+          t.id === tarjetaId
+            ? {
+                ...t,
+                estado: "TOKENIZADA",
+                tipo: "DEBITO",
+                marca: "Visa",
+                ultimos4: "4821",
+                token: `tok_demo_${tarjetaId.slice(-6).toUpperCase()}`,
+              }
+            : t
+        ),
       },
     }));
   }, []);
 
-  const tokenizarTarjeta = useCallback(() => {
+  const tokenizarPresencial = useCallback(
+    (datos: { tipo: TipoTarjeta; marca: string; numero: string }) => {
+      setApp((prev) => {
+        const id = `tarjeta-${Date.now()}`;
+        const tarjeta: TarjetaTokenizada = {
+          id,
+          via: "PRESENCIAL",
+          estado: "TOKENIZADA",
+          enviadoA: null,
+          tipo: datos.tipo,
+          marca: datos.marca,
+          ultimos4: onlyDigits(datos.numero).slice(-4),
+          token: `tok_demo_${id.slice(-6).toUpperCase()}`,
+        };
+        return {
+          ...prev,
+          postOferta: { ...prev.postOferta, tarjetas: [...prev.postOferta.tarjetas, tarjeta] },
+        };
+      });
+    },
+    []
+  );
+
+  const quitarTarjeta = useCallback((tarjetaId: string) => {
     setApp((prev) => ({
       ...prev,
       postOferta: {
         ...prev.postOferta,
-        tokenizacion: {
-          ...prev.postOferta.tokenizacion,
-          tokenizada: true,
-          token: "tok_demo_8F29A1",
+        tarjetas: prev.postOferta.tarjetas.filter((t) => t.id !== tarjetaId),
+      },
+    }));
+  }, []);
+
+  // --- Referencias y garantes (Onboarding §7–§8) ---
+
+  const agregarPersona = useCallback((tipo: TipoPersonaVinculada) => {
+    setApp((prev) => ({
+      ...prev,
+      postOferta: conPersonas(prev.postOferta, tipo, (lista) => [
+        ...lista,
+        {
+          id: `${tipo}-${Date.now()}`,
+          vinculo: "",
+          dni: "",
+          nombreCompleto: "",
+          domicilio: "",
+          email: "",
+          autocompletado: false,
+        },
+      ]),
+    }));
+  }, []);
+
+  const actualizarPersona = useCallback(
+    (tipo: TipoPersonaVinculada, id: string, patch: Partial<PersonaVinculada>) => {
+      setApp((prev) => ({
+        ...prev,
+        postOferta: conPersonas(prev.postOferta, tipo, (lista) =>
+          lista.map((p) => (p.id === id ? { ...p, ...patch } : p))
+        ),
+      }));
+    },
+    []
+  );
+
+  // Al ingresar el DNI se completan los datos por API, igual que en el pedido inicial.
+  const buscarPersonaPorDni = useCallback((tipo: TipoPersonaVinculada, id: string) => {
+    setApp((prev) => ({
+      ...prev,
+      postOferta: conPersonas(prev.postOferta, tipo, (lista) =>
+        lista.map((p) =>
+          p.id === id ? { ...p, ...consultarPersonaMock(p.dni), autocompletado: true } : p
+        )
+      ),
+    }));
+  }, []);
+
+  const quitarPersona = useCallback((tipo: TipoPersonaVinculada, id: string) => {
+    setApp((prev) => ({
+      ...prev,
+      postOferta: conPersonas(prev.postOferta, tipo, (lista) => lista.filter((p) => p.id !== id)),
+    }));
+  }, []);
+
+  // --- Legajo virtual e impresión (Onboarding §9–§10) ---
+
+  const adjuntarDocumento = useCallback((tipoId: string) => {
+    setApp((prev) => {
+      const actuales = prev.postOferta.legajo[tipoId] ?? [];
+      const archivo: ArchivoLegajo = {
+        id: `${tipoId}-${Date.now()}`,
+        nombre: `${tipoId.replace(/-/g, "_")}_${actuales.length + 1}.jpg`,
+        detalle: `1.2 MB · ${selloTiempo()}`,
+      };
+      return {
+        ...prev,
+        postOferta: {
+          ...prev.postOferta,
+          legajo: { ...prev.postOferta.legajo, [tipoId]: [...actuales, archivo] },
+        },
+      };
+    });
+  }, []);
+
+  const quitarArchivo = useCallback((tipoId: string, archivoId: string) => {
+    setApp((prev) => ({
+      ...prev,
+      postOferta: {
+        ...prev.postOferta,
+        legajo: {
+          ...prev.postOferta.legajo,
+          [tipoId]: (prev.postOferta.legajo[tipoId] ?? []).filter((a) => a.id !== archivoId),
         },
       },
     }));
   }, []);
 
-  const setReferencias = useCallback((refs: Referencia[]) => {
+  // Imprimir o visualizar el PDF deja la pantalla completa y el documento disponible.
+  const registrarLegajo = useCallback((accion: AccionLegajo) => {
     setApp((prev) => ({
       ...prev,
-      postOferta: { ...prev.postOferta, referencias: refs },
-    }));
-  }, []);
-
-  const patchGarante = useCallback((patch: Partial<Garante>) => {
-    setApp((prev) => ({
-      ...prev,
-      postOferta: { ...prev.postOferta, garante: { ...prev.postOferta.garante, ...patch } },
-    }));
-  }, []);
-
-  const subirDocumento = useCallback((scope: "legajo" | "garante", id: string) => {
-    setApp((prev) => {
-      const lista = scope === "legajo" ? prev.postOferta.legajo : prev.postOferta.garanteDocs;
-      const actualizada = lista.map((d) =>
-        d.id === id
-          ? {
-              ...d,
-              estado: "CARGADO" as const,
-              archivo: `${id.replace(/-/g, "_")}_demo.pdf`,
-              detalle: `248 KB · ${selloTiempo()}`,
-            }
-          : d
-      );
-      return {
-        ...prev,
-        postOferta:
-          scope === "legajo"
-            ? { ...prev.postOferta, legajo: actualizada }
-            : { ...prev.postOferta, garanteDocs: actualizada },
-      };
-    });
-  }, []);
-
-  const generarImpresion = useCallback(() => {
-    setApp((prev) => ({
-      ...prev,
-      postOferta: { ...prev.postOferta, impresionGenerada: true },
+      postOferta: { ...prev.postOferta, impresion: { accion, fecha: selloTiempo() } },
     }));
   }, []);
 
@@ -336,12 +654,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  // "Finalizar carga" (En trámite → En análisis) o "Reenviar correcciones" (Observado → En análisis).
+  // "Finalizar carga" (En trámite → Preaprobado) o "Reenviar correcciones" (Observado →
+  // Preaprobado). Preaprobado es lo que manda la solicitud a la bandeja del analista.
   const finalizarCarga = useCallback(() => {
     setApp((prev) => ({
       ...prev,
-      estado: "EN_ANALISIS",
+      estado: "PREAPROBADO",
       etapa: "ENVIADA",
+      fechaPreaprobacion: prev.fechaPreaprobacion ?? selloTiempo(),
       fechaEnvioAnalisis: selloTiempo(),
       analista: {
         ...prev.analista,
@@ -359,15 +679,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // Observar devuelve la solicitud a la bandeja del canal de venta (Guía §7.3).
-  const observarCredito = useCallback((motivo: string, nota: string) => {
+  // Observar devuelve la solicitud a la bandeja del canal de venta (Guía §7.3). El analista
+  // indica qué pantalla hay que corregir para que el vendedor vaya derecho ahí (01:09).
+  const observarCredito = useCallback(
+    (motivo: string, nota: string, pantalla: PantallaPostOfertaId | null) => {
+      setApp((prev) => ({
+        ...prev,
+        estado: "OBSERVADO",
+        analista: {
+          ...prev.analista,
+          tomado: false,
+          reenviada: false,
+          observacion: { motivo, nota, fecha: fechaHoy(), pantalla },
+        },
+      }));
+    },
+    []
+  );
+
+  // Anular: el cliente desistió. No es un rechazo de riesgo (reunión 11/09, 01:19).
+  const anularCredito = useCallback((nota: string) => {
     setApp((prev) => ({
       ...prev,
-      estado: "OBSERVADO",
+      estado: "ANULADO",
       analista: {
+        ...prev.analista,
         tomado: false,
-        reenviada: false,
-        observacion: { motivo, nota, fecha: fechaHoy() },
+        observacion: {
+          motivo: "Anulada",
+          nota,
+          fecha: fechaHoy(),
+          pantalla: null,
+        },
       },
     }));
   }, []);
@@ -394,8 +737,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const reiniciarDemo = useCallback(() => {
     setApp(crearAplicacionInicial());
-    setPaso(1);
-    setPantallaActual("laboral");
+    setPasoState(1);
+    setPasoMaximo(1);
+    setPantallaActual("personales");
     setMenuAbierto(false);
   }, []);
 
@@ -403,6 +747,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       app,
       paso,
+      pasoMaximo,
       pantallaActual,
       menuAbierto,
       hidratado,
@@ -410,29 +755,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPantallaActual,
       setMenuAbierto,
       patchApp,
+      setTipoPersona,
+      setCanal,
       consultarCliente,
       patchCliente,
       patchLaboral,
       verificarIdentidad,
       solicitar,
+      setEscenarioMotor,
       finalizarRiesgo,
+      cambiarOferta,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
       aceptarOferta,
       irAPostOferta,
-      patchLaboralPost,
-      patchPersonalesPost,
-      patchTokenizacion,
-      tokenizarTarjeta,
-      setReferencias,
-      patchGarante,
-      subirDocumento,
-      generarImpresion,
+      setCampo,
+      enviarLinkWhatsApp,
+      simularCompletaCliente,
+      tokenizarPresencial,
+      quitarTarjeta,
+      agregarPersona,
+      actualizarPersona,
+      buscarPersonaPorDni,
+      quitarPersona,
+      adjuntarDocumento,
+      quitarArchivo,
+      registrarLegajo,
       visitarPantalla,
       finalizarCarga,
       tomarAnalisis,
       observarCredito,
+      anularCredito,
       retomarObservada,
       rechazarCredito,
       aprobarCredito,
@@ -441,33 +795,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       app,
       paso,
+      pasoMaximo,
       pantallaActual,
       menuAbierto,
       hidratado,
+      setPaso,
       patchApp,
+      setTipoPersona,
+      setCanal,
       consultarCliente,
       patchCliente,
       patchLaboral,
       verificarIdentidad,
       solicitar,
+      setEscenarioMotor,
       finalizarRiesgo,
+      cambiarOferta,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
       aceptarOferta,
       irAPostOferta,
-      patchLaboralPost,
-      patchPersonalesPost,
-      patchTokenizacion,
-      tokenizarTarjeta,
-      setReferencias,
-      patchGarante,
-      subirDocumento,
-      generarImpresion,
+      setCampo,
+      enviarLinkWhatsApp,
+      simularCompletaCliente,
+      tokenizarPresencial,
+      quitarTarjeta,
+      agregarPersona,
+      actualizarPersona,
+      buscarPersonaPorDni,
+      quitarPersona,
+      adjuntarDocumento,
+      quitarArchivo,
+      registrarLegajo,
       visitarPantalla,
       finalizarCarga,
       tomarAnalisis,
       observarCredito,
+      anularCredito,
       retomarObservada,
       rechazarCredito,
       aprobarCredito,

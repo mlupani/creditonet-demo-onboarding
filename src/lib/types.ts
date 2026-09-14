@@ -3,33 +3,114 @@
 
 export type EtapaFlujo = "ORIGINACION" | "TRANSICION" | "POST_OFERTA" | "ENVIADA";
 
-// Máquina de estados de la solicitud (Guía Definitiva §8). "Expirado" y "Activo" no se
-// simulan en la demo. ANALISIS_TOMADO es un sub-estado visual de "En análisis".
+// Máquina de estados de la solicitud. "Expirado" y "Activo" no se simulan en la demo.
+//
+// Reunión 11/09 (13:15, 01:03:29): la carga transcurre EN_TRAMITE; al finalizarla la
+// solicitud pasa a PREAPROBADO y *eso* es lo que la manda a la bandeja del analista.
+// ANALISIS_TOMADO es el sub-estado de una preaprobada que un analista ya tomó.
 export type EstadoCredito =
   | "BORRADOR"
   | "EN_TRAMITE"
-  | "EN_ANALISIS"
+  | "PREAPROBADO"
   | "ANALISIS_TOMADO"
   | "OBSERVADO"
   | "RECHAZADO"
+  // Anulado: el cliente desistió. Lo puede anular el vendedor o el analista, y es distinto
+  // de rechazado, que es una decisión de riesgo (reunión 11/09, 01:19).
+  | "ANULADO"
   | "PARA_LIQUIDAR";
 
 export type TipoCliente = "NUEVO" | "EXISTENTE";
+
+// Situaciones que se traen con el DNI antes de evaluar (reunión 11/09, 02:30). Junto con
+// la condición laboral son los tres limitantes que determinan qué línea aplica.
+export interface SituacionesCliente {
+  bcra: number;
+  interna: number;
+}
+
 export type OrigenDato = "API pública" | "Base interna" | "Manual";
 
-// --- Motor de riesgo ---
+// Módulo Onboarding §4: la primera selección determina cómo se identifica al solicitante.
+export type TipoPersona = "FISICA" | "JURIDICA";
 
-export type RuleOutcome = "CUMPLE" | "ADVERTENCIA" | "NO_CUMPLE";
-export type RiskResultado = "APROBADO" | "VERIFICACION_MANUAL" | "RECHAZADO";
+// --- Reglas: motor de riesgo y reglas institucionales ---
+
+// Motor §4: cada regla se configura como bloqueante o no bloqueante. Si una bloqueante no
+// pasa, el motor no pasa. Si no pasa una no bloqueante, la solicitud continúa y la regla
+// queda marcada para que la revise el analista al final.
+export type ResultadoRegla = "PASA" | "NO_PASA";
+
+// Motor §5: el resultado principal del motor es PASA / NO PASA.
+export type RiskResultado = "PASA" | "NO_PASA";
+
+// Control exclusivo de la demo para mostrar los tres caminos en una presentación.
+export type EscenarioMotor = "PASA" | "PASA_CON_MARCADAS" | "NO_PASA";
 
 export interface RiskRule {
   id: string;
   codigo: string;
   nombre: string;
   detalle: string;
+  fuente: string;
   valorEvaluado: string;
   condicion: string;
-  resultado: RuleOutcome;
+  bloqueante: boolean;
+  resultado: ResultadoRegla;
+}
+
+// Motor §6 y §11: las reglas universales / institucionales son transversales al negocio y
+// se evalúan cuando existen los datos que necesitan, no en un único momento.
+export type MomentoRegla = "IDENTIFICACION" | "EVALUACION";
+
+export interface ReglaInstitucional extends Omit<RiskRule, "resultado"> {
+  momento: MomentoRegla;
+  resultado: ResultadoRegla | "ESPERANDO_DATOS";
+}
+
+// --- Límites de capital (Plan de Cuotas §3.3 · Flujos Integrados §13) ---
+
+export interface LimiteCapital {
+  id: string;
+  label: string;
+  detalle: string;
+  monto: number;
+}
+
+// Reglas que compiten por definir la cuota máxima. Gana la menor (02:47).
+export interface LimiteCuota {
+  id: string;
+  label: string;
+  detalle: string;
+  monto: number;
+}
+
+// Recorte porcentual sobre el capital ya calculado (02:48-02:50). Si aplican varios,
+// gana el mayor recorte.
+export interface LimitanteOferta {
+  id: string;
+  label: string;
+  detalle: string;
+  recortePct: number;
+  aplica: boolean;
+}
+
+export interface ResultadoLimites {
+  capitalSolicitado: number;
+  // Cuotas de créditos propios que siguen pesando y las que libera la cancelación.
+  cuotasVigentes: number;
+  cuotasLiberadas: number;
+  limites: LimiteCapital[];
+  limiteAplicadoId: string;
+  // Capital que resulta del límite más restrictivo, antes de los limitantes.
+  capitalPorLimites: number;
+  limitantes: LimitanteOferta[];
+  recorteAplicadoPct: number;
+  // Capital final: el de los límites con el recorte del limitante más fuerte.
+  capitalConsiderado: number;
+  limitesCuota: LimiteCuota[];
+  limiteCuotaAplicadoId: string;
+  cuotaMaxima: number;
 }
 
 // --- Cliente ---
@@ -49,6 +130,8 @@ export type OrigenCampos = Partial<Record<keyof ClienteDatos, OrigenDato>>;
 // --- Datos laborales y financieros mínimos (pre-oferta) ---
 
 export interface LaboralIngresos {
+  // Fijo, contratado, monotributista… Determina la línea y el motor aplicables.
+  condicionLaboral: string;
   fechaInicioLaboral: string;
   bancoCobro: string;
   ingresoBruto: number;
@@ -87,6 +170,9 @@ export interface DeudaTerceros {
 
 export interface Oferta {
   capitalMaximoBase: number;
+  // Capital habilitado cuando se renueva un crédito propio: el crédito renovado deja de
+  // computar en la exposición y el plan admite un tope mayor.
+  capitalMaximoRenovacion: number;
   capitalMaximoActual: number;
   montoSolicitado: number;
   plazo: Plazo;
@@ -99,89 +185,71 @@ export interface Oferta {
   aceptada: boolean;
 }
 
-// --- Post-oferta ---
+// --- Post-oferta (Onboarding v4 §3–§10) ---
 
-export interface DatosLaboralesPost {
-  domicilioLaboral: string;
-  fechaIngresoLaboral: string;
-  razonSocial: string;
-  rubro: string;
-  provincia: string;
-  telefonoLaboral: string;
-  numeroLegajo: string;
-  bancoCobro: string;
-  cbu: string;
-}
-
-export interface DatosPersonalesPost {
-  email: string;
-  domicilioReal: string;
-  telefonoCelular: string;
-  nacionalidad: string;
-  estadoCivil: string;
-  tipoVivienda: string;
-  hijosACargo: string;
-  tarjetaCredito: string;
-}
-
-export type TipoTarjeta = "DEBITO" | "CREDITO";
-
-export interface Tokenizacion {
-  tipoTarjeta: TipoTarjeta;
-  numero: string;
-  vencimiento: string;
-  marca: string;
-  cvv: string;
-  tokenizada: boolean;
-  token: string | null;
-}
-
-export interface Referencia {
-  id: string;
-  nombre: string;
-  telefono: string;
-  email: string;
-  domicilio: string;
-  relacion: string;
-}
-
-export interface Garante {
-  nombre: string;
-  dni: string;
-  telefono: string;
-  datosLaborales: string;
-  ingresos: number;
-  lugarTrabajo: string;
-}
-
-export interface DocItem {
-  id: string;
-  nombre: string;
-  categoria?: string;
-  estado: "PENDIENTE" | "CARGADO";
-  archivo?: string;
-  detalle?: string;
-}
-
-export interface PostOferta {
-  laboral: DatosLaboralesPost;
-  personales: DatosPersonalesPost;
-  tokenizacion: Tokenizacion;
-  referencias: Referencia[];
-  garante: Garante;
-  garanteDocs: DocItem[];
-  legajo: DocItem[];
-  impresionGenerada: boolean;
-}
+// Onboarding §3: precargado (del pedido inicial o de una API, rectificable), no modificable
+// (disparó la oferta) o a cargar (dato nuevo que ingresa el vendedor).
+export type OrigenCampo = "PRECARGADO" | "NO_MODIFICABLE" | "A_CARGAR";
 
 export type PantallaPostOfertaId =
-  | "laboral"
   | "personales"
+  | "laboral"
   | "tokenizacion"
   | "referencias"
   | "garantias"
   | "legajo"
   | "impresion";
+
+export type TipoTarjeta = "DEBITO" | "CREDITO";
+
+// Onboarding §6: una o varias tarjetas, por link de WhatsApp o carga presencial. El número
+// completo y el código de seguridad nunca se guardan: sólo lo que devuelve el proveedor.
+export interface TarjetaTokenizada {
+  id: string;
+  via: "WHATSAPP" | "PRESENCIAL";
+  estado: "ESPERANDO_CLIENTE" | "TOKENIZADA";
+  enviadoA: string | null;
+  tipo: TipoTarjeta | null;
+  marca: string | null;
+  ultimos4: string | null;
+  token: string | null;
+}
+
+// Onboarding §7–§8: referencias y garantes comparten estructura.
+export type TipoPersonaVinculada = "referencia" | "garante";
+
+export interface PersonaVinculada {
+  id: string;
+  vinculo: string;
+  dni: string;
+  nombreCompleto: string;
+  domicilio: string;
+  email: string;
+  autocompletado: boolean;
+}
+
+export interface ArchivoLegajo {
+  id: string;
+  nombre: string;
+  detalle: string;
+}
+
+export type AccionLegajo = "IMPRESO" | "VISUALIZADO";
+
+export interface PostOferta {
+  // Valores precargados al comenzar la carga: permiten detectar qué dato se rectificó.
+  // Vacío mientras la carga no comenzó.
+  precarga: Record<string, string>;
+  // Campos de las pantallas de datos, por id de catálogo (ver campos-post-oferta.ts).
+  personales: Record<string, string>;
+  laboral: Record<string, string>;
+  tarjetas: TarjetaTokenizada[];
+  referencias: PersonaVinculada[];
+  garantes: PersonaVinculada[];
+  // Archivos adjuntados por tipo de documento de Parámetros.
+  legajo: Record<string, ArchivoLegajo[]>;
+  impresion: { accion: AccionLegajo; fecha: string } | null;
+}
 
 // --- Análisis ---
 
@@ -189,10 +257,15 @@ export interface Observacion {
   motivo: string;
   nota: string;
   fecha: string;
+  // Pantalla que el vendedor tiene que corregir: se resalta al retomar la carga (01:09).
+  pantalla: PantallaPostOfertaId | null;
 }
 
 export interface Rechazo {
-  origen: "MOTOR" | "ANALISTA";
+  // SIN_LINEA: no hay plan de cuotas para la combinación situación BCRA + buró interno +
+  // condición laboral. No es un rechazo del motor y no llega al analista (02:28).
+  // INSTITUCIONAL: una regla institucional bloqueante no pasó; el motor no llega a ejecutarse.
+  origen: "INSTITUCIONAL" | "MOTOR" | "SIN_LINEA" | "ANALISTA";
   codigos: string[];
   motivo: string;
   observacion: string;
@@ -207,12 +280,15 @@ export interface CreditApplication {
   estado: EstadoCredito;
   etapa: EtapaFlujo;
 
+  tipoPersona: TipoPersona;
+
   identificacion: {
     documento: string;
     consultado: boolean;
     tipoCliente: TipoCliente | null;
   };
   cliente: ClienteDatos | null;
+  situaciones: SituacionesCliente | null;
   origenCampos: OrigenCampos;
   identidadVerificada: boolean;
 
@@ -227,10 +303,20 @@ export interface CreditApplication {
 
   riesgo: {
     estado: "PENDIENTE" | "EVALUANDO" | "COMPLETO";
+    // Motor que corresponde ejecutar según Producto + Organismo + condiciones (Motor §9).
+    motorId: string | null;
+    // Escenario forzado para poder mostrar los tres caminos durante la demo.
+    escenario: EscenarioMotor;
     reglas: RiskRule[];
+    // Reglas institucionales tal como quedaron al solicitar (Motor §6).
+    institucionales: ReglaInstitucional[];
+    // null si una regla institucional descartó la solicitud antes de ejecutar el motor.
     resultado: RiskResultado | null;
+    // Línea que resultó aplicable, o null si no había ninguna para el caso.
+    planId: string | null;
+    limites: ResultadoLimites | null;
     // Datos con los que se evaluó, para detectar cambios posteriores.
-    evaluadoCon: { ingresoNeto: number; fechaNacimiento: string } | null;
+    evaluadoCon: { ingresoNeto: number; fechaNacimiento: string; genero: string } | null;
     fecha: string | null;
   };
 
@@ -239,6 +325,8 @@ export interface CreditApplication {
   postOferta: PostOferta;
   pantallasVisitadas: PantallaPostOfertaId[];
 
+  // El analista interviene siempre al final del flujo, cuando el vendedor termina la
+  // carga post-oferta. Una operación que el motor rechaza nunca llega a su bandeja.
   analista: {
     tomado: boolean;
     observacion: Observacion | null;
@@ -247,6 +335,7 @@ export interface CreditApplication {
   rechazo: Rechazo | null;
 
   fechaSolicitud: string | null;
+  fechaPreaprobacion: string | null;
   fechaEnvioAnalisis: string | null;
   fechaAprobacion: string | null;
 }

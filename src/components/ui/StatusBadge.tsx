@@ -15,10 +15,11 @@ const toneClasses: Record<Tone, string> = {
 export const ESTADO_META: Record<EstadoCredito, { label: string; tone: Tone }> = {
   BORRADOR: { label: "Borrador", tone: "neutral" },
   EN_TRAMITE: { label: "En trámite", tone: "info" },
-  EN_ANALISIS: { label: "En análisis", tone: "info" },
+  PREAPROBADO: { label: "Preaprobado", tone: "brand" },
   ANALISIS_TOMADO: { label: "En análisis", tone: "info" },
   OBSERVADO: { label: "Observado", tone: "warning" },
   RECHAZADO: { label: "Rechazado", tone: "danger" },
+  ANULADO: { label: "Anulado", tone: "neutral" },
   PARA_LIQUIDAR: { label: "Para liquidar", tone: "success" },
 };
 

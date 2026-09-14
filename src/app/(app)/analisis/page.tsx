@@ -51,7 +51,7 @@ export default function AnalisisPage() {
   // Un rechazo del motor nunca llega al analista (Guía §7.2).
   const rechazoAnalista = app.estado === "RECHAZADO" && app.rechazo?.origen === "ANALISTA";
   const enBandeja =
-    app.estado === "EN_ANALISIS" ||
+    app.estado === "PREAPROBADO" ||
     app.estado === "ANALISIS_TOMADO" ||
     app.estado === "OBSERVADO" ||
     app.estado === "PARA_LIQUIDAR" ||
@@ -68,8 +68,8 @@ export default function AnalisisPage() {
             La bandeja del analista está vacía
           </h1>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
-            Cuando el canal de venta finalice la carga de una solicitud, aparecerá acá en estado En
-            análisis.
+            Aparecerá una solicitud cuando el canal de venta finalice la carga post-oferta de una
+            operación preaprobada.
           </p>
           <div className="mt-6">
             <Button onClick={() => router.push("/")}>Ir a la bandeja del canal de venta</Button>
@@ -112,7 +112,7 @@ export default function AnalisisPage() {
     const operaciones = [
       {
         titulo: "Transferencia neta al cliente",
-        detalle: `${app.postOferta.laboral.bancoCobro} · ${ultimos(app.postOferta.laboral.cbu)}`,
+        detalle: `${app.postOferta.laboral.banco || "—"} · ${ultimos(app.postOferta.laboral.cbu ?? "")}`,
         monto: netoAAcreditar(o),
       },
       ...(terceros > 0
@@ -254,7 +254,8 @@ export default function AnalisisPage() {
             Bandeja del analista
           </h1>
           <p className="mt-1 text-sm text-ink-500">
-            Solicitudes enviadas por el canal de venta en estado En análisis.
+            El analista revisa toda solicitud que el canal de venta termina de cargar. Las que el
+            motor rechazó nunca llegan acá.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => router.push("/")}>
@@ -294,7 +295,7 @@ export default function AnalisisPage() {
           </Card>
         )}
 
-        {app.estado === "EN_ANALISIS" && <BandejaAnalista onTomar={tomarAnalisis} />}
+        {app.estado === "PREAPROBADO" && <BandejaAnalista onTomar={tomarAnalisis} />}
 
         {app.estado === "ANALISIS_TOMADO" && (
           <AnalisisCredito

@@ -1,5 +1,5 @@
-import type { OrigenDato } from "@/lib/types";
-import { IconCheck, IconSparkles, IconUser } from "@/components/icons";
+import type { OrigenCampo, OrigenDato } from "@/lib/types";
+import { IconCheck, IconLock, IconRefresh, IconSparkles, IconUser } from "@/components/icons";
 
 const META: Record<
   OrigenDato,
@@ -40,6 +40,38 @@ export function AutocompletadoBadge() {
     <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700">
       <IconSparkles width={11} height={11} />
       Autocompletado
+    </span>
+  );
+}
+
+// Onboarding §3: origen del dato en las pantallas post-oferta. Los datos a cargar no llevan
+// insignia; un precargado que se corrigió se muestra como rectificado.
+export function OrigenCampoBadge({
+  origen,
+  rectificado = false,
+}: {
+  origen: OrigenCampo;
+  rectificado?: boolean;
+}) {
+  if (origen === "A_CARGAR") return null;
+  const base =
+    "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide";
+  if (origen === "NO_MODIFICABLE")
+    return (
+      <span className={`${base} border-ink-200 bg-ink-100 text-ink-600`}>
+        <IconLock width={11} height={11} />
+        No modificable
+      </span>
+    );
+  return rectificado ? (
+    <span className={`${base} border-warning-200 bg-warning-50 text-warning-700`}>
+      <IconRefresh width={11} height={11} />
+      Rectificado
+    </span>
+  ) : (
+    <span className={`${base} border-brand-100 bg-brand-50 text-brand-700`}>
+      <IconSparkles width={11} height={11} />
+      Precargado
     </span>
   );
 }

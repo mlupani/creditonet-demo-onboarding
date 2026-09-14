@@ -5,11 +5,14 @@ import {
   CANALES,
   ORGANISMOS,
   PRODUCTOS,
-  VENDEDORES,
   configEfectiva,
   nombreOpcion,
+  productoHabilitadoEnCanal,
   resumenConfig,
 } from "@/lib/config";
+import { seleccionarMotor } from "@/lib/motores";
+import { getCampo } from "@/lib/campos-post-oferta";
+import { getTipoDocumento, nombreProveedor } from "@/lib/parametros";
 import { formatARS } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SelectField } from "@/components/ui/SelectField";
@@ -19,8 +22,7 @@ import {
   IconBuilding,
   IconCalendar,
   IconLock,
-  IconUser,
-  IconWallet,
+  IconShieldCheck,
 } from "@/components/icons";
 
 function CampoParametrizado({
@@ -65,6 +67,10 @@ export function PasoConfiguracion() {
   const efectiva = configEfectiva(cfg);
   const resumen = resumenConfig(cfg);
   const plan = efectiva.plan;
+  const { motor, criterio } = seleccionarMotor(cfg, app.laboral.condicionLaboral);
+  // El canal elegido al inicio limita los productos disponibles (Producto §3).
+  const canal = nombreOpcion(CANALES, cfg.canalId);
+  const noDisponibles = PRODUCTOS.filter((p) => !productoHabilitadoEnCanal(p.id, cfg.canalId));
 
   return (
     <Card>
@@ -80,8 +86,19 @@ export function PasoConfiguracion() {
           required
           value={cfg.productoId}
           onChange={(v) => setConfig({ productoId: v })}
-          options={PRODUCTOS.map((p) => ({ value: p.id, label: p.nombre }))}
-          hint="Define reglas globales y pantallas post-oferta."
+          options={PRODUCTOS.map((p) => {
+            const habilitado = productoHabilitadoEnCanal(p.id, cfg.canalId);
+            return {
+              value: p.id,
+              label: habilitado ? p.nombre : `${p.nombre} — no disponible en ${canal}`,
+              disabled: !habilitado,
+            };
+          })}
+          hint={
+            noDisponibles.length > 0
+              ? `Canal ${canal}: ${noDisponibles.map((p) => p.nombre).join(", ")} no se ofrece por este canal.`
+              : `Canal ${canal}: todos los productos disponibles.`
+          }
         />
         <SelectField
           id="organismo"
@@ -92,26 +109,19 @@ export function PasoConfiguracion() {
           options={ORGANISMOS.map((o) => ({ value: o.id, label: o.nombre }))}
           hint="Empleador o ente pagador. Sólo parametriza excepciones."
         />
-        <div className="sm:col-span-2">
-          <CampoParametrizado
-            label="Plan de cuotas / Línea"
-            valor={plan.nombre}
-            detalle={`Sistema ${plan.sistema.toLowerCase()} · ${plan.plazos.join(", ")} cuotas · hasta ${formatARS(plan.montoMaximo)}`}
-            icon={<IconCalendar width={16} height={16} />}
-            origen="Según organismo"
-          />
-        </div>
         <CampoParametrizado
-          label="Canal de venta"
-          valor={nombreOpcion(CANALES, cfg.canalId)}
-          icon={<IconWallet width={16} height={16} />}
-          origen="Parámetros"
+          label="Motor de riesgo que corresponde"
+          valor={motor.nombre}
+          detalle={criterio}
+          icon={<IconShieldCheck width={16} height={16} />}
+          origen="Se ejecuta al solicitar"
         />
         <CampoParametrizado
-          label="Vendedor"
-          valor={nombreOpcion(VENDEDORES, cfg.vendedorId)}
-          icon={<IconUser width={16} height={16} />}
-          origen="Sesión"
+          label="Plan de cuotas / Línea"
+          valor={plan.nombre}
+          detalle={`Sistema ${plan.sistema.toLowerCase()} · ${plan.plazos.join(", ")} cuotas · hasta ${formatARS(plan.montoMaximo)}`}
+          icon={<IconCalendar width={16} height={16} />}
+          origen="Según organismo"
         />
       </div>
 
@@ -149,7 +159,69 @@ export function PasoConfiguracion() {
             </div>
           ))}
         </div>
+
+        {efectiva.cantidadExcepciones > 0 && (
+          <div className="mt-3 rounded-lg border border-warning-200 bg-warning-50/60 px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-warning-700">
+              Excepciones que aplica {efectiva.organismo.nombre}
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {excepcionesLegibles(efectiva).map((e) => (
+                <li key={e} className="flex items-start gap-1.5 text-xs text-ink-700">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-warning-500" />
+                  {e}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] text-ink-500">
+              El resto de la configuración se hereda del producto sin duplicarlo.
+            </p>
+          </div>
+        )}
       </div>
     </Card>
   );
+}
+
+// Traduce los overrides del organismo a frases legibles para la demo.
+function excepcionesLegibles(efectiva: ReturnType<typeof configEfectiva>): string[] {
+  const o = efectiva.organismo.overrides;
+  const items: string[] = [];
+  if (o.permiteDeudaTerceros !== undefined)
+    items.push(
+      o.permiteDeudaTerceros
+        ? "Habilita la cancelación de deuda con terceros"
+        : "No habilita la cancelación de deuda con terceros"
+    );
+  if (o.capitalMaximo !== undefined)
+    items.push(`Capital máximo propio: ${formatARS(o.capitalMaximo)}`);
+  Object.entries(o.pantallas ?? {}).forEach(([id, cambio]) => {
+    const pantalla = efectiva.pantallas.find((p) => p.id === id);
+    const label = pantalla?.label ?? id;
+    if (cambio?.visible === false) items.push(`Oculta la pantalla “${label}”`);
+    else if (cambio?.visible === true) items.push(`Habilita la pantalla “${label}”`);
+    if (cambio?.obligatoria === false) items.push(`“${label}” deja de ser obligatoria`);
+    else if (cambio?.obligatoria === true) items.push(`“${label}” pasa a ser obligatoria`);
+  });
+  Object.entries(o.camposObligatorios ?? {}).forEach(([id, obligatorio]) => {
+    const label = getCampo(id)?.label ?? id;
+    items.push(`Campo “${label}” ${obligatorio ? "obligatorio" : "opcional"}`);
+  });
+  if (o.referencias)
+    items.push(
+      `Referencias: mínimo ${efectiva.referencias.minimo}, máximo ${efectiva.referencias.maximo}`
+    );
+  if (o.garantes)
+    items.push(`Garantes: mínimo ${efectiva.garantes.minimo}, máximo ${efectiva.garantes.maximo}`);
+  if (o.tokenizacion?.maximoTarjetas !== undefined) {
+    const n = o.tokenizacion.maximoTarjetas;
+    items.push(`Hasta ${n} tarjeta${n === 1 ? "" : "s"} tokenizada${n === 1 ? "" : "s"}`);
+  }
+  if (o.tokenizacion?.proveedorId)
+    items.push(`Proveedor de tokenización: ${nombreProveedor(o.tokenizacion.proveedorId)}`);
+  if (o.documentos)
+    items.push(
+      `Documentación propia: ${o.documentos.map((d) => getTipoDocumento(d.tipoId).nombre).join(", ")}`
+    );
+  return items;
 }

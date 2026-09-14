@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { pantallasVisibles, resumenConfig } from "@/lib/config";
+import { configEfectiva, pantallasVisibles, resumenConfig } from "@/lib/config";
 import { estadoPantallasPostOferta, pendientesFinalizarCarga } from "@/lib/validation";
 import { sumarDias } from "@/lib/format";
 import type { PantallaPostOfertaId } from "@/lib/types";
@@ -48,14 +48,18 @@ export function PostOfertaShell() {
   const estados = useMemo(() => estadoPantallasPostOferta(app), [app]);
   const pendientes = useMemo(() => pendientesFinalizarCarga(app), [app]);
   const resumen = resumenConfig(app.configuracion);
+  const cfg = configEfectiva(app.configuracion);
+  const conGarantias = visibles.some((p) => p.id === "garantias");
   const completadas = estados.filter((e) => e.completa).length;
   const observada = app.estado === "OBSERVADO";
   const obs = app.analista.observacion;
+  // El analista puede señalar qué pantalla hay que corregir (reunión 11/09, 01:09).
+  const pantallaObservada = observada ? (obs?.pantalla ?? null) : null;
 
   // Normaliza la pantalla actual si no está en las visibles.
   useEffect(() => {
     if (!visibles.some((p) => p.id === pantallaActual)) {
-      setPantallaActual(visibles[0]?.id ?? "laboral");
+      setPantallaActual(visibles[0]?.id ?? "personales");
     }
   }, [visibles, pantallaActual, setPantallaActual]);
 
@@ -63,12 +67,21 @@ export function PostOfertaShell() {
     visitarPantalla(pantallaActual);
   }, [pantallaActual, visitarPantalla]);
 
+  // Al retomar una solicitud observada se abre directamente la pantalla señalada.
+  const saltoHecho = useRef(false);
+  useEffect(() => {
+    if (!pantallaObservada || saltoHecho.current) return;
+    saltoHecho.current = true;
+    setPantallaActual(pantallaObservada);
+  }, [pantallaObservada, setPantallaActual]);
+
   const pasos: PasoLibre[] = estados.map((e) => ({
     id: e.id,
     numero: e.numero,
     label: e.label,
     obligatoria: e.obligatoria,
     estado: e.estadoVisual,
+    observada: e.id === pantallaObservada,
   }));
 
   const PantallaActiva = PANTALLAS[pantallaActual];
@@ -118,7 +131,10 @@ export function PostOfertaShell() {
       {observada && obs && (
         <div className="mt-5">
           <Banner tone="warning" title={`Observada por el analista · ${obs.motivo}`}>
-            {obs.nota} Corregí lo necesario y reenviá la solicitud antes del{" "}
+            {obs.nota}{" "}
+            {pantallaObservada &&
+              `Está señalada en naranja la pantalla a corregir. `}
+            Corregí lo necesario y reenviá la solicitud antes del{" "}
             <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días) para que no expire.
           </Banner>
         </div>
@@ -177,7 +193,7 @@ export function PostOfertaShell() {
               </p>
               <DemoTag
                 variant="config"
-                detalle="El producto define el catálogo de hasta 7 pantallas, su orden y obligatoriedad. El organismo sólo parametriza excepciones; lo que no define se hereda del producto."
+                detalle="El producto define las 7 pantallas con su orden y obligatoriedad, los campos obligatorios, las cantidades de referencias y garantes, la tokenización y los documentos. El organismo sólo parametriza excepciones; lo que no define se hereda del producto."
               />
             </div>
             <p className="mt-2 text-sm font-semibold text-ink-900">{resumen.producto}</p>
@@ -202,6 +218,13 @@ export function PostOfertaShell() {
                 </dd>
               </div>
             </dl>
+            <p className="mt-3 text-[11px] leading-relaxed text-ink-500">
+              Referencias {cfg.referencias.minimo}–{cfg.referencias.maximo}
+              {conGarantias && ` · Garantes ${cfg.garantes.minimo}–${cfg.garantes.maximo}`} · Hasta{" "}
+              {cfg.tokenizacion.maximoTarjetas} tarjeta
+              {cfg.tokenizacion.maximoTarjetas === 1 ? "" : "s"} · {cfg.documentos.length}{" "}
+              documentos
+            </p>
           </Card>
         </aside>
       </div>

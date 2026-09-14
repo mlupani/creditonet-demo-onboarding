@@ -1,23 +1,30 @@
 import type {
   CreditApplication,
   CreditoActivo,
+  LimitanteOferta,
+  LimiteCapital,
+  LimiteCuota,
   Oferta,
   Plazo,
+  ResultadoLimites,
+  ResultadoRegla,
   RiskResultado,
-  RiskRule,
 } from "./types";
-import { calcularEdad } from "./format";
-import { getPlan, type PlanCuotas } from "./config";
+import { configEfectiva, getPlan, type PlanCuotas } from "./config";
+import { formatARS } from "./format";
 
 // --- Parámetros de la oferta (Configuración DEMO / Regla simulada) ---
 
 export const CAPITAL_MAXIMO_BASE = 2_500_000;
-// Regla simulada: al renovar un crédito propio el motor lo excluye de la exposición y el
-// plan emite un capital máximo mayor. Valor fijo para la demo.
-export const CAPITAL_MAXIMO_CON_PRECANCELACION = 2_850_000;
 
-export const EDAD_MINIMA = 18;
-export const EDAD_MAXIMA = 75;
+// Condición universal, por encima de producto y organismo: exposición máxima por cliente
+// (reunión 11/09, 02:40: "un cliente mío no puede endeudarse más de 5").
+export const LIMITE_UNIVERSAL_CLIENTE = 5_000_000;
+// Condición universal sobre el haber: tope en cantidad de sueldos brutos (02:46).
+export const LIMITE_SUELDOS_BRUTOS = 3;
+// Regla simulada: al renovar un crédito propio el motor lo excluye de la exposición y el
+// plan emite un capital máximo mayor.
+export const CAPITAL_MAXIMO_CON_PRECANCELACION = 2_850_000;
 
 export interface OfferTerm {
   plazo: Plazo;
@@ -45,6 +52,15 @@ export function calcularCuota(monto: number, plazo: number, tna: number): number
   const factor = Math.pow(1 + i, plazo);
   const cuota = (monto * i * factor) / (factor - 1);
   return Math.round(cuota / 100) * 100;
+}
+
+// Inversa de la anterior: qué capital soporta una cuota máxima. Se trunca a $10.000.
+export function capitalDesdeCuota(cuota: number, plazo: number, tna: number): number {
+  if (cuota <= 0 || plazo <= 0) return 0;
+  const i = tna / 100 / 12;
+  const factor = Math.pow(1 + i, plazo);
+  const capital = (cuota * (factor - 1)) / (i * factor);
+  return Math.floor(capital / 10_000) * 10_000;
 }
 
 export function hayPrecancelacion(oferta: Oferta): boolean {
@@ -83,7 +99,7 @@ export function cuotasAbonadasPct(c: CreditoActivo): number {
 export function recalcularOferta(oferta: Oferta): Oferta {
   const term = getTerm(oferta.plazo);
   const capitalMaximoActual = hayPrecancelacion(oferta)
-    ? CAPITAL_MAXIMO_CON_PRECANCELACION
+    ? oferta.capitalMaximoRenovacion
     : oferta.capitalMaximoBase;
   const valorCuota = calcularCuota(oferta.montoSolicitado, oferta.plazo, term.tna);
   return {
@@ -96,7 +112,7 @@ export function recalcularOferta(oferta: Oferta): Oferta {
   };
 }
 
-// --- Motor de riesgo ("El Patovica"): filtro pasa / no pasa (Guía §4.1) ---
+// --- Fases visuales de la evaluación ---
 
 export interface FaseRiesgo {
   id: string;
@@ -105,72 +121,177 @@ export interface FaseRiesgo {
 
 export const FASES_RIESGO: FaseRiesgo[] = [
   { id: "id", mensaje: "Generando ID de crédito…" },
-  { id: "bcra", mensaje: "Consultando Vector BCRA…" },
-  { id: "mora", mensaje: "Consultando mora interna…" },
-  { id: "reglas", mensaje: "Aplicando reglas del motor…" },
+  { id: "institucionales", mensaje: "Evaluando las reglas institucionales…" },
+  { id: "motor", mensaje: "Seleccionando el motor de riesgo correspondiente…" },
+  { id: "bcra", mensaje: "Consultando BCRA y base interna…" },
+  { id: "reglas", mensaje: "Aplicando las reglas del motor…" },
 ];
 
-export function evaluarReglas(app: CreditApplication): RiskRule[] {
-  const edad = calcularEdad(app.cliente?.fechaNacimiento ?? "");
-  const edadOk = edad !== null && edad >= EDAD_MINIMA && edad <= EDAD_MAXIMA;
+export const RESULTADO_LABEL: Record<RiskResultado, string> = {
+  PASA: "Pasa",
+  NO_PASA: "No pasa",
+};
 
-  return [
+export const OUTCOME_LABEL: Record<ResultadoRegla | "ESPERANDO_DATOS", string> = {
+  PASA: "Pasa",
+  NO_PASA: "No pasa",
+  ESPERANDO_DATOS: "Esperando datos",
+};
+
+// --- Límites de capital (Plan de Cuotas §3.3, §8 · Flujos Integrados §13) ---
+//
+// Pueden existir varios límites simultáneos. La lógica es tomar el más restrictivo:
+// ese es el capital que continúa hacia el Plan de Cuotas.
+//
+// `conCancelaciones: false` da los límites de la PRIMERA oferta, que es anterior a la
+// precancelación (Plan §9). Con `true` se descuentan los créditos marcados para precancelar
+// y se obtiene el capital de la nueva oferta.
+
+export function calcularLimites(
+  app: CreditApplication,
+  { conCancelaciones }: { conCancelaciones: boolean }
+): ResultadoLimites {
+  const cfg = configEfectiva(app.configuracion);
+  const plan = cfg.plan;
+  const neto = app.laboral.ingresoNeto;
+  const bruto = app.laboral.ingresoBruto;
+  const term = getTerm(app.oferta.plazo);
+
+  // "Los dos palos se lo está dando sabiendo que este préstamo se va a cancelar"
+  // (reunión 11/09, 44:00): la cuota de un crédito marcado para precancelar deja de pesar en
+  // la exposición, así que libera capacidad y el capital máximo sube.
+  const cancelado = (c: CreditoActivo) => conCancelaciones && c.precancelar;
+  const renovando = app.oferta.creditosActivos.some(cancelado);
+  const cuotasVigentes = app.oferta.creditosActivos
+    .filter((c) => !cancelado(c))
+    .reduce((s, c) => s + c.valorCuota, 0);
+  const cuotasLiberadas = app.oferta.creditosActivos
+    .filter(cancelado)
+    .reduce((s, c) => s + c.valorCuota, 0);
+
+  // --- Cuota máxima: compiten tres reglas y gana la menor (reunión 11/09, 02:47) ---
+  const limitesCuota: LimiteCuota[] = [
     {
-      id: "edad",
-      codigo: "MR-01",
-      nombre: "Edad dentro del rango permitido",
-      detalle: "Calculada a partir de la fecha de nacimiento informada por la API.",
-      valorEvaluado: edad !== null ? `${edad} años` : "Sin dato",
-      condicion: `Entre ${EDAD_MINIMA} y ${EDAD_MAXIMA} años`,
-      resultado: edadOk ? "CUMPLE" : "NO_CUMPLE",
+      id: "smvm",
+      label: "SMVM de bolsillo",
+      detalle: `Ingreso neto ${formatARS(neto)} menos el mínimo de bolsillo ${formatARS(plan.smvmBolsillo)}`,
+      monto: Math.max(neto - plan.smvmBolsillo - cuotasVigentes, 0),
     },
     {
-      id: "bcra",
-      codigo: "MR-02",
-      nombre: "Vector BCRA",
-      detalle: "Situación del cliente en la Central de Deudores del BCRA (simulada).",
-      valorEvaluado: "Situación 1 · sin deudas reportadas",
-      condicion: "Situación 1 o 2",
-      resultado: "CUMPLE",
+      id: "rci",
+      label: "Relación cuota-ingreso",
+      detalle: `${plan.rciMaxPct} % del ingreso neto`,
+      monto: Math.round((neto * plan.rciMaxPct) / 100),
     },
     {
-      id: "mora",
-      codigo: "MR-03",
-      nombre: "Vector de mora interna",
-      detalle: "Historial de cumplimiento con la financiera.",
-      valorEvaluado: "0 días de atraso · CR-000102 al día",
-      condicion: "Hasta 30 días de atraso",
-      resultado: "CUMPLE",
-    },
-    {
-      id: "carencia",
-      codigo: "MR-04",
-      nombre: "Sin trámite activo ni carencia vigente",
-      detalle: "Sin otra solicitud en curso ni rechazos del motor en los últimos 30 días.",
-      valorEvaluado: "0 solicitudes activas · sin rechazos",
-      condicion: "Sin carencia vigente",
-      resultado: "CUMPLE",
+      id: "endeudamiento",
+      label: "Nivel de endeudamiento",
+      detalle: `${plan.endeudamientoMaxPct} % del bruto menos cuotas vigentes por ${formatARS(cuotasVigentes)}`,
+      monto: Math.max(
+        Math.round((bruto * plan.endeudamientoMaxPct) / 100) - cuotasVigentes,
+        0
+      ),
     },
   ];
+  const menorCuota = limitesCuota.reduce((a, b) => (b.monto < a.monto ? b : a));
+  const cuotaMaxima = menorCuota.monto;
+
+  // --- Límites de capital: ninguno sale del motor (02:22, 02:24). Gana el menor. ---
+  const limites: LimiteCapital[] = [
+    {
+      id: "universal",
+      label: "Límite universal por cliente",
+      detalle: "Exposición máxima de un cliente con la financiera",
+      monto: LIMITE_UNIVERSAL_CLIENTE,
+    },
+    {
+      id: "brutos",
+      label: "Límite por sueldos brutos",
+      detalle: `${LIMITE_SUELDOS_BRUTOS} sueldos brutos de ${formatARS(bruto)}`,
+      monto: bruto * LIMITE_SUELDOS_BRUTOS,
+    },
+    {
+      id: "producto",
+      label: "Límite por producto",
+      detalle: cfg.organismo.overrides.capitalMaximo
+        ? `${cfg.producto.nombre} · excepción del organismo`
+        : cfg.producto.nombre,
+      monto: cfg.capitalMaximo,
+    },
+    {
+      id: "plan",
+      label: "Límite por plan de cuotas",
+      detalle: renovando
+        ? `${plan.nombre} · tope ampliado por renovación`
+        : plan.nombre,
+      monto: renovando ? plan.montoMaximoRenovacion : plan.montoMaximo,
+    },
+    {
+      id: "cuota",
+      label: "Límite por cuota máxima",
+      detalle: `${menorCuota.label}: ${formatARS(cuotaMaxima)} en ${app.oferta.plazo} cuotas`,
+      monto: capitalDesdeCuota(cuotaMaxima, app.oferta.plazo, term.tna),
+    },
+  ];
+  const menor = limites.reduce((a, b) => (b.monto < a.monto ? b : a));
+  const capitalPorLimites = menor.monto;
+
+  // --- Limitantes de la oferta: recortes porcentuales sobre el capital ya calculado.
+  // Si aplican varios, manda el mayor recorte (02:48-02:50). ---
+  const lim = plan.limitantes;
+  const esNuevo = app.identificacion.tipoCliente === "NUEVO";
+  const condicion = app.laboral.condicionLaboral;
+  const recorteCondicion = lim.condicionLaboralPct[condicion] ?? 0;
+  const bcra = app.situaciones?.bcra ?? 1;
+
+  const limitantes: LimitanteOferta[] = [
+    {
+      id: "tipo-cliente",
+      label: esNuevo ? "Cliente nuevo" : "Cliente existente",
+      detalle: esNuevo
+        ? "Primera operación con la financiera"
+        : "Con historial de cumplimiento: sin recorte",
+      recortePct: esNuevo ? lim.clienteNuevoPct : lim.clienteExistentePct,
+      aplica: true,
+    },
+    {
+      id: "condicion-laboral",
+      label: `Condición laboral: ${condicion || "sin declarar"}`,
+      detalle: recorteCondicion > 0 ? "Condición con recorte configurado" : "Sin recorte",
+      recortePct: recorteCondicion,
+      aplica: recorteCondicion > 0,
+    },
+    {
+      id: "situacion-bcra",
+      label: `Situación BCRA ${bcra}`,
+      detalle: bcra !== 1 ? "Situación distinta de 1" : "Situación 1: sin recorte",
+      recortePct: bcra !== 1 ? lim.situacionBcraDistintaDeUnoPct : 0,
+      aplica: bcra !== 1,
+    },
+  ];
+
+  const recorteAplicadoPct = limitantes.reduce(
+    (max, l) => (l.aplica && l.recortePct > max ? l.recortePct : max),
+    0
+  );
+  const capitalConsiderado =
+    Math.floor((capitalPorLimites * (100 - recorteAplicadoPct)) / 100 / 10_000) * 10_000;
+
+  return {
+    capitalSolicitado: app.oferta.montoSolicitado,
+    cuotasVigentes,
+    cuotasLiberadas,
+    limites,
+    limiteAplicadoId: menor.id,
+    capitalPorLimites,
+    limitantes,
+    recorteAplicadoPct,
+    capitalConsiderado,
+    limitesCuota,
+    limiteCuotaAplicadoId: menorCuota.id,
+    cuotaMaxima,
+  };
 }
-
-export function resolverResultado(reglas: RiskRule[]): RiskResultado {
-  if (reglas.some((r) => r.resultado === "NO_CUMPLE")) return "RECHAZADO";
-  if (reglas.some((r) => r.resultado === "ADVERTENCIA")) return "VERIFICACION_MANUAL";
-  return "APROBADO";
-}
-
-export const RESULTADO_LABEL: Record<RiskResultado, string> = {
-  APROBADO: "Aprobado",
-  VERIFICACION_MANUAL: "Requiere verificación manual",
-  RECHAZADO: "Rechazado",
-};
-
-export const OUTCOME_LABEL: Record<RiskRule["resultado"], string> = {
-  CUMPLE: "Cumple",
-  ADVERTENCIA: "Advertencia",
-  NO_CUMPLE: "No cumple",
-};
 
 // --- Plan de cuotas / Línea: validación financiera (Guía §2.3, §4.3) ---
 

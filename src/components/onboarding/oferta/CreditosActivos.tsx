@@ -2,7 +2,7 @@
 
 import { useApplication } from "@/lib/application-context";
 import { getPlan } from "@/lib/config";
-import { CAPITAL_MAXIMO_BASE, cuotasAbonadasPct, hayPrecancelacion } from "@/lib/credit";
+import { cuotasAbonadasPct, hayPrecancelacion } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -10,8 +10,8 @@ import { DemoTag } from "@/components/ui/DemoTag";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { IconArrowRight, IconCheckCircle, IconLoader, IconRefresh } from "@/components/icons";
 
-// Renovación de créditos propios (Guía §5.3). Marcar o desmarcar un crédito dispara una
-// reevaluación del motor sin contabilizar ese crédito en la exposición del cliente.
+// Precancelación de créditos propios sobre la primera oferta (Plan §9). Marcar o desmarcar
+// un crédito recalcula la oferta sin contabilizar ese crédito en la exposición del cliente.
 export function CreditosActivos({
   reevaluandoId,
   onToggle,
@@ -23,11 +23,14 @@ export function CreditosActivos({
   const o = app.oferta;
   const minPct = getPlan(app.configuracion.organismoId).renovacionMinCuotasPct;
   const precancelaActiva = hayPrecancelacion(o);
+  const cuotasLiberadas = o.creditosActivos
+    .filter((c) => c.precancelar)
+    .reduce((s, c) => s + c.valorCuota, 0);
 
   return (
     <Card>
       <CardHeader
-        title="Renovación de créditos propios"
+        title="Precancelación de créditos propios"
         description="Créditos vigentes del cliente que se pueden renovar o precancelar con esta operación."
         icon={<IconRefresh width={18} height={18} />}
       />
@@ -121,7 +124,7 @@ export function CreditosActivos({
               {reevaluando && (
                 <p className="mt-3 flex animate-fade-in items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700">
                   <IconLoader width={14} height={14} />
-                  Reevaluando en el motor de riesgo sin contabilizar {c.id} en la exposición…
+                  Recalculando la oferta sin {c.id} en la exposición…
                 </p>
               )}
             </div>
@@ -132,20 +135,24 @@ export function CreditosActivos({
           <div className="animate-fade-up rounded-xl border border-success-200 bg-success-50 p-4">
             <p className="flex items-center gap-2 text-sm font-bold text-success-700">
               <IconCheckCircle width={16} height={16} />
-              Motor reevaluado: aprobado · la oferta fue recalculada
+              Nueva oferta recalculada con la precancelación
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <div className="text-center">
-                <p className="text-[11px] font-medium text-ink-500">Capital máximo anterior</p>
+                <p className="text-[11px] font-medium text-ink-500">Cuota que se libera</p>
+                <p className="text-sm font-semibold tabular-nums text-success-700">
+                  {formatARS(cuotasLiberadas)}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] font-medium text-ink-500">Primera oferta</p>
                 <p className="text-sm font-semibold tabular-nums text-ink-400 line-through">
-                  {formatARS(CAPITAL_MAXIMO_BASE)}
+                  {formatARS(o.capitalMaximoBase)}
                 </p>
               </div>
               <IconArrowRight width={16} height={16} className="text-success-600" />
               <div className="text-center">
-                <p className="text-[11px] font-medium text-ink-500">
-                  Capital máximo con la renovación
-                </p>
+                <p className="text-[11px] font-medium text-ink-500">Nueva oferta</p>
                 <p
                   key={o.capitalMaximoActual}
                   className="animate-pop text-lg font-bold tabular-nums text-success-700"
@@ -155,11 +162,12 @@ export function CreditosActivos({
               </div>
               <DemoTag
                 variant="regla"
-                detalle="El recálculo del capital máximo tras la renovación y si la precancelación es total o parcial son decisiones pendientes. El valor es de demo."
+                detalle="El crédito que se renueva deja de pesar en la exposición: su cuota libera capacidad y el capital máximo se recalcula. Si la precancelación puede ser parcial es una decisión pendiente."
               />
             </div>
             <p className="mt-2 text-xs text-success-700/80">
-              Volvé a elegir el capital, el plazo y la cuota con el nuevo máximo disponible.
+              El importe pasó al nuevo capital máximo: volvé a elegir el plazo sobre la nueva
+              oferta.
             </p>
           </div>
         )}

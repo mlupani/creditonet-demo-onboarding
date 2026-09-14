@@ -8,7 +8,13 @@ import { Card } from "@/components/ui/Card";
 import { DemoTag } from "@/components/ui/DemoTag";
 import { IconCheckCircle } from "@/components/icons";
 
-export function TablaCuotas() {
+export function TablaCuotas({
+  pendiente = false,
+  onSeleccion,
+}: {
+  pendiente?: boolean;
+  onSeleccion?: () => void;
+} = {}) {
   const { app, patchOferta } = useApplication();
   const o = app.oferta;
   const plan = getPlan(app.configuracion.organismoId);
@@ -19,28 +25,39 @@ export function TablaCuotas() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold tracking-tight text-ink-900">
-            Grilla de cuotas · {plan.nombre}
+            Alternativas de financiación · {plan.nombre}
           </h3>
           <p className="mt-0.5 text-xs text-ink-500">
-            Sistema {plan.sistema.toLowerCase()}. La selección cambia la cuota, el total y la
-            primera fecha de vencimiento.
+            Sistema {plan.sistema.toLowerCase()}. Son las combinaciones que quedaron válidas
+            después de aplicar los límites. La selección cambia la cuota, el total y la primera
+            fecha de vencimiento.
           </p>
         </div>
         <DemoTag
           variant="regla"
-          detalle="Las tasas y la fecha de vencimiento de la primera cuota son valores de demo; su formato es una decisión pendiente."
+          detalle="El vendedor no opera la grilla: el plan la consulta internamente y acá sólo se presentan las alternativas que cumplen el capital y la cuota máxima. Las tasas y la fecha de la primera cuota son valores de demo."
         />
       </div>
 
+      {pendiente && (
+        <div className="mt-3 rounded-lg border border-warning-300 bg-warning-50 px-3.5 py-2.5 text-xs font-medium text-warning-700">
+          Cambió la renovación, así que la combinación anterior ya no existe: elegí de nuevo el
+          plazo sobre los importes actualizados.
+        </div>
+      )}
+
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {terms.map((term) => {
-          const seleccionada = term.plazo === o.plazo;
+          const seleccionada = term.plazo === o.plazo && !pendiente;
           const cuota = calcularCuota(o.montoSolicitado, term.plazo, term.tna);
           return (
             <button
               key={term.plazo}
               type="button"
-              onClick={() => patchOferta({ plazo: term.plazo })}
+              onClick={() => {
+                patchOferta({ plazo: term.plazo });
+                onSeleccion?.();
+              }}
               className={`relative rounded-xl border p-4 text-left transition-all ${
                 seleccionada
                   ? "border-brand-600 bg-brand-50/60 shadow-sm ring-1 ring-brand-600"

@@ -2,74 +2,231 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { MARCAS_TARJETA } from "@/lib/validation";
+import { configEfectiva } from "@/lib/config";
+import { MARCAS_TARJETA, nombreProveedor } from "@/lib/parametros";
+import { isValidCard } from "@/lib/format";
 import type { TipoTarjeta } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DemoTag } from "@/components/ui/DemoTag";
-import { IconCheck, IconCreditCard, IconKey, IconLoader } from "@/components/icons";
+import {
+  IconCheck,
+  IconClock,
+  IconCreditCard,
+  IconKey,
+  IconSend,
+  IconTrash,
+  IconUser,
+} from "@/components/icons";
 
 const TIPOS: { id: TipoTarjeta; label: string }[] = [
   { id: "DEBITO", label: "Tarjeta de débito" },
   { id: "CREDITO", label: "Tarjeta de crédito" },
 ];
 
-export function PantallaTokenizacion() {
-  const { app, patchTokenizacion, tokenizarTarjeta } = useApplication();
-  const t = app.postOferta.tokenizacion;
-  const [procesando, setProcesando] = useState(false);
+const FORM_VACIO = { tipo: "DEBITO" as TipoTarjeta, numero: "", vencimiento: "", marca: "", cvv: "" };
 
-  const completo =
-    t.numero.replace(/\D/g, "").length >= 15 &&
-    !!t.vencimiento.trim() &&
-    !!t.marca.trim() &&
-    t.cvv.trim().length >= 3;
+// Pantalla 3 · Tokenización de tarjetas (Onboarding §6): una o varias tarjetas, por link de
+// WhatsApp o carga presencial, con el proveedor configurado en el producto.
+export function PantallaTokenizacion() {
+  const { app, enviarLinkWhatsApp, simularCompletaCliente, tokenizarPresencial, quitarTarjeta } =
+    useApplication();
+  const [presencial, setPresencial] = useState(false);
+  const [form, setForm] = useState(FORM_VACIO);
+  const [procesando, setProcesando] = useState<string | null>(null);
+
+  const cfg = configEfectiva(app.configuracion);
+  const obligatoria = cfg.pantallas.find((p) => p.id === "tokenizacion")?.obligatoria ?? false;
+  const { maximoTarjetas, proveedorId } = cfg.tokenizacion;
+  const tarjetas = app.postOferta.tarjetas;
+  const tokenizadas = tarjetas.filter((t) => t.estado === "TOKENIZADA").length;
+  const lleno = tarjetas.length >= maximoTarjetas;
+  const p = app.postOferta.personales;
+  const celular = `${p["telefono.caracteristica"] ?? ""} ${p["telefono.numero"] ?? ""}`.trim();
+  const formCompleto =
+    isValidCard(form.numero) &&
+    /^\d{2}\/\d{2}$/.test(form.vencimiento.trim()) &&
+    !!form.marca &&
+    form.cvv.length >= 3;
+
+  function conDemora(clave: string, accion: () => void, ms = 900) {
+    setProcesando(clave);
+    window.setTimeout(() => {
+      accion();
+      setProcesando(null);
+    }, ms);
+  }
 
   function tokenizar() {
-    setProcesando(true);
-    window.setTimeout(() => {
-      tokenizarTarjeta();
-      setProcesando(false);
-    }, 900);
+    conDemora("presencial", () => {
+      tokenizarPresencial({ tipo: form.tipo, marca: form.marca, numero: form.numero });
+      setForm(FORM_VACIO);
+      setPresencial(false);
+    });
   }
 
   return (
     <div className="space-y-5">
       <Card>
         <CardHeader
-          title="Tokenización de tarjeta"
-          description="Alta de tarjeta de débito o crédito para el cobro automático de las cuotas."
+          title="Tokenización de tarjetas"
+          description="Tarjetas para el cobro automático de las cuotas. El cliente la carga desde un link o el vendedor la tokeniza con la tarjeta en mano."
           icon={<IconCreditCard width={18} height={18} />}
-          action={<DemoTag variant="config" detalle="Pantalla opcional para este producto. El proveedor de tokenización es simulado; no se envían datos reales." />}
+          action={
+            <StatusBadge tone={obligatoria ? "danger" : "neutral"}>
+              {obligatoria ? "Obligatoria" : "Opcional"}
+            </StatusBadge>
+          }
         />
-        <div className="p-5 sm:p-6">
-          {t.tokenizada ? (
-            <div className="rounded-xl border border-success-200 bg-success-50 p-5 text-center">
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success-600 text-white">
-                <IconCheck width={24} height={24} strokeWidth={2.6} />
-              </span>
-              <p className="mt-3 text-sm font-bold text-success-700">Tarjeta tokenizada</p>
-              <p className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-success-200 bg-white px-3 py-1 font-mono text-sm font-semibold text-ink-800">
-                <IconKey width={14} height={14} className="text-success-600" />
-                {t.token}
-              </p>
-            </div>
-          ) : (
-            <>
+        <div className="space-y-4 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2 text-xs">
+            <span className="font-medium text-ink-600">
+              <strong className="text-ink-900">{tokenizadas}</strong> tokenizada
+              {tokenizadas === 1 ? "" : "s"} · hasta {maximoTarjetas} tarjeta
+              {maximoTarjetas === 1 ? "" : "s"}
+            </span>
+            <span className="flex items-center gap-2 font-medium text-ink-600">
+              {nombreProveedor(proveedorId)}
+              <DemoTag
+                variant="config"
+                detalle="El proveedor tercero de tokenización, la obligatoriedad y la cantidad de tarjetas se configuran por producto, con excepciones del organismo. La integración es simulada."
+              />
+            </span>
+          </div>
+
+          {tarjetas.length > 0 && (
+            <ul className="space-y-2">
+              {tarjetas.map((t) => {
+                const lista = t.estado === "TOKENIZADA";
+                return (
+                  <li
+                    key={t.id}
+                    className={`rounded-xl border px-4 py-3 ${
+                      lista
+                        ? "border-success-200 bg-success-50/60"
+                        : "border-warning-200 bg-warning-50/60"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                            lista ? "bg-success-600 text-white" : "bg-warning-100 text-warning-700"
+                          }`}
+                        >
+                          {lista ? (
+                            <IconCheck width={16} height={16} strokeWidth={2.6} />
+                          ) : (
+                            <IconClock width={16} height={16} />
+                          )}
+                        </span>
+                        <div className="min-w-0">
+                          {lista ? (
+                            <>
+                              <p className="text-sm font-bold text-ink-900">
+                                {t.marca} •••• {t.ultimos4}{" "}
+                                <span className="text-xs font-medium text-ink-500">
+                                  · {t.tipo === "CREDITO" ? "Crédito" : "Débito"}
+                                </span>
+                              </p>
+                              <p className="flex flex-wrap items-center gap-1.5 text-xs text-success-700">
+                                <IconKey width={12} height={12} />
+                                <span className="font-mono">{t.token}</span>·{" "}
+                                {t.via === "WHATSAPP"
+                                  ? "cargada por el cliente desde el link"
+                                  : "carga presencial"}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm font-bold text-ink-900">
+                                Link enviado por WhatsApp a {t.enviadoA}
+                              </p>
+                              <p className="text-xs text-warning-700">
+                                Esperando que el cliente complete el formulario de tokenización.
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!lista && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              loading={procesando === t.id}
+                              disabled={procesando !== null}
+                              onClick={() => conDemora(t.id, () => simularCompletaCliente(t.id))}
+                            >
+                              Simular que el cliente completó
+                            </Button>
+                            <DemoTag
+                              variant="regla"
+                              detalle="Control de la demo: en el sistema real la tarjeta aparece tokenizada cuando el cliente completa el formulario del link."
+                            />
+                          </>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={procesando === t.id}
+                          onClick={() => quitarTarjeta(t.id)}
+                        >
+                          <IconTrash width={14} height={14} />
+                          {lista ? "Quitar" : "Cancelar"}
+                        </Button>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              onClick={() => conDemora("whatsapp", enviarLinkWhatsApp, 700)}
+              loading={procesando === "whatsapp"}
+              disabled={lleno || !celular || procesando !== null}
+            >
+              {procesando !== "whatsapp" && <IconSend width={16} height={16} />}
+              Enviar link por WhatsApp
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setPresencial((v) => !v)}
+              disabled={lleno || procesando !== null}
+            >
+              <IconUser width={16} height={16} />
+              Carga presencial
+            </Button>
+          </div>
+          <p className="text-xs text-ink-500">
+            {lleno
+              ? `Se alcanzó el máximo de ${maximoTarjetas} tarjeta${maximoTarjetas === 1 ? "" : "s"} para esta configuración.`
+              : celular
+                ? `El link se envía al celular precargado ${celular}.`
+                : "Cargá el teléfono del cliente en Datos personales para poder enviar el link."}
+          </p>
+
+          {presencial && !lleno && (
+            <div className="animate-fade-up rounded-xl border border-ink-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                Tipo de tarjeta
+                Carga presencial · con la tarjeta en mano
               </p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {TIPOS.map((tipo) => (
                   <button
                     key={tipo.id}
                     type="button"
-                    onClick={() => patchTokenizacion({ tipoTarjeta: tipo.id })}
+                    onClick={() => setForm((f) => ({ ...f, tipo: tipo.id }))}
                     className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
-                      t.tipoTarjeta === tipo.id
+                      form.tipo === tipo.id
                         ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600"
                         : "border-ink-200 bg-white text-ink-600 hover:border-brand-300"
                     }`}
@@ -78,13 +235,12 @@ export function PantallaTokenizacion() {
                   </button>
                 ))}
               </div>
-
-              <div className="mt-4 grid gap-x-5 gap-y-1 sm:grid-cols-2">
+              <div className="mt-4 grid gap-x-5 gap-y-3 sm:grid-cols-2">
                 <FormField
                   id="tok-numero"
                   label="Número"
-                  value={t.numero}
-                  onChange={(v) => patchTokenizacion({ numero: v.replace(/[^\d ]/g, "").slice(0, 19) })}
+                  value={form.numero}
+                  onChange={(v) => setForm((f) => ({ ...f, numero: v.replace(/[^\d ]/g, "").slice(0, 19) }))}
                   inputMode="numeric"
                   placeholder="4509 9535 6623 3704"
                   className="sm:col-span-2"
@@ -92,58 +248,49 @@ export function PantallaTokenizacion() {
                 <FormField
                   id="tok-venc"
                   label="Vencimiento"
-                  value={t.vencimiento}
-                  onChange={(v) => patchTokenizacion({ vencimiento: v })}
+                  value={form.vencimiento}
+                  onChange={(v) => setForm((f) => ({ ...f, vencimiento: v.slice(0, 5) }))}
                   placeholder="MM/AA"
                 />
                 <SelectField
                   id="tok-marca"
                   label="Marca"
-                  value={t.marca}
-                  onChange={(v) => patchTokenizacion({ marca: v })}
+                  value={form.marca}
+                  onChange={(v) => setForm((f) => ({ ...f, marca: v }))}
                   options={MARCAS_TARJETA.map((m) => ({ value: m, label: m }))}
                 />
                 <FormField
                   id="tok-cvv"
                   label="Código de seguridad"
-                  value={t.cvv}
-                  onChange={(v) => patchTokenizacion({ cvv: v.replace(/\D/g, "").slice(0, 4) })}
+                  value={form.cvv}
+                  onChange={(v) => setForm((f) => ({ ...f, cvv: v.replace(/\D/g, "").slice(0, 4) }))}
                   inputMode="numeric"
                   placeholder="123"
                 />
               </div>
-
-              <div className="mt-4 flex items-center justify-between rounded-lg border border-ink-200 bg-ink-25 px-3 py-2 text-xs">
-                <span className="font-medium text-ink-500">Proveedor de tokenización</span>
-                <span className="rounded-full bg-warning-50 px-2 py-0.5 font-bold uppercase tracking-wide text-warning-700">
-                  DEMO
-                </span>
-              </div>
-
               <Button
                 className="mt-4"
-                size="lg"
                 onClick={tokenizar}
-                loading={procesando}
-                disabled={!completo || procesando}
+                loading={procesando === "presencial"}
+                disabled={!formCompleto || procesando !== null}
               >
-                {!procesando && <IconKey width={16} height={16} />}
+                {procesando !== "presencial" && <IconKey width={16} height={16} />}
                 Tokenizar tarjeta
               </Button>
-              {!completo && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-500">
-                  {procesando && <IconLoader width={12} height={12} />}
-                  Completá los datos de la tarjeta para tokenizarla.
+              {!formCompleto && (
+                <p className="mt-2 text-xs text-ink-500">
+                  Completá número, vencimiento (MM/AA), marca y código para tokenizarla.
                 </p>
               )}
-            </>
+            </div>
           )}
         </div>
       </Card>
 
       <Banner tone="info">
-        La tarjeta será tokenizada mediante el proveedor configurado. En la demo se usa un token
-        ficticio y no se almacena ningún dato sensible.
+        WhatsApp sólo se usa para compartir el link del formulario al número del cliente: no es un
+        módulo integrado al flujo de onboarding. En la demo los tokens son ficticios y no se guarda
+        ningún dato sensible de la tarjeta.
       </Banner>
     </div>
   );

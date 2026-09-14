@@ -9,6 +9,10 @@ import {
   netoAAcreditar,
   totalPrecancelaciones,
 } from "@/lib/credit";
+import { getMotor, reglaMarcada } from "@/lib/motores";
+import { configEfectiva, pantallasVisibles } from "@/lib/config";
+import { camposRectificados } from "@/lib/campos-post-oferta";
+import type { PantallaPostOfertaId } from "@/lib/types";
 import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO } from "@/lib/validation";
 import { formatARS, formatDNI, formatPct } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
@@ -19,13 +23,17 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { DemoTag } from "@/components/ui/DemoTag";
+import { CambiarOfertaModal } from "./CambiarOfertaModal";
 import {
   IconAlertTriangle,
   IconCalendar,
   IconCheck,
   IconCreditCard,
   IconFileText,
+  IconLandmark,
+  IconRefresh,
   IconShieldCheck,
+  IconTrash,
   IconUser,
   IconWallet,
   IconX,
@@ -76,12 +84,14 @@ export function AnalisisCredito({
   onRechazar,
   onAprobar,
 }: {
-  onObservar: (motivo: string, nota: string) => void;
+  onObservar: (motivo: string, nota: string, pantalla: PantallaPostOfertaId | null) => void;
   onRechazar: (codigo: string, motivo: string, observacion: string) => void;
   onAprobar: () => void;
 }) {
-  const { app } = useApplication();
-  const [modal, setModal] = useState<"observar" | "rechazar" | null>(null);
+  const { app, cambiarOferta, anularCredito } = useApplication();
+  const [modal, setModal] = useState<"observar" | "rechazar" | "anular" | null>(null);
+  const [pantalla, setPantalla] = useState<string>("");
+  const [cambioAbierto, setCambioAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
@@ -90,12 +100,24 @@ export function AnalisisCredito({
   const o = app.oferta;
   const precancel = totalPrecancelaciones(o);
   const terceros = importeTerceros(o);
-  const docsCargados = app.postOferta.legajo.filter((d) => d.estado === "CARGADO").length;
+  const po = app.postOferta;
+  const docsObligatorios = configEfectiva(app.configuracion).documentos.filter(
+    (d) => d.obligatorio
+  );
+  const docsCargados = docsObligatorios.filter((d) => (po.legajo[d.tipoId]?.length ?? 0) > 0)
+    .length;
+  const tokenizadas = po.tarjetas.filter((t) => t.estado === "TOKENIZADA");
+  // Precargados que el vendedor corrigió en la carga post-oferta (Onboarding §3).
+  const rectificados = camposRectificados(app);
   const plan = evaluarPlan(app);
+  // Reglas no bloqueantes que no pasaron: no frenaron la solicitud y el analista las revisa
+  // al final (Motor §10).
+  const marcadas = app.riesgo.reglas.filter(reglaMarcada);
 
-  function abrir(tipo: "observar" | "rechazar") {
+  function abrir(tipo: "observar" | "rechazar" | "anular") {
     setMotivo("");
     setTexto("");
+    setPantalla("");
     setIntentado(false);
     setModal(tipo);
   }
@@ -104,8 +126,16 @@ export function AnalisisCredito({
 
   function confirmar() {
     setIntentado(true);
+    // Anular sólo necesita el detalle: no es una decisión de riesgo.
+    if (modal === "anular") {
+      if (!textoValido) return;
+      anularCredito(texto.trim());
+      setModal(null);
+      return;
+    }
     if (!motivo || !textoValido) return;
-    if (modal === "observar") onObservar(motivo, texto.trim());
+    if (modal === "observar")
+      onObservar(motivo, texto.trim(), (pantalla || null) as PantallaPostOfertaId | null);
     if (modal === "rechazar") {
       const m = MOTIVOS_RECHAZO.find((r) => r.codigo === motivo);
       onRechazar(motivo, m?.label ?? motivo, texto.trim());
@@ -131,6 +161,18 @@ export function AnalisisCredito({
         </Banner>
       )}
 
+      {marcadas.length > 0 && (
+        <Banner
+          tone="warning"
+          title={`${marcadas.length} regla${marcadas.length === 1 ? "" : "s"} no bloqueante${
+            marcadas.length === 1 ? "" : "s"
+          } para revisar`}
+        >
+          No pasaron pero no frenaron la solicitud: quedaron marcadas para tu revisión.{" "}
+          {marcadas.map((r) => `${r.codigo} · ${r.nombre}: ${r.valorEvaluado}`).join(" · ")}
+        </Banner>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         <SummaryCard
           title="Cliente"
@@ -151,23 +193,80 @@ export function AnalisisCredito({
           ]}
         />
         <SummaryCard
-          title="Motor de riesgo"
+          title="Reglas institucionales"
+          icon={<IconLandmark width={16} height={16} />}
+          rows={app.riesgo.institucionales.map((r) => ({
+            label: `${r.codigo} · ${r.nombre}`,
+            value:
+              r.resultado === "PASA"
+                ? "✓ Pasa"
+                : r.resultado === "NO_PASA"
+                  ? "✕ No pasa"
+                  : "Esperando datos",
+            tone:
+              r.resultado === "PASA"
+                ? ("success" as const)
+                : r.resultado === "NO_PASA"
+                  ? ("danger" as const)
+                  : ("muted" as const),
+          }))}
+        />
+        <SummaryCard
+          title={`Motor de riesgo · ${getMotor(app.riesgo.motorId).nombre}`}
           icon={<IconShieldCheck width={16} height={16} />}
           rows={[
             ...app.riesgo.reglas.map((r) => ({
-              label: `${r.codigo} · ${r.nombre}`,
-              value: r.resultado === "CUMPLE" ? "✓ Cumple" : "✕ No cumple",
-              tone: r.resultado === "CUMPLE" ? ("success" as const) : ("danger" as const),
+              label: `${r.codigo} · ${r.nombre}${r.bloqueante ? "" : " (no bloqueante)"}`,
+              value:
+                r.resultado === "PASA"
+                  ? "✓ Pasa"
+                  : reglaMarcada(r)
+                    ? "! Marcada · revisar"
+                    : "✕ No pasa",
+              tone:
+                r.resultado === "PASA"
+                  ? ("success" as const)
+                  : reglaMarcada(r)
+                    ? ("warning" as const)
+                    : ("danger" as const),
             })),
             {
               label: "Resultado",
-              value: app.riesgo.resultado ? RESULTADO_LABEL[app.riesgo.resultado] : "—",
+              value: app.riesgo.resultado
+                ? `${RESULTADO_LABEL[app.riesgo.resultado]}${
+                    marcadas.length > 0
+                      ? ` · ${marcadas.length} marcada${marcadas.length === 1 ? "" : "s"}`
+                      : ""
+                  }`
+                : "—",
               strong: true,
-              tone: "success" as const,
+              tone: marcadas.length > 0 ? ("warning" as const) : ("success" as const),
             },
             { label: "Evaluado", value: app.riesgo.fecha ?? "—" },
           ]}
         />
+        {app.riesgo.limites && (
+          <SummaryCard
+            title="Límites aplicados"
+            icon={<IconWallet width={16} height={16} />}
+            rows={[
+              ...app.riesgo.limites.limites.map((l) => ({
+                label: l.label,
+                value: formatARS(l.monto),
+                tone:
+                  l.id === app.riesgo.limites!.limiteAplicadoId
+                    ? ("brand" as const)
+                    : undefined,
+              })),
+              {
+                label: "Capital considerado",
+                value: formatARS(app.riesgo.limites.capitalConsiderado),
+                strong: true,
+              },
+              { label: "Cuota máxima", value: formatARS(app.riesgo.limites.cuotaMaxima) },
+            ]}
+          />
+        )}
         <SummaryCard
           title="Plan de cuotas"
           icon={<IconCalendar width={16} height={16} />}
@@ -252,37 +351,72 @@ export function AnalisisCredito({
           rows={[
             {
               label: "Legajo virtual",
-              value: `${docsCargados} de ${app.postOferta.legajo.length}`,
+              value: `${docsCargados} de ${docsObligatorios.length} obligatorios`,
             },
             {
-              label: "Tokenización",
-              value: app.postOferta.tokenizacion.tokenizada
-                ? app.postOferta.tokenizacion.token ?? "Tokenizada"
-                : "No tokenizada",
+              label: "Tarjetas tokenizadas",
+              value:
+                tokenizadas.length > 0
+                  ? tokenizadas.map((t) => `${t.marca} •••• ${t.ultimos4}`).join(" · ")
+                  : "Sin tarjetas",
             },
             {
               label: "Referencias",
-              value: `${app.postOferta.referencias.length} cargada${
-                app.postOferta.referencias.length === 1 ? "" : "s"
-              }`,
+              value: `${po.referencias.length} cargada${po.referencias.length === 1 ? "" : "s"}`,
             },
-            { label: "Garante", value: app.postOferta.garante.nombre || "—" },
-            { label: "Legajo impreso", value: app.postOferta.impresionGenerada ? "Sí" : "No" },
+            {
+              label: "Garantes",
+              value: po.garantes.map((g) => g.nombreCompleto).filter(Boolean).join(", ") || "—",
+            },
+            {
+              label: "Legajo",
+              value: po.impresion
+                ? `${po.impresion.accion === "IMPRESO" ? "Impreso" : "Visualizado"} · ${po.impresion.fecha}`
+                : "Sin imprimir",
+            },
           ]}
         />
+        {rectificados.length > 0 && (
+          <SummaryCard
+            title="Datos rectificados en el onboarding"
+            icon={<IconRefresh width={16} height={16} />}
+            rows={rectificados.map((r) => ({
+              label: r.campo.label,
+              value: `${r.original || "vacío"} → ${r.actual || "vacío"}`,
+              tone: "warning" as const,
+            }))}
+            footer={
+              <DemoTag
+                variant="regla"
+                detalle="Datos precargados del pedido inicial o de una API que el vendedor corrigió en la carga post-oferta. No modifican los datos con los que se evaluó el crédito."
+              />
+            }
+          />
+        )}
       </div>
 
       <Banner tone="info">
-        El motor de riesgo ya filtró la solicitud. El analista revisa el legajo virtual y decide:{" "}
-        <strong>Observar</strong> la devuelve al canal de venta, <strong>Rechazar</strong> es
-        definitivo y <strong>Aprobar</strong> la envía a la Bandeja de Liquidación.
+        El motor de riesgo ya filtró la solicitud. El analista controla los datos sensibles y
+        decide: <strong>Cambiar oferta</strong> corrige el capital, el plazo o los sueldos y la
+        devuelve al canal de venta; <strong>Observar</strong> la devuelve para corregir
+        documentación; <strong>Anular</strong> la cierra cuando el cliente desiste;{" "}
+        <strong>Rechazar</strong> es definitivo y <strong>Aprobar</strong> la envía a la Bandeja
+        de Liquidación.
       </Banner>
 
       <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Button variant="outline" onClick={() => setCambioAbierto(true)}>
+            <IconRefresh width={16} height={16} />
+            Cambiar oferta
+          </Button>
           <Button variant="outline" onClick={() => abrir("observar")}>
             <IconAlertTriangle width={16} height={16} />
             Observar
+          </Button>
+          <Button variant="ghost" onClick={() => abrir("anular")}>
+            <IconTrash width={16} height={16} />
+            Anular
           </Button>
           <div className="flex-1" />
           <Button variant="danger" onClick={() => abrir("rechazar")}>
@@ -296,18 +430,37 @@ export function AnalisisCredito({
         </div>
       </Card>
 
+      <CambiarOfertaModal
+        open={cambioAbierto}
+        onClose={() => setCambioAbierto(false)}
+        onConfirmar={(cambio) => {
+          setCambioAbierto(false);
+          cambiarOferta(cambio);
+        }}
+      />
+
       <Modal
         open={modal !== null}
         onClose={() => setModal(null)}
-        title={modal === "observar" ? "Observar la solicitud" : "Rechazar la solicitud"}
+        title={
+          modal === "observar"
+            ? "Observar la solicitud"
+            : modal === "anular"
+              ? "Anular la solicitud"
+              : "Rechazar la solicitud"
+        }
         maxWidth="max-w-md"
         footer={
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setModal(null)}>
               Cancelar
             </Button>
-            <Button variant={modal === "observar" ? "primary" : "danger"} onClick={confirmar}>
-              {modal === "observar" ? "Devolver al canal de venta" : "Confirmar rechazo"}
+            <Button variant={modal === "rechazar" ? "danger" : "primary"} onClick={confirmar}>
+              {modal === "observar"
+                ? "Devolver al canal de venta"
+                : modal === "anular"
+                  ? "Confirmar anulación"
+                  : "Confirmar rechazo"}
             </Button>
           </div>
         }
@@ -315,33 +468,64 @@ export function AnalisisCredito({
         <p className="text-sm text-ink-600">
           {modal === "observar"
             ? "La solicitud vuelve a la bandeja del vendedor en estado Observado, con tus notas. Tendrá 15 días para corregir y reenviar."
-            : "El rechazo es definitivo. Se registran el motivo codificado y la observación."}
+            : modal === "anular"
+              ? "Anular no es un rechazo de riesgo: se usa cuando el cliente desiste. La solicitud queda cerrada como Anulada."
+              : "El rechazo es definitivo. Se registran el motivo codificado y la observación."}
         </p>
-        <div className="mt-4">
-          <SelectField
-            id="motivo-analista"
-            label={modal === "observar" ? "Motivo" : "Motivo codificado"}
-            required
-            value={motivo}
-            onChange={setMotivo}
-            options={
-              modal === "observar"
-                ? MOTIVOS_OBSERVACION.map((m) => ({ value: m, label: m }))
-                : MOTIVOS_RECHAZO.map((m) => ({ value: m.codigo, label: `${m.codigo} · ${m.label}` }))
-            }
-            error={intentado && !motivo ? "Seleccioná un motivo." : undefined}
-          />
-        </div>
+        {modal !== "anular" && (
+          <div className="mt-4">
+            <SelectField
+              id="motivo-analista"
+              label={modal === "observar" ? "Motivo" : "Motivo codificado"}
+              required
+              value={motivo}
+              onChange={setMotivo}
+              options={
+                modal === "observar"
+                  ? MOTIVOS_OBSERVACION.map((m) => ({ value: m, label: m }))
+                  : MOTIVOS_RECHAZO.map((m) => ({
+                      value: m.codigo,
+                      label: `${m.codigo} · ${m.label}`,
+                    }))
+              }
+              error={intentado && !motivo ? "Seleccioná un motivo." : undefined}
+            />
+          </div>
+        )}
+        {modal === "observar" && (
+          <div className="mt-4">
+            <SelectField
+              id="pantalla-observada"
+              label="Pantalla a corregir"
+              value={pantalla}
+              onChange={setPantalla}
+              options={pantallasVisibles(app.configuracion).map((pv) => ({
+                value: pv.id,
+                label: pv.label,
+              }))}
+              placeholder="Sin indicar una pantalla"
+              hint="Se resalta en la carga del vendedor para que vaya derecho a corregirla."
+            />
+          </div>
+        )}
         <AreaTexto
           id="texto-analista"
-          label={modal === "observar" ? "Nota para el vendedor" : "Observación"}
+          label={
+            modal === "observar"
+              ? "Nota para el vendedor"
+              : modal === "anular"
+                ? "Motivo de la anulación"
+                : "Observación"
+          }
           value={texto}
           onChange={setTexto}
           invalido={intentado && !textoValido}
           placeholder={
             modal === "observar"
               ? "Ej.: El recibo de sueldo está cortado. Adjuntá una copia legible."
-              : "Ej.: El ingreso declarado no pudo verificarse con el empleador."
+              : modal === "anular"
+                ? "Ej.: El cliente desistió de la operación."
+                : "Ej.: El ingreso declarado no pudo verificarse con el empleador."
           }
           error="Ingresá al menos 5 caracteres para que el registro sea claro."
         />

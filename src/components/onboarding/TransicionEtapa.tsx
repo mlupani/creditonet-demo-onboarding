@@ -46,7 +46,7 @@ export function TransicionEtapa() {
             <h2 className="text-lg font-bold tracking-tight text-ink-900">Carga post-oferta</h2>
             <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-ink-500">
               Completá las pantallas que requiere el producto. Cuando todas las obligatorias estén
-              en verde, la solicitud se envía al analista de riesgo.
+              en verde, la solicitud queda preaprobada y pasa al analista de riesgo.
             </p>
           </div>
 

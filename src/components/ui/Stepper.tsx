@@ -3,22 +3,32 @@
 import type { WizardStepMeta } from "@/lib/types";
 import { IconCheck } from "@/components/icons";
 
+/**
+ * Stepper no destructivo (prompt de auditoría §6–§8).
+ *
+ * `maxAlcanzado` es el paso más avanzado de la sesión y nunca baja al volver atrás. Por eso
+ * un paso ya completado conserva su tilde aunque el usuario esté parado antes, y se puede
+ * saltar hacia adelante sin volver a recorrer el flujo: los datos siguen en memoria.
+ */
 export function Stepper({
   steps,
   current,
+  maxAlcanzado,
   onStepClick,
 }: {
   steps: WizardStepMeta[];
   current: number;
+  maxAlcanzado: number;
   onStepClick?: (numero: number) => void;
 }) {
   return (
     <ol className="flex items-center overflow-x-auto scroll-thin pb-1">
       {steps.map((step, index) => {
         const numero = index + 1;
-        const done = numero < current;
+        // Completado = se avanzó más allá de él en algún momento de la sesión.
+        const done = numero < maxAlcanzado && numero !== current;
         const active = numero === current;
-        const clickable = done && !!onStepClick;
+        const clickable = numero <= maxAlcanzado && !active && !!onStepClick;
         return (
           <li key={step.id} className="flex shrink-0 items-center">
             <button
@@ -56,7 +66,7 @@ export function Stepper({
             {index < steps.length - 1 && (
               <span
                 className={`mx-1 h-0.5 w-6 rounded-full transition-colors md:w-9 ${
-                  numero < current ? "bg-brand-500" : "bg-ink-200"
+                  numero < maxAlcanzado ? "bg-brand-500" : "bg-ink-200"
                 }`}
               />
             )}

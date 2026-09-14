@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { IconChevronDown } from "@/components/icons";
 import { ValidationMessage } from "./ValidationMessage";
 
@@ -8,10 +9,11 @@ interface SelectFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; disabled?: boolean }[];
   placeholder?: string;
   error?: string;
   hint?: string;
+  badge?: ReactNode;
   required?: boolean;
   disabled?: boolean;
   className?: string;
@@ -26,6 +28,7 @@ export function SelectField({
   placeholder = "Seleccioná una opción…",
   error,
   hint,
+  badge,
   required = false,
   disabled = false,
   className = "",
@@ -38,6 +41,7 @@ export function SelectField({
           {label}
           {required && <span className="ml-0.5 text-danger-500">*</span>}
         </label>
+        {badge}
       </div>
       <div className="relative">
         <select
@@ -56,7 +60,7 @@ export function SelectField({
         >
           <option value="">{placeholder}</option>
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option key={opt.value} value={opt.value} disabled={opt.disabled}>
               {opt.label}
             </option>
           ))}

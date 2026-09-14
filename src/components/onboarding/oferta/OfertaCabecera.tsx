@@ -2,6 +2,7 @@
 
 import { useApplication } from "@/lib/application-context";
 import { getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
+import { hayPrecancelacion } from "@/lib/credit";
 import { formatARS, formatDNI } from "@/lib/format";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { IconSparkles } from "@/components/icons";
@@ -37,7 +38,10 @@ export function OfertaCabecera() {
         </div>
       </div>
       <div className="bg-gradient-to-br from-brand-600 to-brand-800 px-5 py-6 text-center sm:py-7">
-        <p className="text-sm font-medium text-brand-100">Capital máximo otorgable</p>
+        <p className="text-sm font-medium text-brand-100">
+          {hayPrecancelacion(app.oferta) ? "Nueva oferta" : "Primera oferta"} · Capital máximo
+          otorgable
+        </p>
         <p
           key={app.oferta.capitalMaximoActual}
           className="mt-1.5 animate-pop text-4xl font-bold tracking-tight tabular-nums text-white sm:text-5xl"
@@ -47,7 +51,7 @@ export function OfertaCabecera() {
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-brand-50">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1">
             <IconSparkles width={13} height={13} />
-            Motor aprobado · plan de cuotas
+            Motor: pasa · plan de cuotas
           </span>
           <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
             {nombreOpcion(PRODUCTOS, app.configuracion.productoId)}

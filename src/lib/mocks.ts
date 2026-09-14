@@ -5,11 +5,20 @@ import type {
   CreditoActivo,
   LaboralIngresos,
   OrigenCampos,
+  PersonaVinculada,
   PostOferta,
+  SituacionesCliente,
   TipoCliente,
   WizardStepMeta,
 } from "./types";
-import { CAPITAL_MAXIMO_BASE, recalcularOferta } from "./credit";
+import {
+  CAPITAL_MAXIMO_BASE,
+  CAPITAL_MAXIMO_CON_PRECANCELACION,
+  recalcularOferta,
+} from "./credit";
+import { configEfectiva } from "./config";
+import { camposDe } from "./campos-post-oferta";
+import { onlyDigits } from "./format";
 
 // --- Datos que devuelve la consulta por DNI / CUIL (simula API pública + base interna) ---
 
@@ -18,8 +27,21 @@ export interface RespuestaConsultaCliente {
   origen: OrigenCampos;
   numeroCliente: string;
   tipoCliente: TipoCliente;
+  // Se traen con el DNI, antes de evaluar (reunión 11/09, 02:30).
+  situaciones: SituacionesCliente;
   // Cliente existente: datos laborales del último trámite, precargados y editables.
   laboral: LaboralIngresos;
+  // Base interna del cliente existente: precargan la carga post-oferta (Onboarding §4).
+  contacto: { caracteristica: string; numero: string; compania: string; email: string };
+  domicilio: {
+    calle: string;
+    numero: string;
+    piso: string;
+    departamento: string;
+    provincia: string;
+    localidad: string;
+    codigoPostal: string;
+  };
 }
 
 export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = {
@@ -43,7 +65,24 @@ export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = {
   },
   numeroCliente: "000928",
   tipoCliente: "EXISTENTE",
+  situaciones: { bcra: 1, interna: 1 },
+  contacto: {
+    caracteristica: "351",
+    numero: "6123344",
+    compania: "Claro",
+    email: "mariafernanda.gonzalez@gmail.com",
+  },
+  domicilio: {
+    calle: "Av. Rafael Núñez",
+    numero: "3245",
+    piso: "3",
+    departamento: "B",
+    provincia: "Córdoba",
+    localidad: "Córdoba",
+    codigoPostal: "5000",
+  },
   laboral: {
+    condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "12/03/2019",
     bancoCobro: "Banco Galicia",
     ingresoBruto: 1_250_000,
@@ -63,24 +102,61 @@ export const DATOS_API_PUBLICA: { campo: keyof ClienteDatos; label: string }[] =
 
 // --- Crédito propio vigente, elegible para renovación / precancelación ---
 
-function creditoActivoInicial(): CreditoActivo {
-  return {
-    id: "CR-000102",
-    capitalOriginal: 1_500_000,
-    capitalResidual: 850_000,
-    montoCancelacion: 1_000_000,
-    desglose: {
+function creditosActivosIniciales(): CreditoActivo[] {
+  return [
+    {
+      id: "CR-000102",
+      capitalOriginal: 1_500_000,
       capitalResidual: 850_000,
-      interesesAVencer: 100_000,
-      iva: 30_000,
-      cargosCancelacion: 20_000,
-      punitorios: 0,
+      montoCancelacion: 1_000_000,
+      desglose: {
+        capitalResidual: 850_000,
+        interesesAVencer: 100_000,
+        iva: 30_000,
+        cargosCancelacion: 20_000,
+        punitorios: 0,
+      },
+      cuotasOriginales: 24,
+      cuotasAbonadas: 13,
+      valorCuota: 108_700,
+      precancelar: false,
     },
-    cuotasOriginales: 24,
-    cuotasAbonadas: 13,
-    valorCuota: 108_700,
-    precancelar: false,
-  };
+    {
+      id: "CR-000077",
+      capitalOriginal: 900_000,
+      capitalResidual: 240_000,
+      montoCancelacion: 280_000,
+      desglose: {
+        capitalResidual: 240_000,
+        interesesAVencer: 28_000,
+        iva: 8_000,
+        cargosCancelacion: 4_000,
+        punitorios: 0,
+      },
+      cuotasOriginales: 18,
+      cuotasAbonadas: 15,
+      valorCuota: 62_400,
+      precancelar: false,
+    },
+    {
+      // Recién arrancado: no llega al mínimo de cuotas abonadas, así que no es elegible.
+      id: "CR-000149",
+      capitalOriginal: 700_000,
+      capitalResidual: 640_000,
+      montoCancelacion: 720_000,
+      desglose: {
+        capitalResidual: 640_000,
+        interesesAVencer: 58_000,
+        iva: 16_000,
+        cargosCancelacion: 6_000,
+        punitorios: 0,
+      },
+      cuotasOriginales: 12,
+      cuotasAbonadas: 2,
+      valorCuota: 74_500,
+      precancelar: false,
+    },
+  ];
 }
 
 // Valores que se proponen al activar la cancelación de deuda con terceros.
@@ -90,108 +166,140 @@ export const DEUDA_TERCEROS_DEMO = {
   cbu: "2850590940090418135201",
 };
 
-// --- Post-oferta: estado inicial con 3 ítems pendientes a propósito ---
+// --- Post-oferta ---
 
+// Vacía hasta que se comienza la carga: recién ahí se precarga (ver `precargarPostOferta`).
 function crearPostOfertaInicial(): PostOferta {
   return {
-    laboral: {
-      domicilioLaboral: "Bv. Los Andes 1250, Córdoba",
-      fechaIngresoLaboral: "12/03/2019",
-      razonSocial: "Sanatorio Modelo S.A.",
-      rubro: "Salud - Servicios sanatoriales",
-      provincia: "Córdoba",
-      telefonoLaboral: "351 422-8890",
-      numeroLegajo: "SM-4821",
-      bancoCobro: "Banco Galicia",
-      cbu: "0170299940000052135212",
-    },
-    personales: {
-      email: "mariafernanda.gonzalez@gmail.com",
-      domicilioReal: "Av. Rafael Núñez 3245, 3° B, Córdoba",
-      telefonoCelular: "", // PENDIENTE
-      nacionalidad: "Argentina",
-      estadoCivil: "Casada/o",
-      tipoVivienda: "Propietario",
-      hijosACargo: "2",
-      tarjetaCredito: "Sí",
-    },
-    tokenizacion: {
-      tipoTarjeta: "CREDITO",
-      numero: "",
-      vencimiento: "",
-      marca: "",
-      cvv: "",
-      tokenizada: false,
-      token: null,
-    },
+    precarga: {},
+    personales: {},
+    laboral: {},
+    tarjetas: [],
+    referencias: [],
+    garantes: [],
+    legajo: {},
+    impresion: null,
+  };
+}
+
+// Valores de demo para los campos a cargar, como si el vendedor ya hubiera avanzado. Quedan
+// 3 pendientes a propósito: DNI del cónyuge, email de la referencia y comprobante de servicio.
+const CARGA_DEMO: Record<string, string> = {
+  nacionalidad: "Argentina",
+  estadoCivil: "Casada/o",
+  tipoVivienda: "Propietario",
+  personasACargo: "2",
+  tieneConyuge: "Sí",
+  dniConyuge: "", // PENDIENTE
+  "domicilio.barrio": "Cerro de las Rosas",
+  cuitEmpleador: "30712345679",
+  razonSocial: "Sanatorio Modelo S.A.",
+  rubro: "Salud - Servicios sanatoriales",
+  numeroLegajo: "SM-4821",
+  cargo: "Enfermera profesional",
+  "domicilioLaboral.calle": "Bv. Los Andes",
+  "domicilioLaboral.numero": "1250",
+  "domicilioLaboral.barrio": "Alta Córdoba",
+  "domicilioLaboral.provincia": "Córdoba",
+  "domicilioLaboral.localidad": "Córdoba",
+  "domicilioLaboral.codigoPostal": "5000",
+  "telefonoLaboral.caracteristica": "351",
+  "telefonoLaboral.numero": "4228890",
+  "telefonoLaboral.interno": "112",
+  "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+  cbu: "0170299940000052135212",
+};
+
+/**
+ * Arma la carga post-oferta la primera vez que se comienza (Onboarding §3–§5).
+ *
+ * Precargados: la identificación sale del pedido inicial, el contacto y el domicilio de la base
+ * interna del cliente existente y el banco de los datos mínimos. Quedan guardados en
+ * `precarga` para poder mostrar después qué dato se rectificó.
+ */
+export function precargarPostOferta(app: CreditApplication): PostOferta {
+  const c = app.cliente;
+  const base = CONSULTA_CLIENTE_MOCK;
+  const precarga: Record<string, string> = {
+    nombreCompleto: c ? `${c.nombre} ${c.apellido}` : "",
+    dni: c?.dni ?? "",
+    cuit: onlyDigits(c?.cuil ?? ""),
+    fechaNacimiento: c?.fechaNacimiento ?? "",
+    genero: c?.genero ?? "",
+    "domicilio.calle": base.domicilio.calle,
+    "domicilio.numero": base.domicilio.numero,
+    "domicilio.piso": base.domicilio.piso,
+    "domicilio.departamento": base.domicilio.departamento,
+    "domicilio.provincia": base.domicilio.provincia,
+    "domicilio.localidad": base.domicilio.localidad,
+    "domicilio.codigoPostal": base.domicilio.codigoPostal,
+    "telefono.caracteristica": base.contacto.caracteristica,
+    "telefono.numero": base.contacto.numero,
+    companiaTelefonica: base.contacto.compania,
+    email: base.contacto.email,
+    banco: app.laboral.bancoCobro,
+  };
+  const valores = (pantalla: "personales" | "laboral") =>
+    Object.fromEntries(
+      camposDe(pantalla)
+        .filter((campo) => campo.origen !== "NO_MODIFICABLE")
+        .map((campo) => [campo.id, precarga[campo.id] ?? CARGA_DEMO[campo.id] ?? ""])
+    );
+
+  const cfg = configEfectiva(app.configuracion);
+  const legajo = Object.fromEntries(
+    cfg.documentos
+      .filter((d) => d.obligatorio && d.tipoId !== "comprobante-servicio") // PENDIENTE
+      .map((d) => [
+        d.tipoId,
+        [{ id: `${d.tipoId}-1`, nombre: `${d.tipoId.replace(/-/g, "_")}_1.jpg`, detalle: "1.1 MB · Hoy" }],
+      ])
+  );
+  const conGarantias = cfg.pantallas.some((p) => p.id === "garantias" && p.visible);
+  const garante: PersonaVinculada = {
+    id: "garante-1",
+    vinculo: "Cónyuge",
+    dni: "25984123",
+    nombreCompleto: "Roberto González",
+    domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
+    email: "roberto.gonzalez@gmail.com",
+    autocompletado: true,
+  };
+
+  return {
+    precarga,
+    personales: valores("personales"),
+    laboral: valores("laboral"),
+    tarjetas: [],
     referencias: [
       {
-        id: "ref-1",
-        nombre: "Carla Giménez",
-        telefono: "351 544-2210",
-        email: "", // PENDIENTE
+        id: "referencia-1",
+        vinculo: "Familiar directo",
+        dni: "30111222",
+        nombreCompleto: "Carla Giménez",
         domicilio: "Av. Colón 1450, Córdoba",
-        relacion: "Familiar directo",
+        email: "", // PENDIENTE
+        autocompletado: true,
       },
     ],
-    garante: {
-      nombre: "Roberto González",
-      dni: "25984123",
-      telefono: "351 555-8834",
-      datosLaborales: "Empleado público · 11 años de antigüedad",
-      ingresos: 1_400_000,
-      lugarTrabajo: "Municipalidad de Córdoba",
-    },
-    garanteDocs: [
-      {
-        id: "gar-recibo",
-        nombre: "Recibo de sueldo del garante",
-        estado: "CARGADO",
-        archivo: "recibo_garante_demo.pdf",
-        detalle: "312 KB · Hoy",
-      },
-      {
-        id: "gar-dni",
-        nombre: "DNI del garante",
-        estado: "CARGADO",
-        archivo: "dni_garante_demo.jpg",
-        detalle: "1.0 MB · Hoy",
-      },
-    ],
-    legajo: [
-      {
-        id: "dni-frente",
-        nombre: "DNI frente",
-        categoria: "Identidad",
-        estado: "CARGADO",
-        archivo: "dni_frente_demo.jpg",
-        detalle: "1.2 MB · Hoy",
-      },
-      {
-        id: "dni-dorso",
-        nombre: "DNI dorso",
-        categoria: "Identidad",
-        estado: "CARGADO",
-        archivo: "dni_dorso_demo.jpg",
-        detalle: "1.1 MB · Hoy",
-      },
-      {
-        id: "recibo-sueldo",
-        nombre: "Recibo de sueldo",
-        categoria: "Ingresos",
-        estado: "CARGADO",
-        archivo: "recibo_sueldo_demo.pdf",
-        detalle: "380 KB · Hoy",
-      },
-      {
-        id: "comprobante-servicio",
-        nombre: "Comprobante de servicio",
-        categoria: "Domicilio",
-        estado: "PENDIENTE", // PENDIENTE
-      },
-    ],
-    impresionGenerada: false,
+    garantes: conGarantias ? [garante] : [],
+    legajo,
+    impresion: null,
   };
+}
+
+// API simulada de consulta por DNI para referencias y garantes (Onboarding §7): cualquier
+// DNI válido devuelve una persona de prueba.
+const PERSONAS_API = [
+  { nombreCompleto: "Lucía Fernández", domicilio: "Obispo Trejo 520, Córdoba" },
+  { nombreCompleto: "Martín Sosa", domicilio: "Av. Vélez Sarsfield 1820, Córdoba" },
+  { nombreCompleto: "Valeria Paz", domicilio: "Duarte Quirós 910, Córdoba" },
+  { nombreCompleto: "Diego Romero", domicilio: "Av. Hipólito Yrigoyen 355, Córdoba" },
+];
+
+export function consultarPersonaMock(dni: string) {
+  const ultimo = Number(onlyDigits(dni).slice(-1) || "0");
+  return PERSONAS_API[ultimo % PERSONAS_API.length];
 }
 
 // --- Estado inicial de la aplicación ---
@@ -202,17 +310,20 @@ export function crearAplicacionInicial(): CreditApplication {
     numeroCliente: null,
     estado: "BORRADOR",
     etapa: "ORIGINACION",
+    tipoPersona: "FISICA",
     identificacion: { documento: "", consultado: false, tipoCliente: null },
     cliente: null,
+    situaciones: null,
     origenCampos: {},
     identidadVerificada: false,
     configuracion: {
       productoId: "prestamo-personal",
       organismoId: "empleados-salud",
-      canalId: "venta-directa",
+      canalId: "sucursal",
       vendedorId: "juan-perez",
     },
     laboral: {
+      condicionLaboral: "",
       fechaInicioLaboral: "",
       bancoCobro: "",
       ingresoBruto: 0,
@@ -221,13 +332,19 @@ export function crearAplicacionInicial(): CreditApplication {
     },
     riesgo: {
       estado: "PENDIENTE",
+      motorId: null,
+      escenario: "PASA",
       reglas: [],
+      institucionales: [],
       resultado: null,
+      planId: null,
+      limites: null,
       evaluadoCon: null,
       fecha: null,
     },
     oferta: recalcularOferta({
       capitalMaximoBase: CAPITAL_MAXIMO_BASE,
+      capitalMaximoRenovacion: CAPITAL_MAXIMO_CON_PRECANCELACION,
       capitalMaximoActual: CAPITAL_MAXIMO_BASE,
       montoSolicitado: CAPITAL_MAXIMO_BASE,
       plazo: 12,
@@ -235,7 +352,7 @@ export function crearAplicacionInicial(): CreditApplication {
       valorCuota: 0,
       totalAPagar: 0,
       primeraCuotaVencimiento: "10/10/2026",
-      creditosActivos: [creditoActivoInicial()],
+      creditosActivos: creditosActivosIniciales(),
       deudaTerceros: { habilitado: false, entidad: "", importe: 0, cbu: "" },
       aceptada: false,
     }),
@@ -244,6 +361,7 @@ export function crearAplicacionInicial(): CreditApplication {
     analista: { tomado: false, observacion: null, reenviada: false },
     rechazo: null,
     fechaSolicitud: null,
+    fechaPreaprobacion: null,
     fechaEnvioAnalisis: null,
     fechaAprobacion: null,
   };
@@ -251,34 +369,57 @@ export function crearAplicacionInicial(): CreditApplication {
 
 // --- Pasos de la etapa pre-oferta (Guía §3–§5) ---
 
+// Orden del flujo según Arquitectura v3 §2 y Onboarding v4 §2 (14/09/2026):
+// Canal → Tipo de persona → Identificación → Producto + Organismo → Datos mínimos →
+// Reglas institucionales + Motor + Límites + Plan → Primera oferta.
 export const STEPS_ORIGINACION: WizardStepMeta[] = [
   {
-    id: "identificacion",
+    id: "inicio",
     numero: 1,
+    titulo: "Inicio",
+    tituloPantalla: "Canal y tipo de persona",
+    descripcion:
+      "Por dónde llega la solicitud y quién la pide. El vendedor se toma automáticamente de la sesión.",
+  },
+  {
+    id: "identificacion",
+    numero: 2,
     titulo: "Identificación",
     tituloPantalla: "Identificación del cliente",
-    descripcion: "Ingresá el DNI o CUIL. Los datos se autocompletan desde fuentes externas.",
+    descripcion:
+      "Ingresá el DNI o el CUIT. El sistema determina si es un cliente nuevo o existente, autocompleta los datos y evalúa las reglas institucionales que ya tienen sus datos.",
+  },
+  {
+    id: "producto-organismo",
+    numero: 3,
+    titulo: "Producto y organismo",
+    tituloPantalla: "Producto y organismo",
+    descripcion:
+      "El producto define la configuración general y el organismo la particulariza. El canal limita qué productos se pueden ofrecer.",
   },
   {
     id: "datos-minimos",
-    numero: 2,
-    titulo: "Producto y datos mínimos",
-    tituloPantalla: "Selección comercial y datos mínimos",
-    descripcion: "Producto, organismo y los datos laborales y financieros que requiere el producto.",
+    numero: 4,
+    titulo: "Datos mínimos",
+    tituloPantalla: "Datos mínimos para evaluar",
+    descripcion:
+      "Sólo los datos que las reglas y el motor necesitan para evaluar. El resto del legajo se carga después de la oferta.",
   },
   {
-    id: "solicitar",
-    numero: 3,
-    titulo: "Solicitar",
-    tituloPantalla: "Solicitar y evaluar",
-    descripcion: "Se genera el ID de Crédito. El motor de riesgo filtra y el plan de cuotas calcula la oferta.",
+    id: "evaluacion",
+    numero: 5,
+    titulo: "Evaluación",
+    tituloPantalla: "Reglas, motor, límites y plan",
+    descripcion:
+      "Se genera el ID de Crédito. Se evalúan las reglas institucionales, el motor decide si pasa, se determinan los límites y el plan calcula la primera oferta.",
   },
   {
     id: "oferta",
-    numero: 4,
+    numero: 6,
     titulo: "Oferta",
     tituloPantalla: "Oferta de crédito",
-    descripcion: "Ajustá el importe, el plazo, las renovaciones y las cancelaciones antes de continuar.",
+    descripcion:
+      "Primera oferta. Si el cliente precancela créditos se recalcula una nueva oferta antes de aceptarla.",
   },
 ];
 

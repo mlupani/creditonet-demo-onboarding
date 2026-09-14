@@ -1,14 +1,26 @@
 "use client";
 
-import type { RiskRule as RiskRuleType } from "@/lib/types";
+import type { ReglaInstitucional, RiskRule as RiskRuleType } from "@/lib/types";
 import { OUTCOME_LABEL } from "@/lib/credit";
-import { IconAlertTriangle, IconCheck, IconX } from "@/components/icons";
+import { reglaMarcada } from "@/lib/motores";
+import { IconAlertTriangle, IconCheck, IconClock, IconX } from "@/components/icons";
 import { StatusBadge } from "./ui/StatusBadge";
 
-export function RiskRule({ rule, index }: { rule: RiskRuleType; index: number }) {
-  const cumple = rule.resultado === "CUMPLE";
-  const advertencia = rule.resultado === "ADVERTENCIA";
-  const tone = cumple ? "success" : advertencia ? "warning" : "danger";
+// Una regla del motor o una regla institucional. Cada una indica si es bloqueante; una no
+// bloqueante que no pasa se muestra marcada para el analista (Motor §4).
+export function RiskRule({
+  rule,
+  index,
+  momento,
+}: {
+  rule: RiskRuleType | ReglaInstitucional;
+  index: number;
+  momento?: string;
+}) {
+  const pasa = rule.resultado === "PASA";
+  const esperando = rule.resultado === "ESPERANDO_DATOS";
+  const marcada = reglaMarcada(rule);
+  const tone = pasa ? "success" : esperando ? "neutral" : marcada ? "warning" : "danger";
 
   return (
     <li
@@ -18,16 +30,20 @@ export function RiskRule({ rule, index }: { rule: RiskRuleType; index: number })
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
-            cumple
+            pasa
               ? "border-success-200 bg-success-50 text-success-600"
-              : advertencia
-                ? "border-warning-200 bg-warning-50 text-warning-600"
-                : "border-danger-200 bg-danger-50 text-danger-600"
+              : esperando
+                ? "border-ink-200 bg-ink-50 text-ink-400"
+                : marcada
+                  ? "border-warning-200 bg-warning-50 text-warning-600"
+                  : "border-danger-200 bg-danger-50 text-danger-600"
           }`}
         >
-          {cumple ? (
+          {pasa ? (
             <IconCheck width={17} height={17} strokeWidth={2.5} />
-          ) : advertencia ? (
+          ) : esperando ? (
+            <IconClock width={17} height={17} />
+          ) : marcada ? (
             <IconAlertTriangle width={17} height={17} />
           ) : (
             <IconX width={17} height={17} strokeWidth={2.5} />
@@ -40,13 +56,26 @@ export function RiskRule({ rule, index }: { rule: RiskRuleType; index: number })
                 {rule.codigo}
               </span>
               {rule.nombre}
+              <span className="rounded-full border border-ink-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-400">
+                {rule.fuente}
+              </span>
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                  rule.bloqueante
+                    ? "bg-ink-900 text-white"
+                    : "border border-warning-300 bg-warning-50 text-warning-700"
+                }`}
+              >
+                {rule.bloqueante ? "Bloqueante" : "No bloqueante"}
+              </span>
             </p>
             <StatusBadge tone={tone}>
-              {cumple ? "✓ " : ""}
-              {OUTCOME_LABEL[rule.resultado]}
+              {pasa ? "✓ " : ""}
+              {marcada ? "No pasa · marcada para el analista" : OUTCOME_LABEL[rule.resultado]}
             </StatusBadge>
           </div>
           <p className="mt-0.5 text-xs text-ink-500">{rule.detalle}</p>
+          {momento && <p className="mt-0.5 text-[11px] text-ink-400">{momento}</p>}
           <div className="mt-2.5 grid grid-cols-2 gap-2 sm:gap-4">
             <div className="rounded-lg bg-ink-50 px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">

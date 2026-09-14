@@ -1,122 +1,64 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { BANCOS, PROVINCIAS, RUBROS, validarLaboralPost } from "@/lib/validation";
-import type { DatosLaboralesPost } from "@/lib/types";
+import { configEfectiva } from "@/lib/config";
+import { erroresPantalla } from "@/lib/campos-post-oferta";
 import { Banner } from "@/components/ui/Banner";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { FormField } from "@/components/ui/FormField";
-import { SelectField } from "@/components/ui/SelectField";
-import { YaInformadoBadge } from "@/components/ui/OrigenBadge";
-import { IconBriefcase } from "@/components/icons";
+import { DemoTag } from "@/components/ui/DemoTag";
+import { IconBriefcase, IconClock, IconLandmark, IconMapPin } from "@/components/icons";
+import { LeyendaOrigen, SeccionCampos } from "./SeccionCampos";
 
+// Pantalla 2 · Datos laborales (Onboarding §5): empleo actual. La fecha de ingreso y la
+// situación laboral vienen del pedido inicial y no se modifican porque dispararon la oferta.
 export function PantallaLaboral() {
-  const { app, patchLaboralPost } = useApplication();
-  const l = app.postOferta.laboral;
-  const err = validarLaboralPost(l);
-  const set =
-    (campo: keyof DatosLaboralesPost) =>
-    (valor: string) =>
-      patchLaboralPost({ [campo]: valor });
+  const { app } = useApplication();
+  const errores = erroresPantalla(
+    app,
+    "laboral",
+    configEfectiva(app.configuracion).camposObligatorios
+  );
 
   return (
     <div className="space-y-5">
-      <Card>
-        <CardHeader
-          title="Datos laborales"
-          description="Datos del empleador y de la acreditación. Se completan con la información de la etapa 1."
-          icon={<IconBriefcase width={18} height={18} />}
-        />
-        <div className="grid gap-x-5 gap-y-1 p-5 sm:grid-cols-2 sm:p-6">
-          <FormField
-            id="pl-domicilio"
-            label="Domicilio laboral"
-            required
-            badge={<YaInformadoBadge />}
-            value={l.domicilioLaboral}
-            onChange={set("domicilioLaboral")}
-            error={err.domicilioLaboral}
+      <LeyendaOrigen />
+      <SeccionCampos
+        pantalla="laboral"
+        seccion="empleador"
+        icon={<IconBriefcase width={18} height={18} />}
+        action={
+          <DemoTag
+            variant="config"
+            detalle="La obligatoriedad de cada campo se configura por producto, con excepciones del organismo. Ej.: la repartición es obligatoria para Policía de la Provincia."
           />
-          <FormField
-            id="pl-fecha"
-            label="Fecha de ingreso laboral"
-            required
-            badge={<YaInformadoBadge />}
-            value={l.fechaIngresoLaboral}
-            onChange={set("fechaIngresoLaboral")}
-            error={err.fechaIngresoLaboral}
-            hint="dd/mm/aaaa"
+        }
+      />
+      <SeccionCampos
+        pantalla="laboral"
+        seccion="domicilioLaboral"
+        icon={<IconMapPin width={18} height={18} />}
+      />
+      <SeccionCampos
+        pantalla="laboral"
+        seccion="telefonoLaboral"
+        icon={<IconClock width={18} height={18} />}
+      />
+      <SeccionCampos
+        pantalla="laboral"
+        seccion="acreditacion"
+        icon={<IconLandmark width={18} height={18} />}
+        action={
+          <DemoTag
+            variant="regla"
+            detalle="No figura en el detalle de pantallas de onboarding. Se mantiene porque la liquidación transfiere el neto a esta cuenta."
           />
-          <FormField
-            id="pl-razon"
-            label="Razón social del empleador"
-            required
-            badge={<YaInformadoBadge />}
-            value={l.razonSocial}
-            onChange={set("razonSocial")}
-            error={err.razonSocial}
-          />
-          <SelectField
-            id="pl-rubro"
-            label="Rubro / actividad"
-            required
-            value={l.rubro}
-            onChange={set("rubro")}
-            options={RUBROS.map((r) => ({ value: r, label: r }))}
-            error={err.rubro}
-          />
-          <SelectField
-            id="pl-provincia"
-            label="Provincia"
-            required
-            value={l.provincia}
-            onChange={set("provincia")}
-            options={PROVINCIAS.map((p) => ({ value: p, label: p }))}
-            error={err.provincia}
-          />
-          <FormField
-            id="pl-tel"
-            label="Teléfono laboral"
-            required
-            badge={<YaInformadoBadge />}
-            value={l.telefonoLaboral}
-            onChange={set("telefonoLaboral")}
-            inputMode="tel"
-            error={err.telefonoLaboral}
-          />
-          <FormField
-            id="pl-legajo"
-            label="Número de legajo"
-            required
-            value={l.numeroLegajo}
-            onChange={set("numeroLegajo")}
-            error={err.numeroLegajo}
-          />
-          <SelectField
-            id="pl-banco"
-            label="Banco donde cobra"
-            required
-            value={l.bancoCobro}
-            onChange={set("bancoCobro")}
-            options={BANCOS.map((b) => ({ value: b, label: b }))}
-            error={err.bancoCobro}
-          />
-          <FormField
-            id="pl-cbu"
-            label="CBU"
-            required
-            badge={<YaInformadoBadge />}
-            value={l.cbu}
-            onChange={(v) => patchLaboralPost({ cbu: v.replace(/\D/g, "").slice(0, 22) })}
-            inputMode="numeric"
-            error={err.cbu}
-            className="sm:col-span-2"
-          />
-        </div>
-      </Card>
-
-      {Object.keys(err).length === 0 && (
+        }
+      />
+      {errores.length === 0 ? (
         <Banner tone="success">Datos laborales completos.</Banner>
+      ) : (
+        <Banner tone="info">
+          Falta completar o corregir: {errores.map((e) => e.campo.label).join(", ")}.
+        </Banner>
       )}
     </div>
   );

@@ -74,14 +74,16 @@ export function ConfirmarOfertaModal({
             Volver a modificar
           </Button>
           <Button variant="success" onClick={onConfirm} autoFocus>
-            Confirmar oferta
+            Aceptar oferta
           </Button>
         </div>
       }
     >
       <p className="text-sm text-ink-600">
-        Al confirmar, el cliente acepta la oferta y comienza la carga post-oferta. Las condiciones
-        cotizadas se conservan por 30 días.
+        Al confirmar, el cliente acepta la oferta y arranca la carga post-oferta. La solicitud
+        sigue <strong>En trámite</strong>: queda <strong>preaprobada</strong> recién cuando el
+        vendedor termina la carga, y eso la envía al analista. Las condiciones cotizadas se
+        conservan por 30 días.
       </p>
       <dl className="mt-4 divide-y divide-ink-100 rounded-xl border border-ink-200 bg-ink-25">
         {rows.map((row) => (

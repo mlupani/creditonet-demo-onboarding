@@ -10,6 +10,8 @@ export interface PasoLibre {
   label: string;
   obligatoria: boolean;
   estado: EstadoVisualPantalla;
+  // El analista observó justamente esta pantalla: se resalta para ir derecho a ella.
+  observada?: boolean;
 }
 
 const CIRCULO: Record<EstadoVisualPantalla, string> = {
@@ -58,7 +60,9 @@ export function StepperLibre({
                 className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${
                   activa
                     ? "border-brand-400 bg-white shadow-card ring-2 ring-brand-100"
-                    : "border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50"
+                    : paso.observada
+                      ? "border-warning-400 bg-warning-50 hover:bg-warning-50"
+                      : "border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50"
                 }`}
               >
                 <span
@@ -80,8 +84,14 @@ export function StepperLibre({
                   >
                     {paso.label}
                   </span>
-                  <span className="block text-[10px] font-medium text-ink-400">
-                    {DETALLE[paso.estado]} · {paso.obligatoria ? "Obligatoria" : "Opcional"}
+                  <span
+                    className={`block text-[10px] font-medium ${
+                      paso.observada ? "text-warning-700" : "text-ink-400"
+                    }`}
+                  >
+                    {paso.observada
+                      ? "A corregir"
+                      : `${DETALLE[paso.estado]} · ${paso.obligatoria ? "Obligatoria" : "Opcional"}`}
                   </span>
                 </span>
               </button>

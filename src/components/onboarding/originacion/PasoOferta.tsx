@@ -13,9 +13,10 @@ import { validarDeudaTerceros } from "@/lib/validation";
 import { formatARS } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { DemoTag } from "@/components/ui/DemoTag";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
-import { IconArrowLeft, IconArrowRight } from "@/components/icons";
+import { IconArrowLeft, IconArrowRight, IconRefresh } from "@/components/icons";
 
 import { OfertaCabecera } from "../oferta/OfertaCabecera";
 import { MontoSolicitado } from "../oferta/MontoSolicitado";
@@ -31,8 +32,18 @@ export function PasoOferta() {
   const o = app.oferta;
   const [modal, setModal] = useState(false);
   const [borrador, setBorrador] = useState(o.montoSolicitado);
+  // El importe también cambia desde afuera (una cancelación rearma la oferta): el borrador
+  // lo acompaña para no quedar mostrando un monto viejo ni bloquear la aceptación.
+  const [montoPrevio, setMontoPrevio] = useState(o.montoSolicitado);
+  if (o.montoSolicitado !== montoPrevio) {
+    setMontoPrevio(o.montoSolicitado);
+    setBorrador(o.montoSolicitado);
+  }
   const [recalculado, setRecalculado] = useState(false);
   const [reevaluandoId, setReevaluandoId] = useState<string | null>(null);
+  // Cambiar la renovación invalida la combinación elegida: hay que volver a seleccionar
+  // el plazo contra la oferta nueva (reunión 11/09, 43:06-45:21).
+  const [plazoPendiente, setPlazoPendiente] = useState(false);
   const timer = useRef<number | null>(null);
 
   useEffect(
@@ -48,20 +59,23 @@ export function PasoOferta() {
     setRecalculado(true);
   }
 
-  // Cambiar los créditos a renovar es un disparador dinámico del motor (Guía §4.2).
+  // Precancelar sobre la primera oferta modifica el monto y recalcula la oferta (Plan §9).
   function toggleRenovacion(id: string) {
     setReevaluandoId(id);
     timer.current = window.setTimeout(() => {
       togglePrecancelar(id);
       setReevaluandoId(null);
+      setPlazoPendiente(true);
     }, 1100);
   }
 
   const pendienteRecalculo = borrador !== o.montoSolicitado;
   const errTerceros = validarDeudaTerceros(o.deudaTerceros);
   const razon = reevaluandoId
-    ? "Esperá a que termine la reevaluación del motor de riesgo."
-    : pendienteRecalculo
+    ? "Esperá a que termine el recálculo de la oferta."
+    : plazoPendiente
+      ? "Cambiaron las condiciones: volvé a elegir el plazo sobre la oferta actualizada."
+      : pendienteRecalculo
       ? borrador > o.capitalMaximoActual
         ? `El importe supera el capital máximo de ${formatARS(o.capitalMaximoActual)}.`
         : "Presioná Recalcular para aplicar el nuevo importe."
@@ -92,7 +106,23 @@ export function PasoOferta() {
           onRecalcular={recalcular}
           recalculado={recalculado}
         />
-        <TablaCuotas />
+        <TablaCuotas
+          pendiente={plazoPendiente}
+          onSeleccion={() => setPlazoPendiente(false)}
+        />
+        <div className="pt-2">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-600">
+            <IconRefresh width={12} height={12} />
+            Opcional · sobre la primera oferta
+          </p>
+          <h2 className="mt-0.5 text-base font-bold tracking-tight text-ink-900">
+            ¿Desea precancelar créditos?
+          </h2>
+          <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-ink-500">
+            Si el cliente cancela créditos propios o deudas con terceros se modifica el monto y se
+            recalcula una nueva oferta, que vuelve a respetar todos los límites.
+          </p>
+        </div>
         <CreditosActivos reevaluandoId={reevaluandoId} onToggle={toggleRenovacion} />
         <DeudaTerceros />
         <SeleccionFinal />
@@ -117,10 +147,17 @@ export function PasoOferta() {
               onClick={() => setModal(true)}
               className="sm:w-auto"
             >
-              Continuar
+              Aceptar oferta
               <IconArrowRight width={16} height={16} />
             </Button>
           </div>
+          <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-3 text-[11px] text-ink-400">
+            Al aceptar se confirma la oferta y se habilita la carga post-oferta.
+            <DemoTag
+              variant="regla"
+              detalle="El orden exacto entre la confirmación de la oferta, la precancelación y las 7 pantallas post-oferta está pendiente de confirmación funcional (Arquitectura §16). La demo ofrece la precancelación antes de confirmar."
+            />
+          </p>
         </Card>
       </div>
 

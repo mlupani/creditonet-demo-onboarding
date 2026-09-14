@@ -56,7 +56,8 @@ const ACCIONES: Accion[] = [
 
 export default function BandejaCanalVentaPage() {
   const router = useRouter();
-  const { app, paso, hidratado, reiniciarDemo, retomarObservada } = useApplication();
+  const { app, paso, hidratado, reiniciarDemo, retomarObservada, anularCredito } =
+    useApplication();
   const [busqueda, setBusqueda] = useState("");
   const [modal, setModal] = useState<"descartar" | "nueva" | null>(null);
 
@@ -91,7 +92,7 @@ export default function BandejaCanalVentaPage() {
 
   if (app.estado === "BORRADOR" || app.estado === "EN_TRAMITE") {
     if (app.etapa === "ORIGINACION") {
-      detalle = `Pre-oferta · paso ${pasoMeta.numero} de ${STEPS_ORIGINACION.length}: ${pasoMeta.titulo}`;
+      detalle = `Originación · paso ${pasoMeta.numero} de ${STEPS_ORIGINACION.length}: ${pasoMeta.titulo}`;
     } else {
       const estados = estadoPantallasPostOferta(app);
       detalle = `Carga post-oferta · ${estados.filter((e) => e.completa).length} de ${
@@ -106,23 +107,31 @@ export default function BandejaCanalVentaPage() {
     detalle = obs ? `${obs.motivo}: ${obs.nota}` : "Observada por el analista";
     if (obs) vencimiento = `Corregir antes del ${sumarDias(obs.fecha, 15)}`;
     accion = { label: "Corregir y reenviar", onClick: irASolicitud };
-  } else if (app.estado === "EN_ANALISIS" || app.estado === "ANALISIS_TOMADO") {
+  } else if (app.estado === "PREAPROBADO" || app.estado === "ANALISIS_TOMADO") {
     detalle = app.analista.reenviada
       ? "Reenviada con correcciones · en la bandeja del analista"
-      : "En la bandeja del analista de riesgo";
+      : "Preaprobada · en la bandeja del analista de riesgo";
     accion = { label: "Ver estado", onClick: () => router.push("/onboarding") };
+  } else if (app.estado === "ANULADO") {
+    const obs = app.analista.observacion;
+    detalle = obs?.nota ? `Anulada · ${obs.nota}` : "Anulada: el cliente desistió de la operación.";
+    accion = { label: "Nueva solicitud", onClick: () => setModal("nueva") };
   } else if (app.estado === "PARA_LIQUIDAR") {
     detalle = "Aprobada · en la Bandeja de Liquidación (Tesorería)";
     accion = { label: "Ver", onClick: () => router.push("/analisis") };
   } else if (app.estado === "RECHAZADO" && app.rechazo) {
-    const motor = app.rechazo.origen === "MOTOR";
-    detalle = motor
-      ? `Rechazo automático del motor · ${app.rechazo.codigos.join(", ")}`
-      : `Rechazo del analista · ${app.rechazo.codigos.join(", ")} ${app.rechazo.motivo}`;
-    if (motor) vencimiento = `Carencia hasta ${sumarDias(app.rechazo.fecha, 30)}`;
+    const { origen, codigos, motivo, fecha } = app.rechazo;
+    const detalleRechazo: Record<typeof origen, string> = {
+      INSTITUCIONAL: `Rechazo por regla institucional · ${codigos.join(", ")}`,
+      MOTOR: `Rechazo automático del motor · ${codigos.join(", ")}`,
+      SIN_LINEA: `Sin línea disponible · ${codigos.join(", ")}`,
+      ANALISTA: `Rechazo del analista · ${codigos.join(", ")} ${motivo}`,
+    };
+    detalle = detalleRechazo[origen];
+    if (origen === "MOTOR") vencimiento = `Carencia hasta ${sumarDias(fecha, 30)}`;
     accion = {
       label: "Ver",
-      onClick: () => router.push(motor ? "/onboarding" : "/analisis"),
+      onClick: () => router.push(origen === "ANALISTA" ? "/analisis" : "/onboarding"),
     };
   }
 
@@ -278,9 +287,9 @@ export default function BandejaCanalVentaPage() {
                     {accion.label}
                   </Button>
                 )}
-                {enCurso && app.estado !== "OBSERVADO" && (
+                {enCurso && (
                   <Button size="sm" variant="ghost" onClick={() => setModal("descartar")}>
-                    Descartar
+                    Anular
                   </Button>
                 )}
               </div>
@@ -306,11 +315,11 @@ export default function BandejaCanalVentaPage() {
 
       <ConfirmationModal
         open={modal !== null}
-        title={modal === "nueva" ? "¿Iniciar una nueva solicitud?" : "¿Descartar la solicitud?"}
+        title={modal === "nueva" ? "¿Iniciar una nueva solicitud?" : "¿Anular la solicitud?"}
         descripcion={
           modal === "nueva"
             ? "La demo maneja una solicitud por vez: la actual se reemplaza y la demo se reinicia."
-            : "Se perderán los datos cargados hasta el momento. Esta acción no se puede deshacer."
+            : "Se usa cuando el cliente desiste. La solicitud queda cerrada como Anulada, que no es lo mismo que un rechazo de riesgo."
         }
         rows={[
           {
@@ -319,14 +328,14 @@ export default function BandejaCanalVentaPage() {
           },
           { label: "Estado", value: <EstadoBadge estado={app.estado} /> },
         ]}
-        confirmLabel={modal === "nueva" ? "Iniciar nueva solicitud" : "Descartar solicitud"}
+        confirmLabel={modal === "nueva" ? "Iniciar nueva solicitud" : "Anular solicitud"}
         cancelLabel="Volver"
         tone="danger"
         onConfirm={() => {
           const eraNueva = modal === "nueva";
           setModal(null);
           if (eraNueva) nuevaSolicitud();
-          else reiniciarDemo();
+          else anularCredito("Anulada por el canal de venta: el cliente desistió.");
         }}
         onCancel={() => setModal(null)}
       />
