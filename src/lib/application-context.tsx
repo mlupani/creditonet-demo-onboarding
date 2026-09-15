@@ -44,7 +44,7 @@ import { institucionalesBloquean } from "./reglas-institucionales";
 import { aplicarCambioCampo, type PantallaConCampos } from "./campos-post-oferta";
 import { fechaHoy, onlyDigits, selloTiempo } from "./format";
 
-const STORAGE_KEY = "creditonet.demo.v11";
+const STORAGE_KEY = "creditonet.demo.v12";
 
 // Referencias y garantes comparten estructura (Onboarding §7–§8).
 function conPersonas(

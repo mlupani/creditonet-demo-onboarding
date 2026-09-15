@@ -52,6 +52,10 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
         };
       return { ok: true, razon: null };
     case 2:
+      return productoHabilitadoEnCanal(app.configuracion.productoId, app.configuracion.canalId)
+        ? { ok: true, razon: null }
+        : { ok: false, razon: "El producto elegido no se ofrece en el canal de la solicitud." };
+    case 3:
       if (!app.identificacion.consultado || !app.cliente)
         return { ok: false, razon: "Consultá el DNI o CUIL del cliente para identificarlo." };
       if (institucionalesBloquean(evaluarInstitucionales(app, "IDENTIFICACION")))
@@ -65,11 +69,12 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
           razon:
             "Verificá la identidad comparando la foto archivada con la persona presente.",
         };
+      if (!app.laboral.condicionLaboral.trim())
+        return {
+          ok: false,
+          razon: "Seleccioná la condición laboral del cliente para poder continuar.",
+        };
       return { ok: true, razon: null };
-    case 3:
-      return productoHabilitadoEnCanal(app.configuracion.productoId, app.configuracion.canalId)
-        ? { ok: true, razon: null }
-        : { ok: false, razon: "El producto elegido no se ofrece en el canal de la solicitud." };
     case 4:
       return laboralCompleto(app.laboral)
         ? { ok: true, razon: null }
@@ -178,8 +183,8 @@ export function OriginacionWizard() {
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div key={meta.id} className="animate-fade-up">
             {pasoActual === 1 && <PasoInicio />}
-            {pasoActual === 2 && <PasoIdentificacion />}
-            {pasoActual === 3 && <PasoConfiguracion />}
+            {pasoActual === 2 && <PasoConfiguracion />}
+            {pasoActual === 3 && <PasoIdentificacion />}
             {pasoActual === 4 && <PasoLaboralIngresos />}
             {pasoActual === 5 && <PasoEvaluacion />}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import {
   CANALES,
@@ -11,6 +12,8 @@ import {
 } from "@/lib/config";
 import type { TipoPersona } from "@/lib/types";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { SelectField } from "@/components/ui/SelectField";
 import {
   IconBuilding,
   IconCheck,
@@ -23,6 +26,16 @@ import {
 } from "@/components/icons";
 
 type Icono = (props: { width?: number; height?: number }) => React.ReactNode;
+
+function inicialesDe(nombre: string): string {
+  return nombre
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+}
 
 const ICONO_CANAL: Record<string, Icono> = {
   sucursal: IconBuilding,
@@ -122,8 +135,17 @@ function Opcion({
 // Primer paso del flujo (Arquitectura §2–§4): canal de entrada, vendedor autenticado y tipo
 // de persona.
 export function PasoInicio() {
-  const { app, setTipoPersona, setCanal } = useApplication();
+  const { app, patchApp, setTipoPersona, setCanal } = useApplication();
   const vendedor = VENDEDORES.find((v) => v.id === app.configuracion.vendedorId);
+  const [reasignando, setReasignando] = useState(
+    app.configuracion.vendedorId !== SESION.vendedorId
+  );
+
+  function toggleReasignar(activo: boolean) {
+    setReasignando(activo);
+    if (!activo)
+      patchApp({ configuracion: { ...app.configuracion, vendedorId: SESION.vendedorId } });
+  }
 
   return (
     <div className="space-y-5">
@@ -155,7 +177,9 @@ export function PasoInicio() {
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-3.5 py-2.5">
             <span className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
-                {SESION.iniciales}
+                {reasignando
+                  ? inicialesDe(nombreOpcion(VENDEDORES, app.configuracion.vendedorId))
+                  : SESION.iniciales}
               </span>
               <span>
                 <span className="block text-sm font-semibold text-ink-800">
@@ -166,15 +190,40 @@ export function PasoInicio() {
                 )}
               </span>
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
-              <IconLock width={11} height={11} />
-              Tomado de la sesión
-            </span>
+            {!reasignando && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+                <IconLock width={11} height={11} />
+                Tomado de la sesión
+              </span>
+            )}
           </div>
           <p className="mt-2 text-xs leading-relaxed text-ink-500">
-            El vendedor no se selecciona: la solicitud guarda automáticamente el ID del usuario
-            autenticado para trazabilidad, bandejas y devoluciones del analista.
+            Por defecto la solicitud guarda el ID del vendedor autenticado para trazabilidad,
+            bandejas y devoluciones del analista. Se puede asignar a otro vendedor para el
+            crédito cuando corresponda.
           </p>
+          <div className="mt-3">
+            <Checkbox
+              checked={reasignando}
+              onChange={toggleReasignar}
+              label="Asignar a otro vendedor"
+              description="El crédito queda a nombre del vendedor elegido en vez del de la sesión."
+            />
+          </div>
+          {reasignando && (
+            <div className="mt-3">
+              <SelectField
+                id="vendedor-asignado"
+                label="Vendedor asignado"
+                required
+                value={app.configuracion.vendedorId}
+                onChange={(v) =>
+                  patchApp({ configuracion: { ...app.configuracion, vendedorId: v } })
+                }
+                options={VENDEDORES.map((v) => ({ value: v.id, label: v.nombre }))}
+              />
+            </div>
+          )}
         </div>
       </Card>
 

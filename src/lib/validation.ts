@@ -5,7 +5,7 @@ import type {
   PantallaPostOfertaId,
   PersonaVinculada,
 } from "./types";
-import { isValidCBU, isValidDNI, isValidEmail, parseFecha } from "./format";
+import { isValidCBU, isValidCUIL, isValidDNI, isValidEmail, parseFecha } from "./format";
 import { configEfectiva, pantallasVisibles } from "./config";
 import { erroresPantalla } from "./campos-post-oferta";
 import { getTipoDocumento } from "./parametros";
@@ -64,8 +64,8 @@ export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
     e.ingresoBruto = "El ingreso bruto no puede ser menor al neto. Revisá los valores.";
   if (l.montoExtraidoDiaCobro <= 0)
     e.montoExtraidoDiaCobro = "Ingresá el monto extraído o transferido el día de cobro.";
-  if (l.recibos.length === 0)
-    e.recibos = "Adjuntá el recibo que respalda el ingreso declarado.";
+  if (!l.cuitEmpleador.trim()) e.cuitEmpleador = "Ingresá el CUIT del empleador.";
+  else if (!isValidCUIL(l.cuitEmpleador)) e.cuitEmpleador = "El CUIT debe tener 11 dígitos.";
   return e;
 }
 

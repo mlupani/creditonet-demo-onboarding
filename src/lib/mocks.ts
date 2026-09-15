@@ -53,6 +53,7 @@ export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = {
     genero: "Femenino",
     fechaNacimiento: "14/05/1982",
     domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
+    email: "mariafernanda.gonzalez@gmail.com",
   },
   origen: {
     apellido: "API pública",
@@ -62,6 +63,7 @@ export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = {
     genero: "API pública",
     fechaNacimiento: "API pública",
     domicilio: "API pública",
+    email: "Base interna",
   },
   numeroCliente: "000928",
   tipoCliente: "EXISTENTE",
@@ -88,8 +90,14 @@ export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = {
     ingresoBruto: 1_250_000,
     ingresoNeto: 1_000_000,
     montoExtraidoDiaCobro: 820_000,
-    // El recibo es del pedido actual: no se precarga aunque el cliente sea existente.
-    recibos: [],
+    cuitEmpleador: "30712345671",
+    // Información adicional: no informado por defecto en la demo (Onboarding §4.4).
+    disponible: 0,
+    debitosNoRemunerativos: 0,
+    extraccionesFecha: "",
+    extraccionesImporte: 0,
+    transferenciasFecha: "",
+    transferenciasImporte: 0,
   },
 };
 
@@ -123,41 +131,6 @@ function creditosActivosIniciales(): CreditoActivo[] {
       valorCuota: 108_700,
       precancelar: false,
     },
-    {
-      id: "CR-000077",
-      capitalOriginal: 900_000,
-      capitalResidual: 240_000,
-      montoCancelacion: 280_000,
-      desglose: {
-        capitalResidual: 240_000,
-        interesesAVencer: 28_000,
-        iva: 8_000,
-        cargosCancelacion: 4_000,
-        punitorios: 0,
-      },
-      cuotasOriginales: 18,
-      cuotasAbonadas: 15,
-      valorCuota: 62_400,
-      precancelar: false,
-    },
-    {
-      // Recién arrancado: no llega al mínimo de cuotas abonadas, así que no es elegible.
-      id: "CR-000149",
-      capitalOriginal: 700_000,
-      capitalResidual: 640_000,
-      montoCancelacion: 720_000,
-      desglose: {
-        capitalResidual: 640_000,
-        interesesAVencer: 58_000,
-        iva: 16_000,
-        cargosCancelacion: 6_000,
-        punitorios: 0,
-      },
-      cuotasOriginales: 12,
-      cuotasAbonadas: 2,
-      valorCuota: 74_500,
-      precancelar: false,
-    },
   ];
 }
 
@@ -185,7 +158,8 @@ function crearPostOfertaInicial(): PostOferta {
 }
 
 // Valores de demo para los campos a cargar, como si el vendedor ya hubiera avanzado. Quedan
-// 3 pendientes a propósito: DNI del cónyuge, email de la referencia y comprobante de servicio.
+// pendientes a propósito: DNI del cónyuge, email de la referencia, el recibo y el
+// comprobante de servicio (estos dos últimos se cargan en el legajo virtual, post-oferta).
 const CARGA_DEMO: Record<string, string> = {
   nacionalidad: "Argentina",
   estadoCivil: "Casada/o",
@@ -249,18 +223,17 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     );
 
   const cfg = configEfectiva(app.configuracion);
-  // El recibo (sueldo o haberes, según el documento que pida el producto) ya se adjuntó en
-  // los datos mínimos: se reutiliza acá y no se vuelve a pedir (Onboarding §9).
-  const tipoRecibo = cfg.documentos.find((d) => d.tipoId === "recibo-sueldo" || d.tipoId === "recibo-haberes");
+  // El recibo (sueldo o haberes) y el comprobante de servicio se piden en el legajo
+  // virtual, post-oferta: quedan pendientes al arrancar la carga.
+  const PENDIENTES = new Set(["recibo-sueldo", "recibo-haberes", "comprobante-servicio"]);
   const legajo = Object.fromEntries(
     cfg.documentos
-      .filter((d) => d.obligatorio && d !== tipoRecibo && d.tipoId !== "comprobante-servicio") // PENDIENTE
+      .filter((d) => d.obligatorio && !PENDIENTES.has(d.tipoId))
       .map((d) => [
         d.tipoId,
         [{ id: `${d.tipoId}-1`, nombre: `${d.tipoId.replace(/-/g, "_")}_1.jpg`, detalle: "1.1 MB · Hoy" }],
       ])
   );
-  if (tipoRecibo && app.laboral.recibos.length > 0) legajo[tipoRecibo.tipoId] = app.laboral.recibos;
   const conGarantias = cfg.pantallas.some((p) => p.id === "garantias" && p.visible);
   const garante: PersonaVinculada = {
     id: "garante-1",
@@ -335,7 +308,13 @@ export function crearAplicacionInicial(): CreditApplication {
       ingresoBruto: 0,
       ingresoNeto: 0,
       montoExtraidoDiaCobro: 0,
-      recibos: [],
+      cuitEmpleador: "",
+      disponible: 0,
+      debitosNoRemunerativos: 0,
+      extraccionesFecha: "",
+      extraccionesImporte: 0,
+      transferenciasFecha: "",
+      transferenciasImporte: 0,
     },
     riesgo: {
       estado: "PENDIENTE",
@@ -389,20 +368,20 @@ export const STEPS_ORIGINACION: WizardStepMeta[] = [
       "Por dónde llega la solicitud y quién la pide. El vendedor se toma automáticamente de la sesión.",
   },
   {
-    id: "identificacion",
-    numero: 2,
-    titulo: "Identificación",
-    tituloPantalla: "Identificación del cliente",
-    descripcion:
-      "Ingresá el DNI o el CUIT. El sistema determina si es un cliente nuevo o existente, autocompleta los datos y evalúa las reglas institucionales que ya tienen sus datos.",
-  },
-  {
     id: "producto-organismo",
-    numero: 3,
+    numero: 2,
     titulo: "Producto y organismo",
     tituloPantalla: "Producto y organismo",
     descripcion:
       "El producto define la configuración general y el organismo la particulariza. El canal limita qué productos se pueden ofrecer.",
+  },
+  {
+    id: "identificacion",
+    numero: 3,
+    titulo: "Identificación",
+    tituloPantalla: "Identificación del cliente",
+    descripcion:
+      "Ingresá el DNI o el CUIT. El sistema determina si es un cliente nuevo o existente, autocompleta los datos y evalúa las reglas institucionales que ya tienen sus datos.",
   },
   {
     id: "datos-minimos",

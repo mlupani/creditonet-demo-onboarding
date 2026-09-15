@@ -1,0 +1,158 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e29]: Liquidación
+            - generic [ref=e30]: Pronto
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - generic [ref=e37]: Clientes
+            - generic [ref=e38]: Pronto
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e43]: Créditos
+            - generic [ref=e44]: Pronto
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e50]: Motor de riesgo
+            - generic [ref=e51]: Pronto
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e57]: Reportes
+            - generic [ref=e58]: Pronto
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e64]: Parámetros
+            - generic [ref=e65]: Pronto
+        - generic [ref=e66]:
+          - button "Reiniciar demo" [ref=e67]
+          - paragraph [ref=e68]: Demo interactiva · v0.3
+    - generic [ref=e69]:
+      - banner [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Solicitar crédito
+            - paragraph [ref=e74]: CreditoNet · Casa Central
+          - generic [ref=e75]: Demo
+          - button "Notificaciones" [ref=e79]:
+            - img [ref=e80]
+          - generic [ref=e84]:
+            - generic [ref=e85]: JP
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Juan Pérez
+              - paragraph [ref=e88]: Canal de venta · CreditoNet
+      - main [ref=e89]:
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - generic [ref=e105]:
+                - paragraph [ref=e106]: Solicitar crédito · Originación
+                - heading "Identificación del cliente" [level=1] [ref=e371]
+                - paragraph [ref=e108]: Ingresá el DNI o el CUIT. El sistema determina si es un cliente nuevo o existente, autocompleta los datos y evalúa las reglas institucionales que ya tienen sus datos.
+              - generic [ref=e109]:
+                - paragraph [ref=e110]: Paso 3 de 6
+                - paragraph [ref=e111]: Etapa 1 de 2
+            - list [ref=e115]:
+              - listitem [ref=e116]:
+                - button "Inicio" [ref=e278] [cursor=pointer]:
+                  - img [ref=e279]
+                  - generic [ref=e119]: Inicio
+              - listitem [ref=e121]:
+                - button "Producto y organismo" [ref=e372] [cursor=pointer]:
+                  - img [ref=e373]
+                  - generic [ref=e124]: Producto y organismo
+              - listitem [ref=e126]:
+                - button "3 Identificación" [disabled] [ref=e127]:
+                  - generic [ref=e128]: "3"
+                  - generic [ref=e129]: Identificación
+              - listitem [ref=e131]:
+                - button "4 Datos mínimos" [disabled] [ref=e132]:
+                  - generic [ref=e133]: "4"
+                  - generic [ref=e134]: Datos mínimos
+              - listitem [ref=e136]:
+                - button "5 Evaluación" [disabled] [ref=e137]:
+                  - generic [ref=e138]: "5"
+                  - generic [ref=e139]: Evaluación
+              - listitem [ref=e141]:
+                - button "6 Oferta" [disabled] [ref=e142]:
+                  - generic [ref=e143]: "6"
+                  - generic [ref=e144]: Oferta
+          - generic [ref=e145]:
+            - generic [ref=e375]:
+              - generic [ref=e377]:
+                - generic [ref=e378]: DNI o CUIL del cliente
+                - generic [ref=e379]:
+                  - textbox "DNI o CUIL del cliente" [ref=e381]:
+                    - /placeholder: "Ej.: 27456890 o 27274568904"
+                  - button "Consultar cliente" [ref=e382]:
+                    - img [ref=e383]
+                    - text: Consultar cliente
+                - paragraph [ref=e386]: DNI de 7 u 8 dígitos o CUIL de 11, sin puntos ni guiones. En la demo cualquier documento válido devuelve el cliente de prueba.
+              - generic [ref=e388]:
+                - button "Atrás" [ref=e389]:
+                  - img [ref=e390]
+                  - text: Atrás
+                - status [ref=e393]:
+                  - img [ref=e395]
+                  - generic [ref=e398]: Consultá el DNI o CUIL del cliente para identificarlo.
+                - button "Continuar" [disabled] [ref=e399]:
+                  - text: Continuar
+                  - img [ref=e400]
+            - complementary [ref=e237]:
+              - generic [ref=e238]:
+                - generic [ref=e239]:
+                  - img [ref=e241]
+                  - heading "Resumen de la solicitud" [level=3] [ref=e244]
+                - generic [ref=e246]:
+                  - generic [ref=e247]:
+                    - term [ref=e248]: Estado
+                    - definition [ref=e249]:
+                      - generic [ref=e250]: Borrador
+                  - generic [ref=e251]:
+                    - term [ref=e252]: Canal
+                    - definition [ref=e253]: Sucursal
+                  - generic [ref=e254]:
+                    - term [ref=e255]: Tipo de persona
+                    - definition [ref=e256]: Persona física
+                  - generic [ref=e257]:
+                    - term [ref=e258]: Cliente
+                    - definition [ref=e259]: Sin identificar
+                  - generic [ref=e260]:
+                    - term [ref=e261]: Producto
+                    - definition [ref=e262]: Préstamo personal
+                  - generic [ref=e263]:
+                    - term [ref=e264]: Organismo
+                    - definition [ref=e265]: Empleados de salud
+                  - generic [ref=e266]:
+                    - term [ref=e267]: Motor de riesgo
+                    - definition [ref=e268]: Motor Empleados de Salud
+                  - generic [ref=e269]:
+                    - term [ref=e270]: Plan de cuotas
+                    - definition [ref=e271]: Línea Salud 2026
+              - generic [ref=e272]:
+                - paragraph [ref=e273]: Próximo paso
+                - paragraph [ref=e274]: 4. Datos mínimos
+                - paragraph [ref=e275]: Consultá el DNI o CUIL del cliente para identificarlo.
+  - button "Open Next.js Dev Tools" [ref=e98] [cursor=pointer]:
+    - img [ref=e99]
+  - alert [ref=e276]

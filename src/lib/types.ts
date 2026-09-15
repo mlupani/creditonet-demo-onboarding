@@ -123,6 +123,7 @@ export interface ClienteDatos {
   genero: string;
   fechaNacimiento: string;
   domicilio: string;
+  email: string;
 }
 
 export type OrigenCampos = Partial<Record<keyof ClienteDatos, OrigenDato>>;
@@ -137,9 +138,14 @@ export interface LaboralIngresos {
   ingresoBruto: number;
   ingresoNeto: number;
   montoExtraidoDiaCobro: number;
-  // Respaldo del ingreso declarado. Se incorpora al legajo virtual post-oferta: no se
-  // vuelve a pedir después de la oferta (Onboarding §9).
-  recibos: ArchivoLegajo[];
+  cuitEmpleador: string;
+  // Información adicional: no bloquea continuar (Onboarding §4.4).
+  disponible: number;
+  debitosNoRemunerativos: number;
+  extraccionesFecha: string;
+  extraccionesImporte: number;
+  transferenciasFecha: string;
+  transferenciasImporte: number;
 }
 
 // --- Oferta ---

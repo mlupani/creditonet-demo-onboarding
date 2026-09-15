@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { DATOS_API_PUBLICA } from "@/lib/mocks";
-import { GENEROS } from "@/lib/validation";
+import { CONDICIONES_LABORALES, GENEROS, validarLaboral } from "@/lib/validation";
 import { evaluarInstitucionales, institucionalesBloquean } from "@/lib/reglas-institucionales";
 import { formatDNI, onlyDigits } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Banner } from "@/components/ui/Banner";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { DemoTag } from "@/components/ui/DemoTag";
@@ -31,7 +32,7 @@ function validarDocumento(valor: string): string | null {
 }
 
 export function PasoIdentificacion() {
-  const { app, patchApp, consultarCliente } = useApplication();
+  const { app, patchApp, patchLaboral, consultarCliente } = useApplication();
   const [documento, setDocumento] = useState(
     app.identificacion.documento || app.cliente?.dni || ""
   );
@@ -43,6 +44,7 @@ export function PasoIdentificacion() {
   // vendedor rectifica un dato de la API, la regla se vuelve a evaluar (Motor §6 y §11).
   const institucionales = evaluarInstitucionales(app, "IDENTIFICACION");
   const descartada = institucionalesBloquean(institucionales);
+  const erroresLaboral = validarLaboral(app.laboral);
 
   function consultar() {
     const err = validarDocumento(documento);
@@ -173,6 +175,17 @@ export function PasoIdentificacion() {
                   </p>
                 </div>
               </div>
+              <SelectField
+                id="condicion-laboral"
+                label="Condición laboral"
+                required
+                value={app.laboral.condicionLaboral}
+                onChange={(v) => patchLaboral({ condicionLaboral: v })}
+                options={CONDICIONES_LABORALES.map((c) => ({ value: c, label: c }))}
+                error={erroresLaboral.condicionLaboral}
+                hint="El tercer limitante, junto con la situación BCRA y el buró interno, que determina qué línea aplica. Participa en la generación de la oferta y no se puede modificar después."
+                className="mt-3"
+              />
             </div>
           )}
 
@@ -214,6 +227,7 @@ export function PasoIdentificacion() {
                 <div className="sm:col-span-2">
                   <CampoCliente id="c-domicilio" label="Domicilio" campo="domicilio" />
                 </div>
+                <CampoCliente id="c-email" label="Email" campo="email" />
               </div>
             </div>
           </Card>

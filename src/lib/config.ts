@@ -34,6 +34,8 @@ export const CANALES: OpcionCatalogo[] = [
 
 export const VENDEDORES: OpcionCatalogo[] = [
   { id: "juan-perez", nombre: "Juan Pérez", detalle: "Legajo V-118 · CreditoNet Casa Central" },
+  { id: "ana-torres", nombre: "Ana Torres", detalle: "Legajo V-142 · CreditoNet Casa Central" },
+  { id: "carlos-ruiz", nombre: "Carlos Ruiz", detalle: "Legajo V-097 · Sucursal Nueva Córdoba" },
 ];
 
 // --- Plan de cuotas / Línea (§2.3) ---

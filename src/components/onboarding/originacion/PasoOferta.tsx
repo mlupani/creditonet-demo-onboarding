@@ -11,7 +11,6 @@ import { DemoTag } from "@/components/ui/DemoTag";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { IconArrowLeft, IconArrowRight, IconRefresh } from "@/components/icons";
 
-import { LimitesPanel } from "../evaluacion/LimitesPanel";
 import { OfertaCabecera } from "../oferta/OfertaCabecera";
 import { MontoSolicitado } from "../oferta/MontoSolicitado";
 import { TablaCuotas } from "../oferta/TablaCuotas";
@@ -38,6 +37,7 @@ export function PasoOferta() {
   // el plazo contra la oferta nueva (reunión 11/09, 43:06-45:21).
   const [plazoPendiente, setPlazoPendiente] = useState(false);
   const timer = useRef<number | null>(null);
+  const cuotasRef = useRef<HTMLDivElement>(null);
 
   useEffect(
     () => () => {
@@ -45,6 +45,16 @@ export function PasoOferta() {
     },
     []
   );
+
+  // Cada recálculo cambia las cuotas y su monto: llevamos la vista ahí para que se note el
+  // cambio y, si corresponde, que hay que volver a elegir el plazo.
+  useEffect(() => {
+    if (recalculado) cuotasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [recalculado]);
+
+  useEffect(() => {
+    if (plazoPendiente) cuotasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [plazoPendiente]);
 
   // Recálculo contra la grilla del plan, sin volver al motor (Guía §5.2).
   function recalcular() {
@@ -86,7 +96,6 @@ export function PasoOferta() {
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-5">
         <OfertaCabecera />
-        {app.riesgo.limites && <LimitesPanel limites={app.riesgo.limites} />}
         <MontoSolicitado
           borrador={borrador}
           onBorrador={(v) => {
@@ -96,10 +105,12 @@ export function PasoOferta() {
           onRecalcular={recalcular}
           recalculado={recalculado}
         />
-        <TablaCuotas
-          pendiente={plazoPendiente}
-          onSeleccion={() => setPlazoPendiente(false)}
-        />
+        <div ref={cuotasRef} className="scroll-mt-20">
+          <TablaCuotas
+            pendiente={plazoPendiente}
+            onSeleccion={() => setPlazoPendiente(false)}
+          />
+        </div>
         <div className="pt-2">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-600">
             <IconRefresh width={12} height={12} />

@@ -1,0 +1,258 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e29]: Liquidación
+            - generic [ref=e30]: Pronto
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - generic [ref=e37]: Clientes
+            - generic [ref=e38]: Pronto
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e43]: Créditos
+            - generic [ref=e44]: Pronto
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e50]: Motor de riesgo
+            - generic [ref=e51]: Pronto
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e57]: Reportes
+            - generic [ref=e58]: Pronto
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e64]: Parámetros
+            - generic [ref=e65]: Pronto
+        - generic [ref=e66]:
+          - button "Reiniciar demo" [ref=e67]
+          - paragraph [ref=e68]: Demo interactiva · v0.3
+    - generic [ref=e69]:
+      - banner [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Solicitar crédito
+            - paragraph [ref=e74]: CreditoNet · Casa Central
+          - generic [ref=e75]: Demo
+          - button "Notificaciones" [ref=e79]:
+            - img [ref=e80]
+          - generic [ref=e84]:
+            - generic [ref=e85]: JP
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Juan Pérez
+              - paragraph [ref=e88]: Canal de venta · CreditoNet
+      - main [ref=e89]:
+        - generic [ref=e1575]:
+          - generic [ref=e1576]:
+            - generic [ref=e1577]:
+              - paragraph [ref=e1578]: Solicitar crédito · Post-oferta
+              - heading "María Fernanda González CR-000184 En trámite" [level=1] [ref=e1579]:
+                - text: María Fernanda González
+                - generic [ref=e1580]: CR-000184
+                - generic [ref=e1581]: En trámite
+              - paragraph [ref=e1582]: 2 de 7 pantallas completas. Podés navegar entre ellas en cualquier orden.
+            - generic [ref=e1583]:
+              - button "Finalizar carga" [disabled] [ref=e1584]:
+                - text: Finalizar carga
+                - img [ref=e1585]
+              - paragraph [ref=e1587]: Se habilita con el 100 % de las obligatorias en verde · 4 pendientes
+          - generic [ref=e1589]:
+            - list [ref=e1590]:
+              - listitem [ref=e1591]:
+                - button "1 Datos personales Con pendientes · Obligatoria" [ref=e1592]:
+                  - generic [ref=e1593]: "1"
+                  - generic [ref=e1594]:
+                    - generic [ref=e1595]: Datos personales
+                    - generic [ref=e1596]: Con pendientes · Obligatoria
+              - listitem [ref=e1598]:
+                - button "Datos laborales Completa · Obligatoria" [ref=e1599]:
+                  - img [ref=e1601]
+                  - generic [ref=e1603]:
+                    - generic [ref=e1604]: Datos laborales
+                    - generic [ref=e1605]: Completa · Obligatoria
+              - listitem [ref=e1607]:
+                - button "3 Tokenización de tarjetas No iniciada · Opcional" [ref=e1608]:
+                  - generic [ref=e1609]: "3"
+                  - generic [ref=e1610]:
+                    - generic [ref=e1611]: Tokenización de tarjetas
+                    - generic [ref=e1612]: No iniciada · Opcional
+              - listitem [ref=e1614]:
+                - button "4 Referencias personales Con pendientes · Obligatoria" [ref=e1615]:
+                  - generic [ref=e1616]: "4"
+                  - generic [ref=e1617]:
+                    - generic [ref=e1618]: Referencias personales
+                    - generic [ref=e1619]: Con pendientes · Obligatoria
+              - listitem [ref=e1621]:
+                - button "Garantías Completa · Obligatoria" [ref=e1622]:
+                  - img [ref=e1624]
+                  - generic [ref=e1626]:
+                    - generic [ref=e1627]: Garantías
+                    - generic [ref=e1628]: Completa · Obligatoria
+              - listitem [ref=e1630]:
+                - button "6 Legajo virtual Con pendientes · Obligatoria" [active] [ref=e1631]:
+                  - generic [ref=e1632]: "6"
+                  - generic [ref=e1633]:
+                    - generic [ref=e1634]: Legajo virtual
+                    - generic [ref=e1635]: Con pendientes · Obligatoria
+              - listitem [ref=e1637]:
+                - button "7 Impresión de legajo No iniciada · Opcional" [ref=e1638]:
+                  - generic [ref=e1639]: "7"
+                  - generic [ref=e1640]:
+                    - generic [ref=e1641]: Impresión de legajo
+                    - generic [ref=e1642]: No iniciada · Opcional
+            - generic [ref=e1643]:
+              - generic [ref=e1644]: Completa y validada
+              - generic [ref=e1646]: Iniciada con pendientes
+              - generic [ref=e1648]: No iniciada
+          - generic [ref=e1650]:
+            - generic [ref=e1968]:
+              - generic [ref=e1969]:
+                - generic [ref=e1970]:
+                  - generic [ref=e1971]:
+                    - img [ref=e1973]
+                    - generic [ref=e1976]:
+                      - heading "Legajo virtual" [level=2] [ref=e1977]
+                      - paragraph [ref=e1978]: Imágenes y documentos solicitados al cliente. Cada tipo de documento se define en Parámetros.
+                  - generic [ref=e1979]: 2 de 4 obligatorios
+                - list [ref=e1980]:
+                  - listitem [ref=e1981]:
+                    - generic [ref=e1982]:
+                      - img [ref=e1984]
+                      - generic [ref=e1986]:
+                        - paragraph [ref=e1987]:
+                          - text: DNI frente
+                          - generic [ref=e1988]: Identidad
+                          - generic [ref=e1989]: Obligatorio
+                          - generic [ref=e1990]: Una imagen
+                        - paragraph [ref=e1991]: 1 archivo adjunto
+                    - list [ref=e1992]:
+                      - listitem [ref=e1993]:
+                        - generic [ref=e1994]: dni_frente_1.jpg · 1.1 MB · Hoy
+                        - button "Quitar" [ref=e1995]:
+                          - img [ref=e1996]
+                          - text: Quitar
+                  - listitem [ref=e1998]:
+                    - generic [ref=e1999]:
+                      - img [ref=e2001]
+                      - generic [ref=e2003]:
+                        - paragraph [ref=e2004]:
+                          - text: DNI dorso
+                          - generic [ref=e2005]: Identidad
+                          - generic [ref=e2006]: Obligatorio
+                          - generic [ref=e2007]: Una imagen
+                        - paragraph [ref=e2008]: 1 archivo adjunto
+                    - list [ref=e2009]:
+                      - listitem [ref=e2010]:
+                        - generic [ref=e2011]: dni_dorso_1.jpg · 1.1 MB · Hoy
+                        - button "Quitar" [ref=e2012]:
+                          - img [ref=e2013]
+                          - text: Quitar
+                  - listitem [ref=e2015]:
+                    - generic [ref=e2016]:
+                      - img [ref=e2018]
+                      - generic [ref=e2021]:
+                        - paragraph [ref=e2022]:
+                          - text: Recibo de sueldo
+                          - generic [ref=e2023]: Ingresos
+                          - generic [ref=e2024]: Obligatorio
+                          - generic [ref=e2025]: Varias imágenes
+                        - paragraph [ref=e2026]: Pendiente de adjuntar
+                      - button "Adjuntar" [ref=e2027]
+                  - listitem [ref=e2028]:
+                    - generic [ref=e2029]:
+                      - img [ref=e2031]
+                      - generic [ref=e2034]:
+                        - paragraph [ref=e2035]:
+                          - text: Comprobante de servicio
+                          - generic [ref=e2036]: Domicilio
+                          - generic [ref=e2037]: Obligatorio
+                          - generic [ref=e2038]: Una imagen
+                        - paragraph [ref=e2039]: Pendiente de adjuntar
+                      - button "Adjuntar" [ref=e2040]
+                  - listitem [ref=e2041]:
+                    - generic [ref=e2042]:
+                      - img [ref=e2044]
+                      - generic [ref=e2047]:
+                        - paragraph [ref=e2048]:
+                          - text: Otros
+                          - generic [ref=e2049]: Otros
+                          - generic [ref=e2050]: Opcional
+                          - generic [ref=e2051]: Varias imágenes
+                        - paragraph [ref=e2052]: Pendiente de adjuntar
+                      - button "Adjuntar" [ref=e2053]
+              - generic [ref=e2055]:
+                - img [ref=e2057]
+                - generic [ref=e2062]:
+                  - text: La carga es simulada. En el sistema real se validan formato, tamaño y legibilidad.
+                  - generic [ref=e2064]:
+                    - img [ref=e2065]
+                    - text: Configuración DEMO
+            - complementary [ref=e1910]:
+              - generic [ref=e1911]:
+                - paragraph [ref=e1912]: Estado de la carga
+                - paragraph [ref=e1913]:
+                  - img [ref=e1914]
+                  - text: 4 elementos pendientes
+                - list [ref=e1917]:
+                  - listitem [ref=e1918]:
+                    - button "Datos personales DNI del cónyuge" [ref=e1919]:
+                      - generic [ref=e1921]: Datos personales
+                      - img [ref=e1922]
+                      - generic [ref=e1924]: DNI del cónyuge
+                  - listitem [ref=e1925]:
+                    - button "Referencias personales Email de la referencia" [ref=e1926]:
+                      - generic [ref=e1928]: Referencias personales
+                      - img [ref=e1929]
+                      - generic [ref=e1931]: Email de la referencia
+                  - listitem [ref=e1932]:
+                    - button "Legajo virtual Recibo de sueldo" [ref=e1933]:
+                      - generic [ref=e1935]: Legajo virtual
+                      - img [ref=e1936]
+                      - generic [ref=e1938]: Recibo de sueldo
+                  - listitem [ref=e1939]:
+                    - button "Legajo virtual Comprobante de servicio" [ref=e1940]:
+                      - generic [ref=e1942]: Legajo virtual
+                      - img [ref=e1943]
+                      - generic [ref=e1945]: Comprobante de servicio
+              - generic [ref=e1946]:
+                - generic [ref=e1947]:
+                  - paragraph [ref=e1948]: Configuración aplicada
+                  - generic [ref=e1950]:
+                    - img [ref=e1951]
+                    - text: Configuración DEMO
+                - paragraph [ref=e1954]: Préstamo personal
+                - paragraph [ref=e1955]: Empleados de salud · Hereda 100 % del producto
+                - generic [ref=e1956]:
+                  - generic [ref=e1957]:
+                    - term [ref=e1958]: Pantallas
+                    - definition [ref=e1959]: "7"
+                  - generic [ref=e1960]:
+                    - term [ref=e1961]: Obligat.
+                    - definition [ref=e1962]: "5"
+                  - generic [ref=e1963]:
+                    - term [ref=e1964]: Opcion.
+                    - definition [ref=e1965]: "2"
+                - paragraph [ref=e1966]: Referencias 1–2 · Garantes 1–2 · Hasta 2 tarjetas · 5 documentos
+  - button "Open Next.js Dev Tools" [ref=e98] [cursor=pointer]:
+    - img [ref=e99]
+  - alert [ref=e276]
