@@ -2,29 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import {
-  cancelacionesExcedenCapital,
-  importeTerceros,
-  netoAAcreditar,
-  ofertaExcedeMaximo,
-  totalPrecancelaciones,
-} from "@/lib/credit";
+import { cancelacionesExcedenCapital, ofertaExcedeMaximo } from "@/lib/credit";
 import { validarDeudaTerceros } from "@/lib/validation";
 import { formatARS } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DemoTag } from "@/components/ui/DemoTag";
-import { SummaryCard } from "@/components/ui/SummaryCard";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { IconArrowLeft, IconArrowRight, IconRefresh } from "@/components/icons";
 
+import { LimitesPanel } from "../evaluacion/LimitesPanel";
 import { OfertaCabecera } from "../oferta/OfertaCabecera";
 import { MontoSolicitado } from "../oferta/MontoSolicitado";
 import { TablaCuotas } from "../oferta/TablaCuotas";
 import { CreditosActivos } from "../oferta/CreditosActivos";
 import { DeudaTerceros } from "../oferta/DeudaTerceros";
 import { ComposicionCredito } from "../oferta/ComposicionCredito";
-import { SeleccionFinal } from "../oferta/SeleccionFinal";
 import { ConfirmarOfertaModal } from "../oferta/ConfirmarOfertaModal";
 
 export function PasoOferta() {
@@ -89,14 +82,11 @@ export function PasoOferta() {
               ? "Completá la entidad, el monto y el CBU de la deuda con terceros."
               : null;
 
-  const neto = netoAAcreditar(o);
-  const precancel = totalPrecancelaciones(o);
-  const terceros = importeTerceros(o);
-
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-5">
         <OfertaCabecera />
+        {app.riesgo.limites && <LimitesPanel limites={app.riesgo.limites} />}
         <MontoSolicitado
           borrador={borrador}
           onBorrador={(v) => {
@@ -125,7 +115,6 @@ export function PasoOferta() {
         </div>
         <CreditosActivos reevaluandoId={reevaluandoId} onToggle={toggleRenovacion} />
         <DeudaTerceros />
-        <SeleccionFinal />
 
         <Card className="p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -162,34 +151,6 @@ export function PasoOferta() {
       </div>
 
       <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-        <SummaryCard
-          title="Resumen del crédito"
-          rows={[
-            { label: "Capital solicitado", value: formatARS(o.montoSolicitado), strong: true },
-            ...(precancel > 0
-              ? [
-                  {
-                    label: "Renovación",
-                    value: `−${formatARS(precancel)}`,
-                    tone: "danger" as const,
-                  },
-                ]
-              : []),
-            ...(terceros > 0
-              ? [{ label: "Terceros", value: `−${formatARS(terceros)}`, tone: "danger" as const }]
-              : []),
-            {
-              label: "Acreditación neta",
-              value: formatARS(neto),
-              tone: neto >= 0 ? ("success" as const) : ("danger" as const),
-              big: true,
-            },
-            { label: `Cuota (${o.plazo}x)`, value: formatARS(o.valorCuota) },
-            { label: "TNA", value: `${o.tna}%` },
-            { label: "Total a pagar", value: formatARS(o.totalAPagar) },
-            { label: "1ª cuota", value: o.primeraCuotaVencimiento },
-          ]}
-        />
         <ComposicionCredito />
       </aside>
 

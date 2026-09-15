@@ -1,0 +1,226 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e13]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e16] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e29]: Liquidación
+            - generic [ref=e30]: Pronto
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - generic [ref=e37]: Clientes
+            - generic [ref=e38]: Pronto
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e43]: Créditos
+            - generic [ref=e44]: Pronto
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e50]: Motor de riesgo
+            - generic [ref=e51]: Pronto
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e57]: Reportes
+            - generic [ref=e58]: Pronto
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e64]: Parámetros
+            - generic [ref=e65]: Pronto
+        - generic [ref=e66]:
+          - button "Reiniciar demo" [ref=e67]
+          - paragraph [ref=e68]: Demo interactiva · v0.3
+    - generic [ref=e69]:
+      - banner [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Solicitar crédito
+            - paragraph [ref=e74]: CreditoNet · Casa Central
+          - generic [ref=e75]: Demo
+          - button "Notificaciones" [ref=e79]:
+            - img [ref=e80]
+          - generic [ref=e84]:
+            - generic [ref=e85]: JP
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Juan Pérez
+              - paragraph [ref=e88]: Canal de venta · CreditoNet
+      - main [ref=e89]:
+        - generic [ref=e156]:
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - generic [ref=e159]:
+                - paragraph [ref=e160]: Solicitar crédito · Originación
+                - heading "Producto y organismo" [level=1] [ref=e588]
+                - paragraph [ref=e162]: El producto define la configuración general y el organismo la particulariza. El canal limita qué productos se pueden ofrecer.
+              - generic [ref=e163]:
+                - paragraph [ref=e164]: Paso 3 de 6
+                - paragraph [ref=e165]: Etapa 1 de 2
+            - list [ref=e169]:
+              - listitem [ref=e170]:
+                - button "Inicio" [ref=e335] [cursor=pointer]:
+                  - img [ref=e336]
+                  - generic [ref=e173]: Inicio
+              - listitem [ref=e175]:
+                - button "Identificación" [ref=e589] [cursor=pointer]:
+                  - img [ref=e590]
+                  - generic [ref=e178]: Identificación
+              - listitem [ref=e180]:
+                - button "3 Producto y organismo" [disabled] [ref=e181]:
+                  - generic [ref=e182]: "3"
+                  - generic [ref=e183]: Producto y organismo
+              - listitem [ref=e185]:
+                - button "4 Datos mínimos" [disabled] [ref=e186]:
+                  - generic [ref=e187]: "4"
+                  - generic [ref=e188]: Datos mínimos
+              - listitem [ref=e190]:
+                - button "5 Evaluación" [disabled] [ref=e191]:
+                  - generic [ref=e192]: "5"
+                  - generic [ref=e193]: Evaluación
+              - listitem [ref=e195]:
+                - button "6 Oferta" [disabled] [ref=e196]:
+                  - generic [ref=e197]: "6"
+                  - generic [ref=e198]: Oferta
+          - generic [ref=e199]:
+            - generic [ref=e592]:
+              - generic [ref=e593]:
+                - generic [ref=e595]:
+                  - img [ref=e597]
+                  - generic [ref=e600]:
+                    - heading "Selección comercial" [level=2] [ref=e601]
+                    - paragraph [ref=e602]: El producto y el organismo definen las reglas, el plan de cuotas y las pantallas post-oferta.
+                - generic [ref=e603]:
+                  - generic [ref=e604]:
+                    - generic [ref=e606]: Producto*
+                    - generic [ref=e607]:
+                      - combobox "Producto*" [ref=e608]:
+                        - option "Seleccioná una opción…"
+                        - option "Préstamo personal" [selected]
+                        - option "Crédito judicial"
+                      - img
+                    - paragraph [ref=e609]: "Canal Sucursal: todos los productos disponibles."
+                  - generic [ref=e610]:
+                    - generic [ref=e612]: Organismo*
+                    - generic [ref=e613]:
+                      - combobox "Organismo*" [ref=e614]:
+                        - option "Seleccioná una opción…"
+                        - option "Empleados de salud" [selected]
+                        - option "Policía de la Provincia"
+                        - option "Jubilados y pensionados"
+                      - img
+                    - paragraph [ref=e615]: Empleador o ente pagador. Sólo parametriza excepciones.
+                  - generic [ref=e616]:
+                    - generic [ref=e617]:
+                      - generic [ref=e618]: Motor de riesgo que corresponde
+                      - generic [ref=e619]:
+                        - img [ref=e620]
+                        - text: Se ejecuta al solicitar
+                    - generic [ref=e623]:
+                      - img [ref=e625]
+                      - generic [ref=e628]:
+                        - generic [ref=e629]: Motor Empleados de Salud
+                        - generic [ref=e630]: Préstamo personal · Empleados de salud · condición laboral “Empleado fijo”
+                  - generic [ref=e631]:
+                    - generic [ref=e632]:
+                      - generic [ref=e633]: Plan de cuotas / Línea
+                      - generic [ref=e634]:
+                        - img [ref=e635]
+                        - text: Según organismo
+                    - generic [ref=e638]:
+                      - img [ref=e640]
+                      - generic [ref=e643]:
+                        - generic [ref=e644]: Línea Salud 2026
+                        - generic [ref=e645]: Sistema francés · 12, 18, 24, 36 cuotas · hasta $2.500.000
+                - generic [ref=e646]:
+                  - generic [ref=e647]:
+                    - paragraph [ref=e648]: Resolución de la configuración
+                    - generic [ref=e650]:
+                      - img [ref=e651]
+                      - text: Configuración DEMO
+                  - generic [ref=e654]:
+                    - generic [ref=e655]:
+                      - generic [ref=e656]:
+                        - paragraph [ref=e657]: Producto
+                        - paragraph [ref=e658]: Préstamo personal
+                        - paragraph [ref=e659]: Reglas globales
+                      - img [ref=e660]
+                    - generic [ref=e662]:
+                      - generic [ref=e663]:
+                        - paragraph [ref=e664]: Organismo
+                        - paragraph [ref=e665]: Empleados de salud
+                        - paragraph [ref=e666]: Hereda 100 % del producto
+                      - img [ref=e667]
+                    - generic [ref=e670]:
+                      - paragraph [ref=e671]: Plan de cuotas
+                      - paragraph [ref=e672]: Línea Salud 2026
+                      - paragraph [ref=e673]: Condiciones financieras
+              - generic [ref=e675]:
+                - button "Atrás" [ref=e676]:
+                  - img [ref=e677]
+                  - text: Atrás
+                - button "Continuar" [ref=e679]:
+                  - text: Continuar
+                  - img [ref=e680]
+            - complementary [ref=e285]:
+              - generic [ref=e286]:
+                - generic [ref=e287]:
+                  - img [ref=e289]
+                  - heading "Resumen de la solicitud" [level=3] [ref=e292]
+                - generic [ref=e294]:
+                  - generic [ref=e295]:
+                    - term [ref=e296]: Estado
+                    - definition [ref=e297]:
+                      - generic [ref=e298]: Borrador
+                  - generic [ref=e299]:
+                    - term [ref=e300]: Canal
+                    - definition [ref=e301]: Sucursal
+                  - generic [ref=e302]:
+                    - term [ref=e303]: Tipo de persona
+                    - definition [ref=e304]: Persona física
+                  - generic [ref=e305]:
+                    - term [ref=e306]: Cliente
+                    - definition [ref=e307]: María Fernanda González
+                  - generic [ref=e572]:
+                    - term [ref=e573]: ID de Cliente
+                    - definition [ref=e574]: "000928"
+                  - generic [ref=e575]:
+                    - term [ref=e576]: DNI
+                    - definition [ref=e577]: 27.456.890
+                  - generic [ref=e308]:
+                    - term [ref=e309]: Producto
+                    - definition [ref=e310]: Préstamo personal
+                  - generic [ref=e311]:
+                    - term [ref=e312]: Organismo
+                    - definition [ref=e313]: Empleados de salud
+                  - generic [ref=e314]:
+                    - term [ref=e315]: Motor de riesgo
+                    - definition [ref=e316]: Motor Empleados de Salud
+                  - generic [ref=e317]:
+                    - term [ref=e318]: Plan de cuotas
+                    - definition [ref=e319]: Línea Salud 2026
+                  - generic [ref=e578]:
+                    - term [ref=e579]: Ingreso neto
+                    - definition [ref=e580]: $1.000.000
+              - generic [ref=e320]:
+                - paragraph [ref=e321]: Próximo paso
+                - paragraph [ref=e322]: 4. Datos mínimos
+                - paragraph [ref=e323]: Sólo los datos que las reglas y el motor necesitan para evaluar. El resto del legajo se carga después de la oferta.
+  - button "Open Next.js Dev Tools" [ref=e329] [cursor=pointer]:
+    - img [ref=e330]
+  - alert [ref=e333]

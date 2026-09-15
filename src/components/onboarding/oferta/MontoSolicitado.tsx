@@ -48,7 +48,6 @@ export function MontoSolicitado({
                 )}. Reducilo para poder recalcular.`
               : undefined
           }
-          hint={`Capital máximo otorgable: ${formatARS(o.capitalMaximoActual)}.`}
           className="flex-1"
         />
         <Button
@@ -87,23 +86,10 @@ export function MontoSolicitado({
       )}
 
       {recalculado && !pendiente && (
-        <div className="mt-4 animate-fade-up rounded-lg border border-success-200 bg-success-50/60 px-4 py-3">
-          <div className="grid gap-1.5 text-xs font-medium text-success-700 sm:grid-cols-3">
-            <span className="flex items-center gap-1.5">
-              <IconCheckCircle width={13} height={13} /> Importe actualizado
-            </span>
-            <span className="flex items-center gap-1.5">
-              <IconCheckCircle width={13} height={13} /> Nueva cuota {formatARS(o.valorCuota)}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <IconCheckCircle width={13} height={13} /> Nuevo total {formatARS(o.totalAPagar)}
-            </span>
-          </div>
-          <p className="mt-1.5 text-[11px] text-success-700/80">
-            Recalculado contra la grilla del plan de cuotas, sin volver a consultar al motor de
-            riesgo.
-          </p>
-        </div>
+        <p className="mt-3 flex animate-fade-up items-center gap-1.5 text-xs font-medium text-success-700">
+          <IconCheckCircle width={13} height={13} />
+          Importe actualizado: se recalculó contra la grilla del plan, sin volver al motor.
+        </p>
       )}
     </Card>
   );

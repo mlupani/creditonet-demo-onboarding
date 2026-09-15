@@ -1,0 +1,148 @@
+flowchart TD
+
+  %% ================= BANDEJA DEL CANAL DE VENTA =================
+  subgraph S0["Bandeja del canal de venta"]
+    direction TB
+    V(["Vendedor autenticado · ID de vendedor automático"])
+    Q{"¿Qué querés hacer?"}
+    ACC2["Precancelación / Renovación · próximamente"]
+    ACC3["Gestión de mora · próximamente"]
+    MIS["Mis solicitudes · buscar por DNI o CUIL · Retomar o Anular"]
+  end
+
+  V --> Q
+  Q -->|Solicitar crédito| P1
+  Q -.-> ACC2
+  Q -.-> ACC3
+  V -.-> MIS
+
+  %% ================= ETAPA 1 · ORIGINACIÓN =================
+  subgraph S1["Etapa 1 · Originación · 6 pasos"]
+    direction TB
+    P1["1 · Inicio: canal Sucursal o Digital + tipo de persona"]
+    D1{"¿Tipo de persona?"}
+    JUR["Persona jurídica: CUIT y datos societarios · no navegable en la demo"]
+    P2["2 · Identificación: DNI o CUIL · consulta API pública y base interna"]
+    P2B["Cliente nuevo o existente · autocompleta datos · situación BCRA y buró interno"]
+    D2{"RI-01 · regla institucional de género y edad"}
+    DESC["Descarte temprano · no se genera ID ni cambia el estado"]
+    P2C["Verificación presencial: foto archivada vs persona presente"]
+    P3["3 · Producto + Organismo · el canal filtra productos · el organismo aporta plan y excepciones"]
+    P4["4 · Datos mínimos: condición laboral, antigüedad, banco de cobro, ingreso bruto y neto, recibo"]
+    P5["5 · Evaluación · botón Solicitar"]
+    ID(["ID de Crédito generado · estado EN_TRAMITE"])
+    D3{"Reglas institucionales · RI-02 endeudamiento hasta 50 %"}
+    RX1["RECHAZADO · origen INSTITUCIONAL · el motor no se ejecuta"]
+    D4{"Motor de riesgo · MR-01 a MR-07 · bloqueantes y no bloqueantes"}
+    RX2["RECHAZADO · origen MOTOR · carencia 30 días"]
+    D5{"¿Hay línea para BCRA + buró interno + condición laboral?"}
+    RX3["RECHAZADO · origen SIN_LINEA"]
+    LIM["Límites: gana el más restrictivo · cuota máxima · limitantes"]
+    PLAN["Plan de cuotas · cálculo financiero"]
+    P6["6 · Primera oferta: capital, plazo 12 / 18 / 24 / 36, tabla de cuotas"]
+    D6{"¿Precancelar créditos propios o deuda con terceros?"}
+    RECALC["Marcar créditos · recalcular límites · nueva oferta"]
+    SEL["Selección final de monto y plazo"]
+    ACEPTA["Confirmar y aceptar oferta"]
+  end
+
+  P1 --> D1
+  D1 -->|Jurídica| JUR
+  D1 -->|Física| P2
+  P2 --> P2B --> D2
+  D2 -->|No pasa| DESC
+  DESC -.->|Si se rectifican datos se reevalúa| D2
+  D2 -->|Pasa| P2C
+  P2C --> P3 --> P4 --> P5 --> ID --> D3
+  D3 -->|Bloqueante no pasa| RX1
+  D3 -->|Pasa| D4
+  D4 -->|Bloqueante no pasa| RX2
+  D4 -->|Pasa · las no bloqueantes quedan marcadas| D5
+  D5 -->|No| RX3
+  D5 -->|Sí| LIM --> PLAN --> P6 --> D6
+  D6 -->|Sí| RECALC --> SEL
+  D6 -->|No| SEL
+  SEL --> ACEPTA
+
+  N1["Nota: volver atrás revisa, no borra · los pasos siguientes conservan sus datos"]
+  N2["Pendiente funcional: orden exacto entre confirmación, precancelación y las 7 pantallas"]
+  N1 -.- P1
+  N2 -.- ACEPTA
+
+  %% ================= TRANSICIÓN =================
+  TR(["Oferta aceptada · condiciones vigentes 30 días · precarga de datos"])
+  ACEPTA --> TR
+
+  %% ================= ETAPA 2 · CARGA POST-OFERTA =================
+  subgraph S3["Etapa 2 · Carga post-oferta · estado EN_TRAMITE"]
+    direction TB
+    CFG["Configuración: el Producto define pantallas, orden y obligatoriedad · el Organismo define excepciones"]
+    NAV["Navegación libre entre pantallas, en cualquier orden"]
+    PO1["1 · Datos personales · obligatoria"]
+    PO2["2 · Datos laborales · obligatoria · fecha de ingreso y situación laboral no modificables"]
+    PO3["3 · Tokenización de tarjetas · opcional · link por WhatsApp o carga presencial"]
+    PO4["4 · Referencias personales · obligatoria · DNI autocompletable"]
+    PO5["5 · Garantías · obligatoria · oculta en Crédito judicial y Policía"]
+    PO6["6 · Legajo virtual · obligatoria · documentos de Parámetros"]
+    PO7["7 · Impresión de legajo · opcional · imprimir o visualizar PDF"]
+    D7{"¿100 % de las obligatorias en verde?"}
+    PEND["Lista de pendientes · ir a la pantalla"]
+    FIN["Finalizar carga o Reenviar correcciones · Enviar a análisis"]
+    CORR["Corregir y reenviar · se abre la pantalla señalada por el analista"]
+  end
+
+  TR --> CFG --> NAV --> PO1 --> PO2 --> PO3 --> PO4 --> PO5 --> PO6 --> PO7 --> D7
+  D7 -->|No| PEND
+  PEND -.-> NAV
+  D7 -->|Sí| FIN
+  PRE(["PREAPROBADO · entra a la bandeja del analista"])
+  FIN --> PRE
+
+  %% ================= ANALISTA DE RIESGO =================
+  subgraph S4["Analista de riesgo"]
+    direction TB
+    BA["Bandeja del analista · checks de carga, legajo, reglas, motor y reglas marcadas"]
+    TOM(["Tomar análisis · estado ANALISIS_TOMADO"])
+    AN["Análisis: cliente, reglas institucionales, motor y marcadas, límites, plan, oferta, documentación, datos rectificados"]
+    D8{"Decisión del analista"}
+    OBS["Observar: motivo + nota + pantalla a corregir"]
+    CAMB["Cambiar oferta: capital, plazo o sueldos · se recalcula la cuota"]
+    EOBS(["OBSERVADO · vuelve al canal de venta · 15 días para corregir"])
+    RX4["RECHAZADO · origen ANALISTA · definitivo"]
+    ANU["ANULADO · el cliente desistió · no es rechazo de riesgo"]
+    APR["Aprobar · confirmar aprobación"]
+  end
+
+  PRE --> BA --> TOM --> AN --> D8
+  D8 -->|Observar| OBS --> EOBS
+  D8 -->|Cambiar oferta| CAMB --> EOBS
+  D8 -->|Rechazar| RX4
+  D8 -->|Anular| ANU
+  D8 -->|Aprobar| APR
+  EOBS --> CORR --> NAV
+  MIS -.->|Anular solicitud en curso| ANU
+
+  %% ================= TESORERÍA =================
+  subgraph S5["Tesorería · fuera del alcance de la demo"]
+    direction TB
+    LIQ(["PARA_LIQUIDAR · Bandeja de Liquidación"])
+    OPS["Transferencia neta al cliente · orden de pago a terceros · cancelación de créditos renovados"]
+    ACT(["ACTIVO · desembolso confirmado"])
+  end
+
+  APR --> LIQ --> OPS --> ACT
+
+  %% ================= ESTILOS =================
+  classDef estado fill:#E8F0FE,stroke:#3B6FD8,color:#0B2A6B
+  classDef rechazo fill:#FDE8E8,stroke:#D64545,color:#7A1414
+  classDef ok fill:#E6F6EC,stroke:#2E9E5B,color:#0F4D2A
+  classDef aviso fill:#FFF4E0,stroke:#E0A030,color:#6B4400
+  classDef nota fill:#FFFBE6,stroke:#C9B458,color:#5C5010,stroke-dasharray:4 3
+  classDef off fill:#F1F1F1,stroke:#AAAAAA,color:#777777
+
+  class ID,TOM,PRE,TR estado
+  class RX1,RX2,RX3,RX4,DESC,ANU rechazo
+  class APR,LIQ,ACT ok
+  class EOBS,OBS,CAMB,CORR,PEND aviso
+  class N1,N2 nota
+  class ACC2,ACC3,JUR,OPS off

@@ -71,10 +71,9 @@ export function CreditosActivos({
                 </div>
               </div>
 
-              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
                 {[
                   ["Capital original", formatARS(c.capitalOriginal)],
-                  ["Capital residual", formatARS(c.capitalResidual)],
                   ["Cuota vigente", formatARS(c.valorCuota)],
                   ["Saldo a cancelar", formatARS(c.montoCancelacion)],
                 ].map(([label, value]) => (
@@ -115,9 +114,7 @@ export function CreditosActivos({
                   onChange={() => onToggle(c.id)}
                   disabled={!elegible || reevaluandoId !== null}
                   label="Renovar / precancelar este crédito"
-                  description={`Se cancela ${c.id} por ${formatARS(
-                    c.montoCancelacion
-                  )} y se descuenta de la acreditación neta.`}
+                  description="El saldo a cancelar se descuenta de la acreditación neta."
                 />
               </div>
 
@@ -132,43 +129,26 @@ export function CreditosActivos({
         })}
 
         {precancelaActiva && reevaluandoId === null && (
-          <div className="animate-fade-up rounded-xl border border-success-200 bg-success-50 p-4">
-            <p className="flex items-center gap-2 text-sm font-bold text-success-700">
-              <IconCheckCircle width={16} height={16} />
-              Nueva oferta recalculada con la precancelación
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="text-center">
-                <p className="text-[11px] font-medium text-ink-500">Cuota que se libera</p>
-                <p className="text-sm font-semibold tabular-nums text-success-700">
-                  {formatARS(cuotasLiberadas)}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-[11px] font-medium text-ink-500">Primera oferta</p>
-                <p className="text-sm font-semibold tabular-nums text-ink-400 line-through">
-                  {formatARS(o.capitalMaximoBase)}
-                </p>
-              </div>
-              <IconArrowRight width={16} height={16} className="text-success-600" />
-              <div className="text-center">
-                <p className="text-[11px] font-medium text-ink-500">Nueva oferta</p>
-                <p
-                  key={o.capitalMaximoActual}
-                  className="animate-pop text-lg font-bold tabular-nums text-success-700"
-                >
-                  {formatARS(o.capitalMaximoActual)}
-                </p>
-              </div>
-              <DemoTag
-                variant="regla"
-                detalle="El crédito que se renueva deja de pesar en la exposición: su cuota libera capacidad y el capital máximo se recalcula. Si la precancelación puede ser parcial es una decisión pendiente."
-              />
-            </div>
-            <p className="mt-2 text-xs text-success-700/80">
-              El importe pasó al nuevo capital máximo: volvé a elegir el plazo sobre la nueva
-              oferta.
-            </p>
+          <div className="flex animate-fade-up flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-sm">
+            <IconCheckCircle width={16} height={16} className="text-success-700" />
+            <span className="font-bold text-success-700">Nueva oferta</span>
+            <span className="tabular-nums text-ink-400 line-through">
+              {formatARS(o.capitalMaximoBase)}
+            </span>
+            <IconArrowRight width={14} height={14} className="text-success-600" />
+            <span
+              key={o.capitalMaximoActual}
+              className="animate-pop font-bold tabular-nums text-success-700"
+            >
+              {formatARS(o.capitalMaximoActual)}
+            </span>
+            <span className="text-xs text-success-700/80">
+              · libera {formatARS(cuotasLiberadas)} de cuota
+            </span>
+            <DemoTag
+              variant="regla"
+              detalle="El crédito que se renueva deja de pesar en la exposición: su cuota libera capacidad y el capital máximo se recalcula. Si la precancelación puede ser parcial es una decisión pendiente."
+            />
           </div>
         )}
       </div>

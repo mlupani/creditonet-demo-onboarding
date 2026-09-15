@@ -1,0 +1,340 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e13]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e16] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e29]: Liquidación
+            - generic [ref=e30]: Pronto
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - generic [ref=e37]: Clientes
+            - generic [ref=e38]: Pronto
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e43]: Créditos
+            - generic [ref=e44]: Pronto
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e50]: Motor de riesgo
+            - generic [ref=e51]: Pronto
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e57]: Reportes
+            - generic [ref=e58]: Pronto
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e64]: Parámetros
+            - generic [ref=e65]: Pronto
+        - generic [ref=e66]:
+          - button "Reiniciar demo" [ref=e67]
+          - paragraph [ref=e68]: Demo interactiva · v0.3
+    - generic [ref=e69]:
+      - banner [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Solicitar crédito
+            - paragraph [ref=e74]: CreditoNet · Casa Central
+          - generic [ref=e75]: Demo
+          - button "Notificaciones" [ref=e79]:
+            - img [ref=e80]
+          - generic [ref=e84]:
+            - generic [ref=e85]: JP
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Juan Pérez
+              - paragraph [ref=e88]: Canal de venta · CreditoNet
+      - main [ref=e89]:
+        - generic [ref=e156]:
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - generic [ref=e159]:
+                - paragraph [ref=e160]: Solicitar crédito · Originación
+                - heading "Identificación del cliente" [level=1] [ref=e334]
+                - paragraph [ref=e162]: Ingresá el DNI o el CUIT. El sistema determina si es un cliente nuevo o existente, autocompleta los datos y evalúa las reglas institucionales que ya tienen sus datos.
+              - generic [ref=e163]:
+                - paragraph [ref=e164]: Paso 2 de 6
+                - paragraph [ref=e165]: Etapa 1 de 2
+            - list [ref=e169]:
+              - listitem [ref=e170]:
+                - button "Inicio" [ref=e335] [cursor=pointer]:
+                  - img [ref=e336]
+                  - generic [ref=e173]: Inicio
+              - listitem [ref=e175]:
+                - button "2 Identificación" [disabled] [ref=e176]:
+                  - generic [ref=e177]: "2"
+                  - generic [ref=e178]: Identificación
+              - listitem [ref=e180]:
+                - button "3 Producto y organismo" [disabled] [ref=e181]:
+                  - generic [ref=e182]: "3"
+                  - generic [ref=e183]: Producto y organismo
+              - listitem [ref=e185]:
+                - button "4 Datos mínimos" [disabled] [ref=e186]:
+                  - generic [ref=e187]: "4"
+                  - generic [ref=e188]: Datos mínimos
+              - listitem [ref=e190]:
+                - button "5 Evaluación" [disabled] [ref=e191]:
+                  - generic [ref=e192]: "5"
+                  - generic [ref=e193]: Evaluación
+              - listitem [ref=e195]:
+                - button "6 Oferta" [disabled] [ref=e196]:
+                  - generic [ref=e197]: "6"
+                  - generic [ref=e198]: Oferta
+          - generic [ref=e199]:
+            - generic [ref=e338]:
+              - generic [ref=e339]:
+                - generic [ref=e340]:
+                  - generic [ref=e341]: DNI o CUIL del cliente
+                  - generic [ref=e342]:
+                    - generic [ref=e343]:
+                      - textbox "DNI o CUIL del cliente" [ref=e344]:
+                        - /placeholder: "Ej.: 27456890 o 27274568904"
+                        - text: "30111222"
+                      - img
+                    - button "Consultar cliente" [ref=e345]:
+                      - img [ref=e365]
+                      - text: Consultar cliente
+                  - paragraph [ref=e349]: DNI de 7 u 8 dígitos o CUIL de 11, sin puntos ni guiones. En la demo cualquier documento válido devuelve el cliente de prueba.
+                - generic [ref=e368]:
+                  - generic [ref=e370]:
+                    - generic [ref=e371]:
+                      - img [ref=e373]
+                      - generic [ref=e375]:
+                        - paragraph [ref=e376]: Cliente existente
+                        - paragraph [ref=e377]: Se recuperó su ID de Cliente permanente y el historial previo.
+                    - generic [ref=e378]: ID de Cliente 000928
+                  - generic [ref=e379]:
+                    - generic [ref=e380]:
+                      - paragraph [ref=e381]: Situación traída con el documento
+                      - generic [ref=e383]:
+                        - img [ref=e384]
+                        - text: Regla simulada
+                    - generic [ref=e387]:
+                      - generic [ref=e388]:
+                        - paragraph [ref=e389]: Situación BCRA
+                        - paragraph [ref=e390]: Situación 1
+                      - generic [ref=e391]:
+                        - paragraph [ref=e392]: Buró interno
+                        - paragraph [ref=e393]: Situación 1
+                  - generic [ref=e394]:
+                    - generic [ref=e396]:
+                      - img [ref=e398]
+                      - generic [ref=e402]:
+                        - heading "María Fernanda González" [level=2] [ref=e403]
+                        - paragraph [ref=e404]: DNI 27.456.890 · CUIL 27-27456890-4
+                    - generic [ref=e405]:
+                      - generic [ref=e406]:
+                        - paragraph [ref=e407]: Autocompletado desde la API
+                        - list [ref=e408]:
+                          - listitem [ref=e409]:
+                            - img [ref=e410]
+                            - text: Nombre
+                          - listitem [ref=e413]:
+                            - img [ref=e414]
+                            - text: Apellido
+                          - listitem [ref=e417]:
+                            - img [ref=e418]
+                            - text: Domicilio
+                          - listitem [ref=e421]:
+                            - img [ref=e422]
+                            - text: Fecha de nacimiento
+                          - listitem [ref=e425]:
+                            - img [ref=e426]
+                            - text: Género
+                      - generic [ref=e429]:
+                        - generic [ref=e430]:
+                          - generic [ref=e431]:
+                            - generic [ref=e432]: Nombre
+                            - generic [ref=e433]:
+                              - img [ref=e434]
+                              - text: API pública
+                          - textbox "Nombre" [ref=e436]: María Fernanda
+                        - generic [ref=e437]:
+                          - generic [ref=e438]:
+                            - generic [ref=e439]: Apellido
+                            - generic [ref=e440]:
+                              - img [ref=e441]
+                              - text: API pública
+                          - textbox "Apellido" [ref=e443]: González
+                        - generic [ref=e444]:
+                          - generic [ref=e445]:
+                            - generic [ref=e446]: Fecha de nacimiento
+                            - generic [ref=e447]:
+                              - img [ref=e448]
+                              - text: API pública
+                          - textbox "Fecha de nacimiento" [ref=e450]: 14/05/1982
+                        - generic [ref=e451]:
+                          - generic [ref=e452]:
+                            - generic [ref=e453]: Género
+                            - generic [ref=e454]:
+                              - img [ref=e455]
+                              - text: API pública
+                          - combobox "Género" [ref=e457]:
+                            - option "Femenino" [selected]
+                            - option "Masculino"
+                            - option "No binario"
+                        - generic [ref=e459]:
+                          - generic [ref=e460]:
+                            - generic [ref=e461]: Domicilio
+                            - generic [ref=e462]:
+                              - img [ref=e463]
+                              - text: API pública
+                          - textbox "Domicilio" [ref=e465]: Av. Rafael Núñez 3245, 3° B, Córdoba
+                  - generic [ref=e466]:
+                    - generic [ref=e467]:
+                      - generic [ref=e468]:
+                        - generic [ref=e469]:
+                          - img [ref=e471]
+                          - generic [ref=e473]:
+                            - paragraph [ref=e474]: Reglas institucionales
+                            - paragraph [ref=e475]: Políticas transversales del negocio
+                            - paragraph [ref=e476]: "No pertenecen a un motor: cada una se evalúa cuando están los datos que necesita. Si una bloqueante no pasa, la solicitud se descarta antes de continuar."
+                        - generic [ref=e478]:
+                          - img [ref=e479]
+                          - text: Regla simulada
+                      - paragraph [ref=e482]: 1 de 2 evaluadas
+                    - list [ref=e483]:
+                      - listitem [ref=e484]:
+                        - generic [ref=e485]:
+                          - img [ref=e487]
+                          - generic [ref=e489]:
+                            - generic [ref=e490]:
+                              - paragraph [ref=e491]:
+                                - generic [ref=e492]: RI-01
+                                - text: Edad máxima para personas de género femenino
+                                - generic [ref=e493]: API pública
+                                - generic [ref=e494]: Bloqueante
+                              - generic [ref=e495]: ✓ Pasa
+                            - paragraph [ref=e496]: No se otorgan créditos a personas de género femenino mayores de 65 años.
+                            - paragraph [ref=e497]: Se evalúa al identificar al cliente
+                            - generic [ref=e498]:
+                              - generic [ref=e499]:
+                                - paragraph [ref=e500]: Valor evaluado
+                                - paragraph [ref=e501]: Femenino · 44 años
+                              - generic [ref=e502]:
+                                - paragraph [ref=e503]: Condición
+                                - paragraph [ref=e504]: Femenino hasta 65 años
+                      - listitem [ref=e505]:
+                        - generic [ref=e506]:
+                          - img [ref=e508]
+                          - generic [ref=e511]:
+                            - generic [ref=e512]:
+                              - paragraph [ref=e513]:
+                                - generic [ref=e514]: RI-02
+                                - text: Nivel de endeudamiento máximo
+                                - generic [ref=e515]: Base interna
+                                - generic [ref=e516]: Bloqueante
+                              - generic [ref=e517]: Esperando datos
+                            - paragraph [ref=e518]: Cuotas vigentes con la financiera sobre el ingreso neto confirmado.
+                            - paragraph [ref=e519]: Se evalúa al solicitar, con los datos mínimos confirmados
+                            - generic [ref=e520]:
+                              - generic [ref=e521]:
+                                - paragraph [ref=e522]: Valor evaluado
+                                - paragraph [ref=e523]: Esperando datos mínimos
+                              - generic [ref=e524]:
+                                - paragraph [ref=e525]: Condición
+                                - paragraph [ref=e526]: Hasta 50 %
+                  - generic [ref=e527]:
+                    - generic [ref=e528]:
+                      - generic [ref=e529]:
+                        - img [ref=e531]
+                        - generic [ref=e534]:
+                          - heading "Verificación presencial" [level=2] [ref=e535]
+                          - paragraph [ref=e536]: Compará la foto archivada con la persona presente y validá su identidad.
+                      - generic [ref=e538]:
+                        - img [ref=e539]
+                        - text: Regla simulada
+                    - generic [ref=e542]:
+                      - generic [ref=e543]:
+                        - generic [ref=e544]:
+                          - generic [ref=e546]: MG
+                          - paragraph [ref=e547]: Foto archivada · 12/03/2022
+                        - generic [ref=e548]:
+                          - generic [ref=e549]:
+                            - generic [ref=e550]: MG
+                            - generic [ref=e551]: En vivo
+                          - paragraph [ref=e553]: Persona presente (simulado)
+                      - button "Identidad verificada" [ref=e554]:
+                        - img [ref=e555]
+                        - text: Identidad verificada
+                  - generic [ref=e559]:
+                    - img [ref=e561]
+                    - generic [ref=e566]:
+                      - text: "Los datos son editables: al modificar uno, su origen pasa a carga manual. Para un cliente nuevo se asigna un ID de Cliente interno permanente."
+                      - generic [ref=e568]:
+                        - img [ref=e569]
+                        - text: Regla simulada
+              - generic [ref=e351]:
+                - button "Atrás" [ref=e352]:
+                  - img [ref=e353]
+                  - text: Atrás
+                - status [ref=e356]:
+                  - img [ref=e358]
+                  - generic [ref=e361]: Verificá la identidad comparando la foto archivada con la persona presente.
+                - button "Continuar" [disabled] [ref=e362]:
+                  - text: Continuar
+                  - img [ref=e363]
+            - complementary [ref=e285]:
+              - generic [ref=e286]:
+                - generic [ref=e287]:
+                  - img [ref=e289]
+                  - heading "Resumen de la solicitud" [level=3] [ref=e292]
+                - generic [ref=e294]:
+                  - generic [ref=e295]:
+                    - term [ref=e296]: Estado
+                    - definition [ref=e297]:
+                      - generic [ref=e298]: Borrador
+                  - generic [ref=e299]:
+                    - term [ref=e300]: Canal
+                    - definition [ref=e301]: Sucursal
+                  - generic [ref=e302]:
+                    - term [ref=e303]: Tipo de persona
+                    - definition [ref=e304]: Persona física
+                  - generic [ref=e305]:
+                    - term [ref=e306]: Cliente
+                    - definition [ref=e307]: María Fernanda González
+                  - generic [ref=e572]:
+                    - term [ref=e573]: ID de Cliente
+                    - definition [ref=e574]: "000928"
+                  - generic [ref=e575]:
+                    - term [ref=e576]: DNI
+                    - definition [ref=e577]: 27.456.890
+                  - generic [ref=e308]:
+                    - term [ref=e309]: Producto
+                    - definition [ref=e310]: Préstamo personal
+                  - generic [ref=e311]:
+                    - term [ref=e312]: Organismo
+                    - definition [ref=e313]: Empleados de salud
+                  - generic [ref=e314]:
+                    - term [ref=e315]: Motor de riesgo
+                    - definition [ref=e316]: Motor Empleados de Salud
+                  - generic [ref=e317]:
+                    - term [ref=e318]: Plan de cuotas
+                    - definition [ref=e319]: Línea Salud 2026
+                  - generic [ref=e578]:
+                    - term [ref=e579]: Ingreso neto
+                    - definition [ref=e580]: $1.000.000
+              - generic [ref=e320]:
+                - paragraph [ref=e321]: Próximo paso
+                - paragraph [ref=e322]: 3. Producto y organismo
+                - paragraph [ref=e323]: Verificá la identidad comparando la foto archivada con la persona presente.
+  - button "Open Next.js Dev Tools" [ref=e329] [cursor=pointer]:
+    - img [ref=e330]
+  - alert [ref=e333]

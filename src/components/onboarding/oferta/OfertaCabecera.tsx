@@ -1,7 +1,7 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
+import { nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
 import { hayPrecancelacion } from "@/lib/credit";
 import { formatARS, formatDNI } from "@/lib/format";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
@@ -51,16 +51,13 @@ export function OfertaCabecera() {
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-brand-50">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1">
             <IconSparkles width={13} height={13} />
-            Motor: pasa · plan de cuotas
+            Motor: pasa
           </span>
           <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
             {nombreOpcion(PRODUCTOS, app.configuracion.productoId)}
           </span>
           <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
             {nombreOpcion(ORGANISMOS, app.configuracion.organismoId)}
-          </span>
-          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
-            {getPlan(app.configuracion.organismoId).nombre}
           </span>
         </div>
       </div>

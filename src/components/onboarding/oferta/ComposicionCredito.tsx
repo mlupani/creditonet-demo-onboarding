@@ -8,9 +8,9 @@ import {
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
-import { IconAlertTriangle, IconWallet } from "@/components/icons";
+import { IconWallet } from "@/components/icons";
 
-// Regla de validación en cascada (Guía §5.5).
+// Resumen de la oferta con la regla de validación en cascada (Guía §5.5).
 export function ComposicionCredito() {
   const { app } = useApplication();
   const o = app.oferta;
@@ -19,13 +19,19 @@ export function ComposicionCredito() {
   const neto = netoAAcreditar(o);
   const excede = cancelacionesExcedenCapital(o);
 
+  const fila = "flex items-baseline justify-between gap-4";
   // Si las cancelaciones superan el capital, se resaltan en rojo (control bloqueante).
-  const fila = `flex items-baseline justify-between gap-4 ${
-    excede ? "-mx-2 rounded-lg bg-danger-50 px-2 py-1" : ""
-  }`;
-  const monto = `whitespace-nowrap text-sm tabular-nums ${
+  const filaCancelacion = `${fila} ${excede ? "-mx-2 rounded-lg bg-danger-50 px-2 py-1" : ""}`;
+  const montoCancelacion = `whitespace-nowrap text-sm tabular-nums ${
     excede ? "font-bold text-danger-700" : "font-semibold text-danger-600"
   }`;
+
+  const condiciones = [
+    [`${o.plazo} cuotas de`, formatARS(o.valorCuota)],
+    ["TNA", `${o.tna} %`],
+    ["Total a pagar", formatARS(o.totalAPagar)],
+    ["1er vencimiento", o.primeraCuotaVencimiento],
+  ];
 
   return (
     <div
@@ -38,27 +44,27 @@ export function ComposicionCredito() {
           <IconWallet width={16} height={16} />
         </span>
         <h3 className="text-sm font-bold uppercase tracking-wide text-brand-700">
-          Composición de la operación
+          Resumen de la oferta
         </h3>
       </div>
       <div className="px-5 py-4">
         <dl className="space-y-2.5">
-          <div className="flex items-baseline justify-between gap-4">
+          <div className={fila}>
             <dt className="text-sm text-ink-600">Capital solicitado</dt>
             <dd className="text-sm font-semibold tabular-nums text-ink-900">
               {formatARS(o.montoSolicitado)}
             </dd>
           </div>
           {precancel > 0 && (
-            <div className={fila}>
+            <div className={filaCancelacion}>
               <dt className="text-sm text-ink-600">Cancelación créditos propios</dt>
-              <dd className={monto}>−{formatARS(precancel)}</dd>
+              <dd className={montoCancelacion}>−{formatARS(precancel)}</dd>
             </div>
           )}
           {terceros > 0 && (
-            <div className={fila}>
+            <div className={filaCancelacion}>
               <dt className="text-sm text-ink-600">Cancelación deudas con terceros</dt>
-              <dd className={monto}>−{formatARS(terceros)}</dd>
+              <dd className={montoCancelacion}>−{formatARS(terceros)}</dd>
             </div>
           )}
         </dl>
@@ -83,17 +89,14 @@ export function ComposicionCredito() {
             {formatARS(neto)}
           </span>
         </div>
-        <p className="mt-2.5 text-[11px] leading-relaxed text-ink-400">
-          Acreditación neta = Capital solicitado − Σ cancelaciones propias − Σ cancelaciones con
-          terceros.
-        </p>
-        {excede && (
-          <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-danger-600">
-            <IconAlertTriangle width={14} height={14} className="mt-0.5 shrink-0" />
-            Las cancelaciones superan el capital solicitado. Aumentá el capital o quitá una
-            cancelación para poder continuar.
-          </p>
-        )}
+        <dl className="mt-4 space-y-2 border-t border-ink-100 pt-4">
+          {condiciones.map(([label, valor]) => (
+            <div key={label} className={fila}>
+              <dt className="text-sm text-ink-600">{label}</dt>
+              <dd className="text-sm font-semibold tabular-nums text-ink-900">{valor}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </div>
   );

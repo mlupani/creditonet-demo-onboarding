@@ -1,0 +1,112 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: C
+        - generic [ref=e7]:
+          - paragraph [ref=e8]: CreditoNet
+          - paragraph [ref=e9]: Módulo Onboarding
+      - navigation [ref=e10]:
+        - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+          - /url: /
+          - img [ref=e13]
+          - text: Bandeja canal de venta
+        - link "Solicitar crédito" [ref=e16] [cursor=pointer]:
+          - /url: /onboarding
+          - img [ref=e17]
+          - text: Solicitar crédito
+        - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+          - /url: /analisis
+          - img [ref=e22]
+          - text: Bandeja del analista
+        - generic [ref=e26]:
+          - img [ref=e27]
+          - generic [ref=e29]: Liquidación
+          - generic [ref=e30]: Pronto
+        - generic [ref=e32]:
+          - img [ref=e33]
+          - generic [ref=e37]: Clientes
+          - generic [ref=e38]: Pronto
+        - generic [ref=e40]:
+          - img [ref=e41]
+          - generic [ref=e43]: Créditos
+          - generic [ref=e44]: Pronto
+        - generic [ref=e46]:
+          - img [ref=e47]
+          - generic [ref=e50]: Motor de riesgo
+          - generic [ref=e51]: Pronto
+        - generic [ref=e53]:
+          - img [ref=e54]
+          - generic [ref=e57]: Reportes
+          - generic [ref=e58]: Pronto
+        - generic [ref=e60]:
+          - img [ref=e61]
+          - generic [ref=e64]: Parámetros
+          - generic [ref=e65]: Pronto
+      - generic [ref=e66]:
+        - button "Reiniciar demo" [ref=e67]
+        - paragraph [ref=e68]: Demo interactiva · v0.3
+  - generic [ref=e69]:
+    - banner [ref=e70]:
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - paragraph [ref=e73]: Bandeja del canal de venta
+          - paragraph [ref=e74]: CreditoNet · Casa Central
+        - generic [ref=e75]: Demo
+        - button "Notificaciones" [ref=e79]:
+          - img [ref=e80]
+        - generic [ref=e84]:
+          - generic [ref=e85]: JP
+          - generic [ref=e86]:
+            - paragraph [ref=e87]: Juan Pérez
+            - paragraph [ref=e88]: Canal de venta · CreditoNet
+    - main [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - paragraph [ref=e92]: Canal de venta · Módulo Onboarding
+          - heading "¿Qué querés hacer?" [level=1] [ref=e93]
+          - paragraph [ref=e94]: Elegí una de las vías de entrada. En esta demo sólo la solicitud de crédito es navegable.
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - img [ref=e98]
+            - heading "Solicitar crédito" [level=2] [ref=e102]
+            - paragraph [ref=e103]: Identificación, evaluación del motor de riesgo, oferta y carga post-oferta hasta el envío a análisis.
+            - button "Comenzar" [ref=e105]:
+              - text: Comenzar
+              - img [ref=e106]
+          - generic [ref=e108]:
+            - img [ref=e110]
+            - heading "Precancelación / Renovación" [level=2] [ref=e113]
+            - paragraph [ref=e114]: Cancelación anticipada o renovación de créditos propios vigentes.
+            - generic [ref=e116]:
+              - img [ref=e117]
+              - text: Disponible próximamente
+          - generic [ref=e120]:
+            - img [ref=e122]
+            - heading "Gestión de mora" [level=2] [ref=e125]
+            - paragraph [ref=e126]: Refinanciación autorizada y regularización de créditos con atraso.
+            - generic [ref=e128]:
+              - img [ref=e129]
+              - text: Disponible próximamente
+        - generic [ref=e132]:
+          - generic [ref=e133]:
+            - generic [ref=e134]:
+              - heading "Mis solicitudes" [level=2] [ref=e135]
+              - paragraph [ref=e136]: Buscá por DNI o CUIL para retomar una carga incompleta.
+            - generic [ref=e137]:
+              - img
+              - textbox "Buscar por DNI o CUIL" [ref=e138]
+          - generic [ref=e139]:
+            - generic [ref=e140]:
+              - generic [ref=e141]: ID de Crédito
+              - generic [ref=e142]: Cliente
+              - generic [ref=e143]: Estado
+              - generic [ref=e144]: Detalle
+            - paragraph [ref=e146]: Cargando…
+        - generic [ref=e147]:
+          - paragraph [ref=e148]: Ambiente de demostración · datos simulados · sin conexión a sistemas reales.
+          - generic [ref=e149]:
+            - button "Bandeja del analista" [ref=e150]:
+              - img [ref=e151]
+              - text: Bandeja del analista
+            - button "Reiniciar demo" [ref=e154]

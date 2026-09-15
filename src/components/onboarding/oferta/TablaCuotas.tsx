@@ -3,7 +3,7 @@
 import { useApplication } from "@/lib/application-context";
 import { getPlan } from "@/lib/config";
 import { OFFER_TERMS, calcularCuota } from "@/lib/credit";
-import { formatARS } from "@/lib/format";
+import { formatARS, formatPct } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
 import { DemoTag } from "@/components/ui/DemoTag";
 import { IconCheckCircle } from "@/components/icons";
@@ -25,19 +25,32 @@ export function TablaCuotas({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold tracking-tight text-ink-900">
-            Alternativas de financiación · {plan.nombre}
+            Plan de cuotas · {plan.nombre}
           </h3>
           <p className="mt-0.5 text-xs text-ink-500">
-            Sistema {plan.sistema.toLowerCase()}. Son las combinaciones que quedaron válidas
-            después de aplicar los límites. La selección cambia la cuota, el total y la primera
-            fecha de vencimiento.
+            Alternativas válidas después de aplicar los límites. La selección define la cuota, el
+            total y el primer vencimiento.
           </p>
         </div>
         <DemoTag
           variant="regla"
-          detalle="El vendedor no opera la grilla: el plan la consulta internamente y acá sólo se presentan las alternativas que cumplen el capital y la cuota máxima. Las tasas y la fecha de la primera cuota son valores de demo."
+          detalle="El vendedor no opera la grilla: el plan la consulta internamente y acá sólo se presentan las alternativas que cumplen el capital y la cuota máxima. Tasas, impuestos, cargos y fecha de la primera cuota son valores de demo; sus fórmulas son un pendiente del Plan de Cuotas (§14)."
         />
       </div>
+
+      <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-500">
+        {[
+          ["Sistema", plan.sistema.toLowerCase()],
+          ["Gracia", `${plan.periodoGraciaDias} días`],
+          ["IVA", formatPct(plan.ivaPct)],
+          ["Sellos", formatPct(plan.sellosPct)],
+          ["Cargo de otorgamiento", formatPct(plan.cargoOtorgamientoPct)],
+        ].map(([label, valor]) => (
+          <span key={label}>
+            {label} <strong className="font-semibold text-ink-700">{valor}</strong>
+          </span>
+        ))}
+      </p>
 
       {pendiente && (
         <div className="mt-3 rounded-lg border border-warning-300 bg-warning-50 px-3.5 py-2.5 text-xs font-medium text-warning-700">

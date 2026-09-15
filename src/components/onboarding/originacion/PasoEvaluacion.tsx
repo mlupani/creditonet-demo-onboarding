@@ -36,8 +36,6 @@ import {
 import { EscenarioMotor } from "../evaluacion/EscenarioMotor";
 import { InstitucionalesPanel } from "../evaluacion/InstitucionalesPanel";
 import { MotorPanel } from "../evaluacion/MotorPanel";
-import { LimitesPanel } from "../evaluacion/LimitesPanel";
-import { PlanPanel } from "../evaluacion/PlanPanel";
 
 type Fase = "inicial" | "evaluando" | "revelando" | "completo";
 
@@ -76,9 +74,11 @@ function DiagramaEtapas() {
       titulo: "Reglas institucionales",
       detalle: "Políticas transversales, con los datos mínimos confirmados.",
     },
-    { n: 2, titulo: "Motor de riesgo", detalle: "Ejecuta las reglas del motor que corresponde." },
-    { n: 3, titulo: "Límites", detalle: "Capital y cuota máxima de la primera oferta." },
-    { n: 4, titulo: "Plan de cuotas", detalle: "Calcula cómo se financia ese capital." },
+    {
+      n: 2,
+      titulo: "Motor de riesgo",
+      detalle: "Ejecuta las reglas del motor que corresponde y determina si la solicitud pasa.",
+    },
   ];
   return (
     <div className="mx-auto mt-5 max-w-md space-y-1.5 text-left">
@@ -209,7 +209,7 @@ export function PasoEvaluacion() {
   const motorNoPasa = origenRechazo === "MOTOR";
   const sinLinea = origenRechazo === "SIN_LINEA";
   const resultado = completo ? app.riesgo.resultado : null;
-  const mostrarLimitesYPlan = completo && origenRechazo === null && app.riesgo.limites !== null;
+  const motorAprobado = completo && origenRechazo === null && app.riesgo.limites !== null;
   const listaVisible = completo ? reglas : reglas.slice(0, visibles);
   const marcadas = app.riesgo.reglas.filter(reglaMarcada).length;
   const enCurso = fase === "revelando" || completo;
@@ -351,10 +351,8 @@ export function PasoEvaluacion() {
       {rechazoInstitucional && (
         <>
           <div className="rounded-xl border border-dashed border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-400">
-            <span className="font-semibold">2 · Motor de riesgo</span>,{" "}
-            <span className="font-semibold">3 · Límites</span> y{" "}
-            <span className="font-semibold">4 · Plan de cuotas</span> — no se ejecutan: una regla
-            institucional rechazó la solicitud.
+            <span className="font-semibold">2 · Motor de riesgo</span> no se ejecuta y no se
+            llega al paso de Oferta: una regla institucional rechazó la solicitud.
           </div>
           <div className="animate-fade-up rounded-2xl border border-danger-200 bg-danger-50 p-6 text-center sm:p-8">
             <span className="mx-auto flex h-14 w-14 animate-pop items-center justify-center rounded-full bg-danger-600 text-white shadow-sm">
@@ -430,63 +428,31 @@ export function PasoEvaluacion() {
         </div>
       )}
 
-      {mostrarLimitesYPlan && app.riesgo.limites && (
-        <>
-          <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-success-700">
-            <IconArrowDown width={14} height={14} />
-            el motor pasó · se determinan los límites de la primera oferta
-          </p>
-
-          <section className="animate-fade-up space-y-3">
-            <CapaTitulo
-              numero={3}
-              titulo="Límites"
-              subtitulo="Capital y cuota máxima de la primera oferta, sin cancelaciones."
-            />
-            <LimitesPanel limites={app.riesgo.limites} />
-          </section>
-
-          <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-ink-400">
-            <IconArrowDown width={14} height={14} />
-            el plan calcula cómo financiar ese capital
-          </p>
-
-          <section className="animate-fade-up space-y-3">
-            <CapaTitulo
-              numero={4}
-              titulo="Plan de cuotas"
-              subtitulo="Condiciones financieras, limitantes y capital máximo otorgable."
-            />
-            <PlanPanel />
-          </section>
-
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-success-200 bg-success-50 px-5 py-4">
-            <span className="flex h-10 w-10 shrink-0 animate-pop items-center justify-center rounded-full bg-success-600 text-white">
-              <IconCheck width={20} height={20} strokeWidth={2.6} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-success-700">Primera oferta generada</p>
-              <p className="text-xs text-success-700/80">
-                Continuá para presentarla al cliente. Si quiere precancelar créditos, se recalcula
-                en la oferta.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {app.numeroCredito && (
-                <StatusBadge tone="neutral">ID de Crédito {app.numeroCredito}</StatusBadge>
-              )}
-              <EstadoBadge estado={app.estado} />
-            </div>
+      {motorAprobado && (
+        <div className="animate-fade-up flex flex-wrap items-center gap-3 rounded-2xl border border-success-200 bg-success-50 px-5 py-4">
+          <span className="flex h-10 w-10 shrink-0 animate-pop items-center justify-center rounded-full bg-success-600 text-white">
+            <IconCheck width={20} height={20} strokeWidth={2.6} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-success-700">Motor de riesgo: pasa</p>
+            <p className="text-xs text-success-700/80">
+              Los límites aplicables al capital y las cuotas se arman en el siguiente paso,
+              Oferta.
+            </p>
           </div>
-        </>
+          <div className="flex flex-wrap items-center gap-2">
+            {app.numeroCredito && (
+              <StatusBadge tone="neutral">ID de Crédito {app.numeroCredito}</StatusBadge>
+            )}
+            <EstadoBadge estado={app.estado} />
+          </div>
+        </div>
       )}
 
       {motorNoPasa && (
         <>
           <div className="rounded-xl border border-dashed border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-400">
-            <span className="font-semibold">3 · Límites</span> y{" "}
-            <span className="font-semibold">4 · Plan de cuotas</span> — no se ejecutan: el motor
-            no pasó.
+            No se llega al paso de Oferta: el motor no pasó.
           </div>
           <div className="animate-fade-up rounded-2xl border border-danger-200 bg-danger-50 p-6 text-center sm:p-8">
             <span className="mx-auto flex h-14 w-14 animate-pop items-center justify-center rounded-full bg-danger-600 text-white shadow-sm">

@@ -1,0 +1,194 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e13]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e16] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e29]: Liquidación
+            - generic [ref=e30]: Pronto
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - generic [ref=e37]: Clientes
+            - generic [ref=e38]: Pronto
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e43]: Créditos
+            - generic [ref=e44]: Pronto
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e50]: Motor de riesgo
+            - generic [ref=e51]: Pronto
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e57]: Reportes
+            - generic [ref=e58]: Pronto
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e64]: Parámetros
+            - generic [ref=e65]: Pronto
+        - generic [ref=e66]:
+          - button "Reiniciar demo" [ref=e67]
+          - paragraph [ref=e68]: Demo interactiva · v0.3
+    - generic [ref=e69]:
+      - banner [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Solicitar crédito
+            - paragraph [ref=e74]: CreditoNet · Casa Central
+          - generic [ref=e75]: Demo
+          - button "Notificaciones" [ref=e79]:
+            - img [ref=e80]
+          - generic [ref=e84]:
+            - generic [ref=e85]: JP
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Juan Pérez
+              - paragraph [ref=e88]: Canal de venta · CreditoNet
+      - main [ref=e89]:
+        - generic [ref=e156]:
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - generic [ref=e159]:
+                - paragraph [ref=e160]: Solicitar crédito · Originación
+                - heading "Reglas, motor, límites y plan" [level=1] [ref=e793]
+                - paragraph [ref=e162]: Se genera el ID de Crédito. Se evalúan las reglas institucionales, el motor decide si pasa, se determinan los límites y el plan calcula la primera oferta.
+              - generic [ref=e163]:
+                - paragraph [ref=e164]: Paso 5 de 6
+                - paragraph [ref=e165]: Etapa 1 de 2
+            - list [ref=e169]:
+              - listitem [ref=e170]:
+                - button "Inicio" [ref=e335] [cursor=pointer]:
+                  - img [ref=e336]
+                  - generic [ref=e173]: Inicio
+              - listitem [ref=e175]:
+                - button "Identificación" [ref=e589] [cursor=pointer]:
+                  - img [ref=e590]
+                  - generic [ref=e178]: Identificación
+              - listitem [ref=e180]:
+                - button "Producto y organismo" [ref=e683] [cursor=pointer]:
+                  - img [ref=e684]
+                  - generic [ref=e183]: Producto y organismo
+              - listitem [ref=e185]:
+                - button "Datos mínimos" [ref=e794] [cursor=pointer]:
+                  - img [ref=e795]
+                  - generic [ref=e188]: Datos mínimos
+              - listitem [ref=e190]:
+                - button "5 Evaluación" [disabled] [ref=e191]:
+                  - generic [ref=e192]: "5"
+                  - generic [ref=e193]: Evaluación
+              - listitem [ref=e195]:
+                - button "6 Oferta" [disabled] [ref=e196]:
+                  - generic [ref=e197]: "6"
+                  - generic [ref=e198]: Oferta
+          - generic [ref=e199]:
+            - generic [ref=e797]:
+              - generic [ref=e799]:
+                - generic [ref=e800]:
+                  - img [ref=e802]
+                  - heading "Solicitar crédito" [level=3] [ref=e805]
+                  - paragraph [ref=e806]:
+                    - text: Al presionar
+                    - strong [ref=e807]: Solicitar
+                    - text: se genera el ID de Crédito y la solicitud queda
+                    - strong [ref=e808]: En trámite
+                    - text: . Primero se evalúan las reglas institucionales y el motor; recién después intervienen los límites y el plan de cuotas.
+                - generic [ref=e809]:
+                  - generic [ref=e810]:
+                    - generic [ref=e811]:
+                      - paragraph [ref=e812]: 1 · Reglas institucionales
+                      - paragraph [ref=e813]: Políticas transversales, con los datos mínimos confirmados.
+                    - paragraph [ref=e814]:
+                      - img [ref=e815]
+                  - generic [ref=e818]:
+                    - paragraph [ref=e819]: 2 · Motor de riesgo
+                    - paragraph [ref=e820]: Ejecuta las reglas del motor que corresponde y determina si la solicitud pasa.
+                - generic [ref=e822]:
+                  - paragraph [ref=e823]:
+                    - img [ref=e824]
+                    - text: Escenario de demo · resultado que devolverá el motor
+                  - generic [ref=e827]:
+                    - button "Pasa Todas las reglas pasan." [pressed] [ref=e828]:
+                      - generic [ref=e829]: Pasa
+                      - generic [ref=e830]: Todas las reglas pasan.
+                    - 'button "Pasa con reglas marcadas Una regla no bloqueante no pasa: la solicitud continúa y la revisa el analista." [ref=e831]':
+                      - generic [ref=e832]: Pasa con reglas marcadas
+                      - generic [ref=e833]: "Una regla no bloqueante no pasa: la solicitud continúa y la revisa el analista."
+                    - 'button "No pasa Una regla bloqueante no pasa: la solicitud no continúa." [ref=e834]':
+                      - generic [ref=e835]: No pasa
+                      - generic [ref=e836]: "Una regla bloqueante no pasa: la solicitud no continúa."
+                  - paragraph [ref=e837]: "“Pasa con reglas marcadas” hace fallar la blacklist, configurada como no bloqueante: la solicitud continúa y el analista ve la regla marcada. “No pasa” hace fallar la situación BCRA, que es bloqueante. Edad, antigüedad e ingreso mínimo se evalúan siempre con los datos reales: si alguna no pasa, el motor no pasa aunque el escenario sea “Pasa”."
+                - button "Solicitar" [ref=e839]
+              - generic [ref=e841]:
+                - button "Atrás" [ref=e842]:
+                  - img [ref=e843]
+                  - text: Atrás
+                - status [ref=e846]:
+                  - img [ref=e848]
+                  - generic [ref=e851]: Presioná Solicitar y esperá el resultado de la evaluación.
+                - button "Continuar" [disabled] [ref=e852]:
+                  - text: Continuar
+                  - img [ref=e853]
+            - complementary [ref=e285]:
+              - generic [ref=e286]:
+                - generic [ref=e287]:
+                  - img [ref=e289]
+                  - heading "Resumen de la solicitud" [level=3] [ref=e292]
+                - generic [ref=e294]:
+                  - generic [ref=e295]:
+                    - term [ref=e296]: Estado
+                    - definition [ref=e297]:
+                      - generic [ref=e298]: Borrador
+                  - generic [ref=e299]:
+                    - term [ref=e300]: Canal
+                    - definition [ref=e301]: Sucursal
+                  - generic [ref=e302]:
+                    - term [ref=e303]: Tipo de persona
+                    - definition [ref=e304]: Persona física
+                  - generic [ref=e305]:
+                    - term [ref=e306]: Cliente
+                    - definition [ref=e307]: María Fernanda González
+                  - generic [ref=e572]:
+                    - term [ref=e573]: ID de Cliente
+                    - definition [ref=e574]: "000928"
+                  - generic [ref=e575]:
+                    - term [ref=e576]: DNI
+                    - definition [ref=e577]: 27.456.890
+                  - generic [ref=e308]:
+                    - term [ref=e309]: Producto
+                    - definition [ref=e310]: Préstamo personal
+                  - generic [ref=e311]:
+                    - term [ref=e312]: Organismo
+                    - definition [ref=e313]: Empleados de salud
+                  - generic [ref=e314]:
+                    - term [ref=e315]: Motor de riesgo
+                    - definition [ref=e316]: Motor Empleados de Salud
+                  - generic [ref=e317]:
+                    - term [ref=e318]: Plan de cuotas
+                    - definition [ref=e319]: Línea Salud 2026
+                  - generic [ref=e578]:
+                    - term [ref=e579]: Ingreso neto
+                    - definition [ref=e580]: $1.000.000
+              - generic [ref=e320]:
+                - paragraph [ref=e321]: Próximo paso
+                - paragraph [ref=e322]: 6. Oferta
+                - paragraph [ref=e323]: Presioná Solicitar y esperá el resultado de la evaluación.
+  - button "Open Next.js Dev Tools" [ref=e329] [cursor=pointer]:
+    - img [ref=e330]
+  - alert [ref=e333]
