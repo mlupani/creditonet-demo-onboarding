@@ -1,7 +1,7 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { validarLaboral } from "@/lib/validation";
+import { CONDICIONES_LABORALES, validarLaboral } from "@/lib/validation";
 import { onlyDigits } from "@/lib/format";
 import { BANCOS } from "@/lib/parametros";
 import { Banner } from "@/components/ui/Banner";
@@ -33,6 +33,16 @@ export function PasoLaboralIngresos() {
         }
       />
       <div className="grid gap-x-5 gap-y-1 p-5 sm:grid-cols-2 sm:p-6">
+        <SelectField
+          id="condicion-laboral"
+          label="Condición laboral"
+          required
+          value={l.condicionLaboral}
+          onChange={(v) => patchLaboral({ condicionLaboral: v })}
+          options={CONDICIONES_LABORALES.map((c) => ({ value: c, label: c }))}
+          error={errores.condicionLaboral}
+          hint="Determina qué línea aplica y participa en la generación de la oferta. La situación BCRA y el buró interno (vistos al identificar al cliente) no bloquean la línea, sólo recortan el capital. No se puede modificar después de la oferta."
+        />
         <FormField
           id="fecha-inicio"
           label="Fecha de inicio laboral"

@@ -58,11 +58,6 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
           razon:
             "Verificá la identidad comparando la foto archivada con la persona presente.",
         };
-      if (!app.laboral.condicionLaboral.trim())
-        return {
-          ok: false,
-          razon: "Seleccioná la condición laboral del cliente para poder continuar.",
-        };
       return { ok: true, razon: null };
     case 4:
       return laboralCompleto(app.laboral)
