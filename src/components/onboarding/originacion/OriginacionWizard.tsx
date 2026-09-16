@@ -50,14 +50,14 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
           razon:
             "El flujo de persona jurídica (identificación por CUIT y datos societarios) no es navegable en esta demo.",
         };
+      if (!app.identificacion.consultado || !app.cliente)
+        return { ok: false, razon: "Consultá el DNI o CUIL del cliente para identificarlo." };
       return { ok: true, razon: null };
     case 2:
       return productoHabilitadoEnCanal(app.configuracion.productoId, app.configuracion.canalId)
         ? { ok: true, razon: null }
         : { ok: false, razon: "El producto elegido no se ofrece en el canal de la solicitud." };
     case 3:
-      if (!app.identificacion.consultado || !app.cliente)
-        return { ok: false, razon: "Consultá el DNI o CUIL del cliente para identificarlo." };
       if (institucionalesBloquean(evaluarInstitucionales(app, "IDENTIFICACION")))
         return {
           ok: false,

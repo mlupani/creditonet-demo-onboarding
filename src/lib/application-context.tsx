@@ -38,7 +38,6 @@ import {
   precargarPostOferta,
 } from "./mocks";
 import { calcularLimites, recalcularOferta } from "./credit";
-import { primerProductoDelCanal, productoHabilitadoEnCanal } from "./config";
 import { reglaBloquea } from "./motores";
 import { institucionalesBloquean } from "./reglas-institucionales";
 import { aplicarCambioCampo, type PantallaConCampos } from "./campos-post-oferta";
@@ -103,7 +102,6 @@ interface ApplicationContextValue {
 
   patchApp: (patch: Partial<CreditApplication>) => void;
   setTipoPersona: (tipo: TipoPersona) => void;
-  setCanal: (canalId: string) => void;
   consultarCliente: () => void;
   patchCliente: (patch: Partial<ClienteDatos>) => void;
   patchLaboral: (patch: Partial<LaboralIngresos>) => void;
@@ -234,21 +232,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setTipoPersona = useCallback((tipoPersona: TipoPersona) => {
     setApp((prev) => ({ ...prev, tipoPersona }));
-  }, []);
-
-  // El canal condiciona los productos disponibles (Producto §3): si el elegido deja de estar
-  // habilitado, se toma el primero que el canal ofrece.
-  const setCanal = useCallback((canalId: string) => {
-    setApp((prev) => ({
-      ...prev,
-      configuracion: {
-        ...prev.configuracion,
-        canalId,
-        productoId: productoHabilitadoEnCanal(prev.configuracion.productoId, canalId)
-          ? prev.configuracion.productoId
-          : primerProductoDelCanal(canalId),
-      },
-    }));
   }, []);
 
   const consultarCliente = useCallback(() => {
@@ -756,7 +739,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMenuAbierto,
       patchApp,
       setTipoPersona,
-      setCanal,
       consultarCliente,
       patchCliente,
       patchLaboral,
@@ -802,7 +784,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPaso,
       patchApp,
       setTipoPersona,
-      setCanal,
       consultarCliente,
       patchCliente,
       patchLaboral,

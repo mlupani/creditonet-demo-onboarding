@@ -2,48 +2,28 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import {
-  CANALES,
-  PRODUCTOS,
-  SESION,
-  VENDEDORES,
-  nombreOpcion,
-  productoHabilitadoEnCanal,
-} from "@/lib/config";
+import { onlyDigits } from "@/lib/format";
 import type { TipoPersona } from "@/lib/types";
+import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Checkbox } from "@/components/ui/Checkbox";
-import { SelectField } from "@/components/ui/SelectField";
+import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import {
-  IconBuilding,
   IconCheck,
   IconIdCard,
-  IconLock,
-  IconSparkles,
+  IconLoader,
+  IconSearch,
   IconUser,
   IconUsers,
-  IconWallet,
 } from "@/components/icons";
 
 type Icono = (props: { width?: number; height?: number }) => React.ReactNode;
 
-function inicialesDe(nombre: string): string {
-  return nombre
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join("")
-    .toUpperCase();
+function validarDocumento(valor: string): string | null {
+  const d = onlyDigits(valor);
+  if (d.length === 0) return "Ingresá el DNI o CUIL del cliente para consultar sus datos.";
+  if (d.length === 7 || d.length === 8 || d.length === 11) return null;
+  return "Ingresá un DNI (7 u 8 dígitos) o un CUIL (11 dígitos), sin puntos ni guiones.";
 }
-
-const ICONO_CANAL: Record<string, Icono> = {
-  sucursal: IconBuilding,
-  digital: IconSparkles,
-};
-
-// Canales que se pueden elegir en la demo. El canal digital se muestra pero no es navegable.
-const CANALES_HABILITADOS = new Set(["sucursal"]);
 
 const PERSONAS: {
   id: TipoPersona;
@@ -132,101 +112,33 @@ function Opcion({
   );
 }
 
-// Primer paso del flujo (Arquitectura §2–§4): canal de entrada, vendedor autenticado y tipo
-// de persona.
+// Primer paso del flujo: tipo de persona e identificación del cliente por DNI/CUIL.
 export function PasoInicio() {
-  const { app, patchApp, setTipoPersona, setCanal } = useApplication();
-  const vendedor = VENDEDORES.find((v) => v.id === app.configuracion.vendedorId);
-  const [reasignando, setReasignando] = useState(
-    app.configuracion.vendedorId !== SESION.vendedorId
+  const { app, patchApp, setTipoPersona, consultarCliente } = useApplication();
+  const [documento, setDocumento] = useState(
+    app.identificacion.documento || app.cliente?.dni || ""
   );
+  const [error, setError] = useState<string | null>(null);
+  const [consultando, setConsultando] = useState(false);
+  const encontrado = app.identificacion.consultado && app.cliente;
 
-  function toggleReasignar(activo: boolean) {
-    setReasignando(activo);
-    if (!activo)
-      patchApp({ configuracion: { ...app.configuracion, vendedorId: SESION.vendedorId } });
+  function consultar() {
+    const err = validarDocumento(documento);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setConsultando(true);
+    patchApp({ identificacion: { ...app.identificacion, documento } });
+    window.setTimeout(() => {
+      consultarCliente();
+      setConsultando(false);
+    }, 800);
   }
 
   return (
     <div className="space-y-5">
-      <Card>
-        <CardHeader
-          title="¿Por dónde llega la solicitud?"
-          description="El canal es el primer elemento del flujo y define qué productos se pueden ofrecer."
-          icon={<IconWallet width={18} height={18} />}
-        />
-        <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
-          {CANALES.map((canal) => {
-            const productos = PRODUCTOS.filter((p) => productoHabilitadoEnCanal(p.id, canal.id));
-            return (
-              <Opcion
-                key={canal.id}
-                seleccionada={app.configuracion.canalId === canal.id}
-                onClick={() => setCanal(canal.id)}
-                icon={ICONO_CANAL[canal.id] ?? IconBuilding}
-                titulo={canal.nombre}
-                subtitulo={`${productos.length} producto${productos.length === 1 ? "" : "s"}`}
-                detalle={`${canal.detalle}. Ofrece: ${productos.map((p) => p.nombre).join(", ")}.`}
-                disabled={!CANALES_HABILITADOS.has(canal.id)}
-                nota={CANALES_HABILITADOS.has(canal.id) ? undefined : "No disponible en la demo"}
-              />
-            );
-          })}
-        </div>
-        <div className="border-t border-ink-100 px-5 py-4 sm:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-3.5 py-2.5">
-            <span className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
-                {reasignando
-                  ? inicialesDe(nombreOpcion(VENDEDORES, app.configuracion.vendedorId))
-                  : SESION.iniciales}
-              </span>
-              <span>
-                <span className="block text-sm font-semibold text-ink-800">
-                  Vendedor · {nombreOpcion(VENDEDORES, app.configuracion.vendedorId)}
-                </span>
-                {vendedor?.detalle && (
-                  <span className="block text-xs text-ink-500">{vendedor.detalle}</span>
-                )}
-              </span>
-            </span>
-            {!reasignando && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
-                <IconLock width={11} height={11} />
-                Tomado de la sesión
-              </span>
-            )}
-          </div>
-          <p className="mt-2 text-xs leading-relaxed text-ink-500">
-            Por defecto la solicitud guarda el ID del vendedor autenticado para trazabilidad,
-            bandejas y devoluciones del analista. Se puede asignar a otro vendedor para el
-            crédito cuando corresponda.
-          </p>
-          <div className="mt-3">
-            <Checkbox
-              checked={reasignando}
-              onChange={toggleReasignar}
-              label="Asignar a otro vendedor"
-              description="El crédito queda a nombre del vendedor elegido en vez del de la sesión."
-            />
-          </div>
-          {reasignando && (
-            <div className="mt-3">
-              <SelectField
-                id="vendedor-asignado"
-                label="Vendedor asignado"
-                required
-                value={app.configuracion.vendedorId}
-                onChange={(v) =>
-                  patchApp({ configuracion: { ...app.configuracion, vendedorId: v } })
-                }
-                options={VENDEDORES.map((v) => ({ value: v.id, label: v.nombre }))}
-              />
-            </div>
-          )}
-        </div>
-      </Card>
-
       <Card>
         <CardHeader
           title="¿Quién solicita el crédito?"
@@ -246,6 +158,70 @@ export function PasoInicio() {
               nota={op.navegable ? undefined : "No navegable en la demo"}
             />
           ))}
+        </div>
+
+        <div className="border-t border-ink-100 px-5 py-4 sm:px-6">
+          <label htmlFor="documento" className="mb-1.5 block text-sm font-medium text-ink-700">
+            DNI o CUIL del cliente
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <input
+                id="documento"
+                type="text"
+                inputMode="numeric"
+                value={documento}
+                onChange={(e) => {
+                  setDocumento(onlyDigits(e.target.value).slice(0, 11));
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") consultar();
+                }}
+                placeholder="Ej.: 27456890 o 27274568904"
+                disabled={consultando}
+                aria-invalid={!!error}
+                className={`w-full rounded-lg border bg-white px-3.5 py-2.5 pr-11 text-sm tabular-nums shadow-xs outline-none transition placeholder:text-ink-400 ${
+                  error
+                    ? "border-danger-400 focus:border-danger-500 focus:ring-2 focus:ring-danger-100"
+                    : "border-ink-300 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                } ${consultando ? "cursor-wait" : ""}`}
+              />
+              {encontrado && !error && (
+                <IconCheck
+                  width={16}
+                  height={16}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-success-600"
+                />
+              )}
+            </div>
+            <Button onClick={consultar} loading={consultando} className="sm:w-auto">
+              {!consultando && <IconSearch width={16} height={16} />}
+              Consultar cliente
+            </Button>
+          </div>
+          {error ? (
+            <ValidationMessage tipo="error">{error}</ValidationMessage>
+          ) : (
+            <p className="mt-1.5 text-xs text-ink-500">
+              DNI de 7 u 8 dígitos o CUIL de 11, sin puntos ni guiones. En la demo cualquier
+              documento válido devuelve el cliente de prueba.
+            </p>
+          )}
+
+          {consultando && (
+            <div className="animate-fade-in mt-3 space-y-3 rounded-xl border border-ink-200 bg-white p-5 shadow-card">
+              <p className="flex items-center gap-2 text-sm font-medium text-brand-700">
+                <IconLoader width={16} height={16} />
+                Consultando servicios de datos externos…
+              </p>
+              <div className="space-y-2">
+                <div className="h-3 w-1/2 animate-pulse rounded bg-ink-100" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-ink-100" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-ink-100" />
+              </div>
+            </div>
+          )}
         </div>
       </Card>
     </div>

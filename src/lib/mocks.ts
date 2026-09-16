@@ -360,12 +360,12 @@ export function crearAplicacionInicial(): CreditApplication {
 // Reglas institucionales + Motor + Límites + Plan → Primera oferta.
 export const STEPS_ORIGINACION: WizardStepMeta[] = [
   {
-    id: "inicio",
+    id: "identificacion",
     numero: 1,
-    titulo: "Inicio",
-    tituloPantalla: "Canal y tipo de persona",
+    titulo: "Identificación",
+    tituloPantalla: "Identificación",
     descripcion:
-      "Por dónde llega la solicitud y quién la pide. El vendedor se toma automáticamente de la sesión.",
+      "Quién pide el crédito y con qué documento se identifica. El vendedor se toma automáticamente de la sesión.",
   },
   {
     id: "producto-organismo",
@@ -376,12 +376,12 @@ export const STEPS_ORIGINACION: WizardStepMeta[] = [
       "El producto define la configuración general y el organismo la particulariza. El canal limita qué productos se pueden ofrecer.",
   },
   {
-    id: "identificacion",
+    id: "datos-cliente",
     numero: 3,
-    titulo: "Identificación",
-    tituloPantalla: "Identificación del cliente",
+    titulo: "Datos del cliente",
+    tituloPantalla: "Datos del cliente",
     descripcion:
-      "Ingresá el DNI o el CUIT. El sistema determina si es un cliente nuevo o existente, autocompleta los datos y evalúa las reglas institucionales que ya tienen sus datos.",
+      "Revisá lo que trajo la consulta: si es un cliente nuevo o existente, autocompleta los datos y evalúa las reglas institucionales que ya tienen sus datos.",
   },
   {
     id: "datos-minimos",

@@ -394,10 +394,6 @@ export function productoHabilitadoEnCanal(productoId: string, canalId: string): 
   return getProductoConfig(productoId).canales.includes(canalId);
 }
 
-export function primerProductoDelCanal(canalId: string): string {
-  return PRODUCTOS.find((p) => productoHabilitadoEnCanal(p.id, canalId))?.id ?? PRODUCTOS[0].id;
-}
-
 export function getOrganismo(organismoId: string): OrganismoConfig {
   return ORGANISMOS.find((o) => o.id === organismoId) ?? ORGANISMOS[0];
 }
