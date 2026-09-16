@@ -4,25 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { FASES_RIESGO, calcularLimites } from "@/lib/credit";
 import { seleccionarLinea } from "@/lib/config";
-import {
-  evaluarReglas,
-  reglaBloquea,
-  reglaMarcada,
-  resolverResultado,
-  seleccionarMotor,
-} from "@/lib/motores";
+import { evaluarReglas, reglaMarcada, resolverResultado, seleccionarMotor } from "@/lib/motores";
 import { evaluarInstitucionales, institucionalesBloquean } from "@/lib/reglas-institucionales";
 import { sumarDias } from "@/lib/format";
-import type {
-  ReglaInstitucional,
-  RiskResultado,
-  RiskRule as RiskRuleType,
-} from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge, StatusBadge } from "@/components/ui/StatusBadge";
-import { DemoTag } from "@/components/ui/DemoTag";
 import {
   IconArrowDown,
   IconCalendar,
@@ -34,38 +22,8 @@ import {
 } from "@/components/icons";
 
 import { EscenarioMotor } from "../evaluacion/EscenarioMotor";
-import { InstitucionalesPanel } from "../evaluacion/InstitucionalesPanel";
-import { MotorPanel } from "../evaluacion/MotorPanel";
 
-type Fase = "inicial" | "evaluando" | "revelando" | "completo";
-
-// Cuando el motor no pasa, al vendedor se le muestran sólo las reglas bloqueantes que no
-// pasaron (reunión 11/09, 02:01). Al analista, más adelante, se le muestran todas.
-function reglasParaVendedor(reglas: RiskRuleType[], resultado: RiskResultado | null) {
-  return resultado === "NO_PASA" ? reglas.filter(reglaBloquea) : reglas;
-}
-
-function CapaTitulo({
-  numero,
-  titulo,
-  subtitulo,
-}: {
-  numero: number;
-  titulo: string;
-  subtitulo: string;
-}) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-ink-900 text-xs font-bold text-white">
-        {numero}
-      </span>
-      <div>
-        <p className="text-sm font-bold tracking-tight text-ink-900">{titulo}</p>
-        <p className="text-xs text-ink-500">{subtitulo}</p>
-      </div>
-    </div>
-  );
-}
+type Fase = "inicial" | "evaluando" | "completo";
 
 function DiagramaEtapas() {
   const etapas = [
@@ -107,13 +65,6 @@ export function PasoEvaluacion() {
 
   const [fase, setFase] = useState<Fase>(yaCompleto ? "completo" : "inicial");
   const [faseIdx, setFaseIdx] = useState(0);
-  const [institucionales, setInstitucionales] = useState<ReglaInstitucional[]>(
-    yaCompleto ? app.riesgo.institucionales : []
-  );
-  const [reglas, setReglas] = useState<RiskRuleType[]>(
-    yaCompleto ? reglasParaVendedor(app.riesgo.reglas, app.riesgo.resultado) : []
-  );
-  const [visibles, setVisibles] = useState(yaCompleto ? app.riesgo.reglas.length : 0);
   const timers = useRef<number[]>([]);
 
   const limpiar = useCallback(() => {
@@ -146,12 +97,8 @@ export function PasoEvaluacion() {
 
     // 3 · Límites de la primera oferta: sin cancelaciones, que se ofrecen después (Plan §9).
     const limites = linea.plan ? calcularLimites(app, { conCancelaciones: false }) : null;
-    const visiblesVendedor = reglasParaVendedor(nuevas, resultado);
 
     solicitar();
-    setInstitucionales(nuevasInstitucionales);
-    setReglas(visiblesVendedor);
-    setVisibles(0);
     setFaseIdx(0);
     setFase("evaluando");
 
@@ -173,21 +120,7 @@ export function PasoEvaluacion() {
       timers.current.push(
         window.setTimeout(() => {
           setFaseIdx(k);
-          if (k < n) return;
-          setFase("revelando");
-          if (visiblesVendedor.length === 0) {
-            timers.current.push(window.setTimeout(finalizar, 450));
-            return;
-          }
-          visiblesVendedor.forEach((_, j) => {
-            timers.current.push(
-              window.setTimeout(() => {
-                setVisibles(j + 1);
-                if (j === visiblesVendedor.length - 1)
-                  timers.current.push(window.setTimeout(finalizar, 450));
-              }, 260 * (j + 1))
-            );
-          });
+          if (k === n) timers.current.push(window.setTimeout(finalizar, 450));
         }, 500 * k)
       );
     }
@@ -206,11 +139,9 @@ export function PasoEvaluacion() {
   const rechazoInstitucional = origenRechazo === "INSTITUCIONAL";
   const motorNoPasa = origenRechazo === "MOTOR";
   const sinLinea = origenRechazo === "SIN_LINEA";
-  const resultado = completo ? app.riesgo.resultado : null;
   const motorAprobado = completo && origenRechazo === null && app.riesgo.limites !== null;
-  const listaVisible = completo ? reglas : reglas.slice(0, visibles);
-  const marcadas = app.riesgo.reglas.filter(reglaMarcada).length;
-  const enCurso = fase === "revelando" || completo;
+  const reglasMarcadas = app.riesgo.reglas.filter(reglaMarcada);
+  const marcadas = reglasMarcadas.length;
 
   return (
     <div className="space-y-5">
@@ -241,17 +172,15 @@ export function PasoEvaluacion() {
         </Card>
       )}
 
-      {(fase === "evaluando" || fase === "revelando") && (
+      {fase === "evaluando" && (
         <div className="animate-fade-in rounded-xl border border-brand-200 bg-brand-50/70 p-5">
           <p className="flex items-center gap-2 text-sm font-semibold text-brand-700">
             <IconLoader width={16} height={16} />
-            {fase === "evaluando"
-              ? FASES_RIESGO[Math.min(faseIdx, FASES_RIESGO.length - 1)].mensaje
-              : "Revelando el resultado de las reglas…"}
+            {FASES_RIESGO[Math.min(faseIdx, FASES_RIESGO.length - 1)].mensaje}
           </p>
           <ol className="mt-3 space-y-1.5">
             {FASES_RIESGO.map((f, i) => {
-              const hecho = fase === "revelando" || i < faseIdx;
+              const hecho = i < faseIdx;
               const actual = !hecho && i === faseIdx;
               return (
                 <li
@@ -286,10 +215,6 @@ export function PasoEvaluacion() {
           <span className="flex flex-wrap items-center gap-2">
             Se modificaron datos que las reglas o el plan utilizaron. Volvé a ejecutar para
             actualizar el resultado. El ID de Crédito se conserva.
-            <DemoTag
-              variant="regla"
-              detalle="Qué modificaciones disparan una nueva ejecución de las reglas y cuáles sólo requieren recalcular el plan es un pendiente funcional (Plan de Cuotas §10)."
-            />
           </span>
           <div className="mt-3">
             <Button size="sm" variant="outline" onClick={ejecutar}>
@@ -298,52 +223,6 @@ export function PasoEvaluacion() {
             </Button>
           </div>
         </Banner>
-      )}
-
-      {enCurso && (
-        <section className="space-y-3">
-          <CapaTitulo
-            numero={1}
-            titulo="Reglas institucionales"
-            subtitulo="Políticas transversales, evaluadas antes del motor con los datos mínimos confirmados."
-          />
-          <InstitucionalesPanel reglas={institucionales} />
-        </section>
-      )}
-
-      {enCurso && reglas.length > 0 && (
-        <>
-          <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-ink-400">
-            <IconArrowDown width={14} height={14} />
-            las reglas institucionales pasan · se ejecuta el motor
-          </p>
-          <section className="space-y-3">
-            <CapaTitulo
-              numero={2}
-              titulo="Motor de riesgo"
-              subtitulo="Ejecuta las reglas configuradas y decide si la solicitud pasa o no pasa."
-            />
-            <MotorPanel reglas={listaVisible} resultado={resultado} />
-            {completo && (
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-500">
-                <span>
-                  {motorNoPasa
-                    ? `${app.riesgo.reglas.length} reglas evaluadas · se muestran las ${reglas.length} bloqueantes que no pasaron`
-                    : `${reglas.length} reglas evaluadas${
-                        marcadas > 0
-                          ? ` · ${marcadas} marcada${marcadas === 1 ? "" : "s"} para el analista`
-                          : ""
-                      }`}
-                  {app.riesgo.fecha && <> · {app.riesgo.fecha}</>}
-                </span>
-                <Button size="sm" variant="ghost" onClick={ejecutar}>
-                  <IconRefresh width={14} height={14} />
-                  Volver a ejecutar
-                </Button>
-              </div>
-            )}
-          </section>
-        </>
       )}
 
       {rechazoInstitucional && (
@@ -427,24 +306,50 @@ export function PasoEvaluacion() {
       )}
 
       {motorAprobado && (
-        <div className="animate-fade-up flex flex-wrap items-center gap-3 rounded-2xl border border-success-200 bg-success-50 px-5 py-4">
-          <span className="flex h-10 w-10 shrink-0 animate-pop items-center justify-center rounded-full bg-success-600 text-white">
-            <IconCheck width={20} height={20} strokeWidth={2.6} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-success-700">Motor de riesgo: pasa</p>
-            <p className="text-xs text-success-700/80">
-              Los límites aplicables al capital y las cuotas se arman en el siguiente paso,
-              Oferta.
-            </p>
+        <>
+          <div className="animate-fade-up flex flex-wrap items-center gap-3 rounded-2xl border border-success-200 bg-success-50 px-5 py-4">
+            <span className="flex h-10 w-10 shrink-0 animate-pop items-center justify-center rounded-full bg-success-600 text-white">
+              <IconCheck width={20} height={20} strokeWidth={2.6} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-success-700">Motor de riesgo: pasa</p>
+              <p className="text-xs text-success-700/80">
+                Los límites aplicables al capital y las cuotas se arman en el siguiente paso,
+                Oferta.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {app.numeroCredito && (
+                <StatusBadge tone="neutral">ID de Crédito {app.numeroCredito}</StatusBadge>
+              )}
+              <EstadoBadge estado={app.estado} />
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {app.numeroCredito && (
-              <StatusBadge tone="neutral">ID de Crédito {app.numeroCredito}</StatusBadge>
-            )}
-            <EstadoBadge estado={app.estado} />
+
+          {marcadas > 0 && (
+            <div className="animate-fade-up rounded-2xl border border-warning-200 bg-warning-50 p-4">
+              <p className="text-sm font-bold text-warning-700">
+                {marcadas} regla{marcadas === 1 ? "" : "s"} marcada{marcadas === 1 ? "" : "s"}{" "}
+                para el analista
+              </p>
+              <ul className="mt-1.5 space-y-1 text-xs text-warning-700/90">
+                {reglasMarcadas.map((r) => (
+                  <li key={r.id}>
+                    <span className="font-mono font-bold">{r.codigo}</span> {r.nombre}:{" "}
+                    {r.valorEvaluado}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button size="sm" variant="ghost" onClick={ejecutar}>
+              <IconRefresh width={14} height={14} />
+              Volver a ejecutar
+            </Button>
           </div>
-        </div>
+        </>
       )}
 
       {motorNoPasa && (
@@ -464,6 +369,9 @@ export function PasoEvaluacion() {
               bloqueantes que no pasaron quedan registrados para poder mostrar el motivo en la
               bandeja.
             </p>
+            <div className="mx-auto mt-4 max-w-md rounded-xl border border-danger-200 bg-white px-4 py-3 text-left text-sm text-ink-700">
+              {app.rechazo?.observacion}
+            </div>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <EstadoBadge estado="RECHAZADO" />
               {app.rechazo?.codigos.map((c) => (
@@ -483,11 +391,7 @@ export function PasoEvaluacion() {
               <span>
                 <strong>Período de carencia de 30 días:</strong> el ID de Cliente{" "}
                 {app.numeroCliente} podrá iniciar un nuevo trámite a partir del{" "}
-                {sumarDias(app.rechazo?.fecha ?? "", 30)}. No lo bloquea de forma permanente.{" "}
-                <DemoTag
-                  variant="regla"
-                  detalle="Excepción prevista: evaluación manual por el analista si el cliente presenta libre deuda."
-                />
+                {sumarDias(app.rechazo?.fecha ?? "", 30)}. No lo bloquea de forma permanente.
               </span>
             </div>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -507,17 +411,11 @@ export function PasoEvaluacion() {
         <div className="space-y-3">
           <EscenarioMotor />
           <Banner tone="info" title="Cómo se reparten las responsabilidades">
-            <span className="flex flex-wrap items-center gap-2">
-              Las reglas institucionales aplican políticas transversales del negocio. El motor
-              evalúa el riesgo y decide si pasa o no pasa; no calcula capital. Los límites y el
-              plan de cuotas no vuelven a evaluar riesgo: arman la primera oferta. La precancelación
-              se ofrece después, sobre esa oferta, y el analista revisa al final, cuando termina la
-              carga post-oferta.
-              <DemoTag
-                variant="regla"
-                detalle="Para ver rechazos con datos reales: en Identificación cambiá la fecha de nacimiento a 14/05/1955 (RI-01), o en Datos laborales bajá el ingreso neto a $400.000 (RI-02), y volvé a ejecutar."
-              />
-            </span>
+            Las reglas institucionales aplican políticas transversales del negocio. El motor
+            evalúa el riesgo y decide si pasa o no pasa; no calcula capital. Los límites y el
+            plan de cuotas no vuelven a evaluar riesgo: arman la primera oferta. La precancelación
+            se ofrece después, sobre esa oferta, y el analista revisa al final, cuando termina la
+            carga post-oferta.
           </Banner>
         </div>
       )}

@@ -155,21 +155,15 @@ export function PantallaTokenizacion() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         {!lista && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              loading={procesando === t.id}
-                              disabled={procesando !== null}
-                              onClick={() => conDemora(t.id, () => simularCompletaCliente(t.id))}
-                            >
-                              Simular que el cliente completó
-                            </Button>
-                            <DemoTag
-                              variant="regla"
-                              detalle="Control de la demo: en el sistema real la tarjeta aparece tokenizada cuando el cliente completa el formulario del link."
-                            />
-                          </>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            loading={procesando === t.id}
+                            disabled={procesando !== null}
+                            onClick={() => conDemora(t.id, () => simularCompletaCliente(t.id))}
+                          >
+                            Simular que el cliente completó
+                          </Button>
                         )}
                         <Button
                           size="sm"

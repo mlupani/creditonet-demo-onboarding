@@ -191,13 +191,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
 
       {tipo === "garante" && (
         <Banner tone="info">
-          <span className="flex flex-wrap items-center gap-2">
-            El garante debe firmar la documentación del préstamo y el pagaré.
-            <DemoTag
-              variant="regla"
-              detalle="El circuito de firma se define en la Función 9 — Firma electrónica. No forma parte de esta demo."
-            />
-          </span>
+          El garante debe firmar la documentación del préstamo y el pagaré.
         </Banner>
       )}
 

@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
 import { laboralCompleto } from "@/lib/validation";
-import { productoHabilitadoEnCanal } from "@/lib/config";
+import { ORGANISMOS, PRODUCTOS, nombreOpcion, productoHabilitadoEnCanal } from "@/lib/config";
 import { evaluarInstitucionales, institucionalesBloquean } from "@/lib/reglas-institucionales";
+import { formatDNI } from "@/lib/format";
 import type { Rechazo } from "@/lib/types";
 import { Stepper } from "@/components/ui/Stepper";
 import { Button } from "@/components/ui/Button";
@@ -112,6 +113,16 @@ export function OriginacionWizard() {
   // donde estaba sin recorrer los pasos intermedios de nuevo.
   const puedeRetomar = pasoMaximo > pasoActual;
 
+  // Contexto de la solicitud que se arrastra en el encabezado de todos los pasos.
+  const cliente = app.cliente;
+  const contexto = [
+    cliente ? `${cliente.nombre} ${cliente.apellido}` : null,
+    cliente ? `DNI ${formatDNI(cliente.dni)}` : null,
+    app.numeroCliente ? `ID de Cliente ${app.numeroCliente}` : null,
+    nombreOpcion(PRODUCTOS, app.configuracion.productoId),
+    nombreOpcion(ORGANISMOS, app.configuracion.organismoId),
+  ].filter((v): v is string => Boolean(v));
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <div className="animate-fade-in">
@@ -126,6 +137,9 @@ export function OriginacionWizard() {
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-500">
               {meta.descripcion}
             </p>
+            {contexto.length > 0 && (
+              <p className="mt-1.5 text-xs font-medium text-ink-600">{contexto.join(" · ")}</p>
+            )}
           </div>
           <div className="text-right">
             <p className="text-sm font-semibold tabular-nums text-ink-900">
@@ -166,53 +180,45 @@ export function OriginacionWizard() {
           <PasoOferta />
         </div>
       ) : (
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div key={meta.id} className="animate-fade-up">
-            {pasoActual === 1 && <PasoInicio />}
-            {pasoActual === 2 && <PasoConfiguracion />}
-            {pasoActual === 3 && <PasoIdentificacion />}
-            {pasoActual === 4 && <PasoLaboralIngresos />}
-            {pasoActual === 5 && <PasoEvaluacion />}
+        <div key={meta.id} className="mt-6 animate-fade-up">
+          {pasoActual === 1 && <PasoInicio />}
+          {pasoActual === 2 && <PasoConfiguracion />}
+          {pasoActual === 3 && <PasoIdentificacion />}
+          {pasoActual === 4 && <PasoLaboralIngresos />}
+          {pasoActual === 5 && <PasoEvaluacion />}
 
-            <Card className="mt-6 p-4 sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  variant="ghost"
-                  onClick={volver}
-                  disabled={pasoActual === 1}
-                  className="sm:w-auto"
-                >
-                  <IconArrowLeft width={16} height={16} />
-                  Atrás
-                </Button>
-                <div className="min-w-0 flex-1 sm:mx-4">
-                  {!g.ok && (
-                    <ValidationMessage tipo="info" className="!mt-0 justify-start">
-                      {g.razon}
-                    </ValidationMessage>
-                  )}
-                </div>
-                <Button onClick={continuar} disabled={!g.ok} size="lg" className="sm:w-auto">
-                  Continuar
-                  <IconArrowRight width={16} height={16} />
-                </Button>
+          <Card className="mt-6 p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                variant="ghost"
+                onClick={volver}
+                disabled={pasoActual === 1}
+                className="sm:w-auto"
+              >
+                <IconArrowLeft width={16} height={16} />
+                Atrás
+              </Button>
+              <div className="min-w-0 flex-1 sm:mx-4">
+                {!g.ok ? (
+                  <ValidationMessage tipo="info" className="!mt-0 justify-start">
+                    {g.razon}
+                  </ValidationMessage>
+                ) : (
+                  <p className="text-xs text-ink-500">
+                    <span className="font-semibold text-ink-700">
+                      Próximo: {STEPS_ORIGINACION[pasoActual].numero}.{" "}
+                      {STEPS_ORIGINACION[pasoActual].titulo}
+                    </span>{" "}
+                    — {STEPS_ORIGINACION[pasoActual].descripcion}
+                  </p>
+                )}
               </div>
-            </Card>
-          </div>
-
-          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-            <Card className="p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                Próximo paso
-              </p>
-              <p className="mt-1.5 text-sm font-medium text-ink-800">
-                {`${STEPS_ORIGINACION[pasoActual].numero}. ${STEPS_ORIGINACION[pasoActual].titulo}`}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-ink-500">
-                {g.razon ?? STEPS_ORIGINACION[pasoActual].descripcion}
-              </p>
-            </Card>
-          </aside>
+              <Button onClick={continuar} disabled={!g.ok} size="lg" className="sm:w-auto">
+                Continuar
+                <IconArrowRight width={16} height={16} />
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
 

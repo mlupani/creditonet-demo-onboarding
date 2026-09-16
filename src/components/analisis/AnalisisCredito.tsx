@@ -385,12 +385,6 @@ export function AnalisisCredito({
               value: `${r.original || "vacío"} → ${r.actual || "vacío"}`,
               tone: "warning" as const,
             }))}
-            footer={
-              <DemoTag
-                variant="regla"
-                detalle="Datos precargados del pedido inicial o de una API que el vendedor corrigió en la carga post-oferta. No modifican los datos con los que se evaluó el crédito."
-              />
-            }
           />
         )}
       </div>

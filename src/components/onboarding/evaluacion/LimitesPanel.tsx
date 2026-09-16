@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import type { ResultadoLimites } from "@/lib/types";
 import { formatARS } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
-import { DemoTag } from "@/components/ui/DemoTag";
 
 function Subgrupo({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
@@ -49,19 +48,13 @@ export function LimitesPanel({ limites }: { limites: ResultadoLimites }) {
 
   return (
     <Card className="p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-bold tracking-tight text-ink-900">
-            Límites aplicables al capital
-          </h3>
-          <p className="mt-0.5 text-xs text-ink-500">
-            Calculados sin cancelaciones. Manda el más restrictivo; ninguno sale del motor.
-          </p>
-        </div>
-        <DemoTag
-          variant="regla"
-          detalle="Los importes de cada límite son valores de demo. El universal por cliente y el de sueldos brutos son condiciones generales; el resto sale del producto, del organismo y del plan."
-        />
+      <div>
+        <h3 className="text-sm font-bold tracking-tight text-ink-900">
+          Límites aplicables al capital
+        </h3>
+        <p className="mt-0.5 text-xs text-ink-500">
+          Calculados sin cancelaciones. Manda el más restrictivo; ninguno sale del motor.
+        </p>
       </div>
 
       <ul className="mt-4 space-y-2">

@@ -6,7 +6,6 @@ import { cuotasAbonadasPct, hayPrecancelacion } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { IconArrowRight, IconCheckCircle, IconLoader, IconRefresh } from "@/components/icons";
 
@@ -145,10 +144,6 @@ export function CreditosActivos({
             <span className="text-xs text-success-700/80">
               · libera {formatARS(cuotasLiberadas)} de cuota
             </span>
-            <DemoTag
-              variant="regla"
-              detalle="El crédito que se renueva deja de pesar en la exposición: su cuota libera capacidad y el capital máximo se recalcula. Si la precancelación puede ser parcial es una decisión pendiente."
-            />
           </div>
         )}
       </div>

@@ -3,7 +3,6 @@
 import { useApplication } from "@/lib/application-context";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { resumenConfig } from "@/lib/config";
 import { formatARS, sumarDias } from "@/lib/format";
 import { netoAAcreditar } from "@/lib/credit";
@@ -26,7 +25,6 @@ export function TransicionEtapa() {
           </h1>
           <p className="mx-auto mt-1.5 flex max-w-sm flex-wrap items-center justify-center gap-2 text-sm leading-relaxed text-success-700/80">
             {app.cliente?.nombre} {app.cliente?.apellido} · {app.numeroCredito}
-            <EstadoBadge estado={app.estado} />
           </p>
           {app.fechaSolicitud && (
             <p className="mt-2 text-xs text-success-700/70">

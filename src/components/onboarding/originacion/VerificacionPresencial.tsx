@@ -3,7 +3,6 @@
 import { useApplication } from "@/lib/application-context";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { IconCheck, IconCheckCircle, IconScanFace } from "@/components/icons";
 
 function Retrato({ iniciales, etiqueta, live }: { iniciales: string; etiqueta: string; live?: boolean }) {
@@ -46,12 +45,6 @@ export function VerificacionPresencial() {
         title="Verificación presencial"
         description="Compará la foto archivada con la persona presente y validá su identidad."
         icon={<IconScanFace width={18} height={18} />}
-        action={
-          <DemoTag
-            variant="regla"
-            detalle="La política de captura biométrica para cliente nuevo está pendiente de definición. Para cliente existente se coteja la foto archivada. No se ejecuta biometría real."
-          />
-        }
       />
       <div className="p-5 sm:p-6">
         <div className="mx-auto flex max-w-sm gap-4">

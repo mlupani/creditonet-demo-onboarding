@@ -5,7 +5,6 @@ import { getPlan } from "@/lib/config";
 import { OFFER_TERMS, calcularCuota } from "@/lib/credit";
 import { formatARS, formatPct } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { IconCheckCircle } from "@/components/icons";
 
 export function TablaCuotas({
@@ -22,20 +21,14 @@ export function TablaCuotas({
 
   return (
     <Card className="p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold tracking-tight text-ink-900">
-            Plan de cuotas · {plan.nombre}
-          </h3>
-          <p className="mt-0.5 text-xs text-ink-500">
-            Alternativas válidas después de aplicar los límites. La selección define la cuota, el
-            total y el primer vencimiento.
-          </p>
-        </div>
-        <DemoTag
-          variant="regla"
-          detalle="El vendedor no opera la grilla: el plan la consulta internamente y acá sólo se presentan las alternativas que cumplen el capital y la cuota máxima. Tasas, impuestos, cargos y fecha de la primera cuota son valores de demo; sus fórmulas son un pendiente del Plan de Cuotas (§14)."
-        />
+      <div>
+        <h3 className="text-sm font-semibold tracking-tight text-ink-900">
+          Plan de cuotas · {plan.nombre}
+        </h3>
+        <p className="mt-0.5 text-xs text-ink-500">
+          Alternativas válidas después de aplicar los límites. La selección define la cuota, el
+          total y el primer vencimiento.
+        </p>
       </div>
 
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-500">

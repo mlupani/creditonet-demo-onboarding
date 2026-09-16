@@ -7,7 +7,6 @@ import type {
   Oferta,
   Plazo,
   ResultadoLimites,
-  ResultadoRegla,
   RiskResultado,
 } from "./types";
 import { configEfectiva, getPlan, type PlanCuotas } from "./config";
@@ -130,12 +129,6 @@ export const FASES_RIESGO: FaseRiesgo[] = [
 export const RESULTADO_LABEL: Record<RiskResultado, string> = {
   PASA: "Pasa",
   NO_PASA: "No pasa",
-};
-
-export const OUTCOME_LABEL: Record<ResultadoRegla | "ESPERANDO_DATOS", string> = {
-  PASA: "Pasa",
-  NO_PASA: "No pasa",
-  ESPERANDO_DATOS: "Esperando datos",
 };
 
 // --- Límites de capital (Plan de Cuotas §3.3, §8 · Flujos Integrados §13) ---

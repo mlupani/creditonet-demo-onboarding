@@ -46,12 +46,6 @@ export function PantallaLaboral() {
         pantalla="laboral"
         seccion="acreditacion"
         icon={<IconLandmark width={18} height={18} />}
-        action={
-          <DemoTag
-            variant="regla"
-            detalle="No figura en el detalle de pantallas de onboarding. Se mantiene porque la liquidación transfiere el neto a esta cuenta."
-          />
-        }
       />
       {errores.length === 0 ? (
         <Banner tone="success">Datos laborales completos.</Banner>

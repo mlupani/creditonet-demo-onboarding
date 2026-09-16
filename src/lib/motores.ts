@@ -138,19 +138,6 @@ export function seleccionarMotor(
 
 // --- Resultado ---
 
-export const RESULTADOS_MOTOR: { id: RiskResultado; label: string; detalle: string }[] = [
-  {
-    id: "PASA",
-    label: "Pasa",
-    detalle: "La solicitud continúa hacia los límites y el plan de cuotas.",
-  },
-  {
-    id: "NO_PASA",
-    label: "No pasa",
-    detalle: "Alguna regla bloqueante no pasó: la solicitud no continúa.",
-  },
-];
-
 // Control exclusivo de la demo: fuerza el resultado de las reglas que dependen de fuentes
 // externas para poder mostrar los tres caminos en una presentación.
 export const ESCENARIOS_MOTOR: { id: EscenarioMotor; label: string; detalle: string }[] = [

@@ -40,12 +40,6 @@ export function PantallaPersonales() {
         pantalla="personales"
         seccion="contacto"
         icon={<IconSend width={18} height={18} />}
-        action={
-          <DemoTag
-            variant="regla"
-            detalle="La compañía telefónica viene precargada; queda pendiente ajustar su origen en la pantalla de pedido (Onboarding §4)."
-          />
-        }
       />
       {errores.length === 0 ? (
         <Banner tone="success">Datos personales completos.</Banner>

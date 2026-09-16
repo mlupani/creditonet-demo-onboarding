@@ -17,7 +17,6 @@ import { Modal } from "@/components/ui/Modal";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
 import { Banner } from "@/components/ui/Banner";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { IconArrowRight } from "@/components/icons";
 
 /**
@@ -177,13 +176,7 @@ export function CambiarOfertaModal({
       {errorLiquidar && (
         <div className="mt-3">
           <Banner tone="error" title="No se puede aplicar este cambio">
-            <span className="flex flex-wrap items-center gap-2">
-              {errorLiquidar}
-              <DemoTag
-                variant="regla"
-                detalle="El control es que el monto a liquidar sea mayor a cero. Si no da, la acción correcta es rechazar con el motivo correspondiente."
-              />
-            </span>
+            {errorLiquidar}
           </Banner>
         </div>
       )}

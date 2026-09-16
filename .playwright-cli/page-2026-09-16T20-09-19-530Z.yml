@@ -1,0 +1,130 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e29]: Liquidación
+            - generic [ref=e30]: Pronto
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - generic [ref=e37]: Clientes
+            - generic [ref=e38]: Pronto
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e43]: Créditos
+            - generic [ref=e44]: Pronto
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e50]: Motor de riesgo
+            - generic [ref=e51]: Pronto
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e57]: Reportes
+            - generic [ref=e58]: Pronto
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e64]: Parámetros
+            - generic [ref=e65]: Pronto
+        - generic [ref=e66]:
+          - button "Reiniciar demo" [ref=e67]
+          - paragraph [ref=e68]: Demo interactiva · v0.3
+    - generic [ref=e69]:
+      - banner [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Solicitar crédito
+            - paragraph [ref=e74]: CreditoNet · Casa Central
+          - generic [ref=e75]: Demo
+          - button "Notificaciones" [ref=e79]:
+            - img [ref=e80]
+          - generic [ref=e84]:
+            - generic [ref=e85]: JP
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Juan Pérez
+              - paragraph [ref=e88]: Canal de venta · CreditoNet
+      - main [ref=e89]:
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - generic [ref=e105]:
+                - paragraph [ref=e106]: Solicitar crédito · Originación
+                - heading "Reglas, motor, límites y plan" [level=1] [ref=e107]
+                - paragraph [ref=e108]: Se genera el ID de Crédito. Se evalúan las reglas institucionales, el motor decide si pasa, se determinan los límites y el plan calcula la primera oferta.
+                - paragraph [ref=e109]: María Fernanda González · DNI 27.456.890 · ID de Cliente 000928 · Préstamo personal · Empleados de salud
+              - generic [ref=e110]:
+                - paragraph [ref=e111]: Paso 5 de 6
+                - paragraph [ref=e112]: Etapa 1 de 2
+            - list [ref=e116]:
+              - listitem [ref=e117]:
+                - button "Identificación" [ref=e118] [cursor=pointer]:
+                  - img [ref=e120]
+                  - generic [ref=e122]: Identificación
+              - listitem [ref=e124]:
+                - button "Producto y organismo" [ref=e125] [cursor=pointer]:
+                  - img [ref=e127]
+                  - generic [ref=e129]: Producto y organismo
+              - listitem [ref=e131]:
+                - button "Datos del cliente" [ref=e132] [cursor=pointer]:
+                  - img [ref=e134]
+                  - generic [ref=e136]: Datos del cliente
+              - listitem [ref=e138]:
+                - button "Datos laborales" [ref=e139] [cursor=pointer]:
+                  - img [ref=e141]
+                  - generic [ref=e143]: Datos laborales
+              - listitem [ref=e145]:
+                - button "5 Evaluación" [disabled] [ref=e146]:
+                  - generic [ref=e147]: "5"
+                  - generic [ref=e148]: Evaluación
+              - listitem [ref=e150]:
+                - button "6 Oferta" [disabled] [ref=e151]:
+                  - generic [ref=e152]: "6"
+                  - generic [ref=e153]: Oferta
+          - generic [ref=e154]:
+            - generic [ref=e442]:
+              - paragraph [ref=e443]:
+                - img [ref=e444]
+                - text: Seleccionando el motor de riesgo correspondiente…
+              - list [ref=e446]:
+                - listitem [ref=e447]:
+                  - img [ref=e449]
+                  - text: Generando ID de crédito…
+                - listitem [ref=e451]:
+                  - img [ref=e453]
+                  - text: Evaluando las reglas institucionales…
+                - listitem [ref=e455]:
+                  - img [ref=e457]
+                  - text: Seleccionando el motor de riesgo correspondiente…
+                - listitem [ref=e459]: Consultando BCRA y base interna…
+                - listitem [ref=e462]: Aplicando las reglas del motor…
+            - generic [ref=e198]:
+              - button "Atrás" [ref=e199]:
+                - img [ref=e200]
+                - text: Atrás
+              - status [ref=e375]:
+                - img [ref=e377]
+                - generic [ref=e380]: Presioná Solicitar y esperá el resultado de la evaluación.
+              - button "Continuar" [disabled] [ref=e209]:
+                - text: Continuar
+                - img [ref=e210]
+  - button "Open Next.js Dev Tools" [ref=e98] [cursor=pointer]:
+    - img [ref=e99]
+  - alert [ref=e212]

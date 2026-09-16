@@ -1,0 +1,163 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e29]: Liquidación
+            - generic [ref=e30]: Pronto
+          - generic [ref=e32]:
+            - img [ref=e33]
+            - generic [ref=e37]: Clientes
+            - generic [ref=e38]: Pronto
+          - generic [ref=e40]:
+            - img [ref=e41]
+            - generic [ref=e43]: Créditos
+            - generic [ref=e44]: Pronto
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e50]: Motor de riesgo
+            - generic [ref=e51]: Pronto
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - generic [ref=e57]: Reportes
+            - generic [ref=e58]: Pronto
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - generic [ref=e64]: Parámetros
+            - generic [ref=e65]: Pronto
+        - generic [ref=e66]:
+          - button "Reiniciar demo" [ref=e67]
+          - paragraph [ref=e68]: Demo interactiva · v0.3
+    - generic [ref=e69]:
+      - banner [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Solicitar crédito
+            - paragraph [ref=e74]: CreditoNet · Casa Central
+          - generic [ref=e75]: Demo
+          - button "Notificaciones" [ref=e79]:
+            - img [ref=e80]
+          - generic [ref=e84]:
+            - generic [ref=e85]: JP
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Juan Pérez
+              - paragraph [ref=e88]: Canal de venta · CreditoNet
+      - main [ref=e89]:
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - generic [ref=e105]:
+                - paragraph [ref=e106]: Solicitar crédito · Originación
+                - heading "Reglas, motor, límites y plan" [level=1] [ref=e107]
+                - paragraph [ref=e108]: Se genera el ID de Crédito. Se evalúan las reglas institucionales, el motor decide si pasa, se determinan los límites y el plan calcula la primera oferta.
+                - paragraph [ref=e109]: María Fernanda González · DNI 27.456.890 · ID de Cliente 000928 · Préstamo personal · Empleados de salud
+              - generic [ref=e110]:
+                - paragraph [ref=e111]: Paso 5 de 6
+                - paragraph [ref=e112]: Etapa 1 de 2
+            - list [ref=e116]:
+              - listitem [ref=e117]:
+                - button "Identificación" [ref=e118] [cursor=pointer]:
+                  - img [ref=e120]
+                  - generic [ref=e122]: Identificación
+              - listitem [ref=e124]:
+                - button "Producto y organismo" [ref=e125] [cursor=pointer]:
+                  - img [ref=e127]
+                  - generic [ref=e129]: Producto y organismo
+              - listitem [ref=e131]:
+                - button "Datos del cliente" [ref=e132] [cursor=pointer]:
+                  - img [ref=e134]
+                  - generic [ref=e136]: Datos del cliente
+              - listitem [ref=e138]:
+                - button "Datos laborales" [ref=e139] [cursor=pointer]:
+                  - img [ref=e141]
+                  - generic [ref=e143]: Datos laborales
+              - listitem [ref=e145]:
+                - button "5 Evaluación" [disabled] [ref=e146]:
+                  - generic [ref=e147]: "5"
+                  - generic [ref=e148]: Evaluación
+              - listitem [ref=e150]:
+                - button "6 Oferta" [disabled] [ref=e151]:
+                  - generic [ref=e152]: "6"
+                  - generic [ref=e153]: Oferta
+          - generic [ref=e154]:
+            - generic [ref=e155]:
+              - generic [ref=e381]: "No se llega al paso de Oferta: el motor no pasó."
+              - generic [ref=e382]:
+                - img [ref=e384]
+                - heading "Solicitud rechazada por el motor de riesgo" [level=3] [ref=e386]
+                - paragraph [ref=e387]: La solicitud pasó automáticamente a estado Rechazado. Los códigos de las reglas bloqueantes que no pasaron quedan registrados para poder mostrar el motivo en la bandeja.
+                - generic [ref=e388]: "Situación BCRA: Situación 4 · deuda con alto riesgo de insolvencia"
+                - generic [ref=e389]:
+                  - generic [ref=e390]: Rechazado
+                  - generic [ref=e391]: MR-04
+                  - generic [ref=e392]: ID de Crédito CR-000184
+                - generic [ref=e393]:
+                  - img [ref=e394]
+                  - generic [ref=e397]:
+                    - strong [ref=e398]: "Período de carencia de 30 días:"
+                    - text: el ID de Cliente 000928 podrá iniciar un nuevo trámite a partir del 16/10/2026. No lo bloquea de forma permanente.
+                    - generic [ref=e400]:
+                      - img [ref=e401]
+                      - text: Regla simulada
+                - generic [ref=e404]:
+                  - button "Volver a ejecutar" [ref=e405]:
+                    - img [ref=e406]
+                    - text: Volver a ejecutar
+                  - button "Reiniciar demo" [ref=e409]
+              - generic [ref=e410]:
+                - generic [ref=e411]:
+                  - paragraph [ref=e412]:
+                    - img [ref=e413]
+                    - text: Escenario de demo · resultado que devolverá el motor
+                  - generic [ref=e416]:
+                    - button "Pasa Todas las reglas pasan." [active] [pressed] [ref=e417]:
+                      - generic [ref=e418]: Pasa
+                      - generic [ref=e419]: Todas las reglas pasan.
+                    - 'button "Pasa con reglas marcadas Una regla no bloqueante no pasa: la solicitud continúa y la revisa el analista." [ref=e420]':
+                      - generic [ref=e421]: Pasa con reglas marcadas
+                      - generic [ref=e422]: "Una regla no bloqueante no pasa: la solicitud continúa y la revisa el analista."
+                    - 'button "No pasa Una regla bloqueante no pasa: la solicitud no continúa." [ref=e423]':
+                      - generic [ref=e424]: No pasa
+                      - generic [ref=e425]: "Una regla bloqueante no pasa: la solicitud no continúa."
+                  - paragraph [ref=e426]: "“Pasa con reglas marcadas” hace fallar la blacklist, configurada como no bloqueante: la solicitud continúa y el analista ve la regla marcada. “No pasa” hace fallar la situación BCRA, que es bloqueante. Edad, antigüedad e ingreso mínimo se evalúan siempre con los datos reales: si alguna no pasa, el motor no pasa aunque el escenario sea “Pasa”."
+                - generic [ref=e428]:
+                  - img [ref=e430]
+                  - generic [ref=e433]:
+                    - paragraph [ref=e434]: Cómo se reparten las responsabilidades
+                    - generic [ref=e436]:
+                      - text: "Las reglas institucionales aplican políticas transversales del negocio. El motor evalúa el riesgo y decide si pasa o no pasa; no calcula capital. Los límites y el plan de cuotas no vuelven a evaluar riesgo: arman la primera oferta. La precancelación se ofrece después, sobre esa oferta, y el analista revisa al final, cuando termina la carga post-oferta."
+                      - generic [ref=e438]:
+                        - img [ref=e439]
+                        - text: Regla simulada
+            - generic [ref=e198]:
+              - button "Atrás" [ref=e199]:
+                - img [ref=e200]
+                - text: Atrás
+              - status [ref=e375]:
+                - img [ref=e377]
+                - generic [ref=e380]: El motor de riesgo no pasó. No se puede construir una oferta.
+              - button "Continuar" [disabled] [ref=e209]:
+                - text: Continuar
+                - img [ref=e210]
+  - button "Open Next.js Dev Tools" [ref=e98] [cursor=pointer]:
+    - img [ref=e99]
+  - alert [ref=e212]

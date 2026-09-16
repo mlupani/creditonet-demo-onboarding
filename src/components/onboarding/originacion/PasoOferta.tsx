@@ -7,7 +7,6 @@ import { validarDeudaTerceros } from "@/lib/validation";
 import { formatARS } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { IconArrowLeft, IconArrowRight, IconRefresh } from "@/components/icons";
 
@@ -151,12 +150,8 @@ export function PasoOferta() {
               <IconArrowRight width={16} height={16} />
             </Button>
           </div>
-          <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-3 text-[11px] text-ink-400">
+          <p className="mt-3 border-t border-ink-100 pt-3 text-[11px] text-ink-400">
             Al aceptar se confirma la oferta y se habilita la carga post-oferta.
-            <DemoTag
-              variant="regla"
-              detalle="El orden exacto entre la confirmación de la oferta, la precancelación y las 7 pantallas post-oferta está pendiente de confirmación funcional (Arquitectura §16). La demo ofrece la precancelación antes de confirmar."
-            />
           </p>
         </Card>
       </div>
