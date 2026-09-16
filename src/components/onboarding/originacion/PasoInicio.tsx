@@ -6,6 +6,7 @@ import { onlyDigits } from "@/lib/format";
 import type { TipoPersona } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import {
   IconCheck,
@@ -17,6 +18,64 @@ import {
 } from "@/components/icons";
 
 type Icono = (props: { width?: number; height?: number }) => React.ReactNode;
+
+// Situación 1 (Normal) es la mejor; a partir de 3 (Riesgo medio en adelante) se considera alta.
+function toneSituacion(valor: number): "success" | "warning" | "error" {
+  if (valor <= 1) return "success";
+  if (valor === 2) return "warning";
+  return "error";
+}
+
+const DETALLE_SITUACION: Record<"success" | "warning" | "error", string> = {
+  success: "Sin antecedentes negativos.",
+  warning: "Antecedentes leves: recorta el capital máximo de la oferta.",
+  error: "Situación de riesgo alta: recorta el capital máximo de la oferta.",
+};
+
+const ESTILO_TONO: Record<
+  "success" | "warning" | "error",
+  { caja: string; badge: string; texto: string }
+> = {
+  success: {
+    caja: "border-success-200 bg-success-50",
+    badge: "bg-success-600",
+    texto: "text-success-700",
+  },
+  warning: {
+    caja: "border-warning-200 bg-warning-50",
+    badge: "bg-warning-600",
+    texto: "text-warning-700",
+  },
+  error: {
+    caja: "border-danger-200 bg-danger-50",
+    badge: "bg-danger-600",
+    texto: "text-danger-700",
+  },
+};
+
+// Mismo formato que la alerta de cliente existente, pero con el número de la situación
+// adentro del badge en vez de un tilde.
+function AlertaSituacion({ label, valor }: { label: string; valor: number }) {
+  const tone = toneSituacion(valor);
+  const estilo = ESTILO_TONO[tone];
+  return (
+    <div className={`animate-fade-up rounded-xl border p-4 ${estilo.caja}`}>
+      <div className="flex items-center gap-2.5">
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${estilo.badge}`}
+        >
+          {valor}
+        </span>
+        <div>
+          <p className={`text-sm font-bold ${estilo.texto}`}>
+            {label} {valor}
+          </p>
+          <p className={`text-xs ${estilo.texto}/80`}>{DETALLE_SITUACION[tone]}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function validarDocumento(valor: string): string | null {
   const d = onlyDigits(valor);
@@ -220,6 +279,35 @@ export function PasoInicio() {
                 <div className="h-3 w-2/3 animate-pulse rounded bg-ink-100" />
                 <div className="h-3 w-1/3 animate-pulse rounded bg-ink-100" />
               </div>
+            </div>
+          )}
+
+          {encontrado && !consultando && (
+            <div className="animate-fade-up mt-3 rounded-xl border border-success-200 bg-success-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success-600 text-white">
+                    <IconCheck width={16} height={16} strokeWidth={2.6} />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-success-700">
+                      {app.cliente!.nombre} {app.cliente!.apellido}
+                    </p>
+                    <p className="text-xs text-success-700/80">
+                      Cliente existente: se recuperó su ID de Cliente permanente y el historial
+                      previo.
+                    </p>
+                  </div>
+                </div>
+                <StatusBadge tone="success">ID de Cliente {app.numeroCliente}</StatusBadge>
+              </div>
+            </div>
+          )}
+
+          {encontrado && !consultando && app.situaciones && (
+            <div className="mt-3 space-y-3">
+              <AlertaSituacion label="Situación BCRA" valor={app.situaciones.bcra} />
+              <AlertaSituacion label="Buró interno" valor={app.situaciones.interna} />
             </div>
           )}
         </div>

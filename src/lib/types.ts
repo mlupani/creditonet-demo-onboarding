@@ -271,8 +271,8 @@ export interface Observacion {
 }
 
 export interface Rechazo {
-  // SIN_LINEA: no hay plan de cuotas para la combinación situación BCRA + buró interno +
-  // condición laboral. No es un rechazo del motor y no llega al analista (02:28).
+  // SIN_LINEA: no hay plan de cuotas que admita la condición laboral. No es un rechazo del
+  // motor y no llega al analista (02:28).
   // INSTITUCIONAL: una regla institucional bloqueante no pasó; el motor no llega a ejecutarse.
   origen: "INSTITUCIONAL" | "MOTOR" | "SIN_LINEA" | "ANALISTA";
   codigos: string[];

@@ -52,10 +52,9 @@ export interface PlanCuotas {
   endeudamientoMaxPct: number;
   smvmBolsillo: number;
   renovacionMinCuotasPct: number;
-  // Limitantes que habilitan la línea (reunión 11/09, 02:20 y 02:35). Si ninguna línea
-  // del organismo acepta la combinación del cliente, la solicitud se rechaza sin motor.
-  situacionesBcra: number[];
-  situacionesInternas: number[];
+  // Condición laboral que habilita la línea (reunión 11/09, 02:20 y 02:35). Si ninguna línea
+  // del organismo la acepta, la solicitud se rechaza sin motor. La situación BCRA/buró interno
+  // no bloquea la línea: sólo recorta el capital (situacionBcraDistintaDeUnoPct).
   condicionesLaborales: string[];
   // Recortes porcentuales sobre el capital ya calculado (02:48). Si aplican varios,
   // manda el mayor. 0 significa que la condición no recorta nada.
@@ -84,8 +83,6 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     endeudamientoMaxPct: 50,
     smvmBolsillo: 350_000,
     renovacionMinCuotasPct: 50,
-    situacionesBcra: [1, 2],
-    situacionesInternas: [1, 2],
     condicionesLaborales: ["Empleado fijo", "Contratado"],
     limitantes: {
       clienteNuevoPct: 50,
@@ -109,8 +106,6 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     endeudamientoMaxPct: 45,
     smvmBolsillo: 400_000,
     renovacionMinCuotasPct: 50,
-    situacionesBcra: [1, 2, 3],
-    situacionesInternas: [1, 2],
     condicionesLaborales: ["Empleado fijo", "Contratado"],
     limitantes: {
       clienteNuevoPct: 40,
@@ -134,8 +129,6 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     endeudamientoMaxPct: 40,
     smvmBolsillo: 300_000,
     renovacionMinCuotasPct: 60,
-    situacionesBcra: [1, 2],
-    situacionesInternas: [1],
     condicionesLaborales: ["Jubilado / Pensionado"],
     limitantes: {
       clienteNuevoPct: 50,
@@ -404,8 +397,6 @@ export function getPlan(organismoId: string): PlanCuotas {
 
 // Condición del cliente que habilita (o no) una línea.
 export interface ContextoLinea {
-  situacionBcra: number;
-  situacionInterna: number;
   condicionLaboral: string;
 }
 
@@ -418,22 +409,13 @@ export interface ResultadoLinea {
 /**
  * Busca la línea aplicable dentro del organismo (reunión 11/09, 02:28–02:35).
  *
- * Se corre DESPUÉS del motor y ANTES del cálculo. Si ninguna línea acepta la combinación
- * situación BCRA + buró interno + condición laboral, la solicitud se rechaza: es un rechazo
- * que no pertenece al motor y que no llega al analista.
+ * Se corre DESPUÉS del motor y ANTES del cálculo. Si la línea no admite la condición laboral,
+ * la solicitud se rechaza: es un rechazo que no pertenece al motor y que no llega al analista.
+ * La situación BCRA/buró interno no bloquea acá: ya pasó el motor (que puede forzarse a PASA
+ * en la demo) y sólo recorta el capital más adelante.
  */
 export function seleccionarLinea(organismoId: string, ctx: ContextoLinea): ResultadoLinea {
   const plan = getPlan(organismoId);
-  if (!plan.situacionesBcra.includes(ctx.situacionBcra))
-    return {
-      plan: null,
-      motivo: `${plan.nombre} no opera con situación BCRA ${ctx.situacionBcra}`,
-    };
-  if (!plan.situacionesInternas.includes(ctx.situacionInterna))
-    return {
-      plan: null,
-      motivo: `${plan.nombre} no opera con situación de buró interno ${ctx.situacionInterna}`,
-    };
   if (!plan.condicionesLaborales.includes(ctx.condicionLaboral))
     return {
       plan: null,

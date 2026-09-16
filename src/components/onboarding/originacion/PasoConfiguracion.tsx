@@ -4,7 +4,7 @@ import { useApplication } from "@/lib/application-context";
 import { CANALES, ORGANISMOS, PRODUCTOS, nombreOpcion, productoHabilitadoEnCanal } from "@/lib/config";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SelectField } from "@/components/ui/SelectField";
-import { VendedorAsignado } from "./VendedorAsignado";
+// import { VendedorAsignado } from "./VendedorAsignado"; // Sacado de acá a pedido; falta decidir dónde va.
 import { IconBuilding } from "@/components/icons";
 
 // Selección comercial (Guía §3.2); la jerarquía de herencia es Producto → Organismo → Plan
@@ -59,7 +59,7 @@ export function PasoConfiguracion() {
         </div>
       </Card>
 
-      <VendedorAsignado />
+      {/* <VendedorAsignado /> */}
     </div>
   );
 }

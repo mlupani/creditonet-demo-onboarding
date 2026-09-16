@@ -135,14 +135,12 @@ export function PasoEvaluacion() {
     const nuevas = descartada ? [] : evaluarReglas(app, motor, app.riesgo.escenario);
     const resultado = descartada ? null : resolverResultado(nuevas);
 
-    // Pasado el motor hay que verificar que exista línea para la combinación del cliente,
-    // ANTES de calcular. Si no hay, se rechaza sin que el motor tenga nada que ver (02:28).
+    // Pasado el motor hay que verificar que la línea admita la condición laboral, ANTES de
+    // calcular. Si no, se rechaza sin que el motor tenga nada que ver (02:28).
     const linea =
       resultado !== "PASA"
         ? { plan: null, motivo: null }
         : seleccionarLinea(app.configuracion.organismoId, {
-            situacionBcra: app.situaciones?.bcra ?? 1,
-            situacionInterna: app.situaciones?.interna ?? 1,
             condicionLaboral: app.laboral.condicionLaboral,
           });
 
@@ -406,8 +404,8 @@ export function PasoEvaluacion() {
           </h3>
           <p className="mx-auto mt-1.5 max-w-lg text-sm leading-relaxed text-danger-600">
             El motor pasó: ninguna regla bloqueante falló. Lo que no existe es un plan de cuotas
-            habilitado para esta combinación de situación BCRA, buró interno y condición laboral,
-            así que la operación no puede continuar y no llega al analista.
+            habilitado para esta condición laboral, así que la operación no puede continuar y no
+            llega al analista.
           </p>
           <div className="mx-auto mt-4 max-w-md rounded-xl border border-danger-200 bg-white px-4 py-3 text-left text-sm text-ink-700">
             {app.rechazo?.observacion}
@@ -517,7 +515,7 @@ export function PasoEvaluacion() {
               carga post-oferta.
               <DemoTag
                 variant="regla"
-                detalle="Para ver rechazos con datos reales: en Identificación cambiá la fecha de nacimiento a 14/05/1955 (RI-01), o en Datos mínimos bajá el ingreso neto a $400.000 (RI-02), y volvé a ejecutar."
+                detalle="Para ver rechazos con datos reales: en Identificación cambiá la fecha de nacimiento a 14/05/1955 (RI-01), o en Datos laborales bajá el ingreso neto a $400.000 (RI-02), y volvé a ejecutar."
               />
             </span>
           </Banner>

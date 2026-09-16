@@ -67,7 +67,11 @@ export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = {
   },
   numeroCliente: "000928",
   tipoCliente: "EXISTENTE",
-  situaciones: { bcra: 1, interna: 1 },
+  // BCRA 3 e interno 2 a propósito: se ven los 3 colores de alerta en el paso 1 (verde el
+  // cliente existente, amarillo el buró interno, rojo el BCRA). No bloquean la línea (sólo
+  // recortan el capital), así que la evaluación sigue llegando a la oferta con cualquier
+  // organismo, según lo que decida el escenario del motor.
+  situaciones: { bcra: 3, interna: 2 },
   contacto: {
     caracteristica: "351",
     numero: "6123344",
@@ -356,7 +360,7 @@ export function crearAplicacionInicial(): CreditApplication {
 // --- Pasos de la etapa pre-oferta (Guía §3–§5) ---
 
 // Orden del flujo según Arquitectura v3 §2 y Onboarding v4 §2 (14/09/2026):
-// Canal → Tipo de persona → Identificación → Producto + Organismo → Datos mínimos →
+// Canal → Tipo de persona → Identificación → Producto + Organismo → Datos laborales →
 // Reglas institucionales + Motor + Límites + Plan → Primera oferta.
 export const STEPS_ORIGINACION: WizardStepMeta[] = [
   {
@@ -386,8 +390,8 @@ export const STEPS_ORIGINACION: WizardStepMeta[] = [
   {
     id: "datos-minimos",
     numero: 4,
-    titulo: "Datos mínimos",
-    tituloPantalla: "Datos mínimos para evaluar",
+    titulo: "Datos laborales",
+    tituloPantalla: "Datos laborales",
     descripcion:
       "Sólo los datos que las reglas y el motor necesitan para evaluar. El resto del legajo se carga después de la oferta.",
   },

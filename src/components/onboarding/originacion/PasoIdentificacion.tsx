@@ -8,12 +8,11 @@ import { formatDNI } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SelectField } from "@/components/ui/SelectField";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DemoTag } from "@/components/ui/DemoTag";
 import { CampoCliente } from "./CampoCliente";
 import { VerificacionPresencial } from "./VerificacionPresencial";
 import { InstitucionalesPanel } from "../evaluacion/InstitucionalesPanel";
-import { IconCheck, IconCheckCircle, IconUsers } from "@/components/icons";
+import { IconCheckCircle, IconUsers } from "@/components/icons";
 
 // Muestra el resultado de la consulta por DNI/CUIL hecha en el paso 1: cliente, situación,
 // condición laboral, reglas institucionales y verificación presencial.
@@ -30,65 +29,18 @@ export function PasoIdentificacion() {
 
   return (
     <div className="animate-fade-up space-y-5">
-      <div className="rounded-xl border border-success-200 bg-success-50 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success-600 text-white">
-              <IconCheck width={16} height={16} strokeWidth={2.6} />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-success-700">Cliente existente</p>
-              <p className="text-xs text-success-700/80">
-                Se recuperó su ID de Cliente permanente y el historial previo.
-              </p>
-            </div>
-          </div>
-          <StatusBadge tone="success">ID de Cliente {app.numeroCliente}</StatusBadge>
-        </div>
+      <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-card">
+        <SelectField
+          id="condicion-laboral"
+          label="Condición laboral"
+          required
+          value={app.laboral.condicionLaboral}
+          onChange={(v) => patchLaboral({ condicionLaboral: v })}
+          options={CONDICIONES_LABORALES.map((c) => ({ value: c, label: c }))}
+          error={erroresLaboral.condicionLaboral}
+          hint="Determina qué línea aplica y participa en la generación de la oferta. La situación BCRA y el buró interno (ya vistos al identificar al cliente) no bloquean la línea, sólo recortan el capital. No se puede modificar después de la oferta."
+        />
       </div>
-
-      {app.situaciones && (
-        <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-card">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400">
-              Situación traída con el documento
-            </p>
-            <DemoTag
-              variant="regla"
-              detalle="Se consulta junto con el DNI, antes de evaluar. Con la condición laboral son los tres limitantes que determinan qué línea aplica; si ninguna la acepta, la solicitud se rechaza sin llegar al motor."
-            />
-          </div>
-          <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
-            <div className="rounded-lg border border-ink-200 bg-ink-25 px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
-                Situación BCRA
-              </p>
-              <p className="mt-0.5 text-sm font-semibold text-ink-800">
-                Situación {app.situaciones.bcra}
-              </p>
-            </div>
-            <div className="rounded-lg border border-ink-200 bg-ink-25 px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
-                Buró interno
-              </p>
-              <p className="mt-0.5 text-sm font-semibold text-ink-800">
-                Situación {app.situaciones.interna}
-              </p>
-            </div>
-          </div>
-          <SelectField
-            id="condicion-laboral"
-            label="Condición laboral"
-            required
-            value={app.laboral.condicionLaboral}
-            onChange={(v) => patchLaboral({ condicionLaboral: v })}
-            options={CONDICIONES_LABORALES.map((c) => ({ value: c, label: c }))}
-            error={erroresLaboral.condicionLaboral}
-            hint="El tercer limitante, junto con la situación BCRA y el buró interno, que determina qué línea aplica. Participa en la generación de la oferta y no se puede modificar después."
-            className="mt-3"
-          />
-        </div>
-      )}
 
       <Card>
         <CardHeader
