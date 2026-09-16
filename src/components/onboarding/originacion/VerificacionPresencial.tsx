@@ -1,11 +1,20 @@
 "use client";
 
+import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useApplication } from "@/lib/application-context";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { IconCheck, IconCheckCircle, IconScanFace } from "@/components/icons";
+import { IconCamera, IconCheck, IconCheckCircle, IconScanFace, IconUpload } from "@/components/icons";
 
-function Retrato({ iniciales, etiqueta, live }: { iniciales: string; etiqueta: string; live?: boolean }) {
+function Retrato({
+  etiqueta,
+  live,
+  children,
+}: {
+  etiqueta: string;
+  live?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="flex-1">
       <div
@@ -13,13 +22,7 @@ function Retrato({ iniciales, etiqueta, live }: { iniciales: string; etiqueta: s
           live ? "border-brand-200 bg-brand-50" : "border-ink-200 bg-ink-100"
         }`}
       >
-        <span
-          className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold ${
-            live ? "bg-brand-200 text-brand-700" : "bg-ink-300 text-ink-600"
-          }`}
-        >
-          {iniciales}
-        </span>
+        {children}
         {live && (
           <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-danger-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
@@ -32,12 +35,34 @@ function Retrato({ iniciales, etiqueta, live }: { iniciales: string; etiqueta: s
   );
 }
 
+function Iniciales({ texto, live }: { texto: string; live?: boolean }) {
+  return (
+    <span
+      className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold ${
+        live ? "bg-brand-200 text-brand-700" : "bg-ink-300 text-ink-600"
+      }`}
+    >
+      {texto}
+    </span>
+  );
+}
+
 // Cliente existente: se muestra la foto archivada para verificación presencial (Guía §3.1).
 export function VerificacionPresencial() {
   const { app, verificarIdentidad } = useApplication();
+  const [fotoPresente, setFotoPresente] = useState<string | null>(null);
+  const inputSubir = useRef<HTMLInputElement>(null);
+  const inputCapturar = useRef<HTMLInputElement>(null);
+
   if (!app.cliente) return null;
   const iniciales = `${app.cliente.nombre.charAt(0)}${app.cliente.apellido.charAt(0)}`;
   const verificada = app.identidadVerificada;
+
+  function elegirFoto(e: ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0];
+    if (archivo) setFotoPresente(URL.createObjectURL(archivo));
+    e.target.value = "";
+  }
 
   return (
     <Card>
@@ -48,8 +73,52 @@ export function VerificacionPresencial() {
       />
       <div className="p-5 sm:p-6">
         <div className="mx-auto flex max-w-sm gap-4">
-          <Retrato iniciales={iniciales} etiqueta="Foto archivada · 12/03/2022" />
-          <Retrato iniciales={iniciales} etiqueta="Persona presente (simulado)" live />
+          <Retrato etiqueta="Foto archivada · 12/03/2022">
+            {/* eslint-disable-next-line @next/next/no-img-element -- ilustración simulada, no una foto real */}
+            <img
+              src="/avatars/foto-archivada-cliente.png"
+              alt="Foto archivada"
+              className="h-full w-full object-cover"
+            />
+          </Retrato>
+          <Retrato etiqueta="Persona presente" live>
+            {fotoPresente ? (
+              // eslint-disable-next-line @next/next/no-img-element -- foto simulada, sólo en memoria del navegador
+              <img
+                src={fotoPresente}
+                alt="Persona presente"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Iniciales texto={iniciales} live />
+            )}
+          </Retrato>
+        </div>
+
+        <div className="mx-auto mt-3 flex max-w-sm flex-wrap justify-center gap-2">
+          <input
+            ref={inputSubir}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={elegirFoto}
+          />
+          <input
+            ref={inputCapturar}
+            type="file"
+            accept="image/*"
+            capture="user"
+            className="hidden"
+            onChange={elegirFoto}
+          />
+          <Button size="sm" variant="outline" onClick={() => inputSubir.current?.click()}>
+            <IconUpload width={14} height={14} />
+            Subir foto
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => inputCapturar.current?.click()}>
+            <IconCamera width={14} height={14} />
+            Capturar imagen
+          </Button>
         </div>
 
         {verificada ? (

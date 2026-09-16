@@ -12,7 +12,7 @@ import { Stepper } from "@/components/ui/Stepper";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
-import { IconArrowLeft, IconArrowRight } from "@/components/icons";
+import { IconArrowLeft, IconArrowRight, IconUser } from "@/components/icons";
 
 import { PasoInicio } from "./PasoInicio";
 import { PasoIdentificacion } from "./PasoIdentificacion";
@@ -138,7 +138,10 @@ export function OriginacionWizard() {
               {meta.descripcion}
             </p>
             {contexto.length > 0 && (
-              <p className="mt-1.5 text-xs font-medium text-ink-600">{contexto.join(" · ")}</p>
+              <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800">
+                <IconUser width={16} height={16} className="shrink-0 text-brand-600" />
+                <span>{contexto.join(" · ")}</span>
+              </div>
             )}
           </div>
           <div className="text-right">

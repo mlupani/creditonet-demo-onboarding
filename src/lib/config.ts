@@ -23,6 +23,36 @@ export const PRODUCTOS: OpcionCatalogo[] = [
     nombre: "Crédito judicial",
     detalle: "Adelanto sobre sentencia u honorarios con cesión de cobro.",
   },
+  {
+    id: "prestamo-prendario",
+    nombre: "Préstamo prendario",
+    detalle: "Crédito con garantía de un vehículo u otro bien registrable.",
+  },
+  {
+    id: "tarjeta-credito",
+    nombre: "Tarjeta de crédito",
+    detalle: "Línea revolving con tope mensual renovable.",
+  },
+  {
+    id: "adelanto-sueldo",
+    nombre: "Adelanto de sueldo",
+    detalle: "Adelanto a cuenta del próximo haber, con descuento directo.",
+  },
+  {
+    id: "refinanciacion",
+    nombre: "Refinanciación",
+    detalle: "Reunifica deudas vigentes del cliente en una sola cuota.",
+  },
+  {
+    id: "prestamo-emergencia",
+    nombre: "Préstamo de emergencia",
+    detalle: "Desembolso rápido para gastos imprevistos.",
+  },
+  {
+    id: "linea-consumo",
+    nombre: "Línea de consumo",
+    detalle: "Financiación para la compra de bienes y servicios.",
+  },
 ];
 
 // Arquitectura §3: el canal es el primer elemento del flujo y puede condicionar qué
@@ -140,6 +170,52 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     ivaPct: 21,
     sellosPct: 1.2,
     cargoOtorgamientoPct: 3.5,
+  },
+  "linea-docentes-2026": {
+    id: "linea-docentes-2026",
+    nombre: "Línea Docentes 2026",
+    sistema: "Francés",
+    plazos: [12, 18, 24, 36],
+    montoMaximo: 2_200_000,
+    montoMaximoRenovacion: 2_500_000,
+    rciMaxPct: 40,
+    endeudamientoMaxPct: 50,
+    smvmBolsillo: 350_000,
+    renovacionMinCuotasPct: 50,
+    condicionesLaborales: ["Empleado fijo", "Contratado"],
+    limitantes: {
+      clienteNuevoPct: 50,
+      clienteExistentePct: 0,
+      condicionLaboralPct: { Contratado: 30 },
+      situacionBcraDistintaDeUnoPct: 25,
+    },
+    periodoGraciaDias: 30,
+    ivaPct: 21,
+    sellosPct: 1.2,
+    cargoOtorgamientoPct: 3,
+  },
+  "linea-municipal-2026": {
+    id: "linea-municipal-2026",
+    nombre: "Línea Municipal 2026",
+    sistema: "Francés",
+    plazos: [12, 18, 24],
+    montoMaximo: 1_800_000,
+    montoMaximoRenovacion: 2_000_000,
+    rciMaxPct: 35,
+    endeudamientoMaxPct: 45,
+    smvmBolsillo: 320_000,
+    renovacionMinCuotasPct: 55,
+    condicionesLaborales: ["Empleado fijo", "Contratado"],
+    limitantes: {
+      clienteNuevoPct: 45,
+      clienteExistentePct: 0,
+      condicionLaboralPct: { Contratado: 35 },
+      situacionBcraDistintaDeUnoPct: 30,
+    },
+    periodoGraciaDias: 30,
+    ivaPct: 21,
+    sellosPct: 1.2,
+    cargoOtorgamientoPct: 3,
   },
 };
 
@@ -311,6 +387,8 @@ export interface OrganismoConfig extends OpcionCatalogo {
   planId: string;
   // Condición laboral del colectivo: participa en la selección del motor (Motor §9).
   condicionLaboral: string;
+  // Productos que este organismo ofrece a su colectivo.
+  productos: string[];
   // Sólo se definen las excepciones explícitas. Lo que no está, hereda del producto
   // (Organismo §4 bis).
   overrides: {
@@ -333,6 +411,13 @@ export const ORGANISMOS: OrganismoConfig[] = [
     detalle: "Sector salud · Convenio provincial",
     condicionLaboral: "Empleado en relación de dependencia",
     planId: "linea-salud-2026",
+    productos: [
+      "prestamo-personal",
+      "credito-judicial",
+      "prestamo-prendario",
+      "adelanto-sueldo",
+      "linea-consumo",
+    ],
     overrides: {},
   },
   {
@@ -341,6 +426,13 @@ export const ORGANISMOS: OrganismoConfig[] = [
     detalle: "Fuerzas de seguridad · Descuento por haberes",
     condicionLaboral: "Personal de fuerzas de seguridad",
     planId: "linea-seguridad-2026",
+    productos: [
+      "prestamo-personal",
+      "credito-judicial",
+      "prestamo-prendario",
+      "refinanciacion",
+      "prestamo-emergencia",
+    ],
     overrides: {
       pantallas: {
         referencias: { obligatoria: false },
@@ -356,6 +448,13 @@ export const ORGANISMOS: OrganismoConfig[] = [
     detalle: "Caja de jubilaciones · Haber previsional",
     condicionLaboral: "Pasivo / haber previsional",
     planId: "linea-pasivos-2026",
+    productos: [
+      "prestamo-personal",
+      "adelanto-sueldo",
+      "refinanciacion",
+      "prestamo-emergencia",
+      "linea-consumo",
+    ],
     overrides: {
       permiteDeudaTerceros: false,
       capitalMaximo: 2_000_000,
@@ -373,6 +472,36 @@ export const ORGANISMOS: OrganismoConfig[] = [
       ],
     },
   },
+  {
+    id: "docentes-provincial",
+    nombre: "Docentes de la Provincia",
+    detalle: "Sector educación · Convenio provincial",
+    condicionLaboral: "Empleado en relación de dependencia",
+    planId: "linea-docentes-2026",
+    productos: [
+      "prestamo-personal",
+      "tarjeta-credito",
+      "prestamo-prendario",
+      "linea-consumo",
+      "refinanciacion",
+    ],
+    overrides: {},
+  },
+  {
+    id: "municipales",
+    nombre: "Empleados municipales",
+    detalle: "Planta municipal · Descuento por haberes",
+    condicionLaboral: "Empleado en relación de dependencia",
+    planId: "linea-municipal-2026",
+    productos: [
+      "prestamo-personal",
+      "credito-judicial",
+      "tarjeta-credito",
+      "adelanto-sueldo",
+      "prestamo-emergencia",
+    ],
+    overrides: {},
+  },
 ];
 
 // --- Resolución de configuración efectiva ---
@@ -389,6 +518,16 @@ export function productoHabilitadoEnCanal(productoId: string, canalId: string): 
 
 export function getOrganismo(organismoId: string): OrganismoConfig {
   return ORGANISMOS.find((o) => o.id === organismoId) ?? ORGANISMOS[0];
+}
+
+// Cada organismo ofrece su propio subconjunto de productos (Producto §3 bis).
+export function productoHabilitadoEnOrganismo(productoId: string, organismoId: string): boolean {
+  return getOrganismo(organismoId).productos.includes(productoId);
+}
+
+export function productosDelOrganismo(organismoId: string): OpcionCatalogo[] {
+  const ids = getOrganismo(organismoId).productos;
+  return PRODUCTOS.filter((p) => ids.includes(p.id));
 }
 
 export function getPlan(organismoId: string): PlanCuotas {

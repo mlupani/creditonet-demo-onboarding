@@ -3,6 +3,7 @@
 import { useApplication } from "@/lib/application-context";
 import { GENEROS } from "@/lib/validation";
 import { evaluarInstitucionales, institucionalesBloquean } from "@/lib/reglas-institucionales";
+import { ORGANISMOS, PRODUCTOS, nombreOpcion } from "@/lib/config";
 import { formatDNI } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -29,6 +30,17 @@ export function PasoIdentificacion() {
           title={`${app.cliente!.nombre} ${app.cliente!.apellido}`}
           description={`DNI ${formatDNI(app.cliente!.dni)} · CUIL ${app.cliente!.cuil}`}
           icon={<IconUsers width={18} height={18} />}
+          action={
+            <div className="text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+                Producto · Organismo
+              </p>
+              <p className="text-sm font-semibold text-ink-700">
+                {nombreOpcion(PRODUCTOS, app.configuracion.productoId)} ·{" "}
+                {nombreOpcion(ORGANISMOS, app.configuracion.organismoId)}
+              </p>
+            </div>
+          }
         />
         <div className="p-5 sm:p-6">
           <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2">

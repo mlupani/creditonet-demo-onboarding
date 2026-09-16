@@ -2,7 +2,6 @@
 
 import { useApplication } from "@/lib/application-context";
 import type { ClienteDatos } from "@/lib/types";
-import { OrigenBadge } from "@/components/ui/OrigenBadge";
 
 export function CampoCliente({
   id,
@@ -22,12 +21,9 @@ export function CampoCliente({
 
   return (
     <div>
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <label htmlFor={id} className="text-sm font-medium text-ink-700">
-          {label}
-        </label>
-        <OrigenBadge origen={app.origenCampos[campo]} />
-      </div>
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink-700">
+        {label}
+      </label>
       {as === "select" ? (
         <select
           id={id}

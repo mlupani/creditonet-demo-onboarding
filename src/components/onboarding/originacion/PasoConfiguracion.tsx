@@ -1,22 +1,33 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { CANALES, ORGANISMOS, PRODUCTOS, nombreOpcion, productoHabilitadoEnCanal } from "@/lib/config";
+import { ORGANISMOS, nombreOpcion, productosDelOrganismo } from "@/lib/config";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SelectField } from "@/components/ui/SelectField";
 // import { VendedorAsignado } from "./VendedorAsignado"; // Sacado de acá a pedido; falta decidir dónde va.
 import { IconBuilding } from "@/components/icons";
 
 // Selección comercial (Guía §3.2); la jerarquía de herencia es Producto → Organismo → Plan
-// (§2), aunque se eligen en orden Organismo → Producto.
+// (§2), aunque se eligen en orden Organismo → Producto. Cada organismo ofrece su propio
+// subconjunto de productos (Producto §3 bis).
 export function PasoConfiguracion() {
   const { app, patchApp } = useApplication();
   const cfg = app.configuracion;
   const setConfig = (patch: Partial<typeof cfg>) =>
     patchApp({ configuracion: { ...cfg, ...patch } });
-  // El canal elegido al inicio limita los productos disponibles (Producto §3).
-  const canal = nombreOpcion(CANALES, cfg.canalId);
-  const noDisponibles = PRODUCTOS.filter((p) => !productoHabilitadoEnCanal(p.id, cfg.canalId));
+  const organismo = nombreOpcion(ORGANISMOS, cfg.organismoId);
+  const disponibles = productosDelOrganismo(cfg.organismoId);
+
+  // Cambiar de organismo puede dejar afuera al producto elegido: si pasa, se toma el
+  // primero que ese organismo ofrece.
+  function elegirOrganismo(organismoId: string) {
+    const productos = productosDelOrganismo(organismoId);
+    const sigueDisponible = productos.some((p) => p.id === cfg.productoId);
+    setConfig({
+      organismoId,
+      productoId: sigueDisponible ? cfg.productoId : (productos[0]?.id ?? cfg.productoId),
+    });
+  }
 
   return (
     <div className="space-y-5">
@@ -32,9 +43,9 @@ export function PasoConfiguracion() {
             label="Organismo"
             required
             value={cfg.organismoId}
-            onChange={(v) => setConfig({ organismoId: v })}
+            onChange={elegirOrganismo}
             options={ORGANISMOS.map((o) => ({ value: o.id, label: o.nombre }))}
-            hint="Empleador o ente pagador. Sólo parametriza excepciones."
+            hint="Empleador o ente pagador. Define qué productos ofrece y parametriza excepciones."
           />
           <SelectField
             id="producto"
@@ -42,19 +53,8 @@ export function PasoConfiguracion() {
             required
             value={cfg.productoId}
             onChange={(v) => setConfig({ productoId: v })}
-            options={PRODUCTOS.map((p) => {
-              const habilitado = productoHabilitadoEnCanal(p.id, cfg.canalId);
-              return {
-                value: p.id,
-                label: habilitado ? p.nombre : `${p.nombre} — no disponible en ${canal}`,
-                disabled: !habilitado,
-              };
-            })}
-            hint={
-              noDisponibles.length > 0
-                ? `Canal ${canal}: ${noDisponibles.map((p) => p.nombre).join(", ")} no se ofrece por este canal.`
-                : `Canal ${canal}: todos los productos disponibles.`
-            }
+            options={disponibles.map((p) => ({ value: p.id, label: p.nombre }))}
+            hint={`Productos que ofrece ${organismo}.`}
           />
         </div>
       </Card>
