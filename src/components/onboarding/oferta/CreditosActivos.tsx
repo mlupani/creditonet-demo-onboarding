@@ -34,8 +34,13 @@ export function CreditosActivos({
         icon={<IconRefresh width={18} height={18} />}
       />
       <div className="space-y-4 p-5 sm:p-6">
-        {o.creditosActivos.map((c) => {
-          const pct = cuotasAbonadasPct(c);
+        {o.creditosActivos.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-ink-200 bg-ink-25 p-4 text-center text-xs text-ink-500">
+            El cliente no posee créditos propios vigentes en la entidad para renovar o precancelar.
+          </div>
+        ) : (
+          o.creditosActivos.map((c) => {
+            const pct = cuotasAbonadasPct(c);
           const elegible = pct >= minPct;
           const reevaluando = reevaluandoId === c.id;
           return (
@@ -125,7 +130,7 @@ export function CreditosActivos({
               )}
             </div>
           );
-        })}
+        }))}
 
         {precancelaActiva && reevaluandoId === null && (
           <div className="flex animate-fade-up flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-sm">

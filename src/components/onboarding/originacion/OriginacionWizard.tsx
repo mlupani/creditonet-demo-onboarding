@@ -124,8 +124,8 @@ export function OriginacionWizard() {
   ].filter((v): v is string => Boolean(v));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="animate-fade-in sticky top-16 z-20 -mx-4 border-b border-ink-200/70 bg-ink-50 px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8">
+      <div className="animate-fade-in sticky top-16 z-20 -mx-4 border-b border-ink-200/70 bg-ink-50 px-4 pb-4 pt-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-brand-600">

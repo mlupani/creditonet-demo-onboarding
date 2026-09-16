@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
+import { LISTA_CASOS_DEMO } from "@/lib/mocks";
 import {
   IconCheck,
   IconIdCard,
@@ -181,19 +182,31 @@ export function PasoInicio() {
   const [consultando, setConsultando] = useState(false);
   const encontrado = app.identificacion.consultado && app.cliente;
 
-  function consultar() {
-    const err = validarDocumento(documento);
+  function consultar(docParam?: string) {
+    const docATestear = docParam ?? documento;
+    const err = validarDocumento(docATestear);
     if (err) {
       setError(err);
       return;
     }
     setError(null);
     setConsultando(true);
-    patchApp({ identificacion: { ...app.identificacion, documento } });
+    patchApp({ identificacion: { ...app.identificacion, documento: docATestear } });
     window.setTimeout(() => {
-      consultarCliente();
+      consultarCliente(docATestear);
       setConsultando(false);
-    }, 800);
+    }, 600);
+  }
+
+  function seleccionarCaso(docDni: string) {
+    setDocumento(docDni);
+    setError(null);
+    setConsultando(true);
+    patchApp({ identificacion: { ...app.identificacion, documento: docDni } });
+    window.setTimeout(() => {
+      consultarCliente(docDni);
+      setConsultando(false);
+    }, 400);
   }
 
   return (
@@ -237,7 +250,7 @@ export function PasoInicio() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") consultar();
                 }}
-                placeholder="Ej.: 27456890 o 27274568904"
+                placeholder="Ej.: 20111111 o 20222222"
                 disabled={consultando}
                 aria-invalid={!!error}
                 className={`w-full rounded-lg border bg-white px-3.5 py-2.5 pr-11 text-sm tabular-nums shadow-xs outline-none transition placeholder:text-ink-400 ${
@@ -254,7 +267,7 @@ export function PasoInicio() {
                 />
               )}
             </div>
-            <Button onClick={consultar} loading={consultando} className="sm:w-auto">
+            <Button onClick={() => consultar()} loading={consultando} className="sm:w-auto">
               {!consultando && <IconSearch width={16} height={16} />}
               Consultar cliente
             </Button>
@@ -263,10 +276,52 @@ export function PasoInicio() {
             <ValidationMessage tipo="error">{error}</ValidationMessage>
           ) : (
             <p className="mt-1.5 text-xs text-ink-500">
-              DNI de 7 u 8 dígitos o CUIL de 11, sin puntos ni guiones. En la demo cualquier
-              documento válido devuelve el cliente de prueba.
+              DNI de 7 u 8 dígitos o CUIL de 11, sin puntos ni guiones. Podés hacer clic en un caso
+              de prueba abajo o ingresar cualquier otro DNI para probar el flujo de cliente nuevo.
             </p>
           )}
+
+          {/* Accesos directos a los casos de la demo */}
+          <div className="mt-4 rounded-xl border border-ink-150 bg-ink-25/70 p-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ink-500">
+                Casos preconfigurados para la demo
+              </p>
+              <span className="text-[10px] font-medium text-brand-700">Clic para cargar</span>
+            </div>
+            <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {LISTA_CASOS_DEMO.map((c) => {
+                const activo =
+                  encontrado &&
+                  (app.cliente?.dni === c.dni || (c.id === "cliente-nuevo" && app.identificacion.tipoCliente === "NUEVO"));
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => seleccionarCaso(c.dni)}
+                    className={`flex flex-col rounded-lg border p-2.5 text-left transition-all ${
+                      activo
+                        ? "border-brand-600 bg-brand-50/80 shadow-xs ring-1 ring-brand-500"
+                        : "border-ink-200 bg-white hover:border-brand-300 hover:bg-brand-50/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-mono text-xs font-bold text-brand-700">
+                        {c.dni}
+                      </span>
+                      <span className="rounded bg-ink-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-600">
+                        {c.tag.split("·")[0].trim()}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs font-bold text-ink-900">{c.titulo}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-ink-500">
+                      {c.descripcionCorta}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {consultando && (
             <div className="animate-fade-in mt-3 space-y-3 rounded-xl border border-ink-200 bg-white p-5 shadow-card">
@@ -294,12 +349,17 @@ export function PasoInicio() {
                       {app.cliente!.nombre} {app.cliente!.apellido}
                     </p>
                     <p className="text-xs text-success-700/80">
-                      Cliente existente: se recuperó su ID de Cliente permanente y el historial
-                      previo.
+                      {app.identificacion.tipoCliente === "EXISTENTE"
+                        ? "Cliente existente: se recuperó su ID de Cliente permanente y el historial previo."
+                        : "Cliente nuevo: sin historial previo en la entidad. Se asignará ID al solicitar."}
                     </p>
                   </div>
                 </div>
-                <StatusBadge tone="success">ID de Cliente {app.numeroCliente}</StatusBadge>
+                {app.numeroCliente ? (
+                  <StatusBadge tone="success">ID de Cliente {app.numeroCliente}</StatusBadge>
+                ) : (
+                  <StatusBadge tone="info">Nuevo cliente</StatusBadge>
+                )}
               </div>
             </div>
           )}

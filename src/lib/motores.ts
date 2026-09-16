@@ -189,7 +189,7 @@ const pasa = (ok: boolean): ResultadoRegla => (ok ? "PASA" : "NO_PASA");
 export function evaluarReglas(
   app: CreditApplication,
   motor: MotorRiesgo,
-  escenario: EscenarioMotor
+  escenario?: EscenarioMotor
 ): RiskRule[] {
   const edad = calcularEdad(app.cliente?.fechaNacimiento ?? "");
   const edadOk = edad !== null && edad >= motor.edadMinima && edad <= motor.edadMaxima;
@@ -199,6 +199,12 @@ export function evaluarReglas(
 
   const neto = app.laboral.ingresoNeto;
   const ingresoOk = neto >= motor.ingresoMinimo;
+
+  const situacionBcra = app.situaciones?.bcra ?? 1;
+  const bcraOk = situacionBcra <= 2;
+
+  const situacionInterna = app.situaciones?.interna ?? 1;
+  const moraOk = situacionInterna <= 2;
 
   const enBlacklist = escenario === "PASA_CON_MARCADAS";
 
@@ -242,13 +248,12 @@ export function evaluarReglas(
       nombre: "Situación BCRA",
       detalle: "Situación del cliente en la Central de Deudores del BCRA.",
       fuente: "BCRA",
-      valorEvaluado:
-        escenario === "NO_PASA"
-          ? "Situación 4 · deuda con alto riesgo de insolvencia"
-          : `Situación ${app.situaciones?.bcra ?? 1} · sin deudas reportadas`,
+      valorEvaluado: bcraOk
+        ? `Situación ${situacionBcra} · sin deudas reportadas`
+        : `Situación ${situacionBcra} · deuda con alto riesgo de insolvencia`,
       condicion: "Situación 1 o 2",
       bloqueante: true,
-      resultado: pasa(escenario !== "NO_PASA"),
+      resultado: pasa(bcraOk),
     },
     {
       id: "mora",
@@ -256,10 +261,12 @@ export function evaluarReglas(
       nombre: "Vector de mora interna",
       detalle: "Historial de cumplimiento con la financiera.",
       fuente: "Base interna",
-      valorEvaluado: "0 días de atraso · CR-000102 al día",
+      valorEvaluado: moraOk
+        ? "0 días de atraso · al día"
+        : "Atraso en cuotas anteriores registrado en buró interno",
       condicion: "Hasta 30 días de atraso",
       bloqueante: true,
-      resultado: "PASA",
+      resultado: pasa(moraOk),
     },
     {
       // "Quiero limitar que el tipo no esté en dos lados haciendo un pedido por dos

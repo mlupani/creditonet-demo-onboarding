@@ -35,9 +35,15 @@ import {
   crearAplicacionInicial,
   consultarPersonaMock,
   CONSULTA_CLIENTE_MOCK,
+  obtenerCasoPorDocumento,
   precargarPostOferta,
 } from "./mocks";
-import { calcularLimites, recalcularOferta } from "./credit";
+import {
+  CAPITAL_MAXIMO_BASE,
+  CAPITAL_MAXIMO_CON_PRECANCELACION,
+  calcularLimites,
+  recalcularOferta,
+} from "./credit";
 import { reglaBloquea } from "./motores";
 import { institucionalesBloquean } from "./reglas-institucionales";
 import { aplicarCambioCampo, type PantallaConCampos } from "./campos-post-oferta";
@@ -102,7 +108,7 @@ interface ApplicationContextValue {
 
   patchApp: (patch: Partial<CreditApplication>) => void;
   setTipoPersona: (tipo: TipoPersona) => void;
-  consultarCliente: () => void;
+  consultarCliente: (doc?: string) => void;
   patchCliente: (patch: Partial<ClienteDatos>) => void;
   patchLaboral: (patch: Partial<LaboralIngresos>) => void;
   verificarIdentidad: () => void;
@@ -234,21 +240,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setApp((prev) => ({ ...prev, tipoPersona }));
   }, []);
 
-  const consultarCliente = useCallback(() => {
-    setApp((prev) => ({
-      ...prev,
-      cliente: { ...CONSULTA_CLIENTE_MOCK.datos },
-      origenCampos: { ...CONSULTA_CLIENTE_MOCK.origen },
-      numeroCliente: CONSULTA_CLIENTE_MOCK.numeroCliente,
-      // Situación BCRA y de buró interno: se traen con el documento, antes de evaluar.
-      situaciones: { ...CONSULTA_CLIENTE_MOCK.situaciones },
-      identificacion: {
-        ...prev.identificacion,
-        consultado: true,
-        tipoCliente: CONSULTA_CLIENTE_MOCK.tipoCliente,
-      },
-      laboral: { ...CONSULTA_CLIENTE_MOCK.laboral },
-    }));
+  const consultarCliente = useCallback((doc?: string) => {
+    setApp((prev) => {
+      const docBuscar = doc ?? prev.identificacion.documento;
+      const caso = obtenerCasoPorDocumento(docBuscar);
+
+      const baseCreditos = caso.creditosActivos.map((c) => ({ ...c }));
+      const tienePrecancelacion = baseCreditos.some((c) => c.precancelar);
+      const capMax = tienePrecancelacion
+        ? CAPITAL_MAXIMO_CON_PRECANCELACION
+        : CAPITAL_MAXIMO_BASE;
+
+      const nuevaOferta = recalcularOferta({
+        capitalMaximoBase: CAPITAL_MAXIMO_BASE,
+        capitalMaximoRenovacion: CAPITAL_MAXIMO_CON_PRECANCELACION,
+        capitalMaximoActual: capMax,
+        montoSolicitado: capMax,
+        plazo: 12,
+        tna: 58,
+        valorCuota: 0,
+        totalAPagar: 0,
+        primeraCuotaVencimiento: "10/10/2026",
+        creditosActivos: baseCreditos,
+        deudaTerceros: { ...caso.deudaTerceros },
+        aceptada: false,
+      });
+
+      return {
+        ...prev,
+        cliente: { ...caso.datos },
+        origenCampos: { ...caso.origen },
+        numeroCliente: caso.numeroCliente,
+        situaciones: { ...caso.situaciones },
+        identificacion: {
+          ...prev.identificacion,
+          documento: caso.datos.dni,
+          consultado: true,
+          tipoCliente: caso.tipoCliente,
+        },
+        laboral: { ...caso.laboral },
+        oferta: nuevaOferta,
+        rechazo: null,
+        riesgo: {
+          ...prev.riesgo,
+          estado: "PENDIENTE",
+          resultado: null,
+          escenario: caso.escenarioMotorDefault,
+        },
+      };
+    });
   }, []);
 
   const patchCliente = useCallback((patch: Partial<ClienteDatos>) => {
@@ -275,6 +315,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setApp((prev) => ({
       ...prev,
       numeroCredito: prev.numeroCredito ?? "CR-000184",
+      numeroCliente:
+        prev.numeroCliente ??
+        (prev.identificacion.tipoCliente === "NUEVO" ? "001450" : "000928"),
       estado: "EN_TRAMITE",
       fechaSolicitud: prev.fechaSolicitud ?? fechaHoy(),
       riesgo: { ...prev.riesgo, estado: "EVALUANDO" },

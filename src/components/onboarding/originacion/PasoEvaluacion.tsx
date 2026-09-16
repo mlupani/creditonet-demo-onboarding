@@ -21,8 +21,6 @@ import {
   IconX,
 } from "@/components/icons";
 
-import { EscenarioMotor } from "../evaluacion/EscenarioMotor";
-
 type Fase = "inicial" | "evaluando" | "completo";
 
 function DiagramaEtapas() {
@@ -161,10 +159,7 @@ export function PasoEvaluacion() {
             </p>
           </div>
           <DiagramaEtapas />
-          <div className="mt-6">
-            <EscenarioMotor />
-          </div>
-          <div className="mt-5 text-center">
+          <div className="mt-6 text-center">
             <Button size="lg" onClick={ejecutar}>
               Solicitar
             </Button>
@@ -408,16 +403,13 @@ export function PasoEvaluacion() {
       )}
 
       {completo && (
-        <div className="space-y-3">
-          <EscenarioMotor />
-          <Banner tone="info" title="Cómo se reparten las responsabilidades">
+        <Banner tone="info" title="Cómo se reparten las responsabilidades">
             Las reglas institucionales aplican políticas transversales del negocio. El motor
             evalúa el riesgo y decide si pasa o no pasa; no calcula capital. Los límites y el
             plan de cuotas no vuelven a evaluar riesgo: arman la primera oferta. La precancelación
             se ofrece después, sobre esa oferta, y el analista revisa al final, cuando termina la
             carga post-oferta.
           </Banner>
-        </div>
       )}
     </div>
   );
