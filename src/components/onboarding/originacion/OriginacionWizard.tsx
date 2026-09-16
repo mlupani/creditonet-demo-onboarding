@@ -125,8 +125,8 @@ export function OriginacionWizard() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="animate-fade-in">
-        <div className="flex flex-wrap items-end justify-between gap-2">
+      <div className="animate-fade-in sticky top-16 z-20 -mx-4 border-b border-ink-200/70 bg-ink-50 px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
               Solicitar crédito · Originación
@@ -134,9 +134,6 @@ export function OriginacionWizard() {
             <h1 className="mt-1 text-xl font-bold tracking-tight text-ink-900 sm:text-2xl">
               {meta.tituloPantalla}
             </h1>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-500">
-              {meta.descripcion}
-            </p>
             {contexto.length > 0 && (
               <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800">
                 <IconUser width={16} height={16} className="shrink-0 text-brand-600" />
