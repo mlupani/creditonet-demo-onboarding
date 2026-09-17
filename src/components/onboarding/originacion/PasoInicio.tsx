@@ -204,6 +204,7 @@ export function PasoInicio() {
     setDocumento(docDni);
     setError(null);
     setConsultando(true);
+    setMostrarCasos(false);
     patchApp({ identificacion: { ...app.identificacion, documento: docDni } });
     window.setTimeout(() => {
       consultarCliente(docDni);

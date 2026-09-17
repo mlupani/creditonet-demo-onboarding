@@ -9,6 +9,7 @@ import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { IconCheckCircle, IconRefresh } from "@/components/icons";
 
 const PRESETS = [2_000_000, 2_500_000, 2_850_000];
+const PASO_RAPIDO = 100_000;
 
 // Modificación de monto y recálculo (Guía §5.2).
 export function MontoSolicitado({
@@ -55,7 +56,7 @@ export function MontoSolicitado({
           variant={pendiente && !excede ? "primary" : "outline"}
           onClick={onRecalcular}
           disabled={!pendiente || excede || borrador <= 0}
-          className="sm:mt-[1.625rem]"
+          className="!h-[3.375rem] sm:mt-[1.625rem]"
         >
           <IconRefresh width={16} height={16} />
           Recalcular
@@ -63,6 +64,13 @@ export function MontoSolicitado({
       </div>
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-ink-400">Montos rápidos:</span>
+        <button
+          type="button"
+          onClick={() => onBorrador(Math.max(0, borrador - PASO_RAPIDO))}
+          className="rounded-full border border-ink-200 bg-white px-3 py-1 text-xs font-semibold tabular-nums text-ink-600 transition hover:border-brand-300 hover:text-brand-700"
+        >
+          −{formatARS(PASO_RAPIDO)}
+        </button>
         {PRESETS.filter((p) => p <= o.capitalMaximoActual).map((preset) => (
           <button
             key={preset}
@@ -77,6 +85,13 @@ export function MontoSolicitado({
             {formatARS(preset)}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => onBorrador(borrador + PASO_RAPIDO)}
+          className="rounded-full border border-ink-200 bg-white px-3 py-1 text-xs font-semibold tabular-nums text-ink-600 transition hover:border-brand-300 hover:text-brand-700"
+        >
+          +{formatARS(PASO_RAPIDO)}
+        </button>
       </div>
 
       {pendiente && !excede && borrador > 0 && (

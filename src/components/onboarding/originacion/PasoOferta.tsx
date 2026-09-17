@@ -36,7 +36,6 @@ export function PasoOferta() {
   // el plazo contra la oferta nueva (reunión 11/09, 43:06-45:21).
   const [plazoPendiente, setPlazoPendiente] = useState(false);
   const timer = useRef<number | null>(null);
-  const cuotasRef = useRef<HTMLDivElement>(null);
 
   useEffect(
     () => () => {
@@ -44,16 +43,6 @@ export function PasoOferta() {
     },
     []
   );
-
-  // Cada recálculo cambia las cuotas y su monto: llevamos la vista ahí para que se note el
-  // cambio y, si corresponde, que hay que volver a elegir el plazo.
-  useEffect(() => {
-    if (recalculado) cuotasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [recalculado]);
-
-  useEffect(() => {
-    if (plazoPendiente) cuotasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [plazoPendiente]);
 
   // Recálculo contra la grilla del plan, sin volver al motor (Guía §5.2).
   function recalcular() {
@@ -104,12 +93,10 @@ export function PasoOferta() {
           onRecalcular={recalcular}
           recalculado={recalculado}
         />
-        <div ref={cuotasRef} className="scroll-mt-20">
-          <TablaCuotas
-            pendiente={plazoPendiente}
-            onSeleccion={() => setPlazoPendiente(false)}
-          />
-        </div>
+        <TablaCuotas
+          pendiente={plazoPendiente}
+          onSeleccion={() => setPlazoPendiente(false)}
+        />
         <div className="pt-2">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-600">
             <IconRefresh width={12} height={12} />
@@ -156,7 +143,7 @@ export function PasoOferta() {
         </Card>
       </div>
 
-      <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+      <aside className="space-y-4 lg:sticky lg:top-72 lg:self-start">
         <ComposicionCredito />
       </aside>
 
