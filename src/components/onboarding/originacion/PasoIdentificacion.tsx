@@ -70,11 +70,6 @@ export function PasoIdentificacion() {
       ) : (
         <VerificacionPresencial />
       )}
-
-      <Banner tone="info">
-        Los datos son editables: al modificar uno, su origen pasa a carga manual. Para un
-        cliente nuevo se asigna un ID de Cliente interno permanente.
-      </Banner>
     </div>
   );
 }

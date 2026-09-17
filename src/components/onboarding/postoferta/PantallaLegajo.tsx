@@ -7,7 +7,6 @@ import { getTipoDocumento } from "@/lib/parametros";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { DemoTag } from "@/components/ui/DemoTag";
 import {
   IconCheck,
   IconCheckCircle,
@@ -150,15 +149,9 @@ export function PantallaLegajo() {
       </Card>
 
       <Banner tone={completo ? "success" : "info"}>
-        <span className="flex flex-wrap items-center gap-2">
-          {completo
-            ? "Todos los documentos obligatorios están adjuntos."
-            : "La carga es simulada. En el sistema real se validan formato, tamaño y legibilidad."}
-          <DemoTag
-            variant="config"
-            detalle="Los tipos de documento vienen de Parámetros. La obligatoriedad y la carga de una o varias imágenes se configuran por producto, con excepciones del organismo."
-          />
-        </span>
+        {completo
+          ? "Todos los documentos obligatorios están adjuntos."
+          : "La carga es simulada. En el sistema real se validan formato, tamaño y legibilidad."}
       </Banner>
     </div>
   );

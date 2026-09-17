@@ -1,0 +1,14 @@
+[      46ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-flujo.html:7400:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-flujo.html:7500:9)
+[      48ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-1-pedido.html:7356:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-1-pedido.html:7456:9)
+[      49ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-2-oferta.html:7340:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-2-oferta.html:7440:9)
+[      50ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-3-carga.html:7371:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-3-carga.html:7471:9)
+[     234ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
+[     278ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_1e8vcs8._.js:776
