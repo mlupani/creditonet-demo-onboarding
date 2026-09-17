@@ -1,0 +1,140 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - paragraph [ref=e111]: Solicitar crédito · Originación
+                - heading "Reglas, motor, límites y plan" [level=1] [ref=e560]
+                - generic [ref=e113]:
+                  - img [ref=e114]
+                  - generic [ref=e117]: Juan Ignacio Gómez · DNI 20.111.111 · ID de Cliente 000412 · Préstamo personal · Empleados de salud
+              - generic [ref=e118]:
+                - paragraph [ref=e119]: Paso 5 de 6
+                - paragraph [ref=e120]: Etapa 1 de 2
+            - list [ref=e124]:
+              - listitem [ref=e125]:
+                - button "Identificación" [ref=e288] [cursor=pointer]:
+                  - img [ref=e289]
+                  - generic [ref=e128]: Identificación
+              - listitem [ref=e130]:
+                - button "Producto y organismo" [ref=e341] [cursor=pointer]:
+                  - img [ref=e342]
+                  - generic [ref=e133]: Producto y organismo
+              - listitem [ref=e135]:
+                - button "Datos del cliente" [ref=e441] [cursor=pointer]:
+                  - img [ref=e442]
+                  - generic [ref=e138]: Datos del cliente
+              - listitem [ref=e140]:
+                - button "Datos laborales" [ref=e561] [cursor=pointer]:
+                  - img [ref=e562]
+                  - generic [ref=e143]: Datos laborales
+              - listitem [ref=e145]:
+                - button "5 Evaluación" [disabled] [ref=e146]:
+                  - generic [ref=e147]: "5"
+                  - generic [ref=e148]: Evaluación
+              - listitem [ref=e150]:
+                - button "6 Oferta" [disabled] [ref=e151]:
+                  - generic [ref=e152]: "6"
+                  - generic [ref=e153]: Oferta
+          - generic [ref=e564]:
+            - generic [ref=e566]:
+              - generic [ref=e567]:
+                - img [ref=e569]
+                - heading "Solicitar crédito" [level=3] [ref=e572]
+                - paragraph [ref=e573]:
+                  - text: Al presionar
+                  - strong [ref=e574]: Solicitar
+                  - text: se genera el ID de Crédito y la solicitud queda
+                  - strong [ref=e575]: En trámite
+                  - text: . Primero se evalúan las reglas institucionales y el motor; recién después intervienen los límites y el plan de cuotas.
+              - generic [ref=e576]:
+                - generic [ref=e577]:
+                  - generic [ref=e578]:
+                    - paragraph [ref=e579]: 1 · Reglas institucionales
+                    - paragraph [ref=e580]: Políticas transversales, con los datos mínimos confirmados.
+                  - paragraph [ref=e581]:
+                    - img [ref=e582]
+                - generic [ref=e585]:
+                  - paragraph [ref=e586]: 2 · Motor de riesgo
+                  - paragraph [ref=e587]: Ejecuta las reglas del motor que corresponde y determina si la solicitud pasa.
+              - button "Solicitar" [ref=e589]
+            - generic [ref=e591]:
+              - button "Atrás" [ref=e592]:
+                - img [ref=e593]
+                - text: Atrás
+              - status [ref=e596]:
+                - img [ref=e598]
+                - generic [ref=e601]: Presioná Solicitar y esperá el resultado de la evaluación.
+              - button "Continuar" [disabled] [ref=e602]:
+                - text: Continuar
+                - img [ref=e603]
+  - button "Open Next.js Dev Tools" [ref=e103] [cursor=pointer]:
+    - img [ref=e104]
+  - alert [ref=e220]

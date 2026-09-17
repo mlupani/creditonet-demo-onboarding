@@ -400,12 +400,6 @@ export function PasoEvaluacion() {
           </div>
         </>
       )}
-
-      {completo && (
-        <div className="space-y-3">
-          <EscenarioMotor />
-        </div>
-      )}
     </div>
   );
 }

@@ -20,6 +20,19 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## DNIs prefijados de la demo
+
+Al consultar el DNI/CUIL en el paso de Identificación (`src/lib/mocks.ts`), estos documentos devuelven un caso hardcodeado con su propio camino de evaluación. Cualquier otro DNI no listado cae en el caso "Cliente nuevo" (DNI X).
+
+| DNI | Camino | Qué prueba |
+|---|---|---|
+| `20111111` | Happy path | Motor pasa, sin deudas previas, oferta limpia |
+| `20222222` | Rechazo | Situación BCRA 4, el motor rechaza con carencia de 30 días |
+| `20333333` | Crédito interno | Cliente con préstamo propio vigente (CR-000102) para renovar |
+| `20444444` | Crédito externo | Cliente con deuda en Tarjeta Naranja ($350.000) para cancelar |
+| `20555555` | Ambos créditos | Crédito interno (CR-000215) + deuda con Santander ($300.000) |
+| `40999999` (o cualquier otro) | Cliente nuevo | Sin historial previo; aplica el limitante de cliente nuevo |
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

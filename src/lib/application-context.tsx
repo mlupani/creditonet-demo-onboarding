@@ -15,7 +15,6 @@ import type {
   ClienteDatos,
   CreditApplication,
   DeudaTerceros,
-  EscenarioMotor,
   LaboralIngresos,
   Oferta,
   PantallaPostOfertaId,
@@ -34,7 +33,6 @@ import type {
 import {
   crearAplicacionInicial,
   consultarPersonaMock,
-  CONSULTA_CLIENTE_MOCK,
   obtenerCasoPorDocumento,
   precargarPostOferta,
 } from "./mocks";
@@ -113,7 +111,6 @@ interface ApplicationContextValue {
   patchLaboral: (patch: Partial<LaboralIngresos>) => void;
   verificarIdentidad: () => void;
   solicitar: () => void;
-  setEscenarioMotor: (escenario: EscenarioMotor) => void;
   finalizarRiesgo: (resultado: ResultadoEvaluacion) => void;
   cambiarOferta: (cambio: CambioOferta) => void;
 
@@ -322,10 +319,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       fechaSolicitud: prev.fechaSolicitud ?? fechaHoy(),
       riesgo: { ...prev.riesgo, estado: "EVALUANDO" },
     }));
-  }, []);
-
-  const setEscenarioMotor = useCallback((escenario: EscenarioMotor) => {
-    setApp((prev) => ({ ...prev, riesgo: { ...prev.riesgo, escenario } }));
   }, []);
 
   const finalizarRiesgo = useCallback((ev: ResultadoEvaluacion) => {
@@ -787,7 +780,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patchLaboral,
       verificarIdentidad,
       solicitar,
-      setEscenarioMotor,
       finalizarRiesgo,
       cambiarOferta,
       patchOferta,
@@ -832,7 +824,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patchLaboral,
       verificarIdentidad,
       solicitar,
-      setEscenarioMotor,
       finalizarRiesgo,
       cambiarOferta,
       patchOferta,

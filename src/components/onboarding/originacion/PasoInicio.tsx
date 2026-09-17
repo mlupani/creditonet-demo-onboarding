@@ -11,6 +11,7 @@ import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { LISTA_CASOS_DEMO } from "@/lib/mocks";
 import {
   IconCheck,
+  IconChevronDown,
   IconIdCard,
   IconLoader,
   IconSearch,
@@ -180,6 +181,7 @@ export function PasoInicio() {
   );
   const [error, setError] = useState<string | null>(null);
   const [consultando, setConsultando] = useState(false);
+  const [mostrarCasos, setMostrarCasos] = useState(false);
   const encontrado = app.identificacion.consultado && app.cliente;
 
   function consultar(docParam?: string) {
@@ -283,44 +285,58 @@ export function PasoInicio() {
 
           {/* Accesos directos a los casos de la demo */}
           <div className="mt-4 rounded-xl border border-ink-150 bg-ink-25/70 p-3.5">
-            <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setMostrarCasos((v) => !v)}
+              aria-expanded={mostrarCasos}
+              className="flex w-full items-center justify-between gap-2"
+            >
               <p className="text-[11px] font-bold uppercase tracking-wider text-ink-500">
                 Casos preconfigurados para la demo
               </p>
-              <span className="text-[10px] font-medium text-brand-700">Clic para cargar</span>
-            </div>
-            <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {LISTA_CASOS_DEMO.map((c) => {
-                const activo =
-                  encontrado &&
-                  (app.cliente?.dni === c.dni || (c.id === "cliente-nuevo" && app.identificacion.tipoCliente === "NUEVO"));
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => seleccionarCaso(c.dni)}
-                    className={`flex flex-col rounded-lg border p-2.5 text-left transition-all ${
-                      activo
-                        ? "border-brand-600 bg-brand-50/80 shadow-xs ring-1 ring-brand-500"
-                        : "border-ink-200 bg-white hover:border-brand-300 hover:bg-brand-50/30"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-mono text-xs font-bold text-brand-700">
-                        {c.dni}
-                      </span>
-                      <span className="rounded bg-ink-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-600">
-                        {c.tag.split("·")[0].trim()}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs font-bold text-ink-900">{c.titulo}</p>
-                    <p className="mt-0.5 text-[11px] leading-snug text-ink-500">
-                      {c.descripcionCorta}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
+              <span className="flex items-center gap-1 text-[10px] font-medium text-brand-700">
+                {mostrarCasos ? "Ocultar" : "Ver casos"}
+                <IconChevronDown
+                  width={12}
+                  height={12}
+                  className={`transition-transform ${mostrarCasos ? "rotate-180" : ""}`}
+                />
+              </span>
+            </button>
+            {mostrarCasos && (
+              <div className="animate-fade-up mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {LISTA_CASOS_DEMO.map((c) => {
+                  const activo =
+                    encontrado &&
+                    (app.cliente?.dni === c.dni || (c.id === "cliente-nuevo" && app.identificacion.tipoCliente === "NUEVO"));
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => seleccionarCaso(c.dni)}
+                      className={`flex flex-col rounded-lg border p-2.5 text-left transition-all ${
+                        activo
+                          ? "border-brand-600 bg-brand-50/80 shadow-xs ring-1 ring-brand-500"
+                          : "border-ink-200 bg-white hover:border-brand-300 hover:bg-brand-50/30"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-mono text-xs font-bold text-brand-700">
+                          {c.dni}
+                        </span>
+                        <span className="rounded bg-ink-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-600">
+                          {c.tag.split("·")[0].trim()}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs font-bold text-ink-900">{c.titulo}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-ink-500">
+                        {c.descripcionCorta}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {consultando && (
