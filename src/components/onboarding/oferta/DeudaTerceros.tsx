@@ -1,7 +1,6 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { configEfectiva } from "@/lib/config";
 import { DEUDA_TERCEROS_DEMO } from "@/lib/mocks";
 import { ENTIDADES_ACREEDORAS, validarDeudaTerceros } from "@/lib/validation";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -14,8 +13,6 @@ import { IconLandmark } from "@/components/icons";
 // Cancelación de deudas con terceros (Guía §5.4): entidad, monto y CBU de destino.
 export function DeudaTerceros() {
   const { app, setDeudaTerceros } = useApplication();
-  if (!configEfectiva(app.configuracion).permiteDeudaTerceros) return null;
-
   const d = app.oferta.deudaTerceros;
   const err = validarDeudaTerceros(d);
 
