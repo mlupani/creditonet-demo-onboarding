@@ -12,7 +12,6 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { DemoTag } from "@/components/ui/DemoTag";
 import {
   IconCheck,
   IconClock,
@@ -89,13 +88,7 @@ export function PantallaTokenizacion() {
               {tokenizadas === 1 ? "" : "s"} · hasta {maximoTarjetas} tarjeta
               {maximoTarjetas === 1 ? "" : "s"}
             </span>
-            <span className="flex items-center gap-2 font-medium text-ink-600">
-              {nombreProveedor(proveedorId)}
-              <DemoTag
-                variant="config"
-                detalle="El proveedor tercero de tokenización, la obligatoriedad y la cantidad de tarjetas se configuran por producto, con excepciones del organismo. La integración es simulada."
-              />
-            </span>
+            <span className="font-medium text-ink-600">{nombreProveedor(proveedorId)}</span>
           </div>
 
           {tarjetas.length > 0 && (

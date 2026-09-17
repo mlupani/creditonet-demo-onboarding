@@ -4,7 +4,6 @@ import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { erroresPantalla } from "@/lib/campos-post-oferta";
 import { Banner } from "@/components/ui/Banner";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { IconBriefcase, IconClock, IconLandmark, IconMapPin } from "@/components/icons";
 import { LeyendaOrigen, SeccionCampos } from "./SeccionCampos";
 
@@ -25,12 +24,6 @@ export function PantallaLaboral() {
         pantalla="laboral"
         seccion="empleador"
         icon={<IconBriefcase width={18} height={18} />}
-        action={
-          <DemoTag
-            variant="config"
-            detalle="La obligatoriedad de cada campo se configura por producto, con excepciones del organismo. Ej.: la repartición es obligatoria para Policía de la Provincia."
-          />
-        }
       />
       <SeccionCampos
         pantalla="laboral"

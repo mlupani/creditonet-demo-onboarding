@@ -1,7 +1,7 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { CANALES, getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
+import { CANALES, getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS, VENDEDORES } from "@/lib/config";
 import { reglaMarcada, seleccionarMotor } from "@/lib/motores";
 import { formatARS, formatDNI } from "@/lib/format";
 import { RESULTADO_LABEL } from "@/lib/credit";
@@ -28,6 +28,7 @@ export function ResumenSolicitudModal({
 
   const rows: { label: string; value: string; tone?: "success" | "danger" | "warning" }[] = [
     { label: "Canal", value: nombreOpcion(CANALES, app.configuracion.canalId) },
+    { label: "Vendedor", value: nombreOpcion(VENDEDORES, app.configuracion.vendedorId) },
     {
       label: "Tipo de persona",
       value: app.tipoPersona === "FISICA" ? "Persona física" : "Persona jurídica",

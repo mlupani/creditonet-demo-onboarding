@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { SESION, VENDEDORES, nombreOpcion } from "@/lib/config";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { SelectField } from "@/components/ui/SelectField";
-import { IconUsers } from "@/components/icons";
 
 function inicialesDe(nombre: string): string {
   return nombre
@@ -34,11 +33,6 @@ export function VendedorAsignado() {
 
   return (
     <Card>
-      <CardHeader
-        title="Vendedor"
-        description="Se toma de la sesión; se puede asignar el crédito a otro vendedor."
-        icon={<IconUsers width={18} height={18} />}
-      />
       <div className="px-5 py-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="flex items-center gap-2.5">

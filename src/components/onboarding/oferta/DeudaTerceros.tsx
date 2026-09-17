@@ -9,7 +9,6 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { IconLandmark } from "@/components/icons";
 
 // Cancelación de deudas con terceros (Guía §5.4): entidad, monto y CBU de destino.
@@ -26,12 +25,6 @@ export function DeudaTerceros() {
         title="Cancelación de deudas con terceros"
         description="Destiná parte del préstamo a cancelar deudas en otras entidades financieras."
         icon={<IconLandmark width={18} height={18} />}
-        action={
-          <DemoTag
-            variant="config"
-            detalle="Qué productos permiten cancelar deuda de terceros se define por producto / organismo. En la demo está habilitado."
-          />
-        }
       />
       <div className="space-y-3 p-5 sm:p-6">
         <Checkbox

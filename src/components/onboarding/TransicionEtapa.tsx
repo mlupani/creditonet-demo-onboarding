@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/Card";
 import { resumenConfig } from "@/lib/config";
 import { formatARS, sumarDias } from "@/lib/format";
 import { netoAAcreditar } from "@/lib/credit";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { IconArrowDown, IconArrowRight, IconCheck } from "@/components/icons";
 
 export function TransicionEtapa() {
@@ -49,15 +48,9 @@ export function TransicionEtapa() {
           </div>
 
           <div className="mt-6 rounded-xl border border-ink-200 bg-ink-25 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                {resumen.producto} · {resumen.organismo}
-              </p>
-              <DemoTag
-                variant="config"
-                detalle="La cantidad, el orden y la obligatoriedad de las pantallas post-oferta se configuran por producto; el organismo sólo define excepciones. En la demo la configuración es fija."
-              />
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+              {resumen.producto} · {resumen.organismo}
+            </p>
             <p className="mt-1 text-xs text-ink-500">{resumen.herencia}</p>
             <dl className="mt-3 grid grid-cols-3 gap-3 text-center">
               <div>

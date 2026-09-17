@@ -22,7 +22,6 @@ import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/SelectField";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { DemoTag } from "@/components/ui/DemoTag";
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
 import {
   IconAlertTriangle,
@@ -338,12 +337,6 @@ export function AnalisisCredito({
             { label: "Situación BCRA", value: "Situación 1" },
             { label: "Último pago", value: "hace 25 días" },
           ]}
-          footer={
-            <DemoTag
-              variant="config"
-              detalle="El historial de pagos y el comportamiento interno son datos simulados para la demo."
-            />
-          }
         />
         <SummaryCard
           title="Documentación"

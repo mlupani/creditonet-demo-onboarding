@@ -12,7 +12,6 @@ import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { StepperLibre, type PasoLibre } from "@/components/ui/StepperLibre";
-import { DemoTag } from "@/components/ui/DemoTag";
 import {
   IconAlertTriangle,
   IconArrowRight,
@@ -187,15 +186,9 @@ export function PostOfertaShell() {
           </Card>
 
           <Card className="p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                Configuración aplicada
-              </p>
-              <DemoTag
-                variant="config"
-                detalle="El producto define las 7 pantallas con su orden y obligatoriedad, los campos obligatorios, las cantidades de referencias y garantes, la tokenización y los documentos. El organismo sólo parametriza excepciones; lo que no define se hereda del producto."
-              />
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+              Configuración aplicada
+            </p>
             <p className="mt-2 text-sm font-semibold text-ink-900">{resumen.producto}</p>
             <p className="text-xs text-ink-500">
               {resumen.organismo} · {resumen.herencia}
