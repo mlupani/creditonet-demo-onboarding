@@ -1,0 +1,3 @@
+[   24522ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-flujo.html:7400:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-flujo.html:7500:9)

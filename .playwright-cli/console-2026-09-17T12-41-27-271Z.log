@@ -1,0 +1,12 @@
+[       8ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-flujo.html:7400:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-flujo.html:7500:9)
+[      10ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-1-pedido.html:7356:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-1-pedido.html:7456:9)
+[      11ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-2-oferta.html:7340:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-2-oferta.html:7440:9)
+[      13ms] TypeError: Archify.guidedViews.isPlaying is not a function
+    at render (http://localhost:3000/diagramas/onboarding-3-carga.html:7371:98)
+    at HTMLDocument.syncVisibility (http://localhost:3000/diagramas/onboarding-3-carga.html:7471:9)

@@ -17,6 +17,7 @@ function tituloRuta(pathname: string) {
   if (pathname === "/") return "Bandeja del canal de venta";
   if (pathname.startsWith("/onboarding")) return "Solicitar crédito";
   if (pathname.startsWith("/analisis")) return "Bandeja del analista de riesgo";
+  if (pathname.startsWith("/graph")) return "Diagrama de flujo · Onboarding";
   return "CreditoNet";
 }
 

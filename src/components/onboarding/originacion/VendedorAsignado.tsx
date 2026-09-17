@@ -6,7 +6,7 @@ import { SESION, VENDEDORES, nombreOpcion } from "@/lib/config";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { SelectField } from "@/components/ui/SelectField";
-import { IconLock, IconUsers } from "@/components/icons";
+import { IconUsers } from "@/components/icons";
 
 function inicialesDe(nombre: string): string {
   return nombre
@@ -40,9 +40,9 @@ export function VendedorAsignado() {
         icon={<IconUsers width={18} height={18} />}
       />
       <div className="px-5 py-4 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-3.5 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
               {reasignando
                 ? inicialesDe(nombreOpcion(VENDEDORES, app.configuracion.vendedorId))
                 : SESION.iniciales}
@@ -56,25 +56,13 @@ export function VendedorAsignado() {
               )}
             </span>
           </span>
-          {!reasignando && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
-              <IconLock width={11} height={11} />
-              Tomado de la sesión
-            </span>
-          )}
-        </div>
-        <p className="mt-2 text-xs leading-relaxed text-ink-500">
-          Por defecto la solicitud guarda el ID del vendedor autenticado para trazabilidad,
-          bandejas y devoluciones del analista. Se puede asignar a otro vendedor para el crédito
-          cuando corresponda.
-        </p>
-        <div className="mt-3">
-          <Checkbox
-            checked={reasignando}
-            onChange={toggleReasignar}
-            label="Asignar a otro vendedor"
-            description="El crédito queda a nombre del vendedor elegido en vez del de la sesión."
-          />
+          <div className="w-auto shrink-0">
+            <Checkbox
+              checked={reasignando}
+              onChange={toggleReasignar}
+              label="Asignar a otro vendedor"
+            />
+          </div>
         </div>
         {reasignando && (
           <div className="mt-3">
