@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
-import { AutocompletadoBadge } from "@/components/ui/OrigenBadge";
 import { IconCheckCircle, IconPlus, IconSearch, IconTrash } from "@/components/icons";
 
 const TEXTOS: Record<
@@ -149,7 +148,6 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 label="Nombre completo"
                 required
                 value={p.nombreCompleto}
-                badge={p.autocompletado ? <AutocompletadoBadge /> : undefined}
                 onChange={(v) => actualizarPersona(tipo, p.id, { nombreCompleto: v })}
                 error={err.nombreCompleto}
               />
@@ -168,7 +166,6 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 label="Domicilio completo"
                 required
                 value={p.domicilio}
-                badge={p.autocompletado ? <AutocompletadoBadge /> : undefined}
                 onChange={(v) => actualizarPersona(tipo, p.id, { domicilio: v })}
                 error={err.domicilio}
                 className="sm:col-span-2"

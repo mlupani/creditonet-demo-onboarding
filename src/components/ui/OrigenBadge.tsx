@@ -35,15 +35,6 @@ export function OrigenBadge({ origen }: { origen: OrigenDato | undefined }) {
   );
 }
 
-export function AutocompletadoBadge() {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700">
-      <IconSparkles width={11} height={11} />
-      Autocompletado
-    </span>
-  );
-}
-
 // Onboarding §3: origen del dato en las pantallas post-oferta. Los datos a cargar no llevan
 // insignia; un precargado que se corrigió se muestra como rectificado.
 export function OrigenCampoBadge({
@@ -63,17 +54,14 @@ export function OrigenCampoBadge({
         No modificable
       </span>
     );
-  return rectificado ? (
-    <span className={`${base} border-warning-200 bg-warning-50 text-warning-700`}>
-      <IconRefresh width={11} height={11} />
-      Rectificado
-    </span>
-  ) : (
-    <span className={`${base} border-brand-100 bg-brand-50 text-brand-700`}>
-      <IconSparkles width={11} height={11} />
-      Precargado
-    </span>
-  );
+  if (rectificado)
+    return (
+      <span className={`${base} border-warning-200 bg-warning-50 text-warning-700`}>
+        <IconRefresh width={11} height={11} />
+        Rectificado
+      </span>
+    );
+  return null;
 }
 
 export function YaInformadoBadge() {

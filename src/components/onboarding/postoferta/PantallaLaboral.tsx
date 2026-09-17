@@ -5,7 +5,7 @@ import { configEfectiva } from "@/lib/config";
 import { erroresPantalla } from "@/lib/campos-post-oferta";
 import { Banner } from "@/components/ui/Banner";
 import { IconBriefcase, IconClock, IconLandmark, IconMapPin } from "@/components/icons";
-import { LeyendaOrigen, SeccionCampos } from "./SeccionCampos";
+import { SeccionCampos } from "./SeccionCampos";
 
 // Pantalla 2 · Datos laborales (Onboarding §5): empleo actual. La fecha de ingreso y la
 // situación laboral vienen del pedido inicial y no se modifican porque dispararon la oferta.
@@ -19,7 +19,6 @@ export function PantallaLaboral() {
 
   return (
     <div className="space-y-5">
-      <LeyendaOrigen />
       <SeccionCampos
         pantalla="laboral"
         seccion="empleador"

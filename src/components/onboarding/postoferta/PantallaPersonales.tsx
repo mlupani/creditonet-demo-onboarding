@@ -5,7 +5,7 @@ import { configEfectiva } from "@/lib/config";
 import { erroresPantalla } from "@/lib/campos-post-oferta";
 import { Banner } from "@/components/ui/Banner";
 import { IconIdCard, IconMapPin, IconSend } from "@/components/icons";
-import { LeyendaOrigen, SeccionCampos } from "./SeccionCampos";
+import { SeccionCampos } from "./SeccionCampos";
 
 // Pantalla 1 · Datos personales (Onboarding §4): identificación, domicilio y contacto.
 export function PantallaPersonales() {
@@ -18,7 +18,6 @@ export function PantallaPersonales() {
 
   return (
     <div className="space-y-5">
-      <LeyendaOrigen />
       <SeccionCampos
         pantalla="personales"
         seccion="identificacion"
