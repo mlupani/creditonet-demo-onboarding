@@ -82,7 +82,9 @@ export const CASO_HAPPY_PATH: CasoDemoCliente = {
     genero: "Masculino",
     fechaNacimiento: "15/04/1988",
     domicilio: "Av. Colón 2450, 4° A, Córdoba",
+    localidad: "Córdoba",
     email: "juanignacio.gomez@gmail.com",
+    telefono: "351 5432100",
   },
   origen: {
     apellido: "API pública",
@@ -92,6 +94,7 @@ export const CASO_HAPPY_PATH: CasoDemoCliente = {
     genero: "API pública",
     fechaNacimiento: "API pública",
     domicilio: "API pública",
+    localidad: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -148,7 +151,9 @@ export const CASO_RECHAZO: CasoDemoCliente = {
     genero: "Masculino",
     fechaNacimiento: "22/08/1985",
     domicilio: "San Jerónimo 1840, Córdoba",
+    localidad: "Córdoba",
     email: "marcos.benitez@outlook.com",
+    telefono: "351 4889900",
   },
   origen: {
     apellido: "API pública",
@@ -158,6 +163,7 @@ export const CASO_RECHAZO: CasoDemoCliente = {
     genero: "API pública",
     fechaNacimiento: "API pública",
     domicilio: "API pública",
+    localidad: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -214,7 +220,9 @@ export const CASO_CREDITO_INTERNO: CasoDemoCliente = {
     genero: "Femenino",
     fechaNacimiento: "14/05/1982",
     domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
+    localidad: "Córdoba",
     email: "mariafernanda.gonzalez@gmail.com",
+    telefono: "351 6123344",
   },
   origen: {
     apellido: "API pública",
@@ -224,6 +232,7 @@ export const CASO_CREDITO_INTERNO: CasoDemoCliente = {
     genero: "API pública",
     fechaNacimiento: "API pública",
     domicilio: "API pública",
+    localidad: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -278,6 +287,198 @@ export const CASO_CREDITO_INTERNO: CasoDemoCliente = {
   deudaTerceros: { habilitado: false, entidad: "", importe: 0, cbu: "" },
 };
 
+// 3b. DNI 6 -> Cliente con crédito interno en mora (cancelación obligatoria en oferta)
+export const CASO_CREDITO_INTERNO_MORA: CasoDemoCliente = {
+  id: "credito-interno-mora",
+  dni: "20666666",
+  cuil: "27-20666666-0",
+  tag: "DNI 6 · Crédito interno con mora",
+  titulo: "Crédito interno en mora",
+  descripcionCorta: "Préstamo propio en mora, cancelación obligatoria en oferta",
+  escenarioMotorDefault: "PASA",
+  numeroCliente: "001205",
+  tipoCliente: "EXISTENTE",
+  situaciones: { bcra: 2, interna: 3 }, // interna: 3 = mora pero pasa motor con advertencia
+  datos: {
+    apellido: "Vargas",
+    nombre: "Alejandro",
+    dni: "20666666",
+    cuil: "27-20666666-0",
+    genero: "Masculino",
+    fechaNacimiento: "22/07/1985",
+    domicilio: "España 750, Centro, Córdoba",
+    localidad: "Córdoba",
+    email: "alejandro.vargas@email.com",
+    telefono: "351 5555666",
+  },
+  origen: {
+    apellido: "API pública",
+    nombre: "API pública",
+    dni: "API pública",
+    cuil: "API pública",
+    genero: "API pública",
+    fechaNacimiento: "API pública",
+    domicilio: "API pública",
+    localidad: "API pública",
+    email: "Base interna",
+  },
+  contacto: {
+    caracteristica: "351",
+    numero: "5555666",
+    compania: "Personal",
+    email: "alejandro.vargas@email.com",
+  },
+  domicilio: {
+    calle: "España",
+    numero: "750",
+    piso: "",
+    departamento: "",
+    provincia: "Córdoba",
+    localidad: "Córdoba",
+    codigoPostal: "5000",
+  },
+  laboral: {
+    condicionLaboral: "Empleado fijo",
+    fechaInicioLaboral: "18/01/2017",
+    bancoCobro: "Banco Santander",
+    ingresoBruto: 1_100_000,
+    ingresoNeto: 880_000,
+    montoExtraidoDiaCobro: 750_000,
+    cuitEmpleador: "30712345671",
+    disponible: 0,
+    debitosNoRemunerativos: 0,
+    extraccionesFecha: "",
+    extraccionesImporte: 0,
+    transferenciasFecha: "",
+    transferenciasImporte: 0,
+  },
+  creditosActivos: [
+    {
+      id: "CR-000105",
+      capitalOriginal: 800_000,
+      capitalResidual: 450_000,
+      montoCancelacion: 520_000, // Incluye punitorios por mora
+      desglose: {
+        capitalResidual: 450_000,
+        interesesAVencer: 40_000,
+        iva: 12_000,
+        cargosCancelacion: 15_000,
+        punitorios: 3_000, // Punitorios por mora
+      },
+      cuotasOriginales: 18,
+      cuotasAbonadas: 8,
+      valorCuota: 89_500,
+      precancelar: false,
+      enMora: true, // En mora - cancelación obligatoria
+    },
+  ],
+  deudaTerceros: { habilitado: false, entidad: "", importe: 0, cbu: "" },
+};
+
+// 3c. DNI 7 -> Cliente con dos créditos internos, ambos elegibles para renovación voluntaria
+export const CASO_DOS_CREDITOS_INTERNOS: CasoDemoCliente = {
+  id: "dos-creditos-internos",
+  dni: "20777777",
+  cuil: "27-20777777-6",
+  tag: "DNI 7 · Dos créditos internos",
+  titulo: "Dos créditos internos",
+  descripcionCorta: "Dos préstamos propios vigentes CR-000110 y CR-000111, ambos a renovar",
+  escenarioMotorDefault: "PASA",
+  numeroCliente: "001318",
+  tipoCliente: "EXISTENTE",
+  situaciones: { bcra: 1, interna: 1 },
+  datos: {
+    apellido: "Herrera",
+    nombre: "Patricia",
+    dni: "20777777",
+    cuil: "27-20777777-6",
+    genero: "Femenino",
+    fechaNacimiento: "03/09/1980",
+    domicilio: "Bv. San Juan 1120, 2° A, Córdoba",
+    localidad: "Córdoba",
+    email: "patricia.herrera@email.com",
+    telefono: "351 6777788",
+  },
+  origen: {
+    apellido: "API pública",
+    nombre: "API pública",
+    dni: "API pública",
+    cuil: "API pública",
+    genero: "API pública",
+    fechaNacimiento: "API pública",
+    domicilio: "API pública",
+    localidad: "API pública",
+    email: "Base interna",
+  },
+  contacto: {
+    caracteristica: "351",
+    numero: "6777788",
+    compania: "Claro",
+    email: "patricia.herrera@email.com",
+  },
+  domicilio: {
+    calle: "Bv. San Juan",
+    numero: "1120",
+    piso: "2",
+    departamento: "A",
+    provincia: "Córdoba",
+    localidad: "Córdoba",
+    codigoPostal: "5000",
+  },
+  laboral: {
+    condicionLaboral: "Empleado fijo",
+    fechaInicioLaboral: "05/06/2015",
+    bancoCobro: "Banco Macro",
+    ingresoBruto: 1_450_000,
+    ingresoNeto: 1_150_000,
+    montoExtraidoDiaCobro: 900_000,
+    cuitEmpleador: "30712345671",
+    disponible: 0,
+    debitosNoRemunerativos: 0,
+    extraccionesFecha: "",
+    extraccionesImporte: 0,
+    transferenciasFecha: "",
+    transferenciasImporte: 0,
+  },
+  creditosActivos: [
+    {
+      id: "CR-000110",
+      capitalOriginal: 1_200_000,
+      capitalResidual: 520_000,
+      montoCancelacion: 610_000,
+      desglose: {
+        capitalResidual: 520_000,
+        interesesAVencer: 60_000,
+        iva: 18_000,
+        cargosCancelacion: 12_000,
+        punitorios: 0,
+      },
+      cuotasOriginales: 18,
+      cuotasAbonadas: 12,
+      valorCuota: 79_800,
+      precancelar: false,
+    },
+    {
+      id: "CR-000111",
+      capitalOriginal: 900_000,
+      capitalResidual: 380_000,
+      montoCancelacion: 445_000,
+      desglose: {
+        capitalResidual: 380_000,
+        interesesAVencer: 45_000,
+        iva: 13_500,
+        cargosCancelacion: 6_500,
+        punitorios: 0,
+      },
+      cuotasOriginales: 12,
+      cuotasAbonadas: 9,
+      valorCuota: 84_200,
+      precancelar: false,
+    },
+  ],
+  deudaTerceros: { habilitado: false, entidad: "", importe: 0, cbu: "" },
+};
+
 // 4. DNI 4 -> Cliente con crédito externo
 export const CASO_CREDITO_EXTERNO: CasoDemoCliente = {
   id: "credito-externo",
@@ -298,7 +499,9 @@ export const CASO_CREDITO_EXTERNO: CasoDemoCliente = {
     genero: "Masculino",
     fechaNacimiento: "08/11/1990",
     domicilio: "Mariano Fragueiro 1280, Alta Córdoba, Córdoba",
+    localidad: "Córdoba",
     email: "lucas.romero@hotmail.com",
+    telefono: "351 7654321",
   },
   origen: {
     apellido: "API pública",
@@ -308,6 +511,7 @@ export const CASO_CREDITO_EXTERNO: CasoDemoCliente = {
     genero: "API pública",
     fechaNacimiento: "API pública",
     domicilio: "API pública",
+    localidad: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -369,7 +573,9 @@ export const CASO_AMBOS_CREDITOS: CasoDemoCliente = {
     genero: "Femenino",
     fechaNacimiento: "03/07/1987",
     domicilio: "Chacabuco 450, 7° C, Córdoba",
+    localidad: "Córdoba",
     email: "valeria.castro@gmail.com",
+    telefono: "351 3216549",
   },
   origen: {
     apellido: "API pública",
@@ -379,6 +585,7 @@ export const CASO_AMBOS_CREDITOS: CasoDemoCliente = {
     genero: "API pública",
     fechaNacimiento: "API pública",
     domicilio: "API pública",
+    localidad: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -458,7 +665,9 @@ export const CASO_CLIENTE_NUEVO_BASE: CasoDemoCliente = {
     genero: "Masculino",
     fechaNacimiento: "18/09/1997",
     domicilio: "Bv. San Juan 890, 2° A, Córdoba",
+    localidad: "Córdoba",
     email: "tomas.rossi@gmail.com",
+    telefono: "351 2233445",
   },
   origen: {
     apellido: "API pública",
@@ -468,6 +677,7 @@ export const CASO_CLIENTE_NUEVO_BASE: CasoDemoCliente = {
     genero: "API pública",
     fechaNacimiento: "API pública",
     domicilio: "API pública",
+    localidad: "API pública",
     email: "Manual",
   },
   contacto: {
@@ -512,6 +722,8 @@ export const CASOS_CLIENTES_DEMO: Record<string, CasoDemoCliente> = {
   "27456890": CASO_CREDITO_INTERNO, // compatibilidad con mock anterior
   "20444444": CASO_CREDITO_EXTERNO,
   "20555555": CASO_AMBOS_CREDITOS,
+  "20666666": CASO_CREDITO_INTERNO_MORA,
+  "20777777": CASO_DOS_CREDITOS_INTERNOS,
   "40999999": CASO_CLIENTE_NUEVO_BASE,
 };
 
@@ -520,6 +732,8 @@ export const LISTA_CASOS_DEMO: CasoDemoCliente[] = [
   CASO_HAPPY_PATH,
   CASO_RECHAZO,
   CASO_CREDITO_INTERNO,
+  CASO_CREDITO_INTERNO_MORA,
+  CASO_DOS_CREDITOS_INTERNOS,
   CASO_CREDITO_EXTERNO,
   CASO_AMBOS_CREDITOS,
   CASO_CLIENTE_NUEVO_BASE,
@@ -703,7 +917,12 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     nombreCompleto: "Roberto González",
     domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
     email: "roberto.gonzalez@gmail.com",
+    telefono: "351 6543200",
     autocompletado: true,
+    condicionLaboral: "", // PENDIENTE
+    ingresoBruto: 0, // PENDIENTE
+    ingresoNeto: 0, // PENDIENTE
+    reciboSueldo: [], // PENDIENTE
   };
 
   return {
@@ -719,7 +938,12 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
         nombreCompleto: "Carla Giménez",
         domicilio: "Av. Colón 1450, Córdoba",
         email: "", // PENDIENTE
+        telefono: "", // PENDIENTE
         autocompletado: true,
+        condicionLaboral: "",
+        ingresoBruto: 0,
+        ingresoNeto: 0,
+        reciboSueldo: [],
       },
     ],
     garantes: conGarantias ? [garante] : [],
@@ -731,10 +955,10 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
 // API simulada de consulta por DNI para referencias y garantes (Onboarding §7): cualquier
 // DNI válido devuelve una persona de prueba.
 const PERSONAS_API = [
-  { nombreCompleto: "Lucía Fernández", domicilio: "Obispo Trejo 520, Córdoba" },
-  { nombreCompleto: "Martín Sosa", domicilio: "Av. Vélez Sarsfield 1820, Córdoba" },
-  { nombreCompleto: "Valeria Paz", domicilio: "Duarte Quirós 910, Córdoba" },
-  { nombreCompleto: "Diego Romero", domicilio: "Av. Hipólito Yrigoyen 355, Córdoba" },
+  { nombreCompleto: "Lucía Fernández", domicilio: "Obispo Trejo 520, Córdoba", email: "lucia.fernandez@email.com", telefono: "351 6543210", condicionLaboral: "Empleado fijo", ingresoBruto: 980_000, ingresoNeto: 780_000 },
+  { nombreCompleto: "Martín Sosa", domicilio: "Av. Vélez Sarsfield 1820, Córdoba", email: "martin.sosa@email.com", telefono: "351 6543211", condicionLaboral: "Contratado", ingresoBruto: 850_000, ingresoNeto: 680_000 },
+  { nombreCompleto: "Valeria Paz", domicilio: "Duarte Quirós 910, Córdoba", email: "valeria.paz@email.com", telefono: "351 6543212", condicionLaboral: "Monotributista", ingresoBruto: 720_000, ingresoNeto: 720_000 },
+  { nombreCompleto: "Diego Romero", domicilio: "Av. Hipólito Yrigoyen 355, Córdoba", email: "diego.romero@email.com", telefono: "351 6543213", condicionLaboral: "Empleado fijo", ingresoBruto: 1_100_000, ingresoNeto: 890_000 },
 ];
 
 export function consultarPersonaMock(dni: string) {

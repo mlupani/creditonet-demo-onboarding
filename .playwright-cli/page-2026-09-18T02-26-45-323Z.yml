@@ -1,0 +1,210 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - paragraph [ref=e115]: Solicitar crédito · Originación
+                - heading "Datos laborales" [level=1] [ref=e481]
+                - generic [ref=e117]:
+                  - img [ref=e118]
+                  - generic [ref=e121]: Alejandro Vargas · DNI 20.666.666 · ID de Cliente 001205 · Préstamo personal · Empleados de salud
+              - generic [ref=e122]:
+                - paragraph [ref=e123]: Paso 4 de 6
+                - paragraph [ref=e124]: Etapa 1 de 2
+            - list [ref=e128]:
+              - listitem [ref=e129]:
+                - button "Identificación" [ref=e327] [cursor=pointer]:
+                  - img [ref=e328]
+                  - generic [ref=e132]: Identificación
+              - listitem [ref=e134]:
+                - button "Producto y organismo" [ref=e378] [cursor=pointer]:
+                  - img [ref=e379]
+                  - generic [ref=e137]: Producto y organismo
+              - listitem [ref=e139]:
+                - button "Datos del cliente" [ref=e482] [cursor=pointer]:
+                  - img [ref=e483]
+                  - generic [ref=e142]: Datos del cliente
+              - listitem [ref=e144]:
+                - button "4 Datos laborales" [disabled] [ref=e145]:
+                  - generic [ref=e146]: "4"
+                  - generic [ref=e147]: Datos laborales
+              - listitem [ref=e149]:
+                - button "5 Evaluación" [disabled] [ref=e150]:
+                  - generic [ref=e151]: "5"
+                  - generic [ref=e152]: Evaluación
+              - listitem [ref=e154]:
+                - button "6 Oferta" [disabled] [ref=e155]:
+                  - generic [ref=e156]: "6"
+                  - generic [ref=e157]: Oferta
+          - generic [ref=e485]:
+            - generic [ref=e486]:
+              - generic [ref=e487]:
+                - generic [ref=e488]:
+                  - img [ref=e490]
+                  - generic [ref=e493]:
+                    - heading "Datos laborales y financieros" [level=2] [ref=e494]
+                    - paragraph [ref=e495]: Los datos mínimos que el producto requiere para solicitar.
+                - generic [ref=e496]:
+                  - img [ref=e497]
+                  - text: Base interna
+              - generic [ref=e499]:
+                - generic [ref=e500]:
+                  - paragraph [ref=e501]: Datos laborales
+                  - generic [ref=e502]:
+                    - generic [ref=e503]:
+                      - generic [ref=e505]: Condición laboral*
+                      - generic [ref=e506]:
+                        - combobox "Condición laboral*" [ref=e507]:
+                          - option "Seleccioná una opción…"
+                          - option "Empleado fijo" [selected]
+                          - option "Contratado"
+                          - option "Monotributista"
+                          - option "Jubilado / Pensionado"
+                        - img
+                      - paragraph [ref=e508]: Determina qué línea aplica y participa en la generación de la oferta. La situación BCRA y el buró interno (vistos al identificar al cliente) no bloquean la línea, sólo recortan el capital. No se puede modificar después de la oferta.
+                    - generic [ref=e509]:
+                      - generic [ref=e511]: Fecha de inicio laboral*
+                      - textbox "Fecha de inicio laboral*" [ref=e513]: 18/01/2017
+                      - paragraph [ref=e514]: dd/mm/aaaa
+                    - generic [ref=e515]:
+                      - generic [ref=e517]: Banco de cobro*
+                      - generic [ref=e518]:
+                        - combobox "Banco de cobro*" [ref=e519]:
+                          - option "Seleccioná una opción…"
+                          - option "Banco Galicia"
+                          - option "Banco Nación"
+                          - option "Banco de Córdoba"
+                          - option "Banco Macro"
+                          - option "Banco Santander" [selected]
+                          - option "Banco BBVA"
+                        - img
+                    - generic [ref=e520]:
+                      - generic [ref=e522]: CUIT del empleador
+                      - textbox "CUIT del empleador" [ref=e524]: "30712345671"
+                      - paragraph [ref=e525]: 11 dígitos, sin guiones.
+                - generic [ref=e526]:
+                  - paragraph [ref=e527]: Datos financieros
+                  - generic [ref=e528]:
+                    - generic [ref=e529]:
+                      - generic [ref=e531]: Ingreso bruto*
+                      - generic [ref=e532]:
+                        - generic: $
+                        - textbox "Ingreso bruto*" [ref=e533]:
+                          - /placeholder: "0"
+                          - text: 1.100.000
+                      - paragraph [ref=e534]: Haberes brutos mensuales.
+                    - generic [ref=e535]:
+                      - generic [ref=e537]: Ingreso neto*
+                      - generic [ref=e538]:
+                        - generic: $
+                        - textbox "Ingreso neto*" [ref=e539]:
+                          - /placeholder: "0"
+                          - text: "880.000"
+                      - paragraph [ref=e540]: Ingreso mensual de bolsillo. Base del cálculo de RCI.
+                    - generic [ref=e541]:
+                      - generic [ref=e543]: Monto extraído / transferido el día de cobro*
+                      - generic [ref=e544]:
+                        - generic: $
+                        - textbox "Monto extraído / transferido el día de cobro*" [ref=e545]:
+                          - /placeholder: "0"
+                          - text: "750.000"
+                      - paragraph [ref=e546]: Movimiento de la cuenta sueldo el día de la acreditación.
+                    - generic [ref=e547]:
+                      - generic [ref=e549]: Disponible
+                      - generic [ref=e550]:
+                        - generic: $
+                        - textbox "Disponible" [ref=e551]:
+                          - /placeholder: "0"
+                    - generic [ref=e552]:
+                      - generic [ref=e554]: Extracciones · Fecha de acreditación
+                      - textbox "Extracciones · Fecha de acreditación" [ref=e556]
+                      - paragraph [ref=e557]: dd/mm/aaaa
+                    - generic [ref=e558]:
+                      - generic [ref=e560]: Transferencias · Fecha de acreditación
+                      - textbox "Transferencias · Fecha de acreditación" [ref=e562]
+                      - paragraph [ref=e563]: dd/mm/aaaa
+              - generic [ref=e564]:
+                - paragraph [ref=e565]:
+                  - img [ref=e566]
+                  - text: "Persistencia obligatoria: los ingresos y extracciones quedan guardados para auditoría y reevaluaciones futuras."
+                - generic [ref=e570]:
+                  - img [ref=e572]
+                  - generic [ref=e576]: Los datos mínimos están completos. Ya podés solicitar.
+            - generic [ref=e578]:
+              - button "Anular crédito" [ref=e579]
+              - paragraph [ref=e581]:
+                - generic [ref=e582]: "Próximo: 5. Evaluación"
+                - text: — Se genera el ID de Crédito. Se evalúan las reglas institucionales, el motor decide si pasa, se determinan los límites y el plan calcula la primera oferta.
+              - button "Continuar" [ref=e583]:
+                - text: Continuar
+                - img [ref=e584]
+  - button "Open Next.js Dev Tools" [ref=e222] [cursor=pointer]:
+    - img [ref=e223]
+  - alert [ref=e226]

@@ -265,7 +265,7 @@ export function evaluarReglas(
         ? "0 días de atraso · al día"
         : "Atraso en cuotas anteriores registrado en buró interno",
       condicion: "Hasta 30 días de atraso",
-      bloqueante: true,
+      bloqueante: false, // Advertencia pero no rechaza; cancelación obligatoria en oferta
       resultado: pasa(moraOk),
     },
     {

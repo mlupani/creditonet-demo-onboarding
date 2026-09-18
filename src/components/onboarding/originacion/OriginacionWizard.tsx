@@ -11,6 +11,7 @@ import type { Rechazo } from "@/lib/types";
 import { Stepper } from "@/components/ui/Stepper";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { IconArrowLeft, IconArrowRight, IconUser } from "@/components/icons";
 
@@ -81,7 +82,7 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
 }
 
 export function OriginacionWizard() {
-  const { app, paso, pasoMaximo, setPaso } = useApplication();
+  const { app, paso, pasoMaximo, setPaso, anularCredito, reiniciarDemo } = useApplication();
   const total = STEPS_ORIGINACION.length;
   const pasoActual = Math.min(Math.max(paso, 1), total);
   const meta = STEPS_ORIGINACION[pasoActual - 1];
@@ -89,6 +90,7 @@ export function OriginacionWizard() {
   const avance = Math.max(pasoMaximo, pasoActual);
   const progreso = Math.round(((avance - 1) / (total - 1)) * 100);
   const [resumenAbierto, setResumenAbierto] = useState(false);
+  const [anularAbierto, setAnularAbierto] = useState(false);
 
   // El cambio de paso no navega: sin esto la página queda scrolleada donde estaba el paso
   // anterior (ej. al pasar de Evaluación, que es larga, a Oferta).
@@ -107,6 +109,16 @@ export function OriginacionWizard() {
   }
   function volver() {
     setPaso(Math.max(pasoActual - 1, 1));
+  }
+
+  function handleAnular() {
+    setAnularAbierto(true);
+  }
+
+  function confirmarAnulacion() {
+    anularCredito("Anulado por el usuario en el canal de venta");
+    reiniciarDemo();
+    setAnularAbierto(false);
   }
 
   // Volver atrás no destruye nada: si más adelante ya hay datos, se puede retomar el flujo
@@ -190,13 +202,11 @@ export function OriginacionWizard() {
           <Card className="mt-6 p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button
-                variant="ghost"
-                onClick={volver}
-                disabled={pasoActual === 1}
+                variant="danger"
+                onClick={handleAnular}
                 className="sm:w-auto"
               >
-                <IconArrowLeft width={16} height={16} />
-                Atrás
+                Anular crédito
               </Button>
               <div className="min-w-0 flex-1 sm:mx-4">
                 {!g.ok ? (
@@ -230,6 +240,27 @@ export function OriginacionWizard() {
           setPaso(Math.min(pasoActual + 1, total));
         }}
       />
+
+      <Modal
+        open={anularAbierto}
+        onClose={() => setAnularAbierto(false)}
+        title="Anular solicitud"
+        maxWidth="max-w-sm"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => setAnularAbierto(false)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmarAnulacion}>
+              Sí, anular solicitud
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-ink-600 leading-relaxed">
+          ¿Estás seguro de que querés anular esta solicitud? Esta acción es irreversible y se perderán todos los datos cargados hasta el momento.
+        </p>
+      </Modal>
     </div>
   );
 }

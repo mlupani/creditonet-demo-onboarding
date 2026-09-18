@@ -1,0 +1,179 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - paragraph [ref=e115]: Solicitar crédito · Originación
+                - heading "Reglas, motor, límites y plan" [level=1] [ref=e586]
+                - generic [ref=e117]:
+                  - img [ref=e118]
+                  - generic [ref=e121]: Alejandro Vargas · DNI 20.666.666 · ID de Cliente 001205 · Préstamo personal · Empleados de salud
+              - generic [ref=e122]:
+                - paragraph [ref=e123]: Paso 5 de 6
+                - paragraph [ref=e124]: Etapa 1 de 2
+            - list [ref=e128]:
+              - listitem [ref=e129]:
+                - button "Identificación" [ref=e327] [cursor=pointer]:
+                  - img [ref=e328]
+                  - generic [ref=e132]: Identificación
+              - listitem [ref=e134]:
+                - button "Producto y organismo" [ref=e378] [cursor=pointer]:
+                  - img [ref=e379]
+                  - generic [ref=e137]: Producto y organismo
+              - listitem [ref=e139]:
+                - button "Datos del cliente" [ref=e482] [cursor=pointer]:
+                  - img [ref=e483]
+                  - generic [ref=e142]: Datos del cliente
+              - listitem [ref=e144]:
+                - button "Datos laborales" [ref=e587] [cursor=pointer]:
+                  - img [ref=e588]
+                  - generic [ref=e147]: Datos laborales
+              - listitem [ref=e149]:
+                - button "5 Evaluación" [disabled] [ref=e150]:
+                  - generic [ref=e151]: "5"
+                  - generic [ref=e152]: Evaluación
+              - listitem [ref=e154]:
+                - button "6 Oferta" [disabled] [ref=e155]:
+                  - generic [ref=e156]: "6"
+                  - generic [ref=e157]: Oferta
+          - generic [ref=e590]:
+            - generic [ref=e591]:
+              - generic [ref=e652]:
+                - img [ref=e654]
+                - generic [ref=e656]:
+                  - paragraph [ref=e657]: "Motor de riesgo: pasa"
+                  - paragraph [ref=e658]: Los límites aplicables al capital y las cuotas se arman en el siguiente paso, Oferta.
+                - generic [ref=e660]: ID de Crédito CR-000184
+              - generic [ref=e661]:
+                - paragraph [ref=e662]: 1 regla marcada para el analista
+                - list [ref=e663]:
+                  - listitem [ref=e664]: "MR-05 Vector de mora interna: Atraso en cuotas anteriores registrado en buró interno"
+              - button "Volver a ejecutar" [ref=e666]:
+                - img [ref=e667]
+                - text: Volver a ejecutar
+            - generic [ref=e617]:
+              - button "Anular crédito" [ref=e618]
+              - paragraph [ref=e670]:
+                - generic [ref=e671]: "Próximo: 6. Oferta"
+                - text: — Primera oferta. Si el cliente precancela créditos se recalcula una nueva oferta antes de aceptarla.
+              - button "Continuar" [ref=e626]:
+                - text: Continuar
+                - img [ref=e627]
+          - dialog "Resumen de la solicitud" [ref=e674]:
+            - generic [ref=e675]:
+              - heading "Resumen de la solicitud" [level=3] [ref=e676]
+              - button "Cerrar" [ref=e677]:
+                - img [ref=e678]
+            - generic [ref=e680]:
+              - generic [ref=e681]:
+                - generic [ref=e682]: En trámite
+                - generic [ref=e683]: ID CR-000184
+              - generic [ref=e684]:
+                - generic [ref=e685]:
+                  - term [ref=e686]: Canal
+                  - definition [ref=e687]: Sucursal
+                - generic [ref=e688]:
+                  - term [ref=e689]: Vendedor
+                  - definition [ref=e690]: Juan Pérez
+                - generic [ref=e691]:
+                  - term [ref=e692]: Tipo de persona
+                  - definition [ref=e693]: Persona física
+                - generic [ref=e694]:
+                  - term [ref=e695]: Cliente
+                  - definition [ref=e696]: Alejandro Vargas
+                - generic [ref=e697]:
+                  - term [ref=e698]: ID de Cliente
+                  - definition [ref=e699]: "001205"
+                - generic [ref=e700]:
+                  - term [ref=e701]: DNI
+                  - definition [ref=e702]: 20.666.666
+                - generic [ref=e703]:
+                  - term [ref=e704]: Producto
+                  - definition [ref=e705]: Préstamo personal
+                - generic [ref=e706]:
+                  - term [ref=e707]: Organismo
+                  - definition [ref=e708]: Empleados de salud
+                - generic [ref=e709]:
+                  - term [ref=e710]: Plan de cuotas
+                  - definition [ref=e711]: Línea Salud 2026
+                - generic [ref=e712]:
+                  - term [ref=e713]: Ingreso neto
+                  - definition [ref=e714]: $880.000
+                - generic [ref=e715]:
+                  - term [ref=e716]: Resultado del motor
+                  - definition [ref=e717]: Pasa · 1 marcada
+            - generic [ref=e719]:
+              - button "Volver" [ref=e720]
+              - button "Ver la oferta" [active] [ref=e721]:
+                - text: Ver la oferta
+                - img [ref=e722]
+  - button "Open Next.js Dev Tools" [ref=e222] [cursor=pointer]:
+    - img [ref=e223]
+  - alert [ref=e226]

@@ -17,7 +17,7 @@ export function CampoCliente({
   options?: string[];
 }) {
   const { app, patchCliente } = useApplication();
-  const valor = app.cliente ? String(app.cliente[campo]) : "";
+  const valor = app.cliente ? String(app.cliente[campo] ?? "") : "";
 
   return (
     <div>

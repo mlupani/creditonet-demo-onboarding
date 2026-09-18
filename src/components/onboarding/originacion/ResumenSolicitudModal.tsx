@@ -38,7 +38,6 @@ export function ResumenSolicitudModal({
     ...(cliente ? [{ label: "DNI", value: formatDNI(cliente.dni) }] : []),
     { label: "Producto", value: nombreOpcion(PRODUCTOS, app.configuracion.productoId) },
     { label: "Organismo", value: nombreOpcion(ORGANISMOS, app.configuracion.organismoId) },
-    { label: "Motor de riesgo", value: motor.nombre },
     { label: "Plan de cuotas", value: getPlan(app.configuracion.organismoId).nombre },
     ...(app.laboral.ingresoNeto > 0
       ? [{ label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) }]
@@ -56,14 +55,6 @@ export function ResumenSolicitudModal({
                 : marcadas > 0
                   ? ("warning" as const)
                   : ("success" as const),
-          },
-        ]
-      : []),
-    ...(app.riesgo.limites
-      ? [
-          {
-            label: "Capital considerado",
-            value: formatARS(app.riesgo.limites.capitalConsiderado),
           },
         ]
       : []),

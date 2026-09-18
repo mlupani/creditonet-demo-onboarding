@@ -106,7 +106,7 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     id: "linea-salud-2026",
     nombre: "Línea Salud 2026",
     sistema: "Francés",
-    plazos: [12, 18, 24, 36],
+    plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
     montoMaximo: 2_500_000,
     montoMaximoRenovacion: 2_850_000,
     rciMaxPct: 40,
@@ -129,7 +129,7 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     id: "linea-seguridad-2026",
     nombre: "Línea Fuerzas de Seguridad 2026",
     sistema: "Francés",
-    plazos: [12, 24, 36],
+    plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
     montoMaximo: 3_200_000,
     montoMaximoRenovacion: 3_600_000,
     rciMaxPct: 35,
@@ -152,7 +152,7 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     id: "linea-pasivos-2026",
     nombre: "Línea Pasivos 2026",
     sistema: "Francés",
-    plazos: [12, 18, 24],
+    plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
     montoMaximo: 1_600_000,
     montoMaximoRenovacion: 1_800_000,
     rciMaxPct: 30,
@@ -175,7 +175,7 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     id: "linea-docentes-2026",
     nombre: "Línea Docentes 2026",
     sistema: "Francés",
-    plazos: [12, 18, 24, 36],
+    plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
     montoMaximo: 2_200_000,
     montoMaximoRenovacion: 2_500_000,
     rciMaxPct: 40,
@@ -198,7 +198,7 @@ export const PLANES_CUOTAS: Record<string, PlanCuotas> = {
     id: "linea-municipal-2026",
     nombre: "Línea Municipal 2026",
     sistema: "Francés",
-    plazos: [12, 18, 24],
+    plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
     montoMaximo: 1_800_000,
     montoMaximoRenovacion: 2_000_000,
     rciMaxPct: 35,
@@ -365,7 +365,7 @@ export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
     onboarding: {
       pantallas: pantallas({
         tokenizacion: { visible: false },
-        garantias: { visible: false, obligatoria: false },
+        garantias: { visible: true, obligatoria: false },
       }),
       camposObligatorios: {},
       referencias: { minimo: 1, maximo: 2 },
@@ -436,7 +436,7 @@ export const ORGANISMOS: OrganismoConfig[] = [
     overrides: {
       pantallas: {
         referencias: { obligatoria: false },
-        garantias: { visible: false, obligatoria: false },
+        garantias: { visible: true, obligatoria: false },
       },
       // La repartición identifica la dependencia policial del cliente.
       camposObligatorios: { reparticion: true },

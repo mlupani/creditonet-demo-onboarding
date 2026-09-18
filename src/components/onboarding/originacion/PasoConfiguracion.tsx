@@ -41,15 +41,6 @@ export function PasoConfiguracion() {
         />
         <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
           <SelectField
-            id="organismo"
-            label="Organismo"
-            required
-            value={cfg.organismoId}
-            onChange={elegirOrganismo}
-            options={ORGANISMOS.map((o) => ({ value: o.id, label: o.nombre }))}
-            hint="Empleador o ente pagador. Define qué productos ofrece y parametriza excepciones."
-          />
-          <SelectField
             id="producto"
             label="Producto"
             required
@@ -57,6 +48,15 @@ export function PasoConfiguracion() {
             onChange={(v) => setConfig({ productoId: v })}
             options={disponibles.map((p) => ({ value: p.id, label: p.nombre }))}
             hint={`Productos que ofrece ${organismo}.`}
+          />
+          <SelectField
+            id="organismo"
+            label="Organismo"
+            required
+            value={cfg.organismoId}
+            onChange={elegirOrganismo}
+            options={ORGANISMOS.map((o) => ({ value: o.id, label: o.nombre }))}
+            hint="Empleador o ente pagador. Define qué productos ofrece y parametriza excepciones."
           />
         </div>
       </Card>

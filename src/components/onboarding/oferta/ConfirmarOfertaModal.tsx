@@ -10,6 +10,7 @@ import {
 import { formatARS } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { Banner } from "@/components/ui/Banner";
 
 export function ConfirmarOfertaModal({
   open,
@@ -25,6 +26,11 @@ export function ConfirmarOfertaModal({
   const precancel = totalPrecancelaciones(o);
   const terceros = importeTerceros(o);
   const renovados = o.creditosActivos.filter((c) => c.precancelar).map((c) => c.id);
+
+  // Detectar créditos en mora que deben cancelarse obligatoriamente
+  const creditosEnMora = o.creditosActivos.filter((c) => c.enMora);
+  const moraNoCancel = creditosEnMora.filter((c) => !c.precancelar);
+  const puedeProceder = moraNoCancel.length === 0;
 
   const rows: { label: string; value: string; tone?: "success" | "danger" }[] = [
     { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
@@ -73,12 +79,19 @@ export function ConfirmarOfertaModal({
           <Button variant="outline" onClick={onClose}>
             Volver a modificar
           </Button>
-          <Button variant="success" onClick={onConfirm} autoFocus>
+          <Button variant="success" onClick={onConfirm} autoFocus disabled={!puedeProceder}>
             Aceptar oferta
           </Button>
         </div>
       }
     >
+      {moraNoCancel.length > 0 && (
+        <Banner tone="error">
+          Los créditos internos <strong>{moraNoCancel.map((c) => c.id).join(", ")}</strong> están
+          en mora. La cancelación es obligatoria para aceptar la oferta. Volvé a modificar y
+          marcalos para renovación.
+        </Banner>
+      )}
       <p className="text-sm text-ink-600">
         Al confirmar, el cliente acepta la oferta y arranca la carga post-oferta. La solicitud
         sigue <strong>En trámite</strong>: queda <strong>preaprobada</strong> recién cuando el

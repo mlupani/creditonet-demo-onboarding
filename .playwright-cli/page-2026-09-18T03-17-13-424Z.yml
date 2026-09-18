@@ -1,0 +1,171 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - paragraph [ref=e111]: Solicitar crédito · Originación
+                - heading "Identificación" [level=1] [ref=e112]
+                - generic [ref=e113]:
+                  - img [ref=e114]
+                  - generic [ref=e117]: Patricia Herrera · DNI 20.777.777 · ID de Cliente 001318 · Préstamo personal · Empleados de salud
+              - generic [ref=e118]:
+                - paragraph [ref=e119]: Paso 1 de 6
+                - paragraph [ref=e120]: Etapa 1 de 2
+            - list [ref=e124]:
+              - listitem [ref=e125]:
+                - button "1 Identificación" [disabled] [ref=e126]:
+                  - generic [ref=e127]: "1"
+                  - generic [ref=e128]: Identificación
+              - listitem [ref=e130]:
+                - button "2 Producto y organismo" [disabled] [ref=e131]:
+                  - generic [ref=e132]: "2"
+                  - generic [ref=e133]: Producto y organismo
+              - listitem [ref=e135]:
+                - button "3 Datos del cliente" [disabled] [ref=e136]:
+                  - generic [ref=e137]: "3"
+                  - generic [ref=e138]: Datos del cliente
+              - listitem [ref=e140]:
+                - button "4 Datos laborales" [disabled] [ref=e141]:
+                  - generic [ref=e142]: "4"
+                  - generic [ref=e143]: Datos laborales
+              - listitem [ref=e145]:
+                - button "5 Evaluación" [disabled] [ref=e146]:
+                  - generic [ref=e147]: "5"
+                  - generic [ref=e148]: Evaluación
+              - listitem [ref=e150]:
+                - button "6 Oferta" [disabled] [ref=e151]:
+                  - generic [ref=e152]: "6"
+                  - generic [ref=e153]: Oferta
+          - generic [ref=e154]:
+            - generic [ref=e156]:
+              - generic [ref=e158]:
+                - img [ref=e160]
+                - generic [ref=e164]:
+                  - heading "¿Quién solicita el crédito?" [level=2] [ref=e165]
+                  - paragraph [ref=e166]: El tipo de persona determina con qué documento se identifica al solicitante.
+              - generic [ref=e167]:
+                - button "Persona física Se identifica por DNI Empleado, jubilado o monotributista que solicita a título personal." [pressed] [ref=e168]:
+                  - img [ref=e170]
+                  - img [ref=e173]
+                  - paragraph [ref=e176]: Persona física
+                  - paragraph [ref=e177]: Se identifica por DNI
+                  - paragraph [ref=e178]: Empleado, jubilado o monotributista que solicita a título personal.
+                - button "Persona jurídica Se identifica por CUIT Empresa o entidad. Requiere datos societarios y del firmante. No navegable en la demo" [ref=e179]:
+                  - img [ref=e181]
+                  - paragraph [ref=e185]: Persona jurídica
+                  - paragraph [ref=e186]: Se identifica por CUIT
+                  - paragraph [ref=e187]: Empresa o entidad. Requiere datos societarios y del firmante.
+                  - generic [ref=e188]: No navegable en la demo
+              - generic [ref=e189]:
+                - generic [ref=e190]: DNI o CUIL del cliente
+                - generic [ref=e191]:
+                  - generic [ref=e192]:
+                    - textbox "DNI o CUIL del cliente" [ref=e193]:
+                      - /placeholder: "Ej.: 20111111 o 20222222"
+                      - text: "20777777"
+                    - img
+                  - button "Consultar cliente" [ref=e194]:
+                    - img [ref=e298]
+                    - text: Consultar cliente
+                - paragraph [ref=e198]: DNI de 7 u 8 dígitos o CUIL de 11, sin puntos ni guiones. Podés hacer clic en un caso de prueba abajo o ingresar cualquier otro DNI para probar el flujo de cliente nuevo.
+                - button "Casos preconfigurados para la demo Ver casos" [ref=e272]:
+                  - paragraph [ref=e201]: Casos preconfigurados para la demo
+                  - generic [ref=e202]:
+                    - text: Ver casos
+                    - img [ref=e203]
+                - generic [ref=e302]:
+                  - generic [ref=e303]:
+                    - img [ref=e305]
+                    - generic [ref=e307]:
+                      - paragraph [ref=e308]: Patricia Herrera
+                      - paragraph [ref=e309]: "Cliente existente: se recuperó su ID de Cliente permanente y el historial previo."
+                  - generic [ref=e310]: ID de Cliente 001318
+                - generic [ref=e311]:
+                  - generic [ref=e313]:
+                    - generic [ref=e314]: "1"
+                    - generic [ref=e315]:
+                      - paragraph [ref=e316]: Situación BCRA 1
+                      - paragraph [ref=e317]: Sin antecedentes negativos.
+                  - generic [ref=e319]:
+                    - generic [ref=e320]: "1"
+                    - generic [ref=e321]:
+                      - paragraph [ref=e322]: Buró interno 1
+                      - paragraph [ref=e323]: Sin antecedentes negativos.
+            - generic [ref=e206]:
+              - button "Anular crédito" [ref=e207]
+              - paragraph [ref=e296]:
+                - generic [ref=e297]: "Próximo: 2. Producto y organismo"
+                - text: — El producto define la configuración general y el organismo la particulariza. El canal limita qué productos se pueden ofrecer.
+              - button "Continuar" [ref=e215]:
+                - text: Continuar
+                - img [ref=e216]
+  - button "Open Next.js Dev Tools" [ref=e103] [cursor=pointer]:
+    - img [ref=e104]
+  - alert [ref=e218]

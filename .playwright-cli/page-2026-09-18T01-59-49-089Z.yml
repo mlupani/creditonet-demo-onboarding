@@ -1,0 +1,321 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - paragraph [ref=e111]: Solicitar crédito · Originación
+                - heading "Oferta de crédito" [level=1] [ref=e112]
+                - generic [ref=e113]:
+                  - img [ref=e114]
+                  - generic [ref=e117]: Alejandro Vargas · DNI 20.666.666 · ID de Cliente 001205 · Préstamo personal · Empleados de salud
+              - generic [ref=e118]:
+                - paragraph [ref=e119]: Paso 6 de 6
+                - paragraph [ref=e120]: Etapa 1 de 2
+            - list [ref=e124]:
+              - listitem [ref=e125]:
+                - button "Identificación" [ref=e126] [cursor=pointer]:
+                  - img [ref=e128]
+                  - generic [ref=e130]: Identificación
+              - listitem [ref=e132]:
+                - button "Producto y organismo" [ref=e133] [cursor=pointer]:
+                  - img [ref=e135]
+                  - generic [ref=e137]: Producto y organismo
+              - listitem [ref=e139]:
+                - button "Datos del cliente" [ref=e140] [cursor=pointer]:
+                  - img [ref=e142]
+                  - generic [ref=e144]: Datos del cliente
+              - listitem [ref=e146]:
+                - button "Datos laborales" [ref=e147] [cursor=pointer]:
+                  - img [ref=e149]
+                  - generic [ref=e151]: Datos laborales
+              - listitem [ref=e153]:
+                - button "Evaluación" [ref=e154] [cursor=pointer]:
+                  - img [ref=e156]
+                  - generic [ref=e158]: Evaluación
+              - listitem [ref=e160]:
+                - button "6 Oferta" [disabled] [ref=e161]:
+                  - generic [ref=e162]: "6"
+                  - generic [ref=e163]: Oferta
+          - generic [ref=e165]:
+            - generic [ref=e166]:
+              - generic [ref=e167]:
+                - generic [ref=e168]:
+                  - generic [ref=e169]:
+                    - paragraph [ref=e170]: Alejandro Vargas
+                    - paragraph [ref=e171]: DNI 20.666.666
+                  - generic [ref=e172]:
+                    - generic [ref=e173]:
+                      - paragraph [ref=e174]: ID de Cliente
+                      - paragraph [ref=e175]: "001205"
+                    - generic [ref=e176]:
+                      - paragraph [ref=e177]: ID de Crédito
+                      - paragraph [ref=e178]: CR-000184
+                - generic [ref=e179]:
+                  - paragraph [ref=e180]: Primera oferta · Capital máximo otorgable
+                  - paragraph [ref=e617]: $1.870.000
+                  - generic [ref=e182]:
+                    - generic [ref=e183]: Préstamo personal
+                    - generic [ref=e184]: Empleados de salud
+              - generic [ref=e185]:
+                - heading "Monto solicitado" [level=3] [ref=e186]
+                - paragraph [ref=e187]: Si el cliente pide menos que el capital máximo, ajustá el importe y presioná Recalcular.
+                - generic [ref=e188]:
+                  - generic [ref=e189]:
+                    - generic [ref=e191]: Capital solicitado*
+                    - generic [ref=e192]:
+                      - generic: $
+                      - textbox "Capital solicitado*" [ref=e193]:
+                        - /placeholder: "0"
+                        - text: 1.870.000
+                  - button "Recalcular" [disabled] [ref=e194]:
+                    - img [ref=e195]
+                    - text: Recalcular
+                - generic [ref=e198]:
+                  - generic [ref=e199]: "Montos rápidos:"
+                  - button "−$100.000" [ref=e200]
+                  - button "+$100.000" [ref=e201]
+              - generic [ref=e202]:
+                - generic [ref=e203]:
+                  - generic [ref=e204]:
+                    - heading "Plan de cuotas · Línea Salud 2026" [level=3] [ref=e205]
+                    - paragraph [ref=e206]: Alternativas válidas después de aplicar los límites. La selección define la cuota, el total y el primer vencimiento.
+                  - button "Ver todas" [ref=e207]:
+                    - img [ref=e208]
+                    - text: Ver todas
+                - paragraph [ref=e210]:
+                  - generic [ref=e211]:
+                    - text: Sistema
+                    - strong [ref=e212]: francés
+                  - generic [ref=e213]:
+                    - text: Gracia
+                    - strong [ref=e214]: 30 días
+                  - generic [ref=e215]:
+                    - text: IVA
+                    - strong [ref=e216]: 21 %
+                  - generic [ref=e217]:
+                    - text: Sellos
+                    - strong [ref=e218]: 1,2 %
+                  - generic [ref=e219]:
+                    - text: Cargo de otorgamiento
+                    - strong [ref=e220]: 3 %
+                - generic [ref=e221]:
+                  - 'button "Recomendada 12 cuotas $209.000 por mes · TNA 58% 1ª cuota: 10/10/2026" [active] [ref=e619]':
+                    - generic [ref=e620]: Recomendada
+                    - img [ref=e672]
+                    - paragraph [ref=e621]: 12 cuotas
+                    - paragraph [ref=e622]: $209.000
+                    - paragraph [ref=e623]: por mes · TNA 58%
+                    - paragraph [ref=e624]: "1ª cuota: 10/10/2026"
+                  - 'button "18 cuotas $163.100 por mes · TNA 63% 1ª cuota: 25/10/2026" [ref=e625]':
+                    - paragraph [ref=e626]: 18 cuotas
+                    - paragraph [ref=e627]: $163.100
+                    - paragraph [ref=e628]: por mes · TNA 63%
+                    - paragraph [ref=e629]: "1ª cuota: 25/10/2026"
+                  - 'button "24 cuotas $143.300 por mes · TNA 67% 1ª cuota: 10/11/2026" [ref=e630]':
+                    - paragraph [ref=e631]: 24 cuotas
+                    - paragraph [ref=e632]: $143.300
+                    - paragraph [ref=e633]: por mes · TNA 67%
+                    - paragraph [ref=e634]: "1ª cuota: 10/11/2026"
+                  - 'button "36 cuotas $127.900 por mes · TNA 72% 1ª cuota: 10/11/2026" [ref=e635]':
+                    - paragraph [ref=e636]: 36 cuotas
+                    - paragraph [ref=e637]: $127.900
+                    - paragraph [ref=e638]: por mes · TNA 72%
+                    - paragraph [ref=e639]: "1ª cuota: 10/11/2026"
+                  - 'button "48 cuotas $123.600 por mes · TNA 75% 1ª cuota: 10/12/2026" [ref=e640]':
+                    - paragraph [ref=e641]: 48 cuotas
+                    - paragraph [ref=e642]: $123.600
+                    - paragraph [ref=e643]: por mes · TNA 75%
+                    - paragraph [ref=e644]: "1ª cuota: 10/12/2026"
+                  - 'button "60 cuotas $124.400 por mes · TNA 78% 1ª cuota: 10/12/2026" [ref=e645]':
+                    - paragraph [ref=e646]: 60 cuotas
+                    - paragraph [ref=e647]: $124.400
+                    - paragraph [ref=e648]: por mes · TNA 78%
+                    - paragraph [ref=e649]: "1ª cuota: 10/12/2026"
+                  - 'button "72 cuotas $127.400 por mes · TNA 81% 1ª cuota: 10/01/2027" [ref=e650]':
+                    - paragraph [ref=e651]: 72 cuotas
+                    - paragraph [ref=e652]: $127.400
+                    - paragraph [ref=e653]: por mes · TNA 81%
+                    - paragraph [ref=e654]: "1ª cuota: 10/01/2027"
+                  - 'button "84 cuotas $131.300 por mes · TNA 84% 1ª cuota: 10/01/2027" [ref=e655]':
+                    - paragraph [ref=e656]: 84 cuotas
+                    - paragraph [ref=e657]: $131.300
+                    - paragraph [ref=e658]: por mes · TNA 84%
+                    - paragraph [ref=e659]: "1ª cuota: 10/01/2027"
+                  - 'button "96 cuotas $135.700 por mes · TNA 87% 1ª cuota: 10/02/2027" [ref=e660]':
+                    - paragraph [ref=e661]: 96 cuotas
+                    - paragraph [ref=e662]: $135.700
+                    - paragraph [ref=e663]: por mes · TNA 87%
+                    - paragraph [ref=e664]: "1ª cuota: 10/02/2027"
+                  - 'button "120 cuotas $140.300 por mes · TNA 90% 1ª cuota: 10/02/2027" [ref=e665]':
+                    - paragraph [ref=e666]: 120 cuotas
+                    - paragraph [ref=e667]: $140.300
+                    - paragraph [ref=e668]: por mes · TNA 90%
+                    - paragraph [ref=e669]: "1ª cuota: 10/02/2027"
+              - generic [ref=e277]:
+                - paragraph [ref=e278]:
+                  - img [ref=e279]
+                  - text: Opcional · sobre la primera oferta
+                - heading "¿Desea precancelar créditos?" [level=2] [ref=e282]
+                - paragraph [ref=e283]: Si el cliente cancela créditos propios o deudas con terceros se modifica el monto y se recalcula una nueva oferta, que vuelve a respetar todos los límites.
+              - generic [ref=e284]:
+                - generic [ref=e286]:
+                  - img [ref=e288]
+                  - generic [ref=e291]:
+                    - heading "Precancelación de créditos propios" [level=2] [ref=e292]
+                    - paragraph [ref=e293]: Créditos vigentes del cliente que se pueden renovar o precancelar con esta operación.
+                - generic [ref=e295]:
+                  - generic [ref=e296]:
+                    - paragraph [ref=e297]: CR-000105
+                    - generic [ref=e298]: En mora · cancelación obligatoria
+                  - paragraph [ref=e299]: Este crédito tiene atraso registrado en el buró interno. Para poder aceptar la oferta es obligatorio marcarlo para cancelación.
+                  - generic [ref=e301]:
+                    - generic [ref=e302]:
+                      - strong [ref=e303]: 8 de 18
+                      - text: cuotas abonadas (44 %)
+                    - generic [ref=e304]: "Mínimo para renovar: 50 %"
+                  - generic [ref=e308]:
+                    - generic [ref=e309]:
+                      - term [ref=e310]: Capital original
+                      - definition [ref=e311]: $800.000
+                    - generic [ref=e312]:
+                      - term [ref=e313]: Cuota vigente
+                      - definition [ref=e314]: $89.500
+                    - generic [ref=e315]:
+                      - term [ref=e316]: Saldo a cancelar
+                      - definition [ref=e317]: $520.000
+                  - generic [ref=e318]:
+                    - paragraph [ref=e319]: Desglose del saldo a cancelar
+                    - generic [ref=e320]:
+                      - generic [ref=e321]:
+                        - term [ref=e322]: Capital residual
+                        - definition [ref=e323]: $450.000
+                      - generic [ref=e324]:
+                        - term [ref=e325]: Intereses a vencer
+                        - definition [ref=e326]: $40.000
+                      - generic [ref=e327]:
+                        - term [ref=e328]: IVA
+                        - definition [ref=e329]: $12.000
+                      - generic [ref=e330]:
+                        - term [ref=e331]: Cargos de cancelación
+                        - definition [ref=e332]: $15.000
+                      - generic [ref=e333]:
+                        - term [ref=e334]: Punitorios / mora
+                        - definition [ref=e335]: $3.000
+                  - checkbox "Cancelar este crédito (obligatorio) El saldo a cancelar se descuenta de la acreditación neta." [ref=e337]:
+                    - generic [ref=e339]:
+                      - generic [ref=e340]: Cancelar este crédito (obligatorio)
+                      - generic [ref=e341]: El saldo a cancelar se descuenta de la acreditación neta.
+              - generic [ref=e342]:
+                - generic [ref=e344]:
+                  - img [ref=e346]
+                  - generic [ref=e348]:
+                    - heading "Cancelación de deudas con terceros" [level=2] [ref=e349]
+                    - paragraph [ref=e350]: Destiná parte del préstamo a cancelar deudas en otras entidades financieras.
+                - checkbox "Cancelar una deuda con otra entidad El monto se transfiere al CBU de la entidad acreedora y reduce la acreditación neta." [ref=e352]:
+                  - generic [ref=e354]:
+                    - generic [ref=e355]: Cancelar una deuda con otra entidad
+                    - generic [ref=e356]: El monto se transfiere al CBU de la entidad acreedora y reduce la acreditación neta.
+              - generic [ref=e357]:
+                - generic [ref=e358]:
+                  - button "Atrás" [ref=e359]:
+                    - img [ref=e360]
+                    - text: Atrás
+                  - button "Aceptar oferta" [ref=e362]:
+                    - text: Aceptar oferta
+                    - img [ref=e363]
+                - paragraph [ref=e365]: Al aceptar se confirma la oferta y se habilita la carga post-oferta.
+            - complementary [ref=e366]:
+              - generic [ref=e367]:
+                - generic [ref=e368]:
+                  - img [ref=e370]
+                  - heading "Resumen de la oferta" [level=3] [ref=e373]
+                - generic [ref=e374]:
+                  - generic [ref=e376]:
+                    - term [ref=e377]: Capital solicitado
+                    - definition [ref=e378]: $1.870.000
+                  - generic [ref=e379]:
+                    - generic [ref=e380]: Acreditación neta
+                    - generic [ref=e670]: $1.870.000
+                  - generic [ref=e382]:
+                    - generic [ref=e383]:
+                      - term [ref=e384]: 12 cuotas de
+                      - definition [ref=e385]: $209.000
+                    - generic [ref=e386]:
+                      - term [ref=e387]: TNA
+                      - definition [ref=e388]: 58 %
+                    - generic [ref=e389]:
+                      - term [ref=e390]: Total a pagar
+                      - definition [ref=e391]: $2.508.000
+                    - generic [ref=e392]:
+                      - term [ref=e393]: 1er vencimiento
+                      - definition [ref=e394]: 10/10/2026
+  - button "Open Next.js Dev Tools" [ref=e103] [cursor=pointer]:
+    - img [ref=e104]
+  - alert [ref=e395]

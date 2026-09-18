@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { IconArrowLeft, IconArrowRight, IconRefresh } from "@/components/icons";
 
-import { OfertaCabecera } from "../oferta/OfertaCabecera";
+import { CapitalMaximoSticky, OfertaCabecera } from "../oferta/OfertaCabecera";
 import { MontoSolicitado } from "../oferta/MontoSolicitado";
 import { TablaCuotas } from "../oferta/TablaCuotas";
 import { CreditosActivos } from "../oferta/CreditosActivos";
@@ -82,8 +82,9 @@ export function PasoOferta() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
-      <div className="space-y-5">
+      <div className="flex flex-col gap-5">
         <OfertaCabecera />
+        <CapitalMaximoSticky />
         <MontoSolicitado
           borrador={borrador}
           onBorrador={(v) => {
@@ -143,7 +144,7 @@ export function PasoOferta() {
         </Card>
       </div>
 
-      <aside className="space-y-4 lg:sticky lg:top-72 lg:self-start">
+      <aside className="space-y-4 lg:sticky lg:top-16 lg:z-30 lg:self-start">
         <ComposicionCredito />
       </aside>
 

@@ -1,0 +1,230 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e1065]:
+          - generic [ref=e1066]:
+            - generic [ref=e1067]:
+              - paragraph [ref=e1068]: Solicitar crédito · Post-oferta
+              - heading "Patricia Herrera CR-000184 En trámite" [level=1] [ref=e1069]:
+                - text: Patricia Herrera
+                - generic [ref=e1070]: CR-000184
+                - generic [ref=e1071]: En trámite
+              - paragraph [ref=e1072]: 1 de 7 pantallas completas. Podés navegar entre ellas en cualquier orden.
+            - generic [ref=e1073]:
+              - button "Finalizar carga" [disabled] [ref=e1074]:
+                - text: Finalizar carga
+                - img [ref=e1075]
+              - paragraph [ref=e1077]: Se habilita con el 100 % de las obligatorias en verde · 9 pendientes
+          - generic [ref=e1079]:
+            - list [ref=e1080]:
+              - listitem [ref=e1081]:
+                - button "1 Datos personales Con pendientes · Obligatoria" [ref=e1082]:
+                  - generic [ref=e1083]: "1"
+                  - generic [ref=e1084]:
+                    - generic [ref=e1085]: Datos personales
+                    - generic [ref=e1086]: Con pendientes · Obligatoria
+              - listitem [ref=e1088]:
+                - button "Datos laborales Completa · Obligatoria" [ref=e1089]:
+                  - img [ref=e1091]
+                  - generic [ref=e1093]:
+                    - generic [ref=e1094]: Datos laborales
+                    - generic [ref=e1095]: Completa · Obligatoria
+              - listitem [ref=e1097]:
+                - button "3 Tokenización de tarjetas No iniciada · Opcional" [ref=e1098]:
+                  - generic [ref=e1099]: "3"
+                  - generic [ref=e1100]:
+                    - generic [ref=e1101]: Tokenización de tarjetas
+                    - generic [ref=e1102]: No iniciada · Opcional
+              - listitem [ref=e1104]:
+                - button "4 Referencias personales Con pendientes · Obligatoria" [ref=e1105]:
+                  - generic [ref=e1106]: "4"
+                  - generic [ref=e1107]:
+                    - generic [ref=e1108]: Referencias personales
+                    - generic [ref=e1109]: Con pendientes · Obligatoria
+              - listitem [ref=e1111]:
+                - button "5 Garantías Con pendientes · Obligatoria" [active] [ref=e1112]:
+                  - generic [ref=e1113]: "5"
+                  - generic [ref=e1114]:
+                    - generic [ref=e1115]: Garantías
+                    - generic [ref=e1116]: Con pendientes · Obligatoria
+              - listitem [ref=e1118]:
+                - button "6 Legajo virtual Con pendientes · Obligatoria" [ref=e1119]:
+                  - generic [ref=e1120]: "6"
+                  - generic [ref=e1121]:
+                    - generic [ref=e1122]: Legajo virtual
+                    - generic [ref=e1123]: Con pendientes · Obligatoria
+              - listitem [ref=e1125]:
+                - button "7 Impresión de legajo No iniciada · Opcional" [ref=e1126]:
+                  - generic [ref=e1127]: "7"
+                  - generic [ref=e1128]:
+                    - generic [ref=e1129]: Impresión de legajo
+                    - generic [ref=e1130]: No iniciada · Opcional
+            - generic [ref=e1131]:
+              - generic [ref=e1132]: Completa y validada
+              - generic [ref=e1134]: Iniciada con pendientes
+              - generic [ref=e1136]: No iniciada
+          - generic [ref=e1329]:
+            - generic [ref=e1330]:
+              - paragraph [ref=e1331]:
+                - generic [ref=e1332]:
+                  - generic [ref=e1333]: 0 de 1
+                  - text: con datos completos
+                - generic [ref=e1334]: Mínimo 1 · máximo 2
+              - button "Agregar garante" [ref=e1335]:
+                - img [ref=e1336]
+                - text: Agregar garante
+            - generic [ref=e1338]:
+              - generic [ref=e1340]:
+                - generic [ref=e1341]: "1"
+                - generic [ref=e1342]:
+                  - heading "Garante 1" [level=3] [ref=e1343]
+                  - paragraph [ref=e1344]: Firma la documentación del préstamo y el pagaré.
+              - generic [ref=e1345]:
+                - generic [ref=e1346]:
+                  - generic [ref=e1348]: Vínculo con el cliente*
+                  - generic [ref=e1349]:
+                    - combobox "Vínculo con el cliente*" [ref=e1350]:
+                      - option "Seleccioná una opción…"
+                      - option "Cónyuge" [selected]
+                      - option "Familiar directo"
+                      - option "Amigo"
+                      - option "Compañero de trabajo"
+                      - option "Otro"
+                    - img
+                  - paragraph [ref=e1351]: Desplegable del Módulo Parámetros.
+                - generic [ref=e1352]:
+                  - generic [ref=e1353]:
+                    - generic [ref=e1355]: DNI*
+                    - textbox "DNI*" [ref=e1357]: "25984123"
+                  - button "Buscar por DNI" [ref=e1358]:
+                    - img [ref=e1359]
+                    - text: Buscar por DNI
+                - generic [ref=e1362]:
+                  - generic [ref=e1364]: Nombre completo*
+                  - textbox "Nombre completo*" [ref=e1366]: Roberto González
+                - generic [ref=e1367]:
+                  - generic [ref=e1369]: Email de contacto*
+                  - textbox "Email de contacto*" [ref=e1371]: roberto.gonzalez@gmail.com
+                - generic [ref=e1372]:
+                  - generic [ref=e1374]: Teléfono de contacto*
+                  - textbox "Teléfono de contacto*" [ref=e1376]: 351 6543200
+                - generic [ref=e1377]:
+                  - generic [ref=e1379]: Domicilio completo*
+                  - textbox "Domicilio completo*" [ref=e1381]: Av. Rafael Núñez 3245, 3° B, Córdoba
+              - generic [ref=e1382]:
+                - paragraph [ref=e1383]: Ingresos y datos laborales · demuestran capacidad de pago
+                - generic [ref=e1384]:
+                  - generic [ref=e1385]:
+                    - generic [ref=e1387]: Condición laboral*
+                    - generic [ref=e1388]:
+                      - combobox "Condición laboral*" [ref=e1389]:
+                        - option "Seleccioná una opción…" [selected]
+                        - option "Empleado fijo"
+                        - option "Contratado"
+                        - option "Monotributista"
+                        - option "Jubilado / Pensionado"
+                      - img
+                    - alert [ref=e1390]:
+                      - img [ref=e1392]
+                      - generic [ref=e1395]: Seleccioná la condición laboral.
+                  - generic [ref=e1396]:
+                    - generic [ref=e1398]: Ingreso bruto*
+                    - generic [ref=e1399]:
+                      - generic: $
+                      - textbox "Ingreso bruto*" [ref=e1400]:
+                        - /placeholder: "0"
+                    - alert [ref=e1401]:
+                      - img [ref=e1403]
+                      - generic [ref=e1406]: Ingresá el ingreso bruto.
+                  - generic [ref=e1407]:
+                    - generic [ref=e1409]: Ingreso neto*
+                    - generic [ref=e1410]:
+                      - generic: $
+                      - textbox "Ingreso neto*" [ref=e1411]:
+                        - /placeholder: "0"
+                    - alert [ref=e1412]:
+                      - img [ref=e1414]
+                      - generic [ref=e1417]: Ingresá el ingreso neto.
+                - generic [ref=e1418]:
+                  - generic [ref=e1419]:
+                    - generic [ref=e1420]:
+                      - paragraph [ref=e1421]: Recibo de sueldo *
+                      - paragraph [ref=e1422]: Sin adjuntar todavía.
+                    - button "Adjuntar recibo" [ref=e1423]:
+                      - img [ref=e1424]
+                      - text: Adjuntar recibo
+                  - paragraph [ref=e1427]: Adjuntá el recibo de sueldo.
+            - generic [ref=e1429]:
+              - img [ref=e1431]
+              - generic [ref=e1435]: El garante debe firmar la documentación del préstamo y el pagaré.
+            - generic [ref=e1437]:
+              - img [ref=e1439]
+              - generic [ref=e1443]: Completá los datos marcados para poder finalizar la carga.
+  - button "Open Next.js Dev Tools" [ref=e103] [cursor=pointer]:
+    - img [ref=e104]
+  - alert [ref=e218]

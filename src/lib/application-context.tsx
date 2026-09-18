@@ -46,6 +46,14 @@ import { reglaBloquea } from "./motores";
 import { institucionalesBloquean } from "./reglas-institucionales";
 import { aplicarCambioCampo, type PantallaConCampos } from "./campos-post-oferta";
 import { fechaHoy, onlyDigits, selloTiempo } from "./format";
+import { BANCOS } from "./parametros";
+
+// Simula el emisor que devolvería la API de tokenización a partir de un identificador estable.
+function emisorMock(semilla: string): string {
+  let hash = 0;
+  for (const ch of semilla) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return BANCOS[hash % BANCOS.length];
+}
 
 const STORAGE_KEY = "creditonet.demo.v12";
 
@@ -123,7 +131,13 @@ interface ApplicationContextValue {
   setCampo: (pantalla: PantallaConCampos, campoId: string, valor: string) => void;
   enviarLinkWhatsApp: () => void;
   simularCompletaCliente: (tarjetaId: string) => void;
-  tokenizarPresencial: (datos: { tipo: TipoTarjeta; marca: string; numero: string }) => void;
+  tokenizarPresencial: (datos: {
+    tipo: TipoTarjeta;
+    marca: string;
+    numero: string;
+    nombreTitular: string;
+    vencimiento: string;
+  }) => void;
   quitarTarjeta: (tarjetaId: string) => void;
   agregarPersona: (tipo: TipoPersonaVinculada) => void;
   actualizarPersona: (
@@ -133,6 +147,8 @@ interface ApplicationContextValue {
   ) => void;
   buscarPersonaPorDni: (tipo: TipoPersonaVinculada, id: string) => void;
   quitarPersona: (tipo: TipoPersonaVinculada, id: string) => void;
+  adjuntarReciboSueldo: (tipo: TipoPersonaVinculada, id: string) => void;
+  quitarReciboSueldo: (tipo: TipoPersonaVinculada, id: string, archivoId: string) => void;
   adjuntarDocumento: (tipoId: string) => void;
   quitarArchivo: (tipoId: string, archivoId: string) => void;
   registrarLegajo: (accion: AccionLegajo) => void;
@@ -509,7 +525,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         enviadoA: `${p["telefono.caracteristica"] ?? ""} ${p["telefono.numero"] ?? ""}`.trim(),
         tipo: null,
         marca: null,
+        nombreTitular: null,
+        primeros4: null,
         ultimos4: null,
+        vencimiento: null,
+        emisor: null,
+        fechaTokenizacion: null,
         token: null,
       };
       return {
@@ -531,7 +552,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 estado: "TOKENIZADA",
                 tipo: "DEBITO",
                 marca: "Visa",
+                primeros4: "4509",
                 ultimos4: "4821",
+                vencimiento: "11/29",
+                emisor: emisorMock(tarjetaId),
+                fechaTokenizacion: selloTiempo(),
                 token: `tok_demo_${tarjetaId.slice(-6).toUpperCase()}`,
               }
             : t
@@ -541,9 +566,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const tokenizarPresencial = useCallback(
-    (datos: { tipo: TipoTarjeta; marca: string; numero: string }) => {
+    (datos: {
+      tipo: TipoTarjeta;
+      marca: string;
+      numero: string;
+      nombreTitular: string;
+      vencimiento: string;
+    }) => {
       setApp((prev) => {
         const id = `tarjeta-${Date.now()}`;
+        const digitos = onlyDigits(datos.numero);
         const tarjeta: TarjetaTokenizada = {
           id,
           via: "PRESENCIAL",
@@ -551,7 +583,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           enviadoA: null,
           tipo: datos.tipo,
           marca: datos.marca,
-          ultimos4: onlyDigits(datos.numero).slice(-4),
+          nombreTitular: datos.nombreTitular,
+          primeros4: digitos.slice(0, 4),
+          ultimos4: digitos.slice(-4),
+          vencimiento: datos.vencimiento,
+          emisor: emisorMock(id),
+          fechaTokenizacion: selloTiempo(),
           token: `tok_demo_${id.slice(-6).toUpperCase()}`,
         };
         return {
@@ -587,7 +624,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           nombreCompleto: "",
           domicilio: "",
           email: "",
+          telefono: "",
           autocompletado: false,
+          condicionLaboral: "",
+          ingresoBruto: 0,
+          ingresoNeto: 0,
+          reciboSueldo: [],
         },
       ]),
     }));
@@ -623,6 +665,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
       postOferta: conPersonas(prev.postOferta, tipo, (lista) => lista.filter((p) => p.id !== id)),
     }));
   }, []);
+
+  // Recibo de sueldo del garante (Onboarding §8): demuestra capacidad de pago para firmar.
+  const adjuntarReciboSueldo = useCallback((tipo: TipoPersonaVinculada, id: string) => {
+    setApp((prev) => ({
+      ...prev,
+      postOferta: conPersonas(prev.postOferta, tipo, (lista) =>
+        lista.map((p) => {
+          if (p.id !== id) return p;
+          const archivo: ArchivoLegajo = {
+            id: `recibo-${id}-${Date.now()}`,
+            nombre: `recibo_sueldo_${p.reciboSueldo.length + 1}.jpg`,
+            detalle: `1.1 MB · ${selloTiempo()}`,
+          };
+          return { ...p, reciboSueldo: [...p.reciboSueldo, archivo] };
+        })
+      ),
+    }));
+  }, []);
+
+  const quitarReciboSueldo = useCallback(
+    (tipo: TipoPersonaVinculada, id: string, archivoId: string) => {
+      setApp((prev) => ({
+        ...prev,
+        postOferta: conPersonas(prev.postOferta, tipo, (lista) =>
+          lista.map((p) =>
+            p.id === id
+              ? { ...p, reciboSueldo: p.reciboSueldo.filter((a) => a.id !== archivoId) }
+              : p
+          )
+        ),
+      }));
+    },
+    []
+  );
 
   // --- Legajo virtual e impresión (Onboarding §9–§10) ---
 
@@ -796,6 +872,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       actualizarPersona,
       buscarPersonaPorDni,
       quitarPersona,
+      adjuntarReciboSueldo,
+      quitarReciboSueldo,
       adjuntarDocumento,
       quitarArchivo,
       registrarLegajo,
@@ -840,6 +918,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       actualizarPersona,
       buscarPersonaPorDni,
       quitarPersona,
+      adjuntarReciboSueldo,
+      quitarReciboSueldo,
       adjuntarDocumento,
       quitarArchivo,
       registrarLegajo,

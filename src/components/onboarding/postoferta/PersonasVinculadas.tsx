@@ -5,14 +5,22 @@ import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { VINCULOS_GARANTE, VINCULOS_REFERENCIA } from "@/lib/parametros";
 import { isValidDNI } from "@/lib/format";
-import { validarPersona } from "@/lib/validation";
+import { CONDICIONES_LABORALES, validarPersona } from "@/lib/validation";
 import type { TipoPersonaVinculada } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
-import { IconCheckCircle, IconPlus, IconSearch, IconTrash } from "@/components/icons";
+import {
+  IconCheck,
+  IconCheckCircle,
+  IconPlus,
+  IconSearch,
+  IconTrash,
+  IconUpload,
+} from "@/components/icons";
 
 const TEXTOS: Record<
   TipoPersonaVinculada,
@@ -35,15 +43,23 @@ const TEXTOS: Record<
 // Pantallas 4 y 5 · Referencias y Garantías (Onboarding §7–§8): misma estructura; cantidad y
 // obligatoriedad configurables por producto, con excepciones del organismo.
 export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
-  const { app, agregarPersona, actualizarPersona, buscarPersonaPorDni, quitarPersona } =
-    useApplication();
+  const {
+    app,
+    agregarPersona,
+    actualizarPersona,
+    buscarPersonaPorDni,
+    quitarPersona,
+    adjuntarReciboSueldo,
+    quitarReciboSueldo,
+  } = useApplication();
   const [buscando, setBuscando] = useState<string | null>(null);
+  const [subiendoRecibo, setSubiendoRecibo] = useState<string | null>(null);
 
   const cfg = configEfectiva(app.configuracion);
   const t = TEXTOS[tipo];
   const lista = tipo === "referencia" ? app.postOferta.referencias : app.postOferta.garantes;
   const { minimo, maximo } = tipo === "referencia" ? cfg.referencias : cfg.garantes;
-  const validas = lista.filter((p) => Object.keys(validarPersona(p)).length === 0).length;
+  const validas = lista.filter((p) => Object.keys(validarPersona(p, tipo)).length === 0).length;
   const faltan = Math.max(minimo - lista.length, 0);
 
   function buscar(id: string) {
@@ -52,6 +68,14 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
       buscarPersonaPorDni(tipo, id);
       setBuscando(null);
     }, 800);
+  }
+
+  function subirRecibo(id: string) {
+    setSubiendoRecibo(id);
+    window.setTimeout(() => {
+      adjuntarReciboSueldo(tipo, id);
+      setSubiendoRecibo(null);
+    }, 900);
   }
 
   return (
@@ -80,7 +104,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
       </div>
 
       {lista.map((p, i) => {
-        const err = validarPersona(p);
+        const err = validarPersona(p, tipo);
         const completa = Object.keys(err).length === 0;
         return (
           <Card key={p.id} className="p-5 sm:p-6">
@@ -162,6 +186,15 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 error={err.email}
               />
               <FormField
+                id={`${p.id}-telefono`}
+                label="Teléfono de contacto"
+                required
+                inputMode="tel"
+                value={p.telefono}
+                onChange={(v) => actualizarPersona(tipo, p.id, { telefono: v })}
+                error={err.telefono}
+              />
+              <FormField
                 id={`${p.id}-domicilio`}
                 label="Domicilio completo"
                 required
@@ -171,6 +204,95 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 className="sm:col-span-2"
               />
             </div>
+
+            {tipo === "garante" && (
+              <div className="mt-4 border-t border-ink-100 pt-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-400">
+                  Ingresos y datos laborales · demuestran capacidad de pago
+                </p>
+                <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2">
+                  <SelectField
+                    id={`${p.id}-condicion-laboral`}
+                    label="Condición laboral"
+                    required
+                    value={p.condicionLaboral}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { condicionLaboral: v })}
+                    options={CONDICIONES_LABORALES.map((c) => ({ value: c, label: c }))}
+                    error={err.condicionLaboral}
+                    className="sm:col-span-2"
+                  />
+                  <MoneyInput
+                    id={`${p.id}-ingreso-bruto`}
+                    label="Ingreso bruto"
+                    required
+                    value={p.ingresoBruto}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { ingresoBruto: v })}
+                    error={err.ingresoBruto}
+                  />
+                  <MoneyInput
+                    id={`${p.id}-ingreso-neto`}
+                    label="Ingreso neto"
+                    required
+                    value={p.ingresoNeto}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { ingresoNeto: v })}
+                    error={err.ingresoNeto}
+                  />
+                </div>
+
+                <div className="mt-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-ink-700">
+                        Recibo de sueldo <span className="text-danger-500">*</span>
+                      </p>
+                      <p className="text-xs text-ink-500">
+                        {p.reciboSueldo.length > 0
+                          ? `${p.reciboSueldo.length} archivo${p.reciboSueldo.length === 1 ? "" : "s"} adjunto${p.reciboSueldo.length === 1 ? "" : "s"}`
+                          : "Sin adjuntar todavía."}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => subirRecibo(p.id)}
+                      disabled={subiendoRecibo !== null}
+                      loading={subiendoRecibo === p.id}
+                    >
+                      {subiendoRecibo !== p.id && <IconUpload width={14} height={14} />}
+                      {p.reciboSueldo.length > 0 ? "Agregar otro" : "Adjuntar recibo"}
+                    </Button>
+                  </div>
+                  {err.reciboSueldo && (
+                    <p className="mt-1.5 text-xs font-medium text-danger-600">
+                      {err.reciboSueldo}
+                    </p>
+                  )}
+                  {p.reciboSueldo.length > 0 && (
+                    <ul className="mt-2 space-y-1 rounded-lg border border-success-200 bg-success-50/60 p-2">
+                      {p.reciboSueldo.map((a) => (
+                        <li
+                          key={a.id}
+                          className="flex items-center justify-between gap-2 text-xs"
+                        >
+                          <span className="flex items-center gap-1.5 truncate font-medium text-success-700">
+                            <IconCheck width={13} height={13} strokeWidth={2.6} />
+                            {a.nombre} · {a.detalle}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => quitarReciboSueldo(tipo, p.id, a.id)}
+                          >
+                            <IconTrash width={13} height={13} />
+                            Quitar
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </Card>
         );
       })}

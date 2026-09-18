@@ -38,6 +38,12 @@ export const OFFER_TERMS: OfferTerm[] = [
   { plazo: 18, tna: 63, recomendada: false, primeraCuota: "25/10/2026" },
   { plazo: 24, tna: 67, recomendada: false, primeraCuota: "10/11/2026" },
   { plazo: 36, tna: 72, recomendada: false, primeraCuota: "10/11/2026" },
+  { plazo: 48, tna: 75, recomendada: false, primeraCuota: "10/12/2026" },
+  { plazo: 60, tna: 78, recomendada: false, primeraCuota: "10/12/2026" },
+  { plazo: 72, tna: 81, recomendada: false, primeraCuota: "10/01/2027" },
+  { plazo: 84, tna: 84, recomendada: false, primeraCuota: "10/01/2027" },
+  { plazo: 96, tna: 87, recomendada: false, primeraCuota: "10/02/2027" },
+  { plazo: 120, tna: 90, recomendada: false, primeraCuota: "10/02/2027" },
 ];
 
 export function getTerm(plazo: Plazo): OfferTerm {

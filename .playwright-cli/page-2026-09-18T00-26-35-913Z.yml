@@ -1,0 +1,181 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e13]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e16] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e1019]:
+          - generic [ref=e1020]:
+            - generic [ref=e1021]:
+              - paragraph [ref=e1022]: Solicitar crédito · Post-oferta
+              - heading "Juan Ignacio Gómez CR-000184 En trámite" [level=1] [ref=e1023]:
+                - text: Juan Ignacio Gómez
+                - generic [ref=e1024]: CR-000184
+                - generic [ref=e1025]: En trámite
+              - paragraph [ref=e1026]: 3 de 7 pantallas completas. Podés navegar entre ellas en cualquier orden.
+            - generic [ref=e1027]:
+              - button "Finalizar carga" [disabled] [ref=e1028]:
+                - text: Finalizar carga
+                - img [ref=e1029]
+              - paragraph [ref=e1031]: Se habilita con el 100 % de las obligatorias en verde · 4 pendientes
+          - generic [ref=e1033]:
+            - list [ref=e1034]:
+              - listitem [ref=e1035]:
+                - button "1 Datos personales Con pendientes · Obligatoria" [ref=e1036]:
+                  - generic [ref=e1037]: "1"
+                  - generic [ref=e1038]:
+                    - generic [ref=e1039]: Datos personales
+                    - generic [ref=e1040]: Con pendientes · Obligatoria
+              - listitem [ref=e1042]:
+                - button "Datos laborales Completa · Obligatoria" [ref=e1043]:
+                  - img [ref=e1045]
+                  - generic [ref=e1047]:
+                    - generic [ref=e1048]: Datos laborales
+                    - generic [ref=e1049]: Completa · Obligatoria
+              - listitem [ref=e1051]:
+                - button "Tokenización de tarjetas Completa · Opcional" [ref=e1380]:
+                  - img [ref=e1381]
+                  - generic [ref=e1054]:
+                    - generic [ref=e1055]: Tokenización de tarjetas
+                    - generic [ref=e1056]: Completa · Opcional
+              - listitem [ref=e1058]:
+                - button "4 Referencias personales Con pendientes · Obligatoria" [ref=e1059]:
+                  - generic [ref=e1060]: "4"
+                  - generic [ref=e1061]:
+                    - generic [ref=e1062]: Referencias personales
+                    - generic [ref=e1063]: Con pendientes · Obligatoria
+              - listitem [ref=e1065]:
+                - button "Garantías Completa · Obligatoria" [ref=e1066]:
+                  - img [ref=e1068]
+                  - generic [ref=e1070]:
+                    - generic [ref=e1071]: Garantías
+                    - generic [ref=e1072]: Completa · Obligatoria
+              - listitem [ref=e1074]:
+                - button "6 Legajo virtual Con pendientes · Obligatoria" [ref=e1075]:
+                  - generic [ref=e1076]: "6"
+                  - generic [ref=e1077]:
+                    - generic [ref=e1078]: Legajo virtual
+                    - generic [ref=e1079]: Con pendientes · Obligatoria
+              - listitem [ref=e1081]:
+                - button "7 Impresión de legajo No iniciada · Opcional" [ref=e1082]:
+                  - generic [ref=e1083]: "7"
+                  - generic [ref=e1084]:
+                    - generic [ref=e1085]: Impresión de legajo
+                    - generic [ref=e1086]: No iniciada · Opcional
+            - generic [ref=e1087]:
+              - generic [ref=e1088]: Completa y validada
+              - generic [ref=e1090]: Iniciada con pendientes
+              - generic [ref=e1092]: No iniciada
+          - generic [ref=e1286]:
+            - generic [ref=e1287]:
+              - generic [ref=e1288]:
+                - generic [ref=e1289]:
+                  - img [ref=e1291]
+                  - generic [ref=e1293]:
+                    - heading "Tokenización de tarjetas" [level=2] [ref=e1294]
+                    - paragraph [ref=e1295]: Tarjetas para el cobro automático de las cuotas. El cliente la carga desde un link o el vendedor la tokeniza con la tarjeta en mano.
+                - generic [ref=e1296]: Opcional
+              - generic [ref=e1297]:
+                - generic [ref=e1298]:
+                  - generic [ref=e1299]:
+                    - strong [ref=e1300]: "1"
+                    - text: tarjeta tokenizada
+                  - generic [ref=e1301]: Proveedor de tokenización A
+                - list [ref=e1383]:
+                  - listitem [ref=e1384]:
+                    - generic [ref=e1385]:
+                      - generic [ref=e1386]:
+                        - img [ref=e1388]
+                        - generic [ref=e1390]:
+                          - paragraph [ref=e1391]: JUAN PEREZ
+                          - paragraph [ref=e1392]:
+                            - generic [ref=e1393]: 4509 •• •••• 3704
+                            - generic [ref=e1394]: Vence 11/29
+                            - generic [ref=e1395]: Crédito
+                          - paragraph [ref=e1396]:
+                            - img [ref=e1397]
+                            - text: Banco de Córdoba·
+                            - img [ref=e1399]
+                            - text: Hoy 09:26 p. m.·
+                            - img [ref=e1402]
+                            - generic [ref=e1405]: tok_demo_195792
+                            - text: · carga presencial
+                      - button "Quitar" [ref=e1407]:
+                        - img [ref=e1408]
+                        - text: Quitar
+                - generic [ref=e1302]:
+                  - button "Enviar link por WhatsApp" [ref=e1303]:
+                    - img [ref=e1304]
+                    - text: Enviar link por WhatsApp
+                  - button "Carga presencial" [ref=e1307]:
+                    - img [ref=e1308]
+                    - text: Carga presencial
+                - paragraph [ref=e1311]: El link se envía al celular precargado 351 5432100.
+            - generic [ref=e1313]:
+              - img [ref=e1315]
+              - generic [ref=e1319]: "WhatsApp sólo se usa para compartir el link del formulario al número del cliente: no es un módulo integrado al flujo de onboarding. En la demo los tokens son ficticios y no se guarda ningún dato sensible de la tarjeta."
+  - button "Open Next.js Dev Tools" [ref=e285] [cursor=pointer]:
+    - img [ref=e286]
+  - alert [ref=e289]: Identificación

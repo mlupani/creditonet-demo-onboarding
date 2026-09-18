@@ -1,0 +1,184 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - paragraph [ref=e111]: Solicitar crédito · Originación
+                - heading "Datos del cliente" [level=1] [ref=e375]
+                - generic [ref=e113]:
+                  - img [ref=e114]
+                  - generic [ref=e117]: Patricia Herrera · DNI 20.777.777 · ID de Cliente 001318 · Préstamo personal · Empleados de salud
+              - generic [ref=e118]:
+                - paragraph [ref=e119]: Paso 3 de 6
+                - paragraph [ref=e120]: Etapa 1 de 2
+            - list [ref=e124]:
+              - listitem [ref=e125]:
+                - button "Identificación" [ref=e325] [cursor=pointer]:
+                  - img [ref=e326]
+                  - generic [ref=e128]: Identificación
+              - listitem [ref=e130]:
+                - button "Producto y organismo" [ref=e376] [cursor=pointer]:
+                  - img [ref=e377]
+                  - generic [ref=e133]: Producto y organismo
+              - listitem [ref=e135]:
+                - button "3 Datos del cliente" [disabled] [ref=e136]:
+                  - generic [ref=e137]: "3"
+                  - generic [ref=e138]: Datos del cliente
+              - listitem [ref=e140]:
+                - button "4 Datos laborales" [disabled] [ref=e141]:
+                  - generic [ref=e142]: "4"
+                  - generic [ref=e143]: Datos laborales
+              - listitem [ref=e145]:
+                - button "5 Evaluación" [disabled] [ref=e146]:
+                  - generic [ref=e147]: "5"
+                  - generic [ref=e148]: Evaluación
+              - listitem [ref=e150]:
+                - button "6 Oferta" [disabled] [ref=e151]:
+                  - generic [ref=e152]: "6"
+                  - generic [ref=e153]: Oferta
+          - generic [ref=e379]:
+            - generic [ref=e380]:
+              - generic [ref=e381]:
+                - generic [ref=e382]:
+                  - generic [ref=e383]:
+                    - img [ref=e385]
+                    - generic [ref=e389]:
+                      - heading "Patricia Herrera" [level=2] [ref=e390]
+                      - paragraph [ref=e391]: DNI 20.777.777 · CUIL 27-20777777-6
+                  - generic [ref=e392]:
+                    - paragraph [ref=e393]: Producto · Organismo
+                    - paragraph [ref=e394]: Préstamo personal · Empleados de salud
+                - generic [ref=e396]:
+                  - generic [ref=e397]:
+                    - generic [ref=e398]: Nombre
+                    - textbox "Nombre" [ref=e399]: Patricia
+                  - generic [ref=e400]:
+                    - generic [ref=e401]: Apellido
+                    - textbox "Apellido" [ref=e402]: Herrera
+                  - generic [ref=e403]:
+                    - generic [ref=e404]: Fecha de nacimiento
+                    - textbox "Fecha de nacimiento" [ref=e405]: 03/09/1980
+                  - generic [ref=e406]:
+                    - generic [ref=e407]: Género
+                    - combobox "Género" [ref=e408]:
+                      - option "Femenino" [selected]
+                      - option "Masculino"
+                      - option "No binario"
+                  - generic [ref=e410]:
+                    - generic [ref=e411]: Domicilio
+                    - textbox "Domicilio" [ref=e412]: Bv. San Juan 1120, 2° A, Córdoba
+                  - generic [ref=e413]:
+                    - generic [ref=e414]: Localidad
+                    - textbox "Localidad" [ref=e415]: Córdoba
+                  - generic [ref=e416]:
+                    - generic [ref=e417]: Teléfono
+                    - textbox "Teléfono" [ref=e418]: 351 6777788
+                  - generic [ref=e419]:
+                    - generic [ref=e420]: Email
+                    - textbox "Email" [ref=e421]: patricia.herrera@email.com
+              - generic [ref=e422]:
+                - generic [ref=e424]:
+                  - img [ref=e426]
+                  - generic [ref=e429]:
+                    - heading "Verificación presencial" [level=2] [ref=e430]
+                    - paragraph [ref=e431]: Compará la foto archivada con la persona presente y validá su identidad.
+                - generic [ref=e432]:
+                  - generic [ref=e433]:
+                    - generic [ref=e434]:
+                      - img "Foto archivada" [ref=e436]
+                      - paragraph [ref=e437]: Foto archivada · 12/03/2022
+                    - generic [ref=e438]:
+                      - generic [ref=e439]:
+                        - generic [ref=e440]: PH
+                        - generic [ref=e441]: En vivo
+                      - paragraph [ref=e443]: Persona presente
+                  - generic [ref=e444]:
+                    - button "Subir foto" [ref=e445]:
+                      - img [ref=e446]
+                      - text: Subir foto
+                    - button "Capturar imagen" [ref=e449]:
+                      - img [ref=e450]
+                      - text: Capturar imagen
+                  - generic [ref=e470]:
+                    - img [ref=e472]
+                    - generic [ref=e474]:
+                      - paragraph [ref=e475]: Identidad verificada
+                      - paragraph [ref=e476]: El vendedor confirmó la coincidencia con la persona presente.
+            - generic [ref=e458]:
+              - button "Anular crédito" [ref=e459]
+              - paragraph [ref=e477]:
+                - generic [ref=e478]: "Próximo: 4. Datos laborales"
+                - text: — Sólo los datos que las reglas y el motor necesitan para evaluar. El resto del legajo se carga después de la oferta.
+              - button "Continuar" [ref=e467]:
+                - text: Continuar
+                - img [ref=e468]
+  - button "Open Next.js Dev Tools" [ref=e103] [cursor=pointer]:
+    - img [ref=e104]
+  - alert [ref=e218]

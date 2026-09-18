@@ -32,119 +32,102 @@ export function PasoLaboralIngresos() {
           ) : undefined
         }
       />
-      <div className="grid gap-x-5 gap-y-1 p-5 sm:grid-cols-2 sm:p-6">
-        <SelectField
-          id="condicion-laboral"
-          label="Condición laboral"
-          required
-          value={l.condicionLaboral}
-          onChange={(v) => patchLaboral({ condicionLaboral: v })}
-          options={CONDICIONES_LABORALES.map((c) => ({ value: c, label: c }))}
-          error={errores.condicionLaboral}
-          hint="Determina qué línea aplica y participa en la generación de la oferta. La situación BCRA y el buró interno (vistos al identificar al cliente) no bloquean la línea, sólo recortan el capital. No se puede modificar después de la oferta."
-        />
-        <FormField
-          id="fecha-inicio"
-          label="Fecha de inicio laboral"
-          required
-          value={l.fechaInicioLaboral}
-          onChange={(v) => patchLaboral({ fechaInicioLaboral: v })}
-          error={errores.fechaInicioLaboral}
-          hint="dd/mm/aaaa"
-        />
-        <SelectField
-          id="banco-cobro"
-          label="Banco de cobro"
-          required
-          value={l.bancoCobro}
-          onChange={(v) => patchLaboral({ bancoCobro: v })}
-          options={BANCOS.map((b) => ({ value: b, label: b }))}
-          error={errores.bancoCobro}
-        />
-        <MoneyInput
-          id="ingreso-bruto"
-          label="Ingreso bruto"
-          required
-          value={l.ingresoBruto}
-          onChange={(v) => patchLaboral({ ingresoBruto: v })}
-          error={errores.ingresoBruto}
-          hint="Haberes brutos mensuales."
-        />
-        <MoneyInput
-          id="ingreso-neto"
-          label="Ingreso neto"
-          required
-          value={l.ingresoNeto}
-          onChange={(v) => patchLaboral({ ingresoNeto: v })}
-          error={errores.ingresoNeto}
-          hint="Ingreso mensual de bolsillo. Base del cálculo de RCI."
-        />
-        <MoneyInput
-          id="monto-extraido"
-          label="Monto extraído / transferido el día de cobro"
-          required
-          value={l.montoExtraidoDiaCobro}
-          onChange={(v) => patchLaboral({ montoExtraidoDiaCobro: v })}
-          error={errores.montoExtraidoDiaCobro}
-          hint="Movimiento de la cuenta sueldo el día de la acreditación."
-        />
-        <FormField
-          id="cuit-empleador"
-          label="CUIT del empleador"
-          required
-          value={l.cuitEmpleador}
-          onChange={(v) => patchLaboral({ cuitEmpleador: onlyDigits(v).slice(0, 11) })}
-          error={errores.cuitEmpleador}
-          inputMode="numeric"
-          maxLength={11}
-          hint="11 dígitos, sin guiones."
-        />
-      </div>
+      <div className="space-y-6">
+        <div className="p-5 sm:p-6">
+          <p className="mb-3 text-base font-semibold text-ink-800">Datos laborales</p>
+          <div className="grid gap-x-5 gap-y-1 sm:grid-cols-2">
+            <SelectField
+              id="condicion-laboral"
+              label="Condición laboral"
+              required
+              value={l.condicionLaboral}
+              onChange={(v) => patchLaboral({ condicionLaboral: v })}
+              options={CONDICIONES_LABORALES.map((c) => ({ value: c, label: c }))}
+              error={errores.condicionLaboral}
+              hint="Determina qué línea aplica y participa en la generación de la oferta. La situación BCRA y el buró interno (vistos al identificar al cliente) no bloquean la línea, sólo recortan el capital. No se puede modificar después de la oferta."
+            />
+            <FormField
+              id="fecha-inicio"
+              label="Fecha de inicio laboral"
+              required
+              value={l.fechaInicioLaboral}
+              onChange={(v) => patchLaboral({ fechaInicioLaboral: v })}
+              error={errores.fechaInicioLaboral}
+              hint="dd/mm/aaaa"
+            />
+            <SelectField
+              id="banco-cobro"
+              label="Banco de cobro"
+              required
+              value={l.bancoCobro}
+              onChange={(v) => patchLaboral({ bancoCobro: v })}
+              options={BANCOS.map((b) => ({ value: b, label: b }))}
+              error={errores.bancoCobro}
+            />
+            <FormField
+              id="cuit-empleador"
+              label="CUIT del empleador"
+              value={l.cuitEmpleador}
+              onChange={(v) => patchLaboral({ cuitEmpleador: onlyDigits(v).slice(0, 11) })}
+              error={errores.cuitEmpleador}
+              inputMode="numeric"
+              maxLength={11}
+              hint="11 dígitos, sin guiones."
+            />
+          </div>
+        </div>
 
-      <div className="border-t border-ink-100 px-5 py-4 sm:px-6">
-        <p className="text-sm font-semibold text-ink-800">Información adicional</p>
-        <p className="mt-0.5 text-xs text-ink-500">
-          No es obligatoria para continuar; queda &ldquo;No informado&rdquo; si no se completa.
-        </p>
-        <div className="mt-3 grid gap-x-5 gap-y-1 sm:grid-cols-2">
-          <MoneyInput
-            id="disponible"
-            label="Saldo disponible"
-            value={l.disponible}
-            onChange={(v) => patchLaboral({ disponible: v })}
-          />
-          <MoneyInput
-            id="debitos-no-remunerativos"
-            label="Débitos no remunerativos"
-            value={l.debitosNoRemunerativos}
-            onChange={(v) => patchLaboral({ debitosNoRemunerativos: v })}
-          />
-          <FormField
-            id="extracciones-fecha"
-            label="Extracciones · Fecha de acreditación"
-            value={l.extraccionesFecha}
-            onChange={(v) => patchLaboral({ extraccionesFecha: v })}
-            hint="dd/mm/aaaa"
-          />
-          <MoneyInput
-            id="extracciones-importe"
-            label="Extracciones · Importe"
-            value={l.extraccionesImporte}
-            onChange={(v) => patchLaboral({ extraccionesImporte: v })}
-          />
-          <FormField
-            id="transferencias-fecha"
-            label="Transferencias · Fecha de acreditación"
-            value={l.transferenciasFecha}
-            onChange={(v) => patchLaboral({ transferenciasFecha: v })}
-            hint="dd/mm/aaaa"
-          />
-          <MoneyInput
-            id="transferencias-importe"
-            label="Transferencias · Importe"
-            value={l.transferenciasImporte}
-            onChange={(v) => patchLaboral({ transferenciasImporte: v })}
-          />
+        <div className="p-5 sm:p-6">
+          <p className="mb-3 text-base font-semibold text-ink-800">Datos financieros</p>
+          <div className="grid gap-x-5 gap-y-1 sm:grid-cols-2">
+            <MoneyInput
+              id="ingreso-bruto"
+              label="Ingreso bruto"
+              required
+              value={l.ingresoBruto}
+              onChange={(v) => patchLaboral({ ingresoBruto: v })}
+              error={errores.ingresoBruto}
+              hint="Haberes brutos mensuales."
+            />
+            <MoneyInput
+              id="ingreso-neto"
+              label="Ingreso neto"
+              required
+              value={l.ingresoNeto}
+              onChange={(v) => patchLaboral({ ingresoNeto: v })}
+              error={errores.ingresoNeto}
+              hint="Ingreso mensual de bolsillo. Base del cálculo de RCI."
+            />
+            <MoneyInput
+              id="monto-extraido"
+              label="Monto extraído / transferido el día de cobro"
+              required
+              value={l.montoExtraidoDiaCobro}
+              onChange={(v) => patchLaboral({ montoExtraidoDiaCobro: v })}
+              error={errores.montoExtraidoDiaCobro}
+              hint="Movimiento de la cuenta sueldo el día de la acreditación."
+            />
+            <MoneyInput
+              id="disponible"
+              label="Disponible"
+              value={l.disponible}
+              onChange={(v) => patchLaboral({ disponible: v })}
+            />
+            <FormField
+              id="extracciones-fecha"
+              label="Extracciones · Fecha de acreditación"
+              value={l.extraccionesFecha}
+              onChange={(v) => patchLaboral({ extraccionesFecha: v })}
+              hint="dd/mm/aaaa"
+            />
+            <FormField
+              id="transferencias-fecha"
+              label="Transferencias · Fecha de acreditación"
+              value={l.transferenciasFecha}
+              onChange={(v) => patchLaboral({ transferenciasFecha: v })}
+              hint="dd/mm/aaaa"
+            />
+          </div>
         </div>
       </div>
 

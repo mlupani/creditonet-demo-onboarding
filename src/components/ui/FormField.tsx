@@ -23,6 +23,7 @@ interface FormFieldProps {
   inputMode?: "numeric" | "text" | "email" | "tel";
   disabled?: boolean;
   className?: string;
+  onFocus?: () => void;
 }
 
 export function FormField({
@@ -41,6 +42,7 @@ export function FormField({
   inputMode,
   disabled = false,
   className = "",
+  onFocus,
 }: FormFieldProps) {
   const [touched, setTouched] = useState(false);
   const showError = touched && !!error;
@@ -68,6 +70,7 @@ export function FormField({
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
           maxLength={maxLength}

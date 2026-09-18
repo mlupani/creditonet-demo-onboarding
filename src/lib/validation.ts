@@ -4,8 +4,9 @@ import type {
   LaboralIngresos,
   PantallaPostOfertaId,
   PersonaVinculada,
+  TipoPersonaVinculada,
 } from "./types";
-import { isValidCBU, isValidCUIL, isValidDNI, isValidEmail, parseFecha } from "./format";
+import { isValidCBU, isValidCUIL, isValidDNI, isValidEmail, isValidPhone, parseFecha } from "./format";
 import { configEfectiva, pantallasVisibles } from "./config";
 import { erroresPantalla } from "./campos-post-oferta";
 import { getTipoDocumento } from "./parametros";
@@ -64,8 +65,9 @@ export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
     e.ingresoBruto = "El ingreso bruto no puede ser menor al neto. Revisá los valores.";
   if (l.montoExtraidoDiaCobro <= 0)
     e.montoExtraidoDiaCobro = "Ingresá el monto extraído o transferido el día de cobro.";
-  if (!l.cuitEmpleador.trim()) e.cuitEmpleador = "Ingresá el CUIT del empleador.";
-  else if (!isValidCUIL(l.cuitEmpleador)) e.cuitEmpleador = "El CUIT debe tener 11 dígitos.";
+  if (l.cuitEmpleador.trim() && !isValidCUIL(l.cuitEmpleador)) {
+    e.cuitEmpleador = "El CUIT debe tener 11 dígitos.";
+  }
   return e;
 }
 
@@ -88,7 +90,17 @@ export function validarDeudaTerceros(
 
 // --- Etapa 2: referencias y garantes (Onboarding §7–§8) ---
 
-export type CampoPersona = "vinculo" | "dni" | "nombreCompleto" | "domicilio" | "email";
+export type CampoPersona =
+  | "vinculo"
+  | "dni"
+  | "nombreCompleto"
+  | "domicilio"
+  | "email"
+  | "telefono"
+  | "condicionLaboral"
+  | "ingresoBruto"
+  | "ingresoNeto"
+  | "reciboSueldo";
 
 export const LABEL_PERSONA: Record<CampoPersona, string> = {
   vinculo: "Vínculo",
@@ -96,9 +108,17 @@ export const LABEL_PERSONA: Record<CampoPersona, string> = {
   nombreCompleto: "Nombre completo",
   domicilio: "Domicilio",
   email: "Email",
+  telefono: "Teléfono",
+  condicionLaboral: "Condición laboral",
+  ingresoBruto: "Ingreso bruto",
+  ingresoNeto: "Ingreso neto",
+  reciboSueldo: "Recibo de sueldo",
 };
 
-export function validarPersona(p: PersonaVinculada): Partial<Record<CampoPersona, string>> {
+export function validarPersona(
+  p: PersonaVinculada,
+  tipo: TipoPersonaVinculada
+): Partial<Record<CampoPersona, string>> {
   const e: Partial<Record<CampoPersona, string>> = {};
   if (!p.vinculo.trim()) e.vinculo = "Seleccioná el vínculo con el cliente.";
   if (!p.dni.trim()) e.dni = "Ingresá el DNI.";
@@ -108,6 +128,16 @@ export function validarPersona(p: PersonaVinculada): Partial<Record<CampoPersona
   if (!p.email.trim()) e.email = "Ingresá el email de contacto.";
   else if (!isValidEmail(p.email))
     e.email = "El formato del email no es válido. Ej.: nombre@dominio.com";
+  if (!p.telefono.trim()) e.telefono = "Ingresá el teléfono de contacto.";
+  else if (!isValidPhone(p.telefono))
+    e.telefono = "El teléfono debe tener al menos 8 dígitos.";
+  // El garante debe demostrar capacidad de pago para firmar la documentación del préstamo.
+  if (tipo === "garante") {
+    if (!p.condicionLaboral.trim()) e.condicionLaboral = "Seleccioná la condición laboral.";
+    if (p.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto.";
+    if (p.ingresoNeto <= 0) e.ingresoNeto = "Ingresá el ingreso neto.";
+    if (p.reciboSueldo.length === 0) e.reciboSueldo = "Adjuntá el recibo de sueldo.";
+  }
   return e;
 }
 
@@ -178,7 +208,11 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
         if (faltan > 0)
           push(`Falta${faltan === 1 ? "" : "n"} ${faltan} ${nombre}${faltan === 1 ? "" : "s"}`);
         lista.forEach((persona, i) => {
-          (Object.keys(validarPersona(persona)) as CampoPersona[]).forEach((k) =>
+          (
+            Object.keys(
+              validarPersona(persona, esReferencia ? "referencia" : "garante")
+            ) as CampoPersona[]
+          ).forEach((k) =>
             push(
               `${LABEL_PERSONA[k]} ${esReferencia ? "de la referencia" : "del garante"}${
                 lista.length > 1 ? ` (${i + 1})` : ""

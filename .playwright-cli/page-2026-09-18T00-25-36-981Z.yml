@@ -1,0 +1,296 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e13]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e16] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e1019]:
+          - generic [ref=e1020]:
+            - generic [ref=e1021]:
+              - paragraph [ref=e1022]: Solicitar crédito · Post-oferta
+              - heading "Juan Ignacio Gómez CR-000184 En trámite" [level=1] [ref=e1023]:
+                - text: Juan Ignacio Gómez
+                - generic [ref=e1024]: CR-000184
+                - generic [ref=e1025]: En trámite
+              - paragraph [ref=e1026]: 2 de 7 pantallas completas. Podés navegar entre ellas en cualquier orden.
+            - generic [ref=e1027]:
+              - button "Finalizar carga" [disabled] [ref=e1028]:
+                - text: Finalizar carga
+                - img [ref=e1029]
+              - paragraph [ref=e1031]: Se habilita con el 100 % de las obligatorias en verde · 4 pendientes
+          - generic [ref=e1033]:
+            - list [ref=e1034]:
+              - listitem [ref=e1035]:
+                - button "1 Datos personales Con pendientes · Obligatoria" [ref=e1036]:
+                  - generic [ref=e1037]: "1"
+                  - generic [ref=e1038]:
+                    - generic [ref=e1039]: Datos personales
+                    - generic [ref=e1040]: Con pendientes · Obligatoria
+              - listitem [ref=e1042]:
+                - button "Datos laborales Completa · Obligatoria" [ref=e1043]:
+                  - img [ref=e1045]
+                  - generic [ref=e1047]:
+                    - generic [ref=e1048]: Datos laborales
+                    - generic [ref=e1049]: Completa · Obligatoria
+              - listitem [ref=e1051]:
+                - button "3 Tokenización de tarjetas No iniciada · Opcional" [ref=e1052]:
+                  - generic [ref=e1053]: "3"
+                  - generic [ref=e1054]:
+                    - generic [ref=e1055]: Tokenización de tarjetas
+                    - generic [ref=e1056]: No iniciada · Opcional
+              - listitem [ref=e1058]:
+                - button "4 Referencias personales Con pendientes · Obligatoria" [ref=e1059]:
+                  - generic [ref=e1060]: "4"
+                  - generic [ref=e1061]:
+                    - generic [ref=e1062]: Referencias personales
+                    - generic [ref=e1063]: Con pendientes · Obligatoria
+              - listitem [ref=e1065]:
+                - button "Garantías Completa · Obligatoria" [ref=e1066]:
+                  - img [ref=e1068]
+                  - generic [ref=e1070]:
+                    - generic [ref=e1071]: Garantías
+                    - generic [ref=e1072]: Completa · Obligatoria
+              - listitem [ref=e1074]:
+                - button "6 Legajo virtual Con pendientes · Obligatoria" [ref=e1075]:
+                  - generic [ref=e1076]: "6"
+                  - generic [ref=e1077]:
+                    - generic [ref=e1078]: Legajo virtual
+                    - generic [ref=e1079]: Con pendientes · Obligatoria
+              - listitem [ref=e1081]:
+                - button "7 Impresión de legajo No iniciada · Opcional" [ref=e1082]:
+                  - generic [ref=e1083]: "7"
+                  - generic [ref=e1084]:
+                    - generic [ref=e1085]: Impresión de legajo
+                    - generic [ref=e1086]: No iniciada · Opcional
+            - generic [ref=e1087]:
+              - generic [ref=e1088]: Completa y validada
+              - generic [ref=e1090]: Iniciada con pendientes
+              - generic [ref=e1092]: No iniciada
+          - generic [ref=e1095]:
+            - generic [ref=e1096]:
+              - generic [ref=e1098]:
+                - img [ref=e1100]
+                - generic [ref=e1104]:
+                  - heading "Identificación" [level=2] [ref=e1105]
+                  - paragraph [ref=e1106]: Datos de identidad y situación personal del cliente.
+              - generic [ref=e1107]:
+                - generic [ref=e1108]:
+                  - generic [ref=e1110]: Nombre completo*
+                  - textbox "Nombre completo*" [ref=e1112]: Juan Ignacio Gómez
+                - generic [ref=e1113]:
+                  - generic [ref=e1115]: DNI*
+                  - textbox "DNI*" [ref=e1117]: "20111111"
+                - generic [ref=e1118]:
+                  - generic [ref=e1120]: CUIT*
+                  - textbox "CUIT*" [ref=e1122]: "20201111113"
+                - generic [ref=e1123]:
+                  - generic [ref=e1125]: Fecha de nacimiento*
+                  - textbox "Fecha de nacimiento*" [ref=e1127]: 15/04/1988
+                  - paragraph [ref=e1128]: dd/mm/aaaa
+                - generic [ref=e1129]:
+                  - generic [ref=e1131]: Género*
+                  - generic [ref=e1132]:
+                    - combobox "Género*" [ref=e1133]:
+                      - option "Seleccioná una opción…"
+                      - option "Femenino"
+                      - option "Masculino" [selected]
+                      - option "No binario"
+                    - img
+                - generic [ref=e1134]:
+                  - generic [ref=e1135]:
+                    - generic [ref=e1136]: Situación laboral / tipo de empleo
+                    - generic [ref=e1137]:
+                      - img [ref=e1138]
+                      - text: No modificable
+                  - textbox "Situación laboral / tipo de empleo" [disabled] [ref=e1142]: Empleado fijo
+                  - paragraph [ref=e1143]: "Participó en la generación de la oferta: no se puede cambiar."
+                - generic [ref=e1144]:
+                  - generic [ref=e1146]: Nacionalidad*
+                  - textbox "Nacionalidad*" [ref=e1148]: Argentina
+                - generic [ref=e1149]:
+                  - generic [ref=e1151]: Estado civil*
+                  - generic [ref=e1152]:
+                    - combobox "Estado civil*" [ref=e1153]:
+                      - option "Seleccioná una opción…"
+                      - option "Casada/o" [selected]
+                      - option "Soltera/o"
+                      - option "Divorciada/o"
+                      - option "Viuda/o"
+                      - option "Unión convivencial"
+                    - img
+                - generic [ref=e1154]:
+                  - generic [ref=e1156]: Tipo de vivienda*
+                  - generic [ref=e1157]:
+                    - combobox "Tipo de vivienda*" [ref=e1158]:
+                      - option "Seleccioná una opción…"
+                      - option "Propietario" [selected]
+                      - option "Inquilino"
+                      - option "Prestado por familiar/amigo"
+                    - img
+                - generic [ref=e1159]:
+                  - generic [ref=e1161]: Personas a cargo*
+                  - textbox "Personas a cargo*" [ref=e1163]: "2"
+                - generic [ref=e1164]:
+                  - generic [ref=e1166]: ¿Tiene cónyuge?*
+                  - generic [ref=e1167]:
+                    - combobox "¿Tiene cónyuge?*" [ref=e1168]:
+                      - option "Seleccioná una opción…"
+                      - option "Sí" [selected]
+                      - option "No"
+                    - img
+                - generic [ref=e1169]:
+                  - generic [ref=e1171]: DNI del cónyuge*
+                  - textbox "DNI del cónyuge*" [ref=e1173]
+            - generic [ref=e1174]:
+              - generic [ref=e1176]:
+                - img [ref=e1178]
+                - generic [ref=e1181]:
+                  - heading "Domicilio particular" [level=2] [ref=e1182]
+                  - paragraph [ref=e1183]: Provincia y localidad salen de Parámetros; el código postal se completa al elegir la localidad y se puede editar.
+              - generic [ref=e1184]:
+                - generic [ref=e1185]:
+                  - generic [ref=e1187]: Calle*
+                  - textbox "Calle*" [ref=e1189]: Av. Colón
+                - generic [ref=e1190]:
+                  - generic [ref=e1192]: Número*
+                  - textbox "Número*" [ref=e1194]: "2450"
+                - generic [ref=e1195]:
+                  - generic [ref=e1197]: Piso
+                  - textbox "Piso" [ref=e1199]: "4"
+                - generic [ref=e1200]:
+                  - generic [ref=e1202]: Departamento
+                  - textbox "Departamento" [ref=e1204]: A
+                - generic [ref=e1205]:
+                  - generic [ref=e1207]: Barrio*
+                  - textbox "Barrio*" [ref=e1209]: Cerro de las Rosas
+                - generic [ref=e1210]:
+                  - generic [ref=e1212]: Entre calles
+                  - textbox "Entre calles" [ref=e1214]
+                - generic [ref=e1215]:
+                  - generic [ref=e1217]: Manzana / Bloque / Lote
+                  - textbox "Manzana / Bloque / Lote" [ref=e1219]
+                - generic [ref=e1220]:
+                  - generic [ref=e1222]: Provincia*
+                  - generic [ref=e1223]:
+                    - combobox "Provincia*" [ref=e1224]:
+                      - option "Seleccioná una opción…"
+                      - option "Buenos Aires"
+                      - option "CABA"
+                      - option "Córdoba" [selected]
+                      - option "Mendoza"
+                      - option "Santa Fe"
+                      - option "Tucumán"
+                    - img
+                - generic [ref=e1225]:
+                  - generic [ref=e1227]: Localidad*
+                  - generic [ref=e1228]:
+                    - combobox "Localidad*" [ref=e1229]:
+                      - option "Seleccioná una opción…"
+                      - option "Córdoba" [selected]
+                      - option "Villa Carlos Paz"
+                      - option "Río Cuarto"
+                      - option "Villa María"
+                    - img
+                - generic [ref=e1230]:
+                  - generic [ref=e1232]: Código postal*
+                  - textbox "Código postal*" [ref=e1234]: "5000"
+            - generic [ref=e1235]:
+              - generic [ref=e1237]:
+                - img [ref=e1239]
+                - generic [ref=e1242]:
+                  - heading "Datos de contacto" [level=2] [ref=e1243]
+                  - paragraph [ref=e1244]: Teléfono y email del pedido inicial. El teléfono alternativo es opcional.
+              - generic [ref=e1245]:
+                - generic [ref=e1246]:
+                  - generic [ref=e1248]: Característica*
+                  - textbox "Característica*" [ref=e1250]: "351"
+                - generic [ref=e1251]:
+                  - generic [ref=e1253]: Teléfono*
+                  - textbox "Teléfono*" [ref=e1255]: "5432100"
+                - generic [ref=e1256]:
+                  - generic [ref=e1258]: Compañía telefónica*
+                  - generic [ref=e1259]:
+                    - combobox "Compañía telefónica*" [ref=e1260]:
+                      - option "Seleccioná una opción…"
+                      - option "Claro"
+                      - option "Movistar"
+                      - option "Personal" [selected]
+                      - option "Otra"
+                    - img
+                - generic [ref=e1261]:
+                  - generic [ref=e1263]: Email*
+                  - textbox "Email*" [ref=e1265]: juanignacio.gomez@gmail.com
+                - generic [ref=e1266]:
+                  - generic [ref=e1268]: Característica alternativa
+                  - textbox "Característica alternativa" [ref=e1270]
+                - generic [ref=e1271]:
+                  - generic [ref=e1273]: Teléfono alternativo
+                  - textbox "Teléfono alternativo" [ref=e1275]
+            - generic [ref=e1277]:
+              - img [ref=e1279]
+              - generic [ref=e1283]: "Falta completar o corregir: DNI del cónyuge."
+  - button "Open Next.js Dev Tools" [ref=e285] [cursor=pointer]:
+    - img [ref=e286]
+  - alert [ref=e289]: Identificación

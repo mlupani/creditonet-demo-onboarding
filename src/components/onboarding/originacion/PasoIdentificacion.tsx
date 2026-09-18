@@ -57,6 +57,8 @@ export function PasoIdentificacion() {
             <div className="sm:col-span-2">
               <CampoCliente id="c-domicilio" label="Domicilio" campo="domicilio" />
             </div>
+            <CampoCliente id="c-localidad" label="Localidad" campo="localidad" />
+            <CampoCliente id="c-telefono" label="Teléfono" campo="telefono" />
             <CampoCliente id="c-email" label="Email" campo="email" />
           </div>
         </div>

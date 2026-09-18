@@ -41,16 +41,34 @@ export function CreditosActivos({
         ) : (
           o.creditosActivos.map((c) => {
             const pct = cuotasAbonadasPct(c);
-          const elegible = pct >= minPct;
+          // En mora la cancelación es obligatoria: se habilita para marcar sin importar
+          // el mínimo de cuotas abonadas que aplica a una renovación voluntaria.
+          const elegible = pct >= minPct || c.enMora === true;
           const reevaluando = reevaluandoId === c.id;
           return (
-            <div key={c.id} className="rounded-xl border border-ink-200 bg-white p-4">
+            <div
+              key={c.id}
+              className={`rounded-xl border bg-white p-4 ${
+                c.enMora ? "border-danger-300 ring-1 ring-danger-200" : "border-ink-200"
+              }`}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-mono text-sm font-bold text-ink-900">{c.id}</p>
-                <StatusBadge tone={elegible ? "success" : "neutral"}>
-                  {elegible ? "Elegible para renovación" : "No elegible"}
+                <StatusBadge tone={c.enMora ? "danger" : elegible ? "success" : "neutral"}>
+                  {c.enMora
+                    ? "En mora · cancelación obligatoria"
+                    : elegible
+                      ? "Elegible para renovación"
+                      : "No elegible"}
                 </StatusBadge>
               </div>
+
+              {c.enMora && (
+                <p className="mt-2 rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-xs font-medium text-danger-700">
+                  Este crédito tiene atraso registrado en el buró interno. Para poder aceptar la
+                  oferta es obligatorio marcarlo para cancelación.
+                </p>
+              )}
 
               <div className="mt-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -117,7 +135,11 @@ export function CreditosActivos({
                   checked={c.precancelar}
                   onChange={() => onToggle(c.id)}
                   disabled={!elegible || reevaluandoId !== null}
-                  label="Renovar / precancelar este crédito"
+                  label={
+                    c.enMora
+                      ? "Cancelar este crédito (obligatorio)"
+                      : "Renovar / precancelar este crédito"
+                  }
                   description="El saldo a cancelar se descuenta de la acreditación neta."
                 />
               </div>

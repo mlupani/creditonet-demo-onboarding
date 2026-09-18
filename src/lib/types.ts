@@ -123,7 +123,9 @@ export interface ClienteDatos {
   genero: string;
   fechaNacimiento: string;
   domicilio: string;
+  localidad: string;
   email: string;
+  telefono: string;
 }
 
 export type OrigenCampos = Partial<Record<keyof ClienteDatos, OrigenDato>>;
@@ -150,7 +152,7 @@ export interface LaboralIngresos {
 
 // --- Oferta ---
 
-export type Plazo = 12 | 18 | 24 | 36;
+export type Plazo = 12 | 18 | 24 | 36 | 48 | 60 | 72 | 84 | 96 | 120;
 
 export interface CreditoActivo {
   id: string;
@@ -168,6 +170,7 @@ export interface CreditoActivo {
   cuotasAbonadas: number;
   valorCuota: number;
   precancelar: boolean;
+  enMora?: boolean;
 }
 
 export interface DeudaTerceros {
@@ -220,7 +223,12 @@ export interface TarjetaTokenizada {
   enviadoA: string | null;
   tipo: TipoTarjeta | null;
   marca: string | null;
+  nombreTitular: string | null;
+  primeros4: string | null;
   ultimos4: string | null;
+  vencimiento: string | null;
+  emisor: string | null;
+  fechaTokenizacion: string | null;
   token: string | null;
 }
 
@@ -234,7 +242,14 @@ export interface PersonaVinculada {
   nombreCompleto: string;
   domicilio: string;
   email: string;
+  telefono: string;
   autocompletado: boolean;
+  // Sólo se piden y validan para garantes (Onboarding §8): deben demostrar capacidad de
+  // pago para firmar la documentación del préstamo.
+  condicionLaboral: string;
+  ingresoBruto: number;
+  ingresoNeto: number;
+  reciboSueldo: ArchivoLegajo[];
 }
 
 export interface ArchivoLegajo {

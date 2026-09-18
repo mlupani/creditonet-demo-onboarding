@@ -1,0 +1,182 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja del analista" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja del analista
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e34]: Liquidación
+            - generic [ref=e35]: Pronto
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - generic [ref=e42]: Clientes
+            - generic [ref=e43]: Pronto
+          - generic [ref=e45]:
+            - img [ref=e46]
+            - generic [ref=e48]: Créditos
+            - generic [ref=e49]: Pronto
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e55]: Motor de riesgo
+            - generic [ref=e56]: Pronto
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Reportes
+            - generic [ref=e63]: Pronto
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Parámetros
+            - generic [ref=e70]: Pronto
+        - generic [ref=e71]:
+          - button "Reiniciar demo" [ref=e72]
+          - paragraph [ref=e73]: Demo interactiva · v0.3
+    - generic [ref=e74]:
+      - banner [ref=e75]:
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: Solicitar crédito
+            - paragraph [ref=e79]: CreditoNet · Casa Central
+          - generic [ref=e80]: Demo
+          - button "Notificaciones" [ref=e84]:
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - generic [ref=e90]: JP
+            - generic [ref=e91]:
+              - paragraph [ref=e92]: Juan Pérez
+              - paragraph [ref=e93]: Canal de venta · CreditoNet
+      - main [ref=e94]:
+        - generic [ref=e111]:
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - paragraph [ref=e115]: Solicitar crédito · Originación
+                - heading "Datos del cliente" [level=1] [ref=e377]
+                - generic [ref=e117]:
+                  - img [ref=e118]
+                  - generic [ref=e121]: Alejandro Vargas · DNI 20.666.666 · ID de Cliente 001205 · Préstamo personal · Empleados de salud
+              - generic [ref=e122]:
+                - paragraph [ref=e123]: Paso 3 de 6
+                - paragraph [ref=e124]: Etapa 1 de 2
+            - list [ref=e128]:
+              - listitem [ref=e129]:
+                - button "Identificación" [ref=e327] [cursor=pointer]:
+                  - img [ref=e328]
+                  - generic [ref=e132]: Identificación
+              - listitem [ref=e134]:
+                - button "Producto y organismo" [ref=e378] [cursor=pointer]:
+                  - img [ref=e379]
+                  - generic [ref=e137]: Producto y organismo
+              - listitem [ref=e139]:
+                - button "3 Datos del cliente" [disabled] [ref=e140]:
+                  - generic [ref=e141]: "3"
+                  - generic [ref=e142]: Datos del cliente
+              - listitem [ref=e144]:
+                - button "4 Datos laborales" [disabled] [ref=e145]:
+                  - generic [ref=e146]: "4"
+                  - generic [ref=e147]: Datos laborales
+              - listitem [ref=e149]:
+                - button "5 Evaluación" [disabled] [ref=e150]:
+                  - generic [ref=e151]: "5"
+                  - generic [ref=e152]: Evaluación
+              - listitem [ref=e154]:
+                - button "6 Oferta" [disabled] [ref=e155]:
+                  - generic [ref=e156]: "6"
+                  - generic [ref=e157]: Oferta
+          - generic [ref=e381]:
+            - generic [ref=e382]:
+              - generic [ref=e383]:
+                - generic [ref=e384]:
+                  - generic [ref=e385]:
+                    - img [ref=e387]
+                    - generic [ref=e391]:
+                      - heading "Alejandro Vargas" [level=2] [ref=e392]
+                      - paragraph [ref=e393]: DNI 20.666.666 · CUIL 27-20666666-0
+                  - generic [ref=e394]:
+                    - paragraph [ref=e395]: Producto · Organismo
+                    - paragraph [ref=e396]: Préstamo personal · Empleados de salud
+                - generic [ref=e398]:
+                  - generic [ref=e399]:
+                    - generic [ref=e400]: Nombre
+                    - textbox "Nombre" [ref=e401]: Alejandro
+                  - generic [ref=e402]:
+                    - generic [ref=e403]: Apellido
+                    - textbox "Apellido" [ref=e404]: Vargas
+                  - generic [ref=e405]:
+                    - generic [ref=e406]: Fecha de nacimiento
+                    - textbox "Fecha de nacimiento" [ref=e407]: 22/07/1985
+                  - generic [ref=e408]:
+                    - generic [ref=e409]: Género
+                    - combobox "Género" [ref=e410]:
+                      - option "Femenino"
+                      - option "Masculino" [selected]
+                      - option "No binario"
+                  - generic [ref=e412]:
+                    - generic [ref=e413]: Domicilio
+                    - textbox "Domicilio" [ref=e414]: España 750, Centro, Córdoba
+                  - generic [ref=e415]:
+                    - generic [ref=e416]: Localidad
+                    - textbox "Localidad" [ref=e417]: Córdoba
+                  - generic [ref=e418]:
+                    - generic [ref=e419]: Teléfono
+                    - textbox "Teléfono" [ref=e420]: 351 5555666
+                  - generic [ref=e421]:
+                    - generic [ref=e422]: Email
+                    - textbox "Email" [ref=e423]: alejandro.vargas@email.com
+              - generic [ref=e424]:
+                - generic [ref=e426]:
+                  - img [ref=e428]
+                  - generic [ref=e431]:
+                    - heading "Verificación presencial" [level=2] [ref=e432]
+                    - paragraph [ref=e433]: Compará la foto archivada con la persona presente y validá su identidad.
+                - generic [ref=e434]:
+                  - generic [ref=e435]:
+                    - generic [ref=e436]:
+                      - img "Foto archivada" [ref=e438]
+                      - paragraph [ref=e439]: Foto archivada · 12/03/2022
+                    - generic [ref=e440]:
+                      - generic [ref=e441]:
+                        - generic [ref=e442]: AV
+                        - generic [ref=e443]: En vivo
+                      - paragraph [ref=e445]: Persona presente
+                  - generic [ref=e446]:
+                    - button "Subir foto" [ref=e447]:
+                      - img [ref=e448]
+                      - text: Subir foto
+                    - button "Capturar imagen" [ref=e451]:
+                      - img [ref=e452]
+                      - text: Capturar imagen
+                  - button "Identidad verificada" [ref=e455]:
+                    - img [ref=e456]
+                    - text: Identidad verificada
+            - generic [ref=e460]:
+              - button "Anular crédito" [ref=e461]
+              - status [ref=e463]:
+                - img [ref=e465]
+                - generic [ref=e468]: Verificá la identidad comparando la foto archivada con la persona presente.
+              - button "Continuar" [disabled] [ref=e469]:
+                - text: Continuar
+                - img [ref=e470]
+  - button "Open Next.js Dev Tools" [ref=e222] [cursor=pointer]:
+    - img [ref=e223]
+  - alert [ref=e226]
