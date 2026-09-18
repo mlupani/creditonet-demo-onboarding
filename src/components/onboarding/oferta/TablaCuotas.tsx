@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { getPlan } from "@/lib/config";
 import { OFFER_TERMS, calcularCuota } from "@/lib/credit";
+import type { Plazo } from "@/lib/types";
 import { formatARS, formatPct } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
@@ -68,6 +69,19 @@ export function TablaCuotas({
 
   function desplazar(direccion: 1 | -1) {
     scrollRef.current?.scrollBy({ left: direccion * 240, behavior: "smooth" });
+  }
+
+  // Al elegir un plazo desde el modal "Ver todas", el carousel puede tener esa opción
+  // fuera de vista: se cierra el modal y se scrollea hasta ella para que quede visible.
+  function seleccionarDesdePlazo(plazo: Plazo) {
+    patchOferta({ plazo });
+    onSeleccion?.();
+    setShowAllPlazos(false);
+    requestAnimationFrame(() => {
+      scrollRef.current
+        ?.querySelector<HTMLElement>(`[data-plazo="${plazo}"]`)
+        ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    });
   }
 
   return (
@@ -155,6 +169,7 @@ export function TablaCuotas({
                 <button
                   key={term.plazo}
                   type="button"
+                  data-plazo={term.plazo}
                   onClick={() => {
                     patchOferta({ plazo: term.plazo });
                     onSeleccion?.();
@@ -224,11 +239,7 @@ export function TablaCuotas({
                 return (
                   <tr
                     key={term.plazo}
-                    onClick={() => {
-                      patchOferta({ plazo: term.plazo });
-                      onSeleccion?.();
-                      setShowAllPlazos(false);
-                    }}
+                    onClick={() => seleccionarDesdePlazo(term.plazo)}
                     className={`cursor-pointer hover:bg-brand-50/60 ${seleccionada ? "bg-brand-50" : ""}`}
                   >
                     <td className="px-4 py-3 text-brand-600">
