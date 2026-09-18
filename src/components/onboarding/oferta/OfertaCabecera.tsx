@@ -46,7 +46,7 @@ export function CapitalMaximoSticky() {
   if (!app.cliente) return null;
 
   return (
-    <div className="overflow-hidden rounded-2xl shadow-card lg:sticky lg:top-16 lg:z-30">
+    <div className="overflow-hidden rounded-2xl shadow-card lg:sticky lg:top-[calc(4rem_+_var(--wizard-header-h,0px))] lg:z-30">
       <div className="bg-gradient-to-br from-brand-600 to-brand-800 px-5 py-6 text-center sm:py-7">
         <p className="text-sm font-medium text-brand-100">
           {hayPrecancelacion(app.oferta) ? "Nueva oferta" : "Primera oferta"} · Capital máximo

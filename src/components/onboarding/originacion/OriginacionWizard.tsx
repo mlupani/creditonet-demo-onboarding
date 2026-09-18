@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
 import { laboralCompleto } from "@/lib/validation";
@@ -91,12 +91,27 @@ export function OriginacionWizard() {
   const progreso = Math.round(((avance - 1) / (total - 1)) * 100);
   const [resumenAbierto, setResumenAbierto] = useState(false);
   const [anularAbierto, setAnularAbierto] = useState(false);
+  const headerRef = useRef<HTMLDivElement | null>(null);
 
   // El cambio de paso no navega: sin esto la página queda scrolleada donde estaba el paso
   // anterior (ej. al pasar de Evaluación, que es larga, a Oferta).
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [pasoActual]);
+
+  // Este header también es sticky (top-16) y su alto varía con el contenido (badge de
+  // contexto que wrappea, banner de "podés retomar"). Los sticky de más abajo (capital
+  // máximo y resumen de la oferta) necesitan ese alto para no quedar tapados por este.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const actualizar = () =>
+      document.documentElement.style.setProperty("--wizard-header-h", `${el.offsetHeight}px`);
+    actualizar();
+    const ro = new ResizeObserver(actualizar);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   function continuar() {
     if (!g.ok) return;
@@ -137,7 +152,10 @@ export function OriginacionWizard() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8">
-      <div className="animate-fade-in sticky top-16 z-20 -mx-4 border-b border-ink-200/70 bg-ink-50 px-4 pb-4 pt-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div
+        ref={headerRef}
+        className="animate-fade-in sticky top-16 z-20 -mx-4 border-b border-ink-200/70 bg-ink-50 px-4 pb-4 pt-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-brand-600">

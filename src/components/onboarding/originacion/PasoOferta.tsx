@@ -81,72 +81,74 @@ export function PasoOferta() {
               : null;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
-      <div className="flex flex-col gap-5">
-        <OfertaCabecera />
-        <CapitalMaximoSticky />
-        <MontoSolicitado
-          borrador={borrador}
-          onBorrador={(v) => {
-            setBorrador(v);
-            setRecalculado(false);
-          }}
-          onRecalcular={recalcular}
-          recalculado={recalculado}
-        />
-        <TablaCuotas
-          pendiente={plazoPendiente}
-          onSeleccion={() => setPlazoPendiente(false)}
-        />
-        <div className="pt-2">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-600">
-            <IconRefresh width={12} height={12} />
-            Opcional · sobre la primera oferta
-          </p>
-          <h2 className="mt-0.5 text-base font-bold tracking-tight text-ink-900">
-            ¿Desea precancelar créditos?
-          </h2>
-          <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-ink-500">
-            Si el cliente cancela créditos propios o deudas con terceros se modifica el monto y se
-            recalcula una nueva oferta, que vuelve a respetar todos los límites.
-          </p>
-        </div>
-        <CreditosActivos reevaluandoId={reevaluandoId} onToggle={toggleRenovacion} />
-        <DeudaTerceros />
-
-        <Card className="p-4 sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Button variant="ghost" onClick={() => setPaso(paso - 1)} className="sm:w-auto">
-              <IconArrowLeft width={16} height={16} />
-              Atrás
-            </Button>
-            <div className="min-w-0 flex-1 sm:mx-4">
-              {razon && (
-                <ValidationMessage tipo="warning" className="!mt-0 justify-start">
-                  {razon}
-                </ValidationMessage>
-              )}
-            </div>
-            <Button
-              size="lg"
-              variant="success"
-              disabled={razon !== null}
-              onClick={() => setModal(true)}
-              className="sm:w-auto"
-            >
-              Aceptar oferta
-              <IconArrowRight width={16} height={16} />
-            </Button>
+    <div className="flex flex-col gap-5">
+      <OfertaCabecera />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <div className="flex flex-col gap-5">
+          <CapitalMaximoSticky />
+          <MontoSolicitado
+            borrador={borrador}
+            onBorrador={(v) => {
+              setBorrador(v);
+              setRecalculado(false);
+            }}
+            onRecalcular={recalcular}
+            recalculado={recalculado}
+          />
+          <TablaCuotas
+            pendiente={plazoPendiente}
+            onSeleccion={() => setPlazoPendiente(false)}
+          />
+          <div className="pt-2">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-600">
+              <IconRefresh width={12} height={12} />
+              Opcional · sobre la primera oferta
+            </p>
+            <h2 className="mt-0.5 text-base font-bold tracking-tight text-ink-900">
+              ¿Desea precancelar créditos?
+            </h2>
+            <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-ink-500">
+              Si el cliente cancela créditos propios o deudas con terceros se modifica el monto y se
+              recalcula una nueva oferta, que vuelve a respetar todos los límites.
+            </p>
           </div>
-          <p className="mt-3 border-t border-ink-100 pt-3 text-[11px] text-ink-400">
-            Al aceptar se confirma la oferta y se habilita la carga post-oferta.
-          </p>
-        </Card>
-      </div>
+          <CreditosActivos reevaluandoId={reevaluandoId} onToggle={toggleRenovacion} />
+          <DeudaTerceros />
 
-      <aside className="space-y-4 lg:sticky lg:top-16 lg:z-30 lg:self-start">
-        <ComposicionCredito />
-      </aside>
+          <Card className="p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button variant="ghost" onClick={() => setPaso(paso - 1)} className="sm:w-auto">
+                <IconArrowLeft width={16} height={16} />
+                Atrás
+              </Button>
+              <div className="min-w-0 flex-1 sm:mx-4">
+                {razon && (
+                  <ValidationMessage tipo="warning" className="!mt-0 justify-start">
+                    {razon}
+                  </ValidationMessage>
+                )}
+              </div>
+              <Button
+                size="lg"
+                variant="success"
+                disabled={razon !== null}
+                onClick={() => setModal(true)}
+                className="sm:w-auto"
+              >
+                Aceptar oferta
+                <IconArrowRight width={16} height={16} />
+              </Button>
+            </div>
+            <p className="mt-3 border-t border-ink-100 pt-3 text-[11px] text-ink-400">
+              Al aceptar se confirma la oferta y se habilita la carga post-oferta.
+            </p>
+          </Card>
+        </div>
+
+        <aside className="space-y-4 lg:sticky lg:top-[calc(4rem_+_var(--wizard-header-h,0px))] lg:z-30 lg:self-start">
+          <ComposicionCredito />
+        </aside>
+      </div>
 
       <ConfirmarOfertaModal
         open={modal}
