@@ -40,13 +40,27 @@ import {
   CAPITAL_MAXIMO_BASE,
   CAPITAL_MAXIMO_CON_PRECANCELACION,
   calcularLimites,
+  conMoraCancelada,
   recalcularOferta,
 } from "./credit";
 import { reglaBloquea } from "./motores";
 import { institucionalesBloquean } from "./reglas-institucionales";
 import { aplicarCambioCampo, type PantallaConCampos } from "./campos-post-oferta";
 import { fechaHoy, onlyDigits, selloTiempo } from "./format";
+import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
+import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_SUPERVISOR } from "./config";
+import { hidratarProductos } from "./productos";
+import { hidratarPlanes } from "./planes";
+import { hidratarOrganismos } from "./organismos";
+
+// Plazo de la oferta dentro de la grilla del plan; si el plan no lo tiene, el primero de la grilla.
+function plazoValido(planId: string | null, plazo: Plazo): Plazo {
+  const grilla = planId ? PLANES_CUOTAS[planId]?.grilla : undefined;
+  return grilla && grilla.length > 0 && !grilla.some((f) => f.plazo === plazo)
+    ? grilla[0].plazo
+    : plazo;
+}
 
 // Simula el emisor que devolvería la API de tokenización a partir de un identificador estable.
 function emisorMock(semilla: string): string {
@@ -55,7 +69,7 @@ function emisorMock(semilla: string): string {
   return BANCOS[hash % BANCOS.length];
 }
 
-const STORAGE_KEY = "creditonet.demo.v12";
+const STORAGE_KEY = "creditonet.demo.v18";
 
 // Referencias y garantes comparten estructura (Onboarding §7–§8).
 function conPersonas(
@@ -118,9 +132,14 @@ interface ApplicationContextValue {
   patchCliente: (patch: Partial<ClienteDatos>) => void;
   patchLaboral: (patch: Partial<LaboralIngresos>) => void;
   verificarIdentidad: () => void;
+  registrarFirma: (imagen: string) => void;
+  borrarFirma: () => void;
   solicitar: () => void;
   finalizarRiesgo: (resultado: ResultadoEvaluacion) => void;
-  cambiarOferta: (cambio: CambioOferta) => void;
+  // Cambio de oferta del analista: requiere refrendación del supervisor para regir.
+  proponerCambioOferta: (cambio: CambioOferta) => void;
+  refrendarCambioOferta: () => void;
+  rechazarCambioOferta: () => void;
 
   patchOferta: (patch: Partial<Oferta>) => void;
   togglePrecancelar: (id: string) => void;
@@ -156,9 +175,13 @@ interface ApplicationContextValue {
   finalizarCarga: () => void;
 
   tomarAnalisis: () => void;
-  observarCredito: (motivo: string, nota: string, pantalla: PantallaPostOfertaId | null) => void;
+  observarCredito: (motivo: string, nota: string, pantallas: PantallaPostOfertaId[]) => void;
   anularCredito: (nota: string) => void;
+  agregarComentario: (texto: string, autor?: string) => void;
+  soltarAnalisis: () => void;
   retomarObservada: () => void;
+  guardarCorreccion: (pantalla: PantallaPostOfertaId) => void;
+  reabrirCorreccion: (pantalla: PantallaPostOfertaId) => void;
   rechazarCredito: (codigo: string, motivo: string, observacion: string) => void;
   aprobarCredito: () => void;
 
@@ -184,6 +207,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const t = window.setTimeout(() => {
+      // La configuración de los productos (ABM) se hidrata antes que la solicitud: el flujo
+      // sólo se muestra cuando `hidratado` es true, así que nunca lee valores desactualizados.
+      hidratarProductos();
+      hidratarPlanes();
+      hidratarOrganismos();
       try {
         const raw = sessionStorage.getItem(STORAGE_KEY);
         if (raw) {
@@ -258,13 +286,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const docBuscar = doc ?? prev.identificacion.documento;
       const caso = obtenerCasoPorDocumento(docBuscar);
 
-      const baseCreditos = caso.creditosActivos.map((c) => ({ ...c }));
+      // Los créditos en mora entran solos en la renovación desde la primera oferta.
+      const baseCreditos = conMoraCancelada(caso.creditosActivos.map((c) => ({ ...c })));
       const tienePrecancelacion = baseCreditos.some((c) => c.precancelar);
       const capMax = tienePrecancelacion
         ? CAPITAL_MAXIMO_CON_PRECANCELACION
         : CAPITAL_MAXIMO_BASE;
 
       const nuevaOferta = recalcularOferta({
+        planId: null,
         capitalMaximoBase: CAPITAL_MAXIMO_BASE,
         capitalMaximoRenovacion: CAPITAL_MAXIMO_CON_PRECANCELACION,
         capitalMaximoActual: capMax,
@@ -290,6 +320,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           documento: caso.datos.dni,
           consultado: true,
           tipoCliente: caso.tipoCliente,
+          firmaRegistrada: null,
         },
         laboral: { ...caso.laboral },
         oferta: nuevaOferta,
@@ -317,6 +348,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const patchLaboral = useCallback((patch: Partial<LaboralIngresos>) => {
     setApp((prev) => ({ ...prev, laboral: { ...prev.laboral, ...patch } }));
+  }, []);
+
+  // Registro de firma del cliente nuevo (referencia para comparar la firma física del legajo).
+  const registrarFirma = useCallback((imagen: string) => {
+    setApp((prev) => ({
+      ...prev,
+      identificacion: { ...prev.identificacion, firmaRegistrada: { imagen, fecha: selloTiempo() } },
+    }));
+  }, []);
+
+  const borrarFirma = useCallback(() => {
+    setApp((prev) => ({
+      ...prev,
+      identificacion: { ...prev.identificacion, firmaRegistrada: null },
+    }));
   }, []);
 
   const verificarIdentidad = useCallback(() => {
@@ -383,6 +429,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ? prev.oferta
             : recalcularOferta({
                 ...prev.oferta,
+                // La oferta se arma con la grilla y el sistema del plan elegido; si el plazo
+                // que traía no existe en su grilla, se pasa al primero.
+                planId: ev.planId,
+                plazo: plazoValido(ev.planId, prev.oferta.plazo),
                 capitalMaximoBase: ev.limites.capitalConsiderado,
                 capitalMaximoRenovacion: ev.limites.capitalConsiderado,
                 montoSolicitado: ev.limites.capitalConsiderado,
@@ -417,32 +467,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * recalcula sola. El crédito vuelve al vendedor en estado Observado con el nuevo importe:
    * "el analista dice un millón, se lo devuelve al pedido; va al vendedor, me viene observado".
    */
-  const cambiarOferta = useCallback((cambio: CambioOferta) => {
+  // El cambio no rige al proponerlo: queda pendiente hasta que lo refrende el supervisor.
+  const proponerCambioOferta = useCallback((cambio: CambioOferta) => {
     setApp((prev) => ({
       ...prev,
-      estado: "OBSERVADO",
-      laboral: {
-        ...prev.laboral,
-        ingresoBruto: cambio.ingresoBruto,
-        ingresoNeto: cambio.ingresoNeto,
-      },
-      oferta: recalcularOferta({
-        ...prev.oferta,
-        montoSolicitado: cambio.montoSolicitado,
-        plazo: cambio.plazo,
-        aceptada: false,
-      }),
       analista: {
         ...prev.analista,
-        tomado: false,
-        reenviada: false,
-        observacion: {
-          motivo: "Cambio de oferta del analista",
+        cambioOfertaPendiente: {
+          montoSolicitado: cambio.montoSolicitado,
+          plazo: cambio.plazo,
+          ingresoBruto: cambio.ingresoBruto,
+          ingresoNeto: cambio.ingresoNeto,
           nota: cambio.nota,
-          fecha: fechaHoy(),
-          pantalla: null,
+          fecha: selloTiempo(),
+          solicitadoPor: SESION_ANALISTA.nombre,
         },
       },
+    }));
+  }, []);
+
+  const refrendarCambioOferta = useCallback(() => {
+    setApp((prev) => {
+      const cambio = prev.analista.cambioOfertaPendiente;
+      if (!cambio) return prev;
+      return {
+        ...prev,
+        estado: "OBSERVADO",
+        laboral: {
+          ...prev.laboral,
+          ingresoBruto: cambio.ingresoBruto,
+          ingresoNeto: cambio.ingresoNeto,
+        },
+        oferta: recalcularOferta({
+          ...prev.oferta,
+          montoSolicitado: cambio.montoSolicitado,
+          plazo: cambio.plazo,
+          aceptada: false,
+        }),
+        analista: {
+          ...prev.analista,
+          tomado: false,
+          reenviada: false,
+          pantallasCorregidas: [],
+          cambioOfertaPendiente: null,
+          observacion: {
+            motivo: "Cambio de oferta del analista",
+            nota: `${cambio.nota} (refrendado por ${SESION_SUPERVISOR.nombre})`,
+            fecha: fechaHoy(),
+            pantallas: [],
+          },
+        },
+      };
+    });
+  }, []);
+
+  const rechazarCambioOferta = useCallback(() => {
+    setApp((prev) => ({
+      ...prev,
+      analista: { ...prev.analista, cambioOfertaPendiente: null },
     }));
   }, []);
 
@@ -457,7 +539,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         oferta: recalcularOferta({
           ...prev.oferta,
           creditosActivos: prev.oferta.creditosActivos.map((c) =>
-            c.id === id ? { ...c, precancelar: !c.precancelar } : c
+            // Un crédito en mora no se puede sacar de la renovación.
+            c.id === id && !c.enMora ? { ...c, precancelar: !c.precancelar } : c
           ),
         }),
       })
@@ -522,7 +605,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: `tarjeta-${Date.now()}`,
         via: "WHATSAPP",
         estado: "ESPERANDO_CLIENTE",
-        enviadoA: `${p["telefono.caracteristica"] ?? ""} ${p["telefono.numero"] ?? ""}`.trim(),
+        enviadoA: formatTelefono(p["telefono.pais"] ?? "", p["telefono.numero"] ?? ""),
         tipo: null,
         marca: null,
         nombreTitular: null,
@@ -621,7 +704,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id: `${tipo}-${Date.now()}`,
           vinculo: "",
           dni: "",
-          nombreCompleto: "",
+          nombre: "",
+          apellido: "",
           domicilio: "",
           email: "",
           telefono: "",
@@ -630,6 +714,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ingresoBruto: 0,
           ingresoNeto: 0,
           reciboSueldo: [],
+          empleadorCalle: "",
+          empleadorLocalidad: "",
+          empleadorTelefono: "",
         },
       ]),
     }));
@@ -777,7 +864,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Observar devuelve la solicitud a la bandeja del canal de venta (Guía §7.3). El analista
   // indica qué pantalla hay que corregir para que el vendedor vaya derecho ahí (01:09).
   const observarCredito = useCallback(
-    (motivo: string, nota: string, pantalla: PantallaPostOfertaId | null) => {
+    (motivo: string, nota: string, pantallas: PantallaPostOfertaId[]) => {
       setApp((prev) => ({
         ...prev,
         estado: "OBSERVADO",
@@ -785,7 +872,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev.analista,
           tomado: false,
           reenviada: false,
-          observacion: { motivo, nota, fecha: fechaHoy(), pantalla },
+          pantallasCorregidas: [],
+          cambioOfertaPendiente: null,
+          observacion: { motivo, nota, fecha: fechaHoy(), pantallas },
         },
       }));
     },
@@ -800,18 +889,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
       analista: {
         ...prev.analista,
         tomado: false,
+        cambioOfertaPendiente: null,
         observacion: {
           motivo: "Anulada",
           nota,
           fecha: fechaHoy(),
-          pantalla: null,
+          pantallas: [],
         },
       },
     }));
   }, []);
 
+  // Comentario sobre la solicitud: lo dejan tanto el canal de venta como el analista.
+  const agregarComentario = useCallback((texto: string, autor: string = SESION.nombre) => {
+    setApp((prev) => ({
+      ...prev,
+      comentarios: [
+        ...prev.comentarios,
+        { id: `comentario-${Date.now()}`, autor, texto, fecha: selloTiempo() },
+      ],
+    }));
+  }, []);
+
+  // Soltar análisis: el analista devuelve la solicitud a la bandeja para que otro la tome.
+  const soltarAnalisis = useCallback(() => {
+    setApp((prev) => ({
+      ...prev,
+      estado: "PREAPROBADO",
+      analista: { ...prev.analista, tomado: false, cambioOfertaPendiente: null },
+    }));
+  }, []);
+
   const retomarObservada = useCallback(() => {
     setApp((prev) => ({ ...prev, etapa: "POST_OFERTA" }));
+  }, []);
+
+  // Corrección puntual: el vendedor edita la pantalla observada, la guarda y recién ahí puede
+  // enviar nuevamente. Volver a editarla la deja sin guardar.
+  const guardarCorreccion = useCallback((pantalla: PantallaPostOfertaId) => {
+    setApp((prev) =>
+      prev.analista.pantallasCorregidas.includes(pantalla)
+        ? prev
+        : {
+            ...prev,
+            analista: {
+              ...prev.analista,
+              pantallasCorregidas: [...prev.analista.pantallasCorregidas, pantalla],
+            },
+          }
+    );
+  }, []);
+
+  const reabrirCorreccion = useCallback((pantalla: PantallaPostOfertaId) => {
+    setApp((prev) => ({
+      ...prev,
+      analista: {
+        ...prev.analista,
+        pantallasCorregidas: prev.analista.pantallasCorregidas.filter((p) => p !== pantalla),
+      },
+    }));
   }, []);
 
   const rechazarCredito = useCallback((codigo: string, motivo: string, observacion: string) => {
@@ -855,9 +991,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patchCliente,
       patchLaboral,
       verificarIdentidad,
+      registrarFirma,
+      borrarFirma,
       solicitar,
       finalizarRiesgo,
-      cambiarOferta,
+      proponerCambioOferta,
+      refrendarCambioOferta,
+      rechazarCambioOferta,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
@@ -882,7 +1022,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tomarAnalisis,
       observarCredito,
       anularCredito,
+      agregarComentario,
+      soltarAnalisis,
       retomarObservada,
+      guardarCorreccion,
+      reabrirCorreccion,
       rechazarCredito,
       aprobarCredito,
       reiniciarDemo,
@@ -901,9 +1045,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       patchCliente,
       patchLaboral,
       verificarIdentidad,
+      registrarFirma,
+      borrarFirma,
       solicitar,
       finalizarRiesgo,
-      cambiarOferta,
+      proponerCambioOferta,
+      refrendarCambioOferta,
+      rechazarCambioOferta,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
@@ -928,7 +1076,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tomarAnalisis,
       observarCredito,
       anularCredito,
+      agregarComentario,
+      soltarAnalisis,
       retomarObservada,
+      guardarCorreccion,
+      reabrirCorreccion,
       rechazarCredito,
       aprobarCredito,
       reiniciarDemo,

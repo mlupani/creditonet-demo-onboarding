@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
+import { TelefonoField } from "@/components/ui/TelefonoField";
 import {
   IconCheck,
   IconCheckCircle,
@@ -169,11 +170,19 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
               </div>
               <FormField
                 id={`${p.id}-nombre`}
-                label="Nombre completo"
+                label="Nombre"
                 required
-                value={p.nombreCompleto}
-                onChange={(v) => actualizarPersona(tipo, p.id, { nombreCompleto: v })}
-                error={err.nombreCompleto}
+                value={p.nombre}
+                onChange={(v) => actualizarPersona(tipo, p.id, { nombre: v })}
+                error={err.nombre}
+              />
+              <FormField
+                id={`${p.id}-apellido`}
+                label="Apellido"
+                required
+                value={p.apellido}
+                onChange={(v) => actualizarPersona(tipo, p.id, { apellido: v })}
+                error={err.apellido}
               />
               <FormField
                 id={`${p.id}-email`}
@@ -185,11 +194,10 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 onChange={(v) => actualizarPersona(tipo, p.id, { email: v })}
                 error={err.email}
               />
-              <FormField
+              <TelefonoField
                 id={`${p.id}-telefono`}
                 label="Teléfono de contacto"
                 required
-                inputMode="tel"
                 value={p.telefono}
                 onChange={(v) => actualizarPersona(tipo, p.id, { telefono: v })}
                 error={err.telefono}
@@ -236,6 +244,30 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                     value={p.ingresoNeto}
                     onChange={(v) => actualizarPersona(tipo, p.id, { ingresoNeto: v })}
                     error={err.ingresoNeto}
+                  />
+                  <FormField
+                    id={`${p.id}-empleador-calle`}
+                    label="Calle del empleador"
+                    required
+                    value={p.empleadorCalle}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { empleadorCalle: v })}
+                    error={err.empleadorCalle}
+                  />
+                  <FormField
+                    id={`${p.id}-empleador-localidad`}
+                    label="Localidad del empleador"
+                    required
+                    value={p.empleadorLocalidad}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { empleadorLocalidad: v })}
+                    error={err.empleadorLocalidad}
+                  />
+                  <TelefonoField
+                    id={`${p.id}-empleador-telefono`}
+                    label="Teléfono del empleador"
+                    required
+                    value={p.empleadorTelefono}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { empleadorTelefono: v })}
+                    error={err.empleadorTelefono}
                   />
                 </div>
 

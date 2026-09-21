@@ -1,13 +1,18 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { getPlan } from "@/lib/config";
-import { cuotasAbonadasPct, hayPrecancelacion } from "@/lib/credit";
+import { cuotasAbonadasPct, hayPrecancelacion, planDeSolicitud, seCancela } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { IconArrowRight, IconCheckCircle, IconLoader, IconRefresh } from "@/components/icons";
+import {
+  IconArrowRight,
+  IconCheckCircle,
+  IconLoader,
+  IconLock,
+  IconRefresh,
+} from "@/components/icons";
 
 // Precancelación de créditos propios sobre la primera oferta (Plan §9). Marcar o desmarcar
 // un crédito recalcula la oferta sin contabilizar ese crédito en la exposición del cliente.
@@ -20,11 +25,16 @@ export function CreditosActivos({
 }) {
   const { app } = useApplication();
   const o = app.oferta;
-  const minPct = getPlan(app.configuracion.organismoId).renovacionMinCuotasPct;
+  const minPct = planDeSolicitud(app).renovacionMinCuotasPct;
   const precancelaActiva = hayPrecancelacion(o);
   const cuotasLiberadas = o.creditosActivos
-    .filter((c) => c.precancelar)
+    .filter(seCancela)
     .reduce((s, c) => s + c.valorCuota, 0);
+  // Los créditos en mora van primero: son los que se cancelan sí o sí.
+  const creditos = [...o.creditosActivos].sort(
+    (a, b) => Number(b.enMora === true) - Number(a.enMora === true)
+  );
+  const enMora = creditos.filter((c) => c.enMora);
 
   return (
     <Card>
@@ -34,12 +44,26 @@ export function CreditosActivos({
         icon={<IconRefresh width={18} height={18} />}
       />
       <div className="space-y-4 p-5 sm:p-6">
-        {o.creditosActivos.length === 0 ? (
+        {enMora.length > 0 && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-danger-200 bg-danger-50 px-4 py-3 text-xs text-danger-700">
+            <IconLock width={15} height={15} className="mt-0.5 shrink-0" />
+            <p>
+              <strong className="font-semibold">
+                {enMora.length === 1 ? "Hay un crédito en mora" : `Hay ${enMora.length} créditos en mora`}
+                :
+              </strong>{" "}
+              {enMora.map((c) => c.id).join(", ")}. Se cancela{enMora.length === 1 ? "" : "n"} de
+              forma obligatoria y ya {enMora.length === 1 ? "está incluido" : "están incluidos"} en
+              la renovación: no se puede quitar.
+            </p>
+          </div>
+        )}
+        {creditos.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ink-200 bg-ink-25 p-4 text-center text-xs text-ink-500">
             El cliente no posee créditos propios vigentes en la entidad para renovar o precancelar.
           </div>
         ) : (
-          o.creditosActivos.map((c) => {
+          creditos.map((c) => {
             const pct = cuotasAbonadasPct(c);
           // En mora la cancelación es obligatoria: se habilita para marcar sin importar
           // el mínimo de cuotas abonadas que aplica a una renovación voluntaria.
@@ -65,8 +89,9 @@ export function CreditosActivos({
 
               {c.enMora && (
                 <p className="mt-2 rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-xs font-medium text-danger-700">
-                  Este crédito tiene atraso registrado en el buró interno. Para poder aceptar la
-                  oferta es obligatorio marcarlo para cancelación.
+                  Este crédito tiene atraso registrado en el buró interno. Se cancela de forma
+                  obligatoria: queda incluido automáticamente en la renovación y no se puede
+                  quitar.
                 </p>
               )}
 
@@ -132,15 +157,19 @@ export function CreditosActivos({
 
               <div className="mt-3.5 border-t border-ink-100 pt-3.5">
                 <Checkbox
-                  checked={c.precancelar}
+                  checked={seCancela(c)}
                   onChange={() => onToggle(c.id)}
-                  disabled={!elegible || reevaluandoId !== null}
+                  disabled={!elegible || reevaluandoId !== null || c.enMora === true}
                   label={
                     c.enMora
                       ? "Cancelar este crédito (obligatorio)"
                       : "Renovar / precancelar este crédito"
                   }
-                  description="El saldo a cancelar se descuenta de la acreditación neta."
+                  description={
+                    c.enMora
+                      ? "Incluido automáticamente en la renovación. El saldo a cancelar se descuenta de la acreditación neta."
+                      : "El saldo a cancelar se descuenta de la acreditación neta."
+                  }
                 />
               </div>
 

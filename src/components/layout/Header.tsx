@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import { NOTIFICACIONES } from "@/lib/mocks";
-import { SESION, SESION_ANALISTA } from "@/lib/config";
+import { SESION, SESION_ANALISTA, SESION_PARAMETROS } from "@/lib/config";
 import {
   IconAlertTriangle,
   IconBell,
@@ -18,6 +18,9 @@ function tituloRuta(pathname: string) {
   if (pathname.startsWith("/onboarding")) return "Solicitar crédito";
   if (pathname.startsWith("/analisis")) return "Bandeja del analista de riesgo";
   if (pathname.startsWith("/graph")) return "Diagrama de flujo · Onboarding";
+  if (pathname.startsWith("/productos")) return "Parámetros · Productos";
+  if (pathname.startsWith("/organismos")) return "Parámetros · Organismos";
+  if (pathname.startsWith("/planes")) return "Parámetros · Planes de cuotas";
   return "CreditoNet";
 }
 
@@ -98,7 +101,13 @@ export function Header() {
   const { menuAbierto, setMenuAbierto } = useApplication();
   const pathname = usePathname();
   // El usuario mostrado cambia según la bandeja (roles de la Guía §1).
-  const usuario = pathname.startsWith("/analisis") ? SESION_ANALISTA : SESION;
+  const usuario = pathname.startsWith("/analisis")
+    ? SESION_ANALISTA
+    : pathname.startsWith("/productos") ||
+        pathname.startsWith("/organismos") ||
+        pathname.startsWith("/planes")
+      ? SESION_PARAMETROS
+      : SESION;
   return (
     <header className="sticky top-0 z-30 border-b border-ink-200 bg-white/85 backdrop-blur">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">

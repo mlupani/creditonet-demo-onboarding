@@ -9,7 +9,15 @@ import type {
   ResultadoLimites,
   RiskResultado,
 } from "./types";
-import { configEfectiva, getPlan, type PlanCuotas } from "./config";
+import {
+  GRILLA_BASE,
+  PLANES_CUOTAS,
+  configEfectiva,
+  planesDelOrganismo,
+  type FilaGrilla,
+  type PlanCuotas,
+  type SistemaAmortizacion,
+} from "./config";
 import { formatARS } from "./format";
 
 // --- Parámetros de la oferta (Configuración DEMO / Regla simulada) ---
@@ -25,57 +33,97 @@ export const LIMITE_SUELDOS_BRUTOS = 3;
 // plan emite un capital máximo mayor.
 export const CAPITAL_MAXIMO_CON_PRECANCELACION = 2_850_000;
 
-export interface OfferTerm {
-  plazo: Plazo;
-  tna: number;
-  recomendada: boolean;
-  // Regla simulada: el formato/fecha de la primera cuota es una decisión pendiente.
-  primeraCuota: string;
+// Fila de la grilla de tasas. Cada plan tiene la suya; ésta es la grilla base, que se usa
+// mientras la solicitud todavía no tiene plan (antes de la evaluación).
+export type OfferTerm = FilaGrilla;
+
+export const OFFER_TERMS: OfferTerm[] = GRILLA_BASE;
+
+// Grilla de un plan (o la base, si no hay plan).
+export function grillaDe(plan?: PlanCuotas | null): OfferTerm[] {
+  return plan && plan.grilla.length > 0 ? plan.grilla : OFFER_TERMS;
 }
 
-export const OFFER_TERMS: OfferTerm[] = [
-  { plazo: 12, tna: 58, recomendada: true, primeraCuota: "10/10/2026" },
-  { plazo: 18, tna: 63, recomendada: false, primeraCuota: "25/10/2026" },
-  { plazo: 24, tna: 67, recomendada: false, primeraCuota: "10/11/2026" },
-  { plazo: 36, tna: 72, recomendada: false, primeraCuota: "10/11/2026" },
-  { plazo: 48, tna: 75, recomendada: false, primeraCuota: "10/12/2026" },
-  { plazo: 60, tna: 78, recomendada: false, primeraCuota: "10/12/2026" },
-  { plazo: 72, tna: 81, recomendada: false, primeraCuota: "10/01/2027" },
-  { plazo: 84, tna: 84, recomendada: false, primeraCuota: "10/01/2027" },
-  { plazo: 96, tna: 87, recomendada: false, primeraCuota: "10/02/2027" },
-  { plazo: 120, tna: 90, recomendada: false, primeraCuota: "10/02/2027" },
-];
-
-export function getTerm(plazo: Plazo): OfferTerm {
-  return OFFER_TERMS.find((t) => t.plazo === plazo) ?? OFFER_TERMS[0];
+export function getTerm(plazo: Plazo, plan?: PlanCuotas | null): OfferTerm {
+  const grilla = grillaDe(plan);
+  return grilla.find((t) => t.plazo === plazo) ?? grilla[0];
 }
 
-// Sistema francés, cuota fija. Se redondea a $100.
-export function calcularCuota(monto: number, plazo: number, tna: number): number {
+// Plan de la solicitud: el que resultó de la evaluación (el primero, por prioridad, que
+// habilita al cliente). Antes de evaluar, el primero del organismo como referencia.
+export function planDeSolicitud(app: CreditApplication): PlanCuotas {
+  const evaluado = app.riesgo.planId ? PLANES_CUOTAS[app.riesgo.planId] : undefined;
+  return (
+    evaluado ?? planesDelOrganismo(app.configuracion.organismoId)[0] ?? Object.values(PLANES_CUOTAS)[0]
+  );
+}
+
+// Cuota mensual según el sistema de amortización del plan. Se redondea a $100.
+// Francés: cuota fija. Americano: sólo interés y el capital se devuelve al final. Tasa directa:
+// el interés se calcula sobre el capital original durante todo el plazo.
+export function calcularCuota(
+  monto: number,
+  plazo: number,
+  tna: number,
+  sistema: SistemaAmortizacion = "FRANCES"
+): number {
   if (monto <= 0 || plazo <= 0) return 0;
   const i = tna / 100 / 12;
-  const factor = Math.pow(1 + i, plazo);
-  const cuota = (monto * i * factor) / (factor - 1);
+  let cuota: number;
+  if (sistema === "AMERICANO") cuota = monto * i;
+  else if (sistema === "TASA_DIRECTA") cuota = (monto * (1 + (tna / 100) * (plazo / 12))) / plazo;
+  else {
+    const factor = Math.pow(1 + i, plazo);
+    cuota = (monto * i * factor) / (factor - 1);
+  }
   return Math.round(cuota / 100) * 100;
 }
 
+// Total a pagar: en el sistema americano la última cuota incluye el capital.
+export function totalAPagarDe(
+  monto: number,
+  plazo: number,
+  cuota: number,
+  sistema: SistemaAmortizacion = "FRANCES"
+): number {
+  return sistema === "AMERICANO" ? cuota * plazo + monto : cuota * plazo;
+}
+
 // Inversa de la anterior: qué capital soporta una cuota máxima. Se trunca a $10.000.
-export function capitalDesdeCuota(cuota: number, plazo: number, tna: number): number {
+export function capitalDesdeCuota(
+  cuota: number,
+  plazo: number,
+  tna: number,
+  sistema: SistemaAmortizacion = "FRANCES"
+): number {
   if (cuota <= 0 || plazo <= 0) return 0;
   const i = tna / 100 / 12;
-  const factor = Math.pow(1 + i, plazo);
-  const capital = (cuota * (factor - 1)) / (i * factor);
+  let capital: number;
+  if (sistema === "AMERICANO") capital = cuota / i;
+  else if (sistema === "TASA_DIRECTA") capital = (cuota * plazo) / (1 + (tna / 100) * (plazo / 12));
+  else {
+    const factor = Math.pow(1 + i, plazo);
+    capital = (cuota * (factor - 1)) / (i * factor);
+  }
   return Math.floor(capital / 10_000) * 10_000;
 }
 
+// Un crédito en mora se cancela siempre: entra solo en la renovación y no se puede quitar.
+export function seCancela(c: CreditoActivo): boolean {
+  return c.precancelar || c.enMora === true;
+}
+
+// Deja marcados para cancelar los créditos en mora.
+export function conMoraCancelada(creditos: CreditoActivo[]): CreditoActivo[] {
+  return creditos.map((c) => (c.enMora && !c.precancelar ? { ...c, precancelar: true } : c));
+}
+
 export function hayPrecancelacion(oferta: Oferta): boolean {
-  return oferta.creditosActivos.some((c) => c.precancelar);
+  return oferta.creditosActivos.some(seCancela);
 }
 
 export function totalPrecancelaciones(oferta: Oferta): number {
-  return oferta.creditosActivos
-    .filter((c) => c.precancelar)
-    .reduce((s, c) => s + c.montoCancelacion, 0);
+  return oferta.creditosActivos.filter(seCancela).reduce((s, c) => s + c.montoCancelacion, 0);
 }
 
 export function importeTerceros(oferta: Oferta): number {
@@ -101,18 +149,21 @@ export function cuotasAbonadasPct(c: CreditoActivo): number {
 }
 
 // Recalcula todos los derivados de la oferta a partir de sus entradas.
-export function recalcularOferta(oferta: Oferta): Oferta {
-  const term = getTerm(oferta.plazo);
+export function recalcularOferta(entrada: Oferta): Oferta {
+  const oferta = { ...entrada, creditosActivos: conMoraCancelada(entrada.creditosActivos) };
+  // La TNA y el sistema salen del plan de la solicitud; sin plan, la grilla base y el francés.
+  const plan = oferta.planId ? PLANES_CUOTAS[oferta.planId] : undefined;
+  const term = getTerm(oferta.plazo, plan);
   const capitalMaximoActual = hayPrecancelacion(oferta)
     ? oferta.capitalMaximoRenovacion
     : oferta.capitalMaximoBase;
-  const valorCuota = calcularCuota(oferta.montoSolicitado, oferta.plazo, term.tna);
+  const valorCuota = calcularCuota(oferta.montoSolicitado, oferta.plazo, term.tna, plan?.sistema);
   return {
     ...oferta,
     capitalMaximoActual,
     tna: term.tna,
     valorCuota,
-    totalAPagar: valorCuota * oferta.plazo,
+    totalAPagar: totalAPagarDe(oferta.montoSolicitado, oferta.plazo, valorCuota, plan?.sistema),
     primeraCuotaVencimiento: term.primeraCuota,
   };
 }
@@ -148,18 +199,19 @@ export const RESULTADO_LABEL: Record<RiskResultado, string> = {
 
 export function calcularLimites(
   app: CreditApplication,
-  { conCancelaciones }: { conCancelaciones: boolean }
+  { conCancelaciones, plan: planElegido }: { conCancelaciones: boolean; plan?: PlanCuotas }
 ): ResultadoLimites {
   const cfg = configEfectiva(app.configuracion);
-  const plan = cfg.plan;
+  // En la primera evaluación el plan todavía no está en la solicitud: se lo pasa quien lo eligió.
+  const plan = planElegido ?? planDeSolicitud(app);
   const neto = app.laboral.ingresoNeto;
   const bruto = app.laboral.ingresoBruto;
-  const term = getTerm(app.oferta.plazo);
+  const term = getTerm(app.oferta.plazo, plan);
 
   // "Los dos palos se lo está dando sabiendo que este préstamo se va a cancelar"
   // (reunión 11/09, 44:00): la cuota de un crédito marcado para precancelar deja de pesar en
   // la exposición, así que libera capacidad y el capital máximo sube.
-  const cancelado = (c: CreditoActivo) => conCancelaciones && c.precancelar;
+  const cancelado = (c: CreditoActivo) => conCancelaciones && seCancela(c);
   const renovando = app.oferta.creditosActivos.some(cancelado);
   const cuotasVigentes = app.oferta.creditosActivos
     .filter((c) => !cancelado(c))
@@ -212,7 +264,7 @@ export function calcularLimites(
     {
       id: "producto",
       label: "Límite por producto",
-      detalle: cfg.organismo.overrides.capitalMaximo
+      detalle: cfg.overrides.capitalMaximo
         ? `${cfg.producto.nombre} · excepción del organismo`
         : cfg.producto.nombre,
       monto: cfg.capitalMaximo,
@@ -229,7 +281,7 @@ export function calcularLimites(
       id: "cuota",
       label: "Límite por cuota máxima",
       detalle: `${menorCuota.label}: ${formatARS(cuotaMaxima)} en ${app.oferta.plazo} cuotas`,
-      monto: capitalDesdeCuota(cuotaMaxima, app.oferta.plazo, term.tna),
+      monto: capitalDesdeCuota(cuotaMaxima, app.oferta.plazo, term.tna, plan.sistema),
     },
   ];
   const menor = limites.reduce((a, b) => (b.monto < a.monto ? b : a));
@@ -310,12 +362,12 @@ export interface EvaluacionPlan {
 }
 
 export function evaluarPlan(app: CreditApplication): EvaluacionPlan {
-  const plan = getPlan(app.configuracion.organismoId);
+  const plan = planDeSolicitud(app);
   const o = app.oferta;
   const neto = app.laboral.ingresoNeto;
   // Los créditos marcados para renovar no cuentan en la exposición (Guía §5.3).
   const cuotasVigentes = o.creditosActivos
-    .filter((c) => !c.precancelar)
+    .filter((c) => !seCancela(c))
     .reduce((s, c) => s + c.valorCuota, 0);
   const pct = (v: number) => (neto > 0 ? Math.round((v / neto) * 1000) / 10 : 0);
   const rciPct = pct(o.valorCuota);

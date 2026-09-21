@@ -4,7 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
 import { laboralCompleto } from "@/lib/validation";
-import { ORGANISMOS, PRODUCTOS, nombreOpcion, productoHabilitadoEnCanal } from "@/lib/config";
+import {
+  ORGANISMOS,
+  PRODUCTOS,
+  nombreOpcion,
+  organismoOfrecible,
+  productoHabilitadoEnCanal,
+  productoOfrecible,
+} from "@/lib/config";
 import { evaluarInstitucionales, institucionalesBloquean } from "@/lib/reglas-institucionales";
 import { formatDNI } from "@/lib/format";
 import type { Rechazo } from "@/lib/types";
@@ -45,7 +52,21 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
         return { ok: false, razon: "Consultá el DNI o CUIL del cliente para identificarlo." };
       return { ok: true, razon: null };
     case 2:
-      return productoHabilitadoEnCanal(app.configuracion.productoId, app.configuracion.canalId)
+      if (!productoOfrecible(app.configuracion.productoId))
+        return {
+          ok: false,
+          razon: "El producto elegido está suspendido, eliminado o fuera de vigencia: elegí otro.",
+        };
+      if (!organismoOfrecible(app.configuracion.organismoId))
+        return {
+          ok: false,
+          razon: "El organismo elegido está suspendido o eliminado: elegí otro.",
+        };
+      return productoHabilitadoEnCanal(
+        app.configuracion.productoId,
+        app.configuracion.canalId,
+        app.configuracion.organismoId
+      )
         ? { ok: true, razon: null }
         : { ok: false, razon: "El producto elegido no se ofrece en el canal de la solicitud." };
     case 3:

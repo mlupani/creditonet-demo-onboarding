@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { importeTerceros, netoAAcreditar } from "@/lib/credit";
 import { formatARS, sumarDias } from "@/lib/format";
+import { bancosDe } from "@/lib/campos-post-oferta";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -12,11 +13,12 @@ import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
 import { BandejaAnalista } from "@/components/analisis/BandejaAnalista";
 import { AnalisisCredito } from "@/components/analisis/AnalisisCredito";
+import { ListaAnalisis } from "@/components/analisis/ListaAnalisis";
 import { AprobacionModal } from "@/components/analisis/AprobacionModal";
 import {
   IconAlertTriangle,
+  IconArrowLeft,
   IconClock,
-  IconFileText,
   IconLandmark,
   IconLoader,
   IconX,
@@ -39,6 +41,8 @@ export default function AnalisisPage() {
   } = useApplication();
   const [aprobarModal, setAprobarModal] = useState(false);
   const [procesando, setProcesando] = useState(false);
+  // La bandeja abre en la lista; "Abrir" entra al detalle de la solicitud.
+  const [abierta, setAbierta] = useState(false);
 
   if (!hidratado) {
     return (
@@ -57,24 +61,36 @@ export default function AnalisisPage() {
     app.estado === "PARA_LIQUIDAR" ||
     rechazoAnalista;
 
-  if (!enBandeja || !app.cliente || !app.numeroCredito) {
+  const volver = (
+    <Button variant="ghost" size="sm" onClick={() => setAbierta(false)} className="mb-3">
+      <IconArrowLeft width={15} height={15} />
+      Volver a la bandeja de análisis
+    </Button>
+  );
+
+  if (!abierta || !enBandeja || !app.cliente || !app.numeroCredito) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
-        <Card className="animate-fade-up p-8 text-center">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-ink-100 text-ink-400">
-            <IconFileText width={22} height={22} />
-          </span>
-          <h1 className="mt-4 text-xl font-bold tracking-tight text-ink-900">
-            La bandeja del analista está vacía
-          </h1>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
-            Aparecerá una solicitud cuando el canal de venta finalice la carga post-oferta de una
-            operación preaprobada.
-          </p>
-          <div className="mt-6">
-            <Button onClick={() => router.push("/")}>Ir a la bandeja del canal de venta</Button>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
+              Analista de riesgo
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
+              Bandeja de análisis
+            </h1>
+            <p className="mt-1 text-sm text-ink-500">
+              Las solicitudes que el canal de venta termina de cargar llegan acá. Las que el motor
+              rechazó nunca llegan.
+            </p>
           </div>
-        </Card>
+          <Button variant="outline" size="sm" onClick={() => router.push("/")}>
+            Bandeja del canal de venta
+          </Button>
+        </div>
+        <div className="mt-6">
+          <ListaAnalisis onAbrir={() => setAbierta(true)} />
+        </div>
       </div>
     );
   }
@@ -112,7 +128,10 @@ export default function AnalisisPage() {
     const operaciones = [
       {
         titulo: "Transferencia neta al cliente",
-        detalle: `${app.postOferta.laboral.banco || "—"} · ${ultimos(app.postOferta.laboral.cbu ?? "")}`,
+        detalle:
+          bancosDe(app.postOferta.laboral.banco)
+            .map((b) => `${b} · ${ultimos(app.postOferta.laboral[`cbu.${b}`] ?? "")}`)
+            .join(" / ") || "—",
         monto: netoAAcreditar(o),
       },
       ...(terceros > 0
@@ -135,6 +154,7 @@ export default function AnalisisPage() {
 
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        {volver}
         <SuccessScreen
           variant="aprobado"
           numero={app.numeroCredito}
@@ -208,6 +228,7 @@ export default function AnalisisPage() {
   if (rechazoAnalista && app.rechazo) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+        {volver}
         <Card className="animate-fade-up overflow-hidden">
           <div className="bg-danger-50 px-6 py-10 text-center">
             <span className="mx-auto flex h-14 w-14 animate-pop items-center justify-center rounded-full bg-danger-600 text-white shadow-sm">
@@ -245,17 +266,17 @@ export default function AnalisisPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      {volver}
       <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
             Analista de riesgo
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
-            Bandeja del analista
+            Crédito {app.numeroCredito}
           </h1>
           <p className="mt-1 text-sm text-ink-500">
-            El analista revisa toda solicitud que el canal de venta termina de cargar. Las que el
-            motor rechazó nunca llegan acá.
+            El analista revisa toda solicitud que el canal de venta termina de cargar.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => router.push("/")}>
@@ -302,6 +323,7 @@ export default function AnalisisPage() {
             onObservar={observarCredito}
             onRechazar={rechazarCredito}
             onAprobar={() => setAprobarModal(true)}
+            onSalir={() => setAbierta(false)}
           />
         )}
       </div>

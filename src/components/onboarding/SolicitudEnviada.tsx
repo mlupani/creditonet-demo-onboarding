@@ -36,6 +36,8 @@ export function SolicitudEnviada() {
               <Banner tone="warning" title={obs.motivo}>
                 {obs.nota} Corregí antes del <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días)
                 para que no expire.
+                {obs.pantallas.length > 0 &&
+                  " Es una corrección puntual: sólo se puede editar lo observado y el resto de la carga queda bloqueada."}
               </Banner>
             )}
             <div className="flex flex-col justify-center gap-2 sm:flex-row">

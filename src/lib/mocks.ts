@@ -19,8 +19,8 @@ import {
   recalcularOferta,
 } from "./credit";
 import { configEfectiva } from "./config";
-import { camposDe } from "./campos-post-oferta";
-import { onlyDigits } from "./format";
+import { bancosDe, camposDe, unirBancos } from "./campos-post-oferta";
+import { maskCuit, onlyDigits } from "./format";
 
 // --- Datos que devuelve la consulta por DNI / CUIL (simula API pública + base interna) ---
 
@@ -81,8 +81,10 @@ export const CASO_HAPPY_PATH: CasoDemoCliente = {
     cuil: "20-20111111-3",
     genero: "Masculino",
     fechaNacimiento: "15/04/1988",
-    domicilio: "Av. Colón 2450, 4° A, Córdoba",
+    calle: "Av. Colón",
+    numero: "2450",
     localidad: "Córdoba",
+    provincia: "Córdoba",
     email: "juanignacio.gomez@gmail.com",
     telefono: "351 5432100",
   },
@@ -93,8 +95,10 @@ export const CASO_HAPPY_PATH: CasoDemoCliente = {
     cuil: "API pública",
     genero: "API pública",
     fechaNacimiento: "API pública",
-    domicilio: "API pública",
+    calle: "API pública",
+    numero: "API pública",
     localidad: "API pública",
+    provincia: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -115,7 +119,7 @@ export const CASO_HAPPY_PATH: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "10/03/2018",
-    bancoCobro: "Banco Santander",
+    bancosCobro: ["Banco Santander"],
     ingresoBruto: 1_500_000,
     ingresoNeto: 1_200_000,
     montoExtraidoDiaCobro: 950_000,
@@ -150,8 +154,10 @@ export const CASO_RECHAZO: CasoDemoCliente = {
     cuil: "20-20222222-7",
     genero: "Masculino",
     fechaNacimiento: "22/08/1985",
-    domicilio: "San Jerónimo 1840, Córdoba",
+    calle: "San Jerónimo",
+    numero: "1840",
     localidad: "Córdoba",
+    provincia: "Córdoba",
     email: "marcos.benitez@outlook.com",
     telefono: "351 4889900",
   },
@@ -162,8 +168,10 @@ export const CASO_RECHAZO: CasoDemoCliente = {
     cuil: "API pública",
     genero: "API pública",
     fechaNacimiento: "API pública",
-    domicilio: "API pública",
+    calle: "API pública",
+    numero: "API pública",
     localidad: "API pública",
+    provincia: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -184,7 +192,7 @@ export const CASO_RECHAZO: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "05/06/2021",
-    bancoCobro: "Banco Macro",
+    bancosCobro: ["Banco Macro"],
     ingresoBruto: 950_000,
     ingresoNeto: 750_000,
     montoExtraidoDiaCobro: 600_000,
@@ -219,8 +227,10 @@ export const CASO_CREDITO_INTERNO: CasoDemoCliente = {
     cuil: "27-20333333-4",
     genero: "Femenino",
     fechaNacimiento: "14/05/1982",
-    domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
+    calle: "Av. Rafael Núñez",
+    numero: "3245",
     localidad: "Córdoba",
+    provincia: "Córdoba",
     email: "mariafernanda.gonzalez@gmail.com",
     telefono: "351 6123344",
   },
@@ -231,8 +241,10 @@ export const CASO_CREDITO_INTERNO: CasoDemoCliente = {
     cuil: "API pública",
     genero: "API pública",
     fechaNacimiento: "API pública",
-    domicilio: "API pública",
+    calle: "API pública",
+    numero: "API pública",
     localidad: "API pública",
+    provincia: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -253,7 +265,7 @@ export const CASO_CREDITO_INTERNO: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "12/03/2019",
-    bancoCobro: "Banco Galicia",
+    bancosCobro: ["Banco Galicia"],
     ingresoBruto: 1_250_000,
     ingresoNeto: 1_000_000,
     montoExtraidoDiaCobro: 820_000,
@@ -306,8 +318,10 @@ export const CASO_CREDITO_INTERNO_MORA: CasoDemoCliente = {
     cuil: "27-20666666-0",
     genero: "Masculino",
     fechaNacimiento: "22/07/1985",
-    domicilio: "España 750, Centro, Córdoba",
+    calle: "España",
+    numero: "750",
     localidad: "Córdoba",
+    provincia: "Córdoba",
     email: "alejandro.vargas@email.com",
     telefono: "351 5555666",
   },
@@ -318,8 +332,10 @@ export const CASO_CREDITO_INTERNO_MORA: CasoDemoCliente = {
     cuil: "API pública",
     genero: "API pública",
     fechaNacimiento: "API pública",
-    domicilio: "API pública",
+    calle: "API pública",
+    numero: "API pública",
     localidad: "API pública",
+    provincia: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -340,7 +356,7 @@ export const CASO_CREDITO_INTERNO_MORA: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "18/01/2017",
-    bancoCobro: "Banco Santander",
+    bancosCobro: ["Banco Santander"],
     ingresoBruto: 1_100_000,
     ingresoNeto: 880_000,
     montoExtraidoDiaCobro: 750_000,
@@ -368,8 +384,8 @@ export const CASO_CREDITO_INTERNO_MORA: CasoDemoCliente = {
       cuotasOriginales: 18,
       cuotasAbonadas: 8,
       valorCuota: 89_500,
-      precancelar: false,
-      enMora: true, // En mora - cancelación obligatoria
+      precancelar: true, // En mora: se cancela siempre, entra sola en la renovación
+      enMora: true,
     },
   ],
   deudaTerceros: { habilitado: false, entidad: "", importe: 0, cbu: "" },
@@ -394,8 +410,10 @@ export const CASO_DOS_CREDITOS_INTERNOS: CasoDemoCliente = {
     cuil: "27-20777777-6",
     genero: "Femenino",
     fechaNacimiento: "03/09/1980",
-    domicilio: "Bv. San Juan 1120, 2° A, Córdoba",
+    calle: "Bv. San Juan",
+    numero: "1120",
     localidad: "Córdoba",
+    provincia: "Córdoba",
     email: "patricia.herrera@email.com",
     telefono: "351 6777788",
   },
@@ -406,8 +424,10 @@ export const CASO_DOS_CREDITOS_INTERNOS: CasoDemoCliente = {
     cuil: "API pública",
     genero: "API pública",
     fechaNacimiento: "API pública",
-    domicilio: "API pública",
+    calle: "API pública",
+    numero: "API pública",
     localidad: "API pública",
+    provincia: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -428,7 +448,7 @@ export const CASO_DOS_CREDITOS_INTERNOS: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "05/06/2015",
-    bancoCobro: "Banco Macro",
+    bancosCobro: ["Banco Macro"],
     ingresoBruto: 1_450_000,
     ingresoNeto: 1_150_000,
     montoExtraidoDiaCobro: 900_000,
@@ -498,8 +518,10 @@ export const CASO_CREDITO_EXTERNO: CasoDemoCliente = {
     cuil: "20-20444444-1",
     genero: "Masculino",
     fechaNacimiento: "08/11/1990",
-    domicilio: "Mariano Fragueiro 1280, Alta Córdoba, Córdoba",
+    calle: "Mariano Fragueiro",
+    numero: "1280",
     localidad: "Córdoba",
+    provincia: "Córdoba",
     email: "lucas.romero@hotmail.com",
     telefono: "351 7654321",
   },
@@ -510,8 +532,10 @@ export const CASO_CREDITO_EXTERNO: CasoDemoCliente = {
     cuil: "API pública",
     genero: "API pública",
     fechaNacimiento: "API pública",
-    domicilio: "API pública",
+    calle: "API pública",
+    numero: "API pública",
     localidad: "API pública",
+    provincia: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -532,7 +556,7 @@ export const CASO_CREDITO_EXTERNO: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "01/09/2020",
-    bancoCobro: "Banco BBVA",
+    bancosCobro: ["Banco BBVA"],
     ingresoBruto: 1_400_000,
     ingresoNeto: 1_100_000,
     montoExtraidoDiaCobro: 900_000,
@@ -572,8 +596,10 @@ export const CASO_AMBOS_CREDITOS: CasoDemoCliente = {
     cuil: "23-20555555-4",
     genero: "Femenino",
     fechaNacimiento: "03/07/1987",
-    domicilio: "Chacabuco 450, 7° C, Córdoba",
+    calle: "Chacabuco",
+    numero: "450",
     localidad: "Córdoba",
+    provincia: "Córdoba",
     email: "valeria.castro@gmail.com",
     telefono: "351 3216549",
   },
@@ -584,8 +610,10 @@ export const CASO_AMBOS_CREDITOS: CasoDemoCliente = {
     cuil: "API pública",
     genero: "API pública",
     fechaNacimiento: "API pública",
-    domicilio: "API pública",
+    calle: "API pública",
+    numero: "API pública",
     localidad: "API pública",
+    provincia: "API pública",
     email: "Base interna",
   },
   contacto: {
@@ -606,7 +634,7 @@ export const CASO_AMBOS_CREDITOS: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "15/04/2017",
-    bancoCobro: "Banco Provincia",
+    bancosCobro: ["Banco Provincia"],
     ingresoBruto: 1_700_000,
     ingresoNeto: 1_350_000,
     montoExtraidoDiaCobro: 1_100_000,
@@ -664,8 +692,10 @@ export const CASO_CLIENTE_NUEVO_BASE: CasoDemoCliente = {
     cuil: "20-40999999-4",
     genero: "Masculino",
     fechaNacimiento: "18/09/1997",
-    domicilio: "Bv. San Juan 890, 2° A, Córdoba",
+    calle: "Bv. San Juan",
+    numero: "890",
     localidad: "Córdoba",
+    provincia: "Córdoba",
     email: "tomas.rossi@gmail.com",
     telefono: "351 2233445",
   },
@@ -676,8 +706,10 @@ export const CASO_CLIENTE_NUEVO_BASE: CasoDemoCliente = {
     cuil: "API pública",
     genero: "API pública",
     fechaNacimiento: "API pública",
-    domicilio: "API pública",
+    calle: "API pública",
+    numero: "API pública",
     localidad: "API pública",
+    provincia: "API pública",
     email: "Manual",
   },
   contacto: {
@@ -698,7 +730,7 @@ export const CASO_CLIENTE_NUEVO_BASE: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "10/02/2023",
-    bancoCobro: "Banco Nación",
+    bancosCobro: ["Banco Nación"],
     ingresoBruto: 1_150_000,
     ingresoNeto: 950_000,
     montoExtraidoDiaCobro: 700_000,
@@ -780,7 +812,10 @@ export const CONSULTA_CLIENTE_MOCK: RespuestaConsultaCliente = CASO_CREDITO_INTE
 export const DATOS_API_PUBLICA: { campo: keyof ClienteDatos; label: string }[] = [
   { campo: "nombre", label: "Nombre" },
   { campo: "apellido", label: "Apellido" },
-  { campo: "domicilio", label: "Domicilio" },
+  { campo: "calle", label: "Calle" },
+  { campo: "numero", label: "Número" },
+  { campo: "localidad", label: "Localidad" },
+  { campo: "provincia", label: "Provincia" },
   { campo: "fechaNacimiento", label: "Fecha de nacimiento" },
   { campo: "genero", label: "Género" },
 ];
@@ -843,7 +878,7 @@ const CARGA_DEMO: Record<string, string> = {
   tieneConyuge: "Sí",
   dniConyuge: "", // PENDIENTE
   "domicilio.barrio": "Cerro de las Rosas",
-  cuitEmpleador: "30712345679",
+  cuitEmpleador: "30-71234567-9",
   razonSocial: "Sanatorio Modelo S.A.",
   rubro: "Salud - Servicios sanatoriales",
   numeroLegajo: "SM-4821",
@@ -854,8 +889,9 @@ const CARGA_DEMO: Record<string, string> = {
   "domicilioLaboral.provincia": "Córdoba",
   "domicilioLaboral.localidad": "Córdoba",
   "domicilioLaboral.codigoPostal": "5000",
-  "telefonoLaboral.caracteristica": "351",
-  "telefonoLaboral.numero": "4228890",
+  "telefonoLaboral.pais": "+54",
+  "telefonoLaboral.numero": "3514228890",
+  "telefonoAlt.pais": "+54",
   "telefonoLaboral.interno": "112",
   "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
   cbu: "0170299940000052135212",
@@ -872,9 +908,10 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
   const c = app.cliente;
   const base = c?.dni ? obtenerCasoPorDocumento(c.dni) : CONSULTA_CLIENTE_MOCK;
   const precarga: Record<string, string> = {
-    nombreCompleto: c ? `${c.nombre} ${c.apellido}` : "",
+    nombre: c?.nombre ?? "",
+    apellido: c?.apellido ?? "",
     dni: c?.dni ?? "",
-    cuit: onlyDigits(c?.cuil ?? ""),
+    cuit: maskCuit(c?.cuil ?? ""),
     fechaNacimiento: c?.fechaNacimiento ?? "",
     genero: c?.genero ?? "",
     "domicilio.calle": base.domicilio.calle,
@@ -884,18 +921,22 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     "domicilio.provincia": base.domicilio.provincia,
     "domicilio.localidad": base.domicilio.localidad,
     "domicilio.codigoPostal": base.domicilio.codigoPostal,
-    "telefono.caracteristica": base.contacto.caracteristica,
-    "telefono.numero": base.contacto.numero,
+    "telefono.pais": "+54",
+    "telefono.numero": `${base.contacto.caracteristica}${base.contacto.numero}`,
     companiaTelefonica: base.contacto.compania,
     email: base.contacto.email,
-    banco: app.laboral.bancoCobro,
+    banco: unirBancos(app.laboral.bancosCobro),
   };
-  const valores = (pantalla: "personales" | "laboral") =>
-    Object.fromEntries(
+  // El CBU se carga por banco: en la demo el primero ya viene cargado y los demás quedan pendientes.
+  const [primerBanco] = bancosDe(precarga.banco);
+  const valores = (pantalla: "personales" | "laboral") => ({
+    ...Object.fromEntries(
       camposDe(pantalla)
         .filter((campo) => campo.origen !== "NO_MODIFICABLE")
         .map((campo) => [campo.id, precarga[campo.id] ?? CARGA_DEMO[campo.id] ?? ""])
-    );
+    ),
+    ...(pantalla === "laboral" && primerBanco ? { [`cbu.${primerBanco}`]: CARGA_DEMO.cbu } : {}),
+  });
 
   const cfg = configEfectiva(app.configuracion);
   // El recibo (sueldo o haberes) y el comprobante de servicio se piden en el legajo
@@ -914,7 +955,8 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     id: "garante-1",
     vinculo: "Cónyuge",
     dni: "25984123",
-    nombreCompleto: "Roberto González",
+    nombre: "Roberto",
+    apellido: "González",
     domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
     email: "roberto.gonzalez@gmail.com",
     telefono: "351 6543200",
@@ -923,6 +965,9 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     ingresoBruto: 0, // PENDIENTE
     ingresoNeto: 0, // PENDIENTE
     reciboSueldo: [], // PENDIENTE
+    empleadorCalle: "", // PENDIENTE
+    empleadorLocalidad: "", // PENDIENTE
+    empleadorTelefono: "", // PENDIENTE
   };
 
   return {
@@ -935,7 +980,8 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
         id: "referencia-1",
         vinculo: "Familiar directo",
         dni: "30111222",
-        nombreCompleto: "Carla Giménez",
+        nombre: "Carla",
+        apellido: "Giménez",
         domicilio: "Av. Colón 1450, Córdoba",
         email: "", // PENDIENTE
         telefono: "", // PENDIENTE
@@ -944,6 +990,9 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
         ingresoBruto: 0,
         ingresoNeto: 0,
         reciboSueldo: [],
+        empleadorCalle: "",
+        empleadorLocalidad: "",
+        empleadorTelefono: "",
       },
     ],
     garantes: conGarantias ? [garante] : [],
@@ -955,10 +1004,10 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
 // API simulada de consulta por DNI para referencias y garantes (Onboarding §7): cualquier
 // DNI válido devuelve una persona de prueba.
 const PERSONAS_API = [
-  { nombreCompleto: "Lucía Fernández", domicilio: "Obispo Trejo 520, Córdoba", email: "lucia.fernandez@email.com", telefono: "351 6543210", condicionLaboral: "Empleado fijo", ingresoBruto: 980_000, ingresoNeto: 780_000 },
-  { nombreCompleto: "Martín Sosa", domicilio: "Av. Vélez Sarsfield 1820, Córdoba", email: "martin.sosa@email.com", telefono: "351 6543211", condicionLaboral: "Contratado", ingresoBruto: 850_000, ingresoNeto: 680_000 },
-  { nombreCompleto: "Valeria Paz", domicilio: "Duarte Quirós 910, Córdoba", email: "valeria.paz@email.com", telefono: "351 6543212", condicionLaboral: "Monotributista", ingresoBruto: 720_000, ingresoNeto: 720_000 },
-  { nombreCompleto: "Diego Romero", domicilio: "Av. Hipólito Yrigoyen 355, Córdoba", email: "diego.romero@email.com", telefono: "351 6543213", condicionLaboral: "Empleado fijo", ingresoBruto: 1_100_000, ingresoNeto: 890_000 },
+  { nombre: "Lucía", apellido: "Fernández", domicilio: "Obispo Trejo 520, Córdoba", email: "lucia.fernandez@email.com", telefono: "351 6543210", condicionLaboral: "Empleado fijo", ingresoBruto: 980_000, ingresoNeto: 780_000 },
+  { nombre: "Martín", apellido: "Sosa", domicilio: "Av. Vélez Sarsfield 1820, Córdoba", email: "martin.sosa@email.com", telefono: "351 6543211", condicionLaboral: "Contratado", ingresoBruto: 850_000, ingresoNeto: 680_000 },
+  { nombre: "Valeria", apellido: "Paz", domicilio: "Duarte Quirós 910, Córdoba", email: "valeria.paz@email.com", telefono: "351 6543212", condicionLaboral: "Monotributista", ingresoBruto: 720_000, ingresoNeto: 720_000 },
+  { nombre: "Diego", apellido: "Romero", domicilio: "Av. Hipólito Yrigoyen 355, Córdoba", email: "diego.romero@email.com", telefono: "351 6543213", condicionLaboral: "Empleado fijo", ingresoBruto: 1_100_000, ingresoNeto: 890_000 },
 ];
 
 export function consultarPersonaMock(dni: string) {
@@ -975,7 +1024,7 @@ export function crearAplicacionInicial(): CreditApplication {
     estado: "BORRADOR",
     etapa: "ORIGINACION",
     tipoPersona: "FISICA",
-    identificacion: { documento: "", consultado: false, tipoCliente: null },
+    identificacion: { documento: "", consultado: false, tipoCliente: null, firmaRegistrada: null },
     cliente: null,
     situaciones: null,
     origenCampos: {},
@@ -989,7 +1038,7 @@ export function crearAplicacionInicial(): CreditApplication {
     laboral: {
       condicionLaboral: "",
       fechaInicioLaboral: "",
-      bancoCobro: "",
+      bancosCobro: [],
       ingresoBruto: 0,
       ingresoNeto: 0,
       montoExtraidoDiaCobro: 0,
@@ -1014,6 +1063,7 @@ export function crearAplicacionInicial(): CreditApplication {
       fecha: null,
     },
     oferta: recalcularOferta({
+      planId: null,
       capitalMaximoBase: CAPITAL_MAXIMO_BASE,
       capitalMaximoRenovacion: CAPITAL_MAXIMO_CON_PRECANCELACION,
       capitalMaximoActual: CAPITAL_MAXIMO_BASE,
@@ -1029,8 +1079,15 @@ export function crearAplicacionInicial(): CreditApplication {
     }),
     postOferta: crearPostOfertaInicial(),
     pantallasVisitadas: [],
-    analista: { tomado: false, observacion: null, reenviada: false },
+    analista: {
+      tomado: false,
+      observacion: null,
+      reenviada: false,
+      pantallasCorregidas: [],
+      cambioOfertaPendiente: null,
+    },
     rechazo: null,
+    comentarios: [],
     fechaSolicitud: null,
     fechaPreaprobacion: null,
     fechaEnvioAnalisis: null,

@@ -7,24 +7,45 @@ import {
   evaluarPlan,
   importeTerceros,
   netoAAcreditar,
+  seCancela,
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { getMotor, reglaMarcada } from "@/lib/motores";
-import { configEfectiva, pantallasVisibles } from "@/lib/config";
+import {
+  CANALES,
+  ORGANISMOS,
+  PRODUCTOS,
+  SESION_ANALISTA,
+  SESION_SUPERVISOR,
+  VENDEDORES,
+  configEfectiva,
+  nombreOpcion,
+  pantallasVisibles,
+} from "@/lib/config";
 import { camposRectificados } from "@/lib/campos-post-oferta";
 import type { PantallaPostOfertaId } from "@/lib/types";
 import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO } from "@/lib/validation";
-import { formatARS, formatDNI, formatPct } from "@/lib/format";
+import { formatARS, formatDNI, formatPct, nombreApellido } from "@/lib/format";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
+import {
+  ComentarioModal,
+  ListaComentarios,
+  PosicionClienteModal,
+} from "@/components/bandeja/ModalesBandeja";
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
+import { BuroMotorModal, CreditosRenovarModal } from "./ModalesAnalisis";
 import {
   IconAlertTriangle,
+  IconArrowLeft,
+  IconBuilding,
   IconCalendar,
   IconCheck,
   IconCreditCard,
@@ -82,14 +103,27 @@ export function AnalisisCredito({
   onObservar,
   onRechazar,
   onAprobar,
+  onSalir,
 }: {
-  onObservar: (motivo: string, nota: string, pantalla: PantallaPostOfertaId | null) => void;
+  onObservar: (motivo: string, nota: string, pantallas: PantallaPostOfertaId[]) => void;
   onRechazar: (codigo: string, motivo: string, observacion: string) => void;
   onAprobar: () => void;
+  // Vuelve a la lista cuando la solicitud deja el análisis (al soltarla).
+  onSalir: () => void;
 }) {
-  const { app, cambiarOferta, anularCredito } = useApplication();
+  const {
+    app,
+    proponerCambioOferta,
+    refrendarCambioOferta,
+    rechazarCambioOferta,
+    anularCredito,
+    soltarAnalisis,
+  } = useApplication();
   const [modal, setModal] = useState<"observar" | "rechazar" | "anular" | null>(null);
-  const [pantalla, setPantalla] = useState<string>("");
+  const [consulta, setConsulta] = useState<
+    "posicion" | "buro" | "renovar" | "comentario" | "soltar" | null
+  >(null);
+  const [pantallas, setPantallas] = useState<PantallaPostOfertaId[]>([]);
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
@@ -112,11 +146,14 @@ export function AnalisisCredito({
   // Reglas no bloqueantes que no pasaron: no frenaron la solicitud y el analista las revisa
   // al final (Motor §10).
   const marcadas = app.riesgo.reglas.filter(reglaMarcada);
+  const aRenovar = o.creditosActivos.filter(seCancela);
+  // Cambio de oferta propuesto que espera la refrendación del supervisor.
+  const cambioPendiente = app.analista.cambioOfertaPendiente;
 
   function abrir(tipo: "observar" | "rechazar" | "anular") {
     setMotivo("");
     setTexto("");
-    setPantalla("");
+    setPantallas([]);
     setIntentado(false);
     setModal(tipo);
   }
@@ -133,8 +170,9 @@ export function AnalisisCredito({
       return;
     }
     if (!motivo || !textoValido) return;
-    if (modal === "observar")
-      onObservar(motivo, texto.trim(), (pantalla || null) as PantallaPostOfertaId | null);
+    // Corrección puntual: hay que indicar qué pantallas se corrigen, el resto se bloquea.
+    if (modal === "observar" && pantallas.length === 0) return;
+    if (modal === "observar") onObservar(motivo, texto.trim(), pantallas);
     if (modal === "rechazar") {
       const m = MOTIVOS_RECHAZO.find((r) => r.codigo === motivo);
       onRechazar(motivo, m?.label ?? motivo, texto.trim());
@@ -157,7 +195,42 @@ export function AnalisisCredito({
       {app.analista.reenviada && app.analista.observacion && (
         <Banner tone="info" title="Reenviada con correcciones">
           Observación previa: {app.analista.observacion.motivo} — {app.analista.observacion.nota}
+          {app.analista.observacion.pantallas.length > 0 &&
+            ` Pantallas corregidas: ${pantallasVisibles(app.configuracion)
+              .filter((pv) => app.analista.observacion!.pantallas.includes(pv.id))
+              .map((pv) => pv.label)
+              .join(", ")}.`}
         </Banner>
+      )}
+
+      {cambioPendiente && (
+        <div className="rounded-xl border border-warning-300 bg-warning-50 p-4">
+          <p className="text-sm font-bold text-warning-700">
+            Cambio de oferta pendiente de refrendación del supervisor
+          </p>
+          <p className="mt-1 text-sm text-warning-700/90">
+            {formatARS(o.montoSolicitado)} en {o.plazo} cuotas →{" "}
+            <strong>
+              {formatARS(cambioPendiente.montoSolicitado)} en {cambioPendiente.plazo} cuotas
+            </strong>
+            {" · "}
+            neto {formatARS(cambioPendiente.ingresoNeto)}. Propuesto por{" "}
+            {cambioPendiente.solicitadoPor} ({cambioPendiente.fecha}). No rige y la solicitud no
+            vuelve al vendedor hasta que lo refrende {SESION_SUPERVISOR.nombre}.
+          </p>
+          <p className="mt-1 text-xs text-warning-700/80">Nota: {cambioPendiente.nota}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="success" onClick={refrendarCambioOferta}>
+              Refrendar como supervisor
+            </Button>
+            <Button size="sm" variant="outline" onClick={rechazarCambioOferta}>
+              Rechazar cambio
+            </Button>
+            <span className="text-[11px] text-warning-700/80">
+              Simulación de la demo: en producción lo hace el supervisor desde su sesión.
+            </span>
+          </div>
+        </div>
       )}
 
       {marcadas.length > 0 && (
@@ -189,6 +262,16 @@ export function AnalisisCredito({
               label: "Extraído el día de cobro",
               value: formatARS(app.laboral.montoExtraidoDiaCobro),
             },
+          ]}
+        />
+        <SummaryCard
+          title="Producto y organismo"
+          icon={<IconBuilding width={16} height={16} />}
+          rows={[
+            { label: "Producto", value: nombreOpcion(PRODUCTOS, app.configuracion.productoId) },
+            { label: "Organismo", value: nombreOpcion(ORGANISMOS, app.configuracion.organismoId) },
+            { label: "Canal", value: nombreOpcion(CANALES, app.configuracion.canalId) },
+            { label: "Vendedor", value: nombreOpcion(VENDEDORES, app.configuracion.vendedorId) },
           ]}
         />
         <SummaryCard
@@ -323,7 +406,7 @@ export function AnalisisCredito({
           ]}
         />
         <SummaryCard
-          title="Pagos / historial"
+          title="Buró / historial"
           icon={<IconCreditCard width={16} height={16} />}
           rows={[
             { label: "Crédito propio", value: o.creditosActivos[0]?.id ?? "—" },
@@ -334,7 +417,10 @@ export function AnalisisCredito({
                 : "—",
             },
             { label: "Vector de mora interna", value: "0 días de atraso" },
-            { label: "Situación BCRA", value: "Situación 1" },
+            {
+              label: "Situación BCRA",
+              value: app.situaciones ? `Situación ${app.situaciones.bcra}` : "—",
+            },
             { label: "Último pago", value: "hace 25 días" },
           ]}
         />
@@ -346,6 +432,26 @@ export function AnalisisCredito({
               label: "Legajo virtual",
               value: `${docsCargados} de ${docsObligatorios.length} obligatorios`,
             },
+            ...(app.identificacion.tipoCliente === "NUEVO"
+              ? [
+                  {
+                    label: "Registro de firma",
+                    value: app.identificacion.firmaRegistrada ? (
+                      <span className="inline-flex items-center gap-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- dibujo del cliente, sólo en memoria del navegador */}
+                        <img
+                          src={app.identificacion.firmaRegistrada.imagen}
+                          alt="Firma registrada del cliente"
+                          className="h-8 w-16 rounded border border-ink-200 bg-white object-contain"
+                        />
+                        Referencia para el legajo
+                      </span>
+                    ) : (
+                      "No registrada"
+                    ),
+                  },
+                ]
+              : []),
             {
               label: "Tarjetas tokenizadas",
               value:
@@ -359,7 +465,7 @@ export function AnalisisCredito({
             },
             {
               label: "Garantes",
-              value: po.garantes.map((g) => g.nombreCompleto).filter(Boolean).join(", ") || "—",
+              value: po.garantes.map(nombreApellido).filter(Boolean).join(", ") || "—",
             },
             {
               label: "Legajo",
@@ -368,6 +474,22 @@ export function AnalisisCredito({
                 : "Sin imprimir",
             },
           ]}
+        />
+        <SummaryCard
+          title="Renovaciones"
+          icon={<IconRefresh width={16} height={16} />}
+          rows={
+            aRenovar.length === 0
+              ? [{ label: "Créditos a renovar", value: "Ninguno", tone: "muted" as const }]
+              : [
+                  ...aRenovar.map((c) => ({
+                    label: c.id,
+                    value: formatARS(c.montoCancelacion),
+                    tone: c.enMora ? ("danger" as const) : undefined,
+                  })),
+                  { label: "Total a cancelar", value: formatARS(precancel), strong: true },
+                ]
+          }
         />
         {rectificados.length > 0 && (
           <SummaryCard
@@ -382,6 +504,12 @@ export function AnalisisCredito({
         )}
       </div>
 
+      {app.comentarios.length > 0 && (
+        <Card className="px-5 pb-5 pt-1">
+          <ListaComentarios titulo="Comentarios" />
+        </Card>
+      )}
+
       <Banner tone="info">
         El motor de riesgo ya filtró la solicitud. El analista controla los datos sensibles y
         decide: <strong>Cambiar oferta</strong> corrige el capital, el plazo o los sueldos y la
@@ -391,15 +519,41 @@ export function AnalisisCredito({
         de Liquidación.
       </Banner>
 
-      <Card className="p-4 sm:p-5">
+      <Card className="space-y-3 p-4 sm:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Button variant="outline" onClick={() => setCambioAbierto(true)}>
+          <Button size="sm" variant="subtle" onClick={() => setConsulta("posicion")}>
+            <IconUser width={14} height={14} />
+            Posición cliente
+          </Button>
+          <Button size="sm" variant="subtle" onClick={() => setConsulta("buro")}>
+            <IconShieldCheck width={14} height={14} />
+            Ver buró / motor
+          </Button>
+          <Button size="sm" variant="subtle" onClick={() => setConsulta("renovar")}>
+            <IconRefresh width={14} height={14} />
+            Ver créditos a renovar
+          </Button>
+          <Button size="sm" variant="subtle" onClick={() => setConsulta("comentario")}>
+            <IconFileText width={14} height={14} />
+            Comentario
+          </Button>
+        </div>
+        <div className="flex flex-col gap-2 border-t border-ink-100 pt-3 sm:flex-row sm:flex-wrap">
+          <Button
+            variant="outline"
+            disabled={cambioPendiente !== null}
+            onClick={() => setCambioAbierto(true)}
+          >
             <IconRefresh width={16} height={16} />
             Cambiar oferta
           </Button>
           <Button variant="outline" onClick={() => abrir("observar")}>
             <IconAlertTriangle width={16} height={16} />
             Observar
+          </Button>
+          <Button variant="outline" onClick={() => setConsulta("soltar")}>
+            <IconArrowLeft width={16} height={16} />
+            Soltar análisis
           </Button>
           <Button variant="ghost" onClick={() => abrir("anular")}>
             <IconTrash width={16} height={16} />
@@ -410,19 +564,46 @@ export function AnalisisCredito({
             <IconX width={16} height={16} />
             Rechazar
           </Button>
-          <Button variant="success" onClick={onAprobar}>
+          <Button variant="success" disabled={cambioPendiente !== null} onClick={onAprobar}>
             <IconCheck width={16} height={16} />
             Aprobar
           </Button>
         </div>
       </Card>
 
+      <PosicionClienteModal open={consulta === "posicion"} onClose={() => setConsulta(null)} />
+      <BuroMotorModal open={consulta === "buro"} onClose={() => setConsulta(null)} />
+      <CreditosRenovarModal open={consulta === "renovar"} onClose={() => setConsulta(null)} />
+      <ComentarioModal
+        open={consulta === "comentario"}
+        onClose={() => setConsulta(null)}
+        autor={SESION_ANALISTA.nombre}
+        paraQuien="el canal de venta"
+      />
+      <ConfirmationModal
+        open={consulta === "soltar"}
+        title="¿Soltar el análisis?"
+        descripcion="La solicitud vuelve a Preaprobado y queda disponible para que otro analista la tome."
+        rows={[
+          { label: "Crédito", value: app.numeroCredito ?? "—" },
+          { label: "Estado", value: <EstadoBadge estado={app.estado} /> },
+        ]}
+        confirmLabel="Soltar análisis"
+        cancelLabel="Volver"
+        onConfirm={() => {
+          setConsulta(null);
+          soltarAnalisis();
+          onSalir();
+        }}
+        onCancel={() => setConsulta(null)}
+      />
+
       <CambiarOfertaModal
         open={cambioAbierto}
         onClose={() => setCambioAbierto(false)}
         onConfirmar={(cambio) => {
           setCambioAbierto(false);
-          cambiarOferta(cambio);
+          proponerCambioOferta(cambio);
         }}
       />
 
@@ -481,17 +662,27 @@ export function AnalisisCredito({
         )}
         {modal === "observar" && (
           <div className="mt-4">
-            <SelectField
-              id="pantalla-observada"
-              label="Pantalla a corregir"
-              value={pantalla}
-              onChange={setPantalla}
-              options={pantallasVisibles(app.configuracion).map((pv) => ({
-                value: pv.id,
-                label: pv.label,
-              }))}
-              placeholder="Sin indicar una pantalla"
-              hint="Se resalta en la carga del vendedor para que vaya derecho a corregirla."
+            <MultiSelectField
+              id="pantallas-observadas"
+              label="Pantallas a corregir"
+              required
+              values={pantallasVisibles(app.configuracion)
+                .filter((pv) => pantallas.includes(pv.id))
+                .map((pv) => pv.label)}
+              onChange={(labels) =>
+                setPantallas(
+                  pantallasVisibles(app.configuracion)
+                    .filter((pv) => labels.includes(pv.label))
+                    .map((pv) => pv.id)
+                )
+              }
+              options={pantallasVisibles(app.configuracion).map((pv) => pv.label)}
+              error={
+                intentado && pantallas.length === 0
+                  ? "Seleccioná al menos una pantalla a corregir."
+                  : undefined
+              }
+              hint="Corrección puntual: el vendedor sólo puede editar estas pantallas. El resto de la carga queda bloqueada hasta que reenvíe."
             />
           </div>
         )}

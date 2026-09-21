@@ -6,6 +6,9 @@ import { useApplication } from "@/lib/application-context";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
   IconBarChart,
+  IconBriefcase,
+  IconBuilding,
+  IconCalendar,
   IconClipboardPlus,
   IconCreditCard,
   IconFileStack,
@@ -29,8 +32,11 @@ interface NavItem {
 const NAV: NavItem[] = [
   { label: "Bandeja canal de venta", href: "/", icon: IconHome, disponible: true },
   { label: "Solicitar crédito", href: "/onboarding", icon: IconClipboardPlus, disponible: true },
-  { label: "Bandeja del analista", href: "/analisis", icon: IconFileStack, disponible: true },
+  { label: "Bandeja de análisis", href: "/analisis", icon: IconFileStack, disponible: true },
   { label: "Diagrama de flujo", href: "/graph", icon: IconGitBranch, disponible: true },
+  { label: "Productos", href: "/productos", icon: IconBriefcase, disponible: true },
+  { label: "Organismos", href: "/organismos", icon: IconBuilding, disponible: true },
+  { label: "Planes de cuotas", href: "/planes", icon: IconCalendar, disponible: true },
   { label: "Liquidación", icon: IconLandmark },
   { label: "Clientes", icon: IconUsers },
   { label: "Créditos", icon: IconCreditCard },

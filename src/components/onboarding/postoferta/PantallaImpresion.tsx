@@ -2,16 +2,24 @@
 
 import { useState, type ReactNode } from "react";
 import { useApplication } from "@/lib/application-context";
-import { configEfectiva, getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
 import {
+  SISTEMAS_AMORTIZACION,
+  configEfectiva,
+  nombreOpcion,
+  ORGANISMOS,
+  PRODUCTOS,
+} from "@/lib/config";
+import {
+  bancosDe,
+  campoVisible,
   camposDe,
   SECCIONES,
   valorCampo,
   type PantallaConCampos,
 } from "@/lib/campos-post-oferta";
 import { getTipoDocumento } from "@/lib/parametros";
-import { netoAAcreditar } from "@/lib/credit";
-import { formatARS } from "@/lib/format";
+import { netoAAcreditar, planDeSolicitud } from "@/lib/credit";
+import { formatARS, nombreApellido } from "@/lib/format";
 import { estadoPantallasPostOferta } from "@/lib/validation";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -52,12 +60,22 @@ function DocumentoLegajo() {
   const po = app.postOferta;
   const o = app.oferta;
   const tokenizadas = po.tarjetas.filter((t) => t.estado === "TOKENIZADA");
+  const sistema = (
+    SISTEMAS_AMORTIZACION.find((s) => s.value === planDeSolicitud(app).sistema)?.label ?? ""
+  )
+    .split(" (")[0]
+    .toLowerCase();
 
   const datos = (pantalla: PantallaConCampos) =>
     Array.from(new Set(camposDe(pantalla).map((c) => c.seccion))).map((seccion) => (
       <Bloque key={seccion} titulo={SECCIONES[seccion].titulo}>
-        {camposDe(pantalla, seccion).map((c) => {
-          const valor = valorCampo(app, c);
+        {camposDe(pantalla, seccion, po[pantalla])
+          .filter((c) => campoVisible(app, c))
+          .map((c) => {
+          const valor =
+            c.tipo === "multiselect"
+              ? bancosDe(valorCampo(app, c)).join(", ")
+              : valorCampo(app, c);
           return valor ? <Fila key={c.id} label={c.label} value={valor} /> : null;
         })}
       </Bloque>
@@ -78,7 +96,7 @@ function DocumentoLegajo() {
       <Bloque titulo="Condiciones del crédito">
         <Fila label="Producto" value={nombreOpcion(PRODUCTOS, app.configuracion.productoId)} />
         <Fila label="Organismo" value={nombreOpcion(ORGANISMOS, app.configuracion.organismoId)} />
-        <Fila label="Plan de cuotas" value={getPlan(app.configuracion.organismoId).nombre} />
+        <Fila label="Plan de cuotas" value={planDeSolicitud(app).nombre} />
         <Fila label="Capital solicitado" value={formatARS(o.montoSolicitado)} />
         <Fila label="Acreditación neta" value={formatARS(netoAAcreditar(o))} />
         <Fila label="Plazo" value={`${o.plazo} cuotas de ${formatARS(o.valorCuota)}`} />
@@ -103,7 +121,7 @@ function DocumentoLegajo() {
         {po.referencias.map((r) => (
           <Fila
             key={r.id}
-            label={`${r.nombreCompleto || "Sin nombre"} · ${r.vinculo || "sin vínculo"}`}
+            label={`${nombreApellido(r) || "Sin nombre"} · ${r.vinculo || "sin vínculo"}`}
             value={r.email || "—"}
           />
         ))}
@@ -114,7 +132,7 @@ function DocumentoLegajo() {
           {po.garantes.map((g) => (
             <Fila
               key={g.id}
-              label={`${g.nombreCompleto || "Sin nombre"} · DNI ${g.dni || "—"}`}
+              label={`${nombreApellido(g) || "Sin nombre"} · DNI ${g.dni || "—"}`}
               value={g.vinculo || "—"}
             />
           ))}
@@ -137,7 +155,7 @@ function DocumentoLegajo() {
       <Bloque titulo="Términos y condiciones">
         <p className="mt-1 text-xs leading-relaxed text-ink-500">
           El presente legajo resume las condiciones de la operación. El sistema de amortización es
-          francés con cuota fija. El crédito queda sujeto a la aprobación final del área de
+          {sistema}. El crédito queda sujeto a la aprobación final del área de
           análisis. Documento generado con fines de demostración.
         </p>
       </Bloque>

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { formatTelefono } from "@/lib/telefono";
 import {
   IconCalendar,
   IconCheck,
@@ -42,7 +43,7 @@ export function PantallaTokenizacion() {
   const tarjetas = app.postOferta.tarjetas;
   const tokenizadas = tarjetas.filter((t) => t.estado === "TOKENIZADA").length;
   const p = app.postOferta.personales;
-  const celular = `${p["telefono.caracteristica"] ?? ""} ${p["telefono.numero"] ?? ""}`.trim();
+  const celular = formatTelefono(p["telefono.pais"] ?? "", p["telefono.numero"] ?? "");
   const formCompleto =
     isValidCard(form.numero) &&
     /^\d{2}\/\d{2}$/.test(form.vencimiento.trim()) &&

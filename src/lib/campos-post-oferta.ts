@@ -5,7 +5,9 @@
 // (Producto §7 bis · Organismo §4 bis): `obligatorioEfectivo` resuelve el valor final.
 
 import type { CreditApplication, OrigenCampo } from "./types";
-import { isValidCBU, isValidEmail, onlyDigits, parseFecha } from "./format";
+import { configEfectiva } from "./config";
+import { isValidCBU, isValidEmail, maskCuit, maskFecha, onlyDigits, parseFecha } from "./format";
+import { PAIS_POR_DEFECTO, sanitizarNumero, validarNumero } from "./telefono";
 import {
   BANCOS,
   COMPANIAS_TELEFONICAS,
@@ -28,10 +30,11 @@ export type TipoCampo =
   | "dni"
   | "cuit"
   | "cbu"
-  | "caracteristica"
+  | "paisTelefono"
   | "telefono"
   | "codigoPostal"
-  | "select";
+  | "select"
+  | "multiselect";
 
 export type SeccionCampo =
   | "identificacion"
@@ -59,6 +62,12 @@ export interface CampoDef {
   // No modificables: se leen de los datos que dispararon la oferta, no se copian.
   valorFijo?: (app: CreditApplication) => string;
   ancho?: "completo";
+  // Sólo en teléfonos: id del campo que trae el país (área), que define los dígitos del número.
+  paisId?: string;
+  // Plantilla que se repite una vez por banco elegido (el CBU): `camposDe` la expande.
+  porBanco?: boolean;
+  // En un campo expandido, id de la plantilla de la que sale (para su obligatoriedad).
+  plantilla?: string;
 }
 
 export const SECCIONES: Record<SeccionCampo, { titulo: string; descripcion: string }> = {
@@ -174,16 +183,8 @@ function camposDomicilio(
 const condicionLaboral = (app: CreditApplication) => app.laboral.condicionLaboral;
 
 const PERSONALES: CampoDef[] = [
-  {
-    pantalla: "personales",
-    seccion: "identificacion",
-    id: "nombreCompleto",
-    label: "Nombre completo",
-    origen: "PRECARGADO",
-    obligatorio: true,
-    tipo: "texto",
-    ancho: "completo",
-  },
+  { pantalla: "personales", seccion: "identificacion", id: "nombre", label: "Nombre", origen: "PRECARGADO", obligatorio: true, tipo: "texto" },
+  { pantalla: "personales", seccion: "identificacion", id: "apellido", label: "Apellido", origen: "PRECARGADO", obligatorio: true, tipo: "texto" },
   { pantalla: "personales", seccion: "identificacion", id: "dni", label: "DNI", origen: "PRECARGADO", obligatorio: true, tipo: "dni" },
   { pantalla: "personales", seccion: "identificacion", id: "cuit", label: "CUIT", origen: "PRECARGADO", obligatorio: true, tipo: "cuit" },
   {
@@ -277,11 +278,11 @@ const PERSONALES: CampoDef[] = [
   {
     pantalla: "personales",
     seccion: "contacto",
-    id: "telefono.caracteristica",
-    label: "Característica",
+    id: "telefono.pais",
+    label: "Área (país)",
     origen: "PRECARGADO",
     obligatorio: true,
-    tipo: "caracteristica",
+    tipo: "paisTelefono",
   },
   {
     pantalla: "personales",
@@ -291,6 +292,7 @@ const PERSONALES: CampoDef[] = [
     origen: "PRECARGADO",
     obligatorio: true,
     tipo: "telefono",
+    paisId: "telefono.pais",
   },
   {
     pantalla: "personales",
@@ -314,11 +316,11 @@ const PERSONALES: CampoDef[] = [
   {
     pantalla: "personales",
     seccion: "contacto",
-    id: "telefonoAlt.caracteristica",
-    label: "Característica alternativa",
+    id: "telefonoAlt.pais",
+    label: "Área (país) alternativa",
     origen: "A_CARGAR",
     obligatorio: false,
-    tipo: "caracteristica",
+    tipo: "paisTelefono",
   },
   {
     pantalla: "personales",
@@ -328,6 +330,7 @@ const PERSONALES: CampoDef[] = [
     origen: "A_CARGAR",
     obligatorio: false,
     tipo: "telefono",
+    paisId: "telefonoAlt.pais",
   },
 ];
 
@@ -371,11 +374,11 @@ const LABORAL: CampoDef[] = [
   {
     pantalla: "laboral",
     seccion: "telefonoLaboral",
-    id: "telefonoLaboral.caracteristica",
-    label: "Característica",
+    id: "telefonoLaboral.pais",
+    label: "Área (país)",
     origen: "A_CARGAR",
     obligatorio: true,
-    tipo: "caracteristica",
+    tipo: "paisTelefono",
   },
   {
     pantalla: "laboral",
@@ -385,6 +388,7 @@ const LABORAL: CampoDef[] = [
     origen: "A_CARGAR",
     obligatorio: true,
     tipo: "telefono",
+    paisId: "telefonoLaboral.pais",
   },
   {
     pantalla: "laboral",
@@ -408,13 +412,14 @@ const LABORAL: CampoDef[] = [
     pantalla: "laboral",
     seccion: "acreditacion",
     id: "banco",
-    label: "Banco",
+    label: "Bancos",
     origen: "PRECARGADO",
     obligatorio: true,
-    tipo: "select",
+    tipo: "multiselect",
     opciones: () => BANCOS,
+    ancho: "completo",
   },
-  { pantalla: "laboral", seccion: "acreditacion", id: "cbu", label: "CBU", origen: "A_CARGAR", obligatorio: true, tipo: "cbu" },
+  { pantalla: "laboral", seccion: "acreditacion", id: "cbu", label: "CBU", origen: "A_CARGAR", obligatorio: true, tipo: "cbu", porBanco: true },
 ];
 
 export const CAMPOS_POST_OFERTA: CampoDef[] = [...PERSONALES, ...LABORAL];
@@ -423,17 +428,44 @@ export function getCampo(id: string): CampoDef | undefined {
   return CAMPOS_POST_OFERTA.find((c) => c.id === id);
 }
 
-export function camposDe(pantalla: PantallaConCampos, seccion?: SeccionCampo): CampoDef[] {
+// Los bancos se guardan juntos en un solo valor, en el orden de Parámetros.
+const SEPARADOR_BANCOS = "|";
+
+export function bancosDe(valor: string | undefined): string[] {
+  return valor ? valor.split(SEPARADOR_BANCOS).filter(Boolean) : [];
+}
+
+export function unirBancos(bancos: string[]): string {
+  return BANCOS.filter((b) => bancos.includes(b)).join(SEPARADOR_BANCOS);
+}
+
+export const idCbu = (banco: string) => `cbu.${banco}`;
+
+// Campos de una pantalla. Con los valores cargados, el CBU se expande en uno por banco elegido.
+export function camposDe(
+  pantalla: PantallaConCampos,
+  seccion?: SeccionCampo,
+  valores?: Valores
+): CampoDef[] {
   return CAMPOS_POST_OFERTA.filter(
     (c) => c.pantalla === pantalla && (!seccion || c.seccion === seccion)
-  );
+  ).flatMap((c) => {
+    if (!c.porBanco) return [c];
+    const bancos = bancosDe(valores?.banco);
+    return bancos.map((b) => ({
+      ...c,
+      id: idCbu(b),
+      label: bancos.length > 1 ? `${c.label} · ${b}` : c.label,
+      plantilla: c.id,
+    }));
+  });
 }
 
 export function obligatorioEfectivo(
   campo: CampoDef,
   obligatorios: Partial<Record<string, boolean>>
 ): boolean {
-  return obligatorios[campo.id] ?? campo.obligatorio;
+  return obligatorios[campo.plantilla ?? campo.id] ?? campo.obligatorio;
 }
 
 export function valorCampo(app: CreditApplication, campo: CampoDef): string {
@@ -441,27 +473,42 @@ export function valorCampo(app: CreditApplication, campo: CampoDef): string {
   return app.postOferta[campo.pantalla][campo.id] ?? "";
 }
 
+// Un campo no se muestra ni se valida si el organismo lo quitó del formulario (excepción sobre
+// el producto) o si su condición de visibilidad no se cumple.
 export function campoVisible(app: CreditApplication, campo: CampoDef): boolean {
+  const quitados = configEfectiva(app.configuracion).camposQuitados;
+  if (quitados.includes(campo.plantilla ?? campo.id)) return false;
   return !campo.visibleSi || campo.visibleSi(app.postOferta[campo.pantalla]);
 }
 
 const MAX_DIGITOS: Partial<Record<TipoCampo, number>> = {
   dni: 8,
-  cuit: 11,
   cbu: 22,
-  caracteristica: 4,
-  telefono: 8,
   codigoPostal: 4,
   numero: 6,
 };
 
-// Deja sólo dígitos en los campos numéricos y corta en el largo máximo.
-export function sanitizar(tipo: TipoCampo, valor: string): string {
-  const max = MAX_DIGITOS[tipo];
+// País (área) que aplica a un teléfono; sin elegir, el país por defecto.
+export function paisDe(campo: CampoDef, valores: Valores): string {
+  return (campo.paisId && valores[campo.paisId]) || PAIS_POR_DEFECTO;
+}
+
+// Deja sólo dígitos en los campos numéricos y corta en el largo máximo (en los teléfonos, el
+// del país elegido).
+export function sanitizar(campo: CampoDef, valor: string, valores: Valores): string {
+  if (campo.tipo === "telefono") return sanitizarNumero(paisDe(campo, valores), valor);
+  if (campo.tipo === "fecha") return maskFecha(valor);
+  if (campo.tipo === "cuit") return maskCuit(valor);
+  const max = MAX_DIGITOS[campo.tipo];
   return max ? onlyDigits(valor).slice(0, max) : valor;
 }
 
-export function validarCampo(campo: CampoDef, valor: string, obligatorio: boolean): string | null {
+export function validarCampo(
+  campo: CampoDef,
+  valor: string,
+  obligatorio: boolean,
+  valores: Valores = {}
+): string | null {
   const v = valor.trim();
   if (!v) return obligatorio ? `Completá ${campo.label.toLowerCase()}.` : null;
   const d = onlyDigits(v);
@@ -474,10 +521,8 @@ export function validarCampo(campo: CampoDef, valor: string, obligatorio: boolea
       return d.length === 11 ? null : "El CUIT debe tener 11 dígitos.";
     case "cbu":
       return isValidCBU(v) ? null : "El CBU debe tener 22 dígitos.";
-    case "caracteristica":
-      return d.length >= 2 && d.length <= 4 ? null : "La característica tiene entre 2 y 4 dígitos.";
     case "telefono":
-      return d.length >= 6 && d.length <= 8 ? null : "El número tiene entre 6 y 8 dígitos.";
+      return validarNumero(paisDe(campo, valores), v);
     case "codigoPostal":
       return d.length === 4 ? null : "El código postal tiene 4 dígitos.";
     case "numero":
@@ -500,11 +545,16 @@ export function erroresPantalla(
   pantalla: PantallaConCampos,
   obligatorios: Partial<Record<string, boolean>>
 ): ErrorCampo[] {
-  return camposDe(pantalla)
+  return camposDe(pantalla, undefined, app.postOferta[pantalla])
     .filter((c) => c.origen !== "NO_MODIFICABLE" && campoVisible(app, c))
     .map((c) => ({
       campo: c,
-      error: validarCampo(c, valorCampo(app, c), obligatorioEfectivo(c, obligatorios)),
+      error: validarCampo(
+        c,
+        valorCampo(app, c),
+        obligatorioEfectivo(c, obligatorios),
+        app.postOferta[pantalla]
+      ),
     }))
     .filter((x): x is ErrorCampo => x.error !== null);
 }
@@ -540,6 +590,15 @@ export function esRectificado(app: CreditApplication, campo: CampoDef): boolean 
 export function aplicarCambioCampo(valores: Valores, campoId: string, valor: string): Valores {
   const siguiente = { ...valores, [campoId]: valor };
   const [seccion, campo] = campoId.split(".");
+  if (campo === "pais") {
+    const numero = `${seccion}.numero`;
+    if (siguiente[numero]) siguiente[numero] = sanitizarNumero(valor, siguiente[numero]);
+  }
+  if (campoId === "banco") {
+    // Al sacar un banco se descarta el CBU que se había cargado para él.
+    const elegidos = bancosDe(valor);
+    for (const b of BANCOS) if (!elegidos.includes(b)) delete siguiente[idCbu(b)];
+  }
   if (campo === "provincia") {
     const localidad = siguiente[`${seccion}.localidad`];
     if (localidad && getLocalidad(localidad)?.provincia !== valor) {

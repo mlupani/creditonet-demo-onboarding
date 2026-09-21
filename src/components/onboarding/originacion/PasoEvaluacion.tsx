@@ -80,7 +80,11 @@ export function PasoEvaluacion() {
 
     // 2 · Producto + Organismo + condición laboral determinan qué motor se ejecuta. Si una
     // regla institucional descartó la solicitud, el motor no llega a ejecutarse.
-    const { motor } = seleccionarMotor(app.configuracion, app.laboral.condicionLaboral);
+    const { motor } = seleccionarMotor(
+      app.configuracion,
+      app.laboral.condicionLaboral,
+      app.identificacion.tipoCliente
+    );
     const nuevas = descartada ? [] : evaluarReglas(app, motor, app.riesgo.escenario);
     const resultado = descartada ? null : resolverResultado(nuevas);
 
@@ -91,10 +95,12 @@ export function PasoEvaluacion() {
         ? { plan: null, motivo: null }
         : seleccionarLinea(app.configuracion.organismoId, {
             condicionLaboral: app.laboral.condicionLaboral,
+            situacionBcra: app.situaciones?.bcra ?? 1,
+            perfilInterno: app.situaciones?.interna ?? 1,
           });
 
     // 3 · Límites de la primera oferta: sin cancelaciones, que se ofrecen después (Plan §9).
-    const limites = linea.plan ? calcularLimites(app, { conCancelaciones: false }) : null;
+    const limites = linea.plan ? calcularLimites(app, { conCancelaciones: false, plan: linea.plan }) : null;
 
     solicitar();
     setFaseIdx(0);

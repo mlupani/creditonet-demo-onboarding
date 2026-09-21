@@ -55,7 +55,10 @@ export function PasoConfiguracion() {
             required
             value={cfg.organismoId}
             onChange={elegirOrganismo}
-            options={ORGANISMOS.map((o) => ({ value: o.id, label: o.nombre }))}
+            options={ORGANISMOS.filter((o) => o.estado === "ACTIVO").map((o) => ({
+              value: o.id,
+              label: o.nombre,
+            }))}
             hint="Empleador o ente pagador. Define qué productos ofrece y parametriza excepciones."
           />
         </div>

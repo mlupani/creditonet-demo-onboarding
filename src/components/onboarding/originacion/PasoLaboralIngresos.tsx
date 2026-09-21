@@ -2,8 +2,9 @@
 
 import { useApplication } from "@/lib/application-context";
 import { CONDICIONES_LABORALES, validarLaboral } from "@/lib/validation";
-import { onlyDigits } from "@/lib/format";
+import { maskCuit } from "@/lib/format";
 import { BANCOS } from "@/lib/parametros";
+import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { Banner } from "@/components/ui/Banner";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
@@ -55,24 +56,27 @@ export function PasoLaboralIngresos() {
               error={errores.fechaInicioLaboral}
               hint="dd/mm/aaaa"
             />
-            <SelectField
+            <MultiSelectField
               id="banco-cobro"
-              label="Banco de cobro"
+              label="Bancos de cobro"
               required
-              value={l.bancoCobro}
-              onChange={(v) => patchLaboral({ bancoCobro: v })}
-              options={BANCOS.map((b) => ({ value: b, label: b }))}
-              error={errores.bancoCobro}
+              values={l.bancosCobro}
+              onChange={(v) => patchLaboral({ bancosCobro: v })}
+              options={BANCOS}
+              error={errores.bancosCobro}
+              hint="Podés elegir más de uno: en la carga post-oferta se asigna un CBU a cada banco."
+              className="sm:col-span-2"
             />
             <FormField
               id="cuit-empleador"
               label="CUIT del empleador"
-              value={l.cuitEmpleador}
-              onChange={(v) => patchLaboral({ cuitEmpleador: onlyDigits(v).slice(0, 11) })}
+              value={maskCuit(l.cuitEmpleador)}
+              onChange={(v) => patchLaboral({ cuitEmpleador: maskCuit(v) })}
               error={errores.cuitEmpleador}
               inputMode="numeric"
-              maxLength={11}
-              hint="11 dígitos, sin guiones."
+              maxLength={13}
+              placeholder="xx-xxxxxxxx-x"
+              hint="11 dígitos: los guiones se completan solos."
             />
           </div>
         </div>

@@ -1,16 +1,17 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
+import { nombreOpcion, ORGANISMOS, PRODUCTOS } from "@/lib/config";
 import {
   importeTerceros,
   netoAAcreditar,
+  planDeSolicitud,
+  seCancela,
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { Banner } from "@/components/ui/Banner";
 
 export function ConfirmarOfertaModal({
   open,
@@ -25,12 +26,9 @@ export function ConfirmarOfertaModal({
   const o = app.oferta;
   const precancel = totalPrecancelaciones(o);
   const terceros = importeTerceros(o);
-  const renovados = o.creditosActivos.filter((c) => c.precancelar).map((c) => c.id);
-
-  // Detectar créditos en mora que deben cancelarse obligatoriamente
-  const creditosEnMora = o.creditosActivos.filter((c) => c.enMora);
-  const moraNoCancel = creditosEnMora.filter((c) => !c.precancelar);
-  const puedeProceder = moraNoCancel.length === 0;
+  const cancelados = o.creditosActivos.filter(seCancela);
+  const renovados = cancelados.map((c) => c.id);
+  const hayMora = cancelados.some((c) => c.enMora);
 
   const rows: { label: string; value: string; tone?: "success" | "danger" }[] = [
     { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
@@ -42,12 +40,12 @@ export function ConfirmarOfertaModal({
         app.configuracion.organismoId
       )}`,
     },
-    { label: "Plan de cuotas", value: getPlan(app.configuracion.organismoId).nombre },
+    { label: "Plan de cuotas", value: planDeSolicitud(app).nombre },
     { label: "Capital solicitado", value: formatARS(o.montoSolicitado) },
     ...(precancel > 0
       ? [
           {
-            label: `Renovación ${renovados.join(", ")}`,
+            label: `Renovación ${renovados.join(", ")}${hayMora ? " (incluye mora)" : ""}`,
             value: `−${formatARS(precancel)}`,
             tone: "danger" as const,
           },
@@ -79,19 +77,12 @@ export function ConfirmarOfertaModal({
           <Button variant="outline" onClick={onClose}>
             Volver a modificar
           </Button>
-          <Button variant="success" onClick={onConfirm} autoFocus disabled={!puedeProceder}>
+          <Button variant="success" onClick={onConfirm} autoFocus>
             Aceptar oferta
           </Button>
         </div>
       }
     >
-      {moraNoCancel.length > 0 && (
-        <Banner tone="error">
-          Los créditos internos <strong>{moraNoCancel.map((c) => c.id).join(", ")}</strong> están
-          en mora. La cancelación es obligatoria para aceptar la oferta. Volvé a modificar y
-          marcalos para renovación.
-        </Banner>
-      )}
       <p className="text-sm text-ink-600">
         Al confirmar, el cliente acepta la oferta y arranca la carga post-oferta. La solicitud
         sigue <strong>En trámite</strong>: queda <strong>preaprobada</strong> recién cuando el

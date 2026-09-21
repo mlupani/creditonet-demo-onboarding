@@ -2,7 +2,7 @@
 
 import type { PantallaPostOfertaId } from "@/lib/types";
 import type { EstadoVisualPantalla } from "@/lib/validation";
-import { IconCheck } from "@/components/icons";
+import { IconAlertTriangle, IconCheck, IconLock } from "@/components/icons";
 
 export interface PasoLibre {
   id: PantallaPostOfertaId;
@@ -12,6 +12,8 @@ export interface PasoLibre {
   estado: EstadoVisualPantalla;
   // El analista observó justamente esta pantalla: se resalta para ir derecho a ella.
   observada?: boolean;
+  // Corrección puntual: sólo se puede entrar a las pantallas observadas, el resto se bloquea.
+  bloqueada?: boolean;
 }
 
 const CIRCULO: Record<EstadoVisualPantalla, string> = {
@@ -41,10 +43,12 @@ export function StepperLibre({
   pasos,
   actual,
   onSelect,
+  leyendaBloqueo = "Bloqueada mientras se corrige la observación",
 }: {
   pasos: PasoLibre[];
   actual: PantallaPostOfertaId;
   onSelect: (id: PantallaPostOfertaId) => void;
+  leyendaBloqueo?: string;
 }) {
   return (
     <div>
@@ -56,9 +60,12 @@ export function StepperLibre({
               <button
                 type="button"
                 onClick={() => onSelect(paso.id)}
+                disabled={paso.bloqueada}
                 aria-current={activa ? "step" : undefined}
                 className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${
-                  activa
+                  paso.bloqueada
+                    ? "cursor-not-allowed border-ink-200 bg-ink-50 opacity-60"
+                    : activa
                     ? "border-brand-400 bg-white shadow-card ring-2 ring-brand-100"
                     : paso.observada
                       ? "border-warning-400 bg-warning-50 hover:bg-warning-50"
@@ -67,10 +74,18 @@ export function StepperLibre({
               >
                 <span
                   className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-all ${
-                    CIRCULO[paso.estado]
+                    paso.bloqueada
+                      ? "bg-ink-200 text-ink-500"
+                      : paso.observada
+                        ? "bg-warning-500 text-white"
+                        : CIRCULO[paso.estado]
                   } ${activa ? "ring-4 ring-brand-100" : ""}`}
                 >
-                  {paso.estado === "COMPLETA" ? (
+                  {paso.bloqueada ? (
+                    <IconLock width={12} height={12} />
+                  ) : paso.observada ? (
+                    <IconAlertTriangle width={13} height={13} strokeWidth={2.6} />
+                  ) : paso.estado === "COMPLETA" ? (
                     <IconCheck width={12} height={12} strokeWidth={3} />
                   ) : (
                     paso.numero
@@ -80,7 +95,13 @@ export function StepperLibre({
                   <span
                     className={`block whitespace-nowrap text-xs ${
                       activa ? "font-bold" : "font-semibold"
-                    } ${TEXTO[paso.estado]}`}
+                    } ${
+                      paso.bloqueada
+                        ? "text-ink-500"
+                        : paso.observada
+                          ? "text-warning-700"
+                          : TEXTO[paso.estado]
+                    }`}
                   >
                     {paso.label}
                   </span>
@@ -89,9 +110,11 @@ export function StepperLibre({
                       paso.observada ? "text-warning-700" : "text-ink-400"
                     }`}
                   >
-                    {paso.observada
-                      ? "A corregir"
-                      : `${DETALLE[paso.estado]} · ${paso.obligatoria ? "Obligatoria" : "Opcional"}`}
+                    {paso.bloqueada
+                      ? "Bloqueada"
+                      : paso.observada
+                        ? "A corregir"
+                        : `${DETALLE[paso.estado]} · ${paso.obligatoria ? "Obligatoria" : "Opcional"}`}
                   </span>
                 </span>
               </button>
@@ -113,6 +136,16 @@ export function StepperLibre({
           <span className="h-2.5 w-2.5 rounded-full border border-ink-300 bg-ink-100" /> No
           iniciada
         </span>
+        {pasos.some((p) => p.observada) && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-warning-500" /> Con observaciones
+          </span>
+        )}
+        {pasos.some((p) => p.bloqueada) && (
+          <span className="inline-flex items-center gap-1.5">
+            <IconLock width={11} height={11} /> {leyendaBloqueo}
+          </span>
+        )}
       </div>
     </div>
   );

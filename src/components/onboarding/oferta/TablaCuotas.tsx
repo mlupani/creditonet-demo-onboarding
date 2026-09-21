@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { getPlan } from "@/lib/config";
-import { OFFER_TERMS, calcularCuota } from "@/lib/credit";
+import { SISTEMAS_AMORTIZACION } from "@/lib/config";
+import { calcularCuota, grillaDe, planDeSolicitud } from "@/lib/credit";
 import type { Plazo } from "@/lib/types";
 import { formatARS, formatPct } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { IconArrowLeft, IconArrowRight, IconCheckCircle, IconExpand } from "@/components/icons";
+import { GrillaCuotas } from "./GrillaCuotas";
 
 // Placeholder de una cuota mientras se "recalcula" (delay ficticio, ver más abajo).
 function SkeletonCuota() {
@@ -32,8 +33,9 @@ export function TablaCuotas({
 } = {}) {
   const { app, patchOferta } = useApplication();
   const o = app.oferta;
-  const plan = getPlan(app.configuracion.organismoId);
-  const terms = OFFER_TERMS.filter((t) => plan.plazos.includes(t.plazo));
+  // Plan y grilla de tasas de la solicitud: la TNA de cada plazo sale del plan.
+  const plan = planDeSolicitud(app);
+  const terms = grillaDe(plan);
   const [showAllPlazos, setShowAllPlazos] = useState(false);
 
   // Recalculo ficticio: cada cambio de monto muestra un skeleton 1 segundo para que se note
@@ -71,10 +73,10 @@ export function TablaCuotas({
     scrollRef.current?.scrollBy({ left: direccion * 240, behavior: "smooth" });
   }
 
-  // Al elegir un plazo desde el modal "Ver todas", el carousel puede tener esa opción
-  // fuera de vista: se cierra el modal y se scrollea hasta ella para que quede visible.
-  function seleccionarDesdePlazo(plazo: Plazo) {
-    patchOferta({ plazo });
+  // Al elegir una celda de la grilla se cambian capital y cuotas juntos. El carousel puede
+  // tener ese plazo fuera de vista: se cierra el modal y se scrollea hasta él.
+  function seleccionarDesdeGrilla(montoSolicitado: number, plazo: Plazo) {
+    patchOferta({ montoSolicitado, plazo });
     onSeleccion?.();
     setShowAllPlazos(false);
     requestAnimationFrame(() => {
@@ -103,17 +105,32 @@ export function TablaCuotas({
           onClick={() => setShowAllPlazos(true)}
         >
           <IconExpand width={14} height={14} />
-          Ver todas
+          Ver grilla
         </Button>
       </div>
 
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-500">
         {[
-          ["Sistema", plan.sistema.toLowerCase()],
+          [
+            "Sistema",
+            (SISTEMAS_AMORTIZACION.find((s) => s.value === plan.sistema)?.label ?? plan.sistema)
+              .split(" (")[0]
+              .toLowerCase(),
+          ],
           ["Gracia", `${plan.periodoGraciaDias} días`],
-          ["IVA", formatPct(plan.ivaPct)],
+          ["IVA", plan.calculaIva ? formatPct(plan.ivaPct) : "no aplica"],
           ["Sellos", formatPct(plan.sellosPct)],
-          ["Cargo de otorgamiento", formatPct(plan.cargoOtorgamientoPct)],
+          [
+            "Gasto de otorgamiento",
+            `${
+              plan.gastoOtorgamiento.tipo === "PORCENTAJE"
+                ? formatPct(plan.gastoOtorgamiento.valor)
+                : formatARS(plan.gastoOtorgamiento.valor)
+            }${plan.gastoOtorgamiento.seCapitaliza ? " (se capitaliza)" : ""}`,
+          ],
+          ...(plan.cargoAdministrativoPct > 0
+            ? [["Cargo administrativo", `${formatPct(plan.cargoAdministrativoPct)} s/cuota`]]
+            : []),
         ].map(([label, valor]) => (
           <span key={label}>
             {label} <strong className="font-semibold text-ink-700">{valor}</strong>
@@ -164,7 +181,7 @@ export function TablaCuotas({
           ? terms.map((term) => <SkeletonCuota key={term.plazo} />)
           : terms.map((term) => {
               const seleccionada = term.plazo === o.plazo && !pendiente;
-              const cuota = calcularCuota(o.montoSolicitado, term.plazo, term.tna);
+              const cuota = calcularCuota(o.montoSolicitado, term.plazo, term.tna, plan.sistema);
               return (
                 <button
                   key={term.plazo}
@@ -212,53 +229,28 @@ export function TablaCuotas({
       <Modal
         open={showAllPlazos}
         onClose={() => setShowAllPlazos(false)}
-        title="Comparativo de cuotas"
-        maxWidth="max-w-2xl"
+        title="Grilla de cuotas"
+        maxWidth="max-w-5xl"
         footer={
           <Button variant="primary" onClick={() => setShowAllPlazos(false)}>
             Cerrar
           </Button>
         }
       >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-ink-200 bg-ink-50">
-              <tr>
-                <th className="px-4 py-3 font-semibold text-ink-700"></th>
-                <th className="px-4 py-3 font-semibold text-ink-700">Plazo</th>
-                <th className="px-4 py-3 font-semibold text-ink-700">TNA</th>
-                <th className="px-4 py-3 font-semibold text-ink-700">Cuota mensual</th>
-                <th className="px-4 py-3 font-semibold text-ink-700">Total a pagar</th>
-                <th className="px-4 py-3 font-semibold text-ink-700">1ª cuota</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-100">
-              {terms.map((term) => {
-                const cuota = calcularCuota(o.montoSolicitado, term.plazo, term.tna);
-                const seleccionada = term.plazo === o.plazo && !pendiente;
-                return (
-                  <tr
-                    key={term.plazo}
-                    onClick={() => seleccionarDesdePlazo(term.plazo)}
-                    className={`cursor-pointer hover:bg-brand-50/60 ${seleccionada ? "bg-brand-50" : ""}`}
-                  >
-                    <td className="px-4 py-3 text-brand-600">
-                      {seleccionada && <IconCheckCircle width={16} height={16} />}
-                    </td>
-                    <td className={`px-4 py-3 font-medium ${seleccionada ? "text-brand-700" : "text-ink-900"}`}>
-                      {term.plazo} cuotas {term.recomendada && " (Recom.)"}
-                    </td>
-                    <td className="px-4 py-3 text-ink-600">{term.tna}%</td>
-                    <td className="px-4 py-3 font-bold tabular-nums text-ink-900">{formatARS(cuota)}</td>
-                    <td className="px-4 py-3 tabular-nums text-ink-600">{formatARS(cuota * term.plazo)}</td>
-                    <td className="px-4 py-3 text-ink-500">{term.primeraCuota}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-3 text-xs text-ink-500">Elegí una fila para seleccionar ese plazo.</p>
+        <p className="mb-3 text-xs text-ink-500">
+          Cuota mensual de cada capital según la cantidad de cuotas, hasta el capital máximo de{" "}
+          <strong className="font-semibold text-ink-700">{formatARS(o.capitalMaximoActual)}</strong>.
+          Elegí una celda para seleccionar ese capital y ese plazo.
+        </p>
+        <GrillaCuotas
+          terms={terms}
+          sistema={plan.sistema}
+          capitalMaximo={o.capitalMaximoActual}
+          capital={o.montoSolicitado}
+          plazo={o.plazo}
+          seleccionable={!pendiente}
+          onSeleccionar={seleccionarDesdeGrilla}
+        />
       </Modal>
     </Card>
   );

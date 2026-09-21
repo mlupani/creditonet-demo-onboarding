@@ -1,10 +1,10 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { CANALES, getPlan, nombreOpcion, ORGANISMOS, PRODUCTOS, VENDEDORES } from "@/lib/config";
+import { CANALES, nombreOpcion, ORGANISMOS, PRODUCTOS, VENDEDORES } from "@/lib/config";
 import { reglaMarcada, seleccionarMotor } from "@/lib/motores";
 import { formatARS, formatDNI } from "@/lib/format";
-import { RESULTADO_LABEL } from "@/lib/credit";
+import { RESULTADO_LABEL, planDeSolicitud } from "@/lib/credit";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
@@ -24,7 +24,11 @@ export function ResumenSolicitudModal({
   const cliente = app.cliente;
   const riesgoCompleto = app.riesgo.estado === "COMPLETO";
   const marcadas = app.riesgo.reglas.filter(reglaMarcada).length;
-  const { motor } = seleccionarMotor(app.configuracion, app.laboral.condicionLaboral);
+  const { motor } = seleccionarMotor(
+      app.configuracion,
+      app.laboral.condicionLaboral,
+      app.identificacion.tipoCliente
+    );
 
   const rows: { label: string; value: string; tone?: "success" | "danger" | "warning" }[] = [
     { label: "Canal", value: nombreOpcion(CANALES, app.configuracion.canalId) },
@@ -38,7 +42,11 @@ export function ResumenSolicitudModal({
     ...(cliente ? [{ label: "DNI", value: formatDNI(cliente.dni) }] : []),
     { label: "Producto", value: nombreOpcion(PRODUCTOS, app.configuracion.productoId) },
     { label: "Organismo", value: nombreOpcion(ORGANISMOS, app.configuracion.organismoId) },
-    { label: "Plan de cuotas", value: getPlan(app.configuracion.organismoId).nombre },
+    {
+      label: "Plan de cuotas",
+      // El plan se elige al evaluar, según el perfil del cliente.
+      value: app.riesgo.planId ? planDeSolicitud(app).nombre : "Se asigna al evaluar",
+    },
     ...(app.laboral.ingresoNeto > 0
       ? [{ label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) }]
       : []),

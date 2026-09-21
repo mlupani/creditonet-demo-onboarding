@@ -122,8 +122,10 @@ export interface ClienteDatos {
   cuil: string;
   genero: string;
   fechaNacimiento: string;
-  domicilio: string;
+  calle: string;
+  numero: string;
   localidad: string;
+  provincia: string;
   email: string;
   telefono: string;
 }
@@ -136,7 +138,8 @@ export interface LaboralIngresos {
   // Fijo, contratado, monotributista… Determina la línea y el motor aplicables.
   condicionLaboral: string;
   fechaInicioLaboral: string;
-  bancoCobro: string;
+  // Puede cobrar en más de un banco: en la carga post-oferta se asigna un CBU a cada uno.
+  bancosCobro: string[];
   ingresoBruto: number;
   ingresoNeto: number;
   montoExtraidoDiaCobro: number;
@@ -181,6 +184,8 @@ export interface DeudaTerceros {
 }
 
 export interface Oferta {
+  // Plan de cuotas con el que se armó la oferta (null hasta que la evaluación elige uno).
+  planId: string | null;
   capitalMaximoBase: number;
   // Capital habilitado cuando se renueva un crédito propio: el crédito renovado deja de
   // computar en la exposición y el plan admite un tope mayor.
@@ -239,7 +244,8 @@ export interface PersonaVinculada {
   id: string;
   vinculo: string;
   dni: string;
-  nombreCompleto: string;
+  nombre: string;
+  apellido: string;
   domicilio: string;
   email: string;
   telefono: string;
@@ -250,6 +256,10 @@ export interface PersonaVinculada {
   ingresoBruto: number;
   ingresoNeto: number;
   reciboSueldo: ArchivoLegajo[];
+  // Empleador del garante: calle, localidad y teléfono (con área, como "+54 3514228890").
+  empleadorCalle: string;
+  empleadorLocalidad: string;
+  empleadorTelefono: string;
 }
 
 export interface ArchivoLegajo {
@@ -281,8 +291,9 @@ export interface Observacion {
   motivo: string;
   nota: string;
   fecha: string;
-  // Pantalla que el vendedor tiene que corregir: se resalta al retomar la carga (01:09).
-  pantalla: PantallaPostOfertaId | null;
+  // Pantallas que el vendedor tiene que corregir. Corrección puntual: es lo único que puede
+  // editar, el resto de la carga queda bloqueada hasta que se reenvíe. Vacío = sin bloqueo.
+  pantallas: PantallaPostOfertaId[];
 }
 
 export interface Rechazo {
@@ -293,6 +304,26 @@ export interface Rechazo {
   codigos: string[];
   motivo: string;
   observacion: string;
+  fecha: string;
+}
+
+// Cambio de oferta que el analista propuso y que todavía espera la refrendación del supervisor.
+// Hasta entonces no rige: la solicitud sigue En análisis con la oferta original.
+export interface CambioOfertaPropuesto {
+  montoSolicitado: number;
+  plazo: Plazo;
+  ingresoBruto: number;
+  ingresoNeto: number;
+  nota: string;
+  fecha: string;
+  solicitadoPor: string;
+}
+
+// Comentario que el canal de venta agrega a una solicitud En análisis para el analista.
+export interface ComentarioSolicitud {
+  id: string;
+  autor: string;
+  texto: string;
   fecha: string;
 }
 
@@ -310,6 +341,9 @@ export interface CreditApplication {
     documento: string;
     consultado: boolean;
     tipoCliente: TipoCliente | null;
+    // Cliente nuevo: firma manuscrita tomada al identificarlo. No es la firma electrónica del
+    // crédito: es una referencia para comparar después la firma física cargada al legajo.
+    firmaRegistrada: { imagen: string; fecha: string } | null;
   };
   cliente: ClienteDatos | null;
   situaciones: SituacionesCliente | null;
@@ -355,8 +389,14 @@ export interface CreditApplication {
     tomado: boolean;
     observacion: Observacion | null;
     reenviada: boolean;
+    // Pantallas observadas que el vendedor ya corrigió y guardó; con todas guardadas puede
+    // enviar nuevamente.
+    pantallasCorregidas: PantallaPostOfertaId[];
+    // Cambio de oferta pendiente de refrendación del supervisor (o null).
+    cambioOfertaPendiente: CambioOfertaPropuesto | null;
   };
   rechazo: Rechazo | null;
+  comentarios: ComentarioSolicitud[];
 
   fechaSolicitud: string | null;
   fechaPreaprobacion: string | null;

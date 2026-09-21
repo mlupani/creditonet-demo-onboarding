@@ -3,10 +3,12 @@
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import {
+  bancosDe,
   campoVisible,
   esRectificado,
   obligatorioEfectivo,
   sanitizar,
+  unirBancos,
   validarCampo,
   valorCampo,
   type CampoDef,
@@ -14,6 +16,9 @@ import {
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
 import { OrigenCampoBadge } from "@/components/ui/OrigenBadge";
+import { MultiSelectField } from "@/components/ui/MultiSelectField";
+import { PaisSelect } from "@/components/ui/PaisSelect";
+import { ValidationMessage } from "@/components/ui/ValidationMessage";
 
 const INPUT_MODE: Partial<Record<CampoDef["tipo"], "numeric" | "email" | "tel">> = {
   numero: "numeric",
@@ -21,7 +26,6 @@ const INPUT_MODE: Partial<Record<CampoDef["tipo"], "numeric" | "email" | "tel">>
   cuit: "numeric",
   cbu: "numeric",
   codigoPostal: "numeric",
-  caracteristica: "tel",
   telefono: "tel",
   email: "email",
 };
@@ -36,7 +40,10 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
   const valor = valorCampo(app, campo);
   const bloqueado = campo.origen === "NO_MODIFICABLE";
   const rectificado = esRectificado(app, campo);
-  const error = bloqueado ? undefined : (validarCampo(campo, valor, obligatorio) ?? undefined);
+  const valores = app.postOferta[campo.pantalla];
+  const error = bloqueado
+    ? undefined
+    : (validarCampo(campo, valor, obligatorio, valores) ?? undefined);
   const badge = <OrigenCampoBadge origen={campo.origen} rectificado={rectificado} />;
   const hint = bloqueado
     ? "Participó en la generación de la oferta: no se puede cambiar."
@@ -47,7 +54,40 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
         : undefined;
   const id = `po-${campo.id.replace(/\./g, "-")}`;
   const className = campo.ancho === "completo" ? "sm:col-span-2" : undefined;
-  const onChange = (v: string) => setCampo(campo.pantalla, campo.id, sanitizar(campo.tipo, v));
+  const onChange = (v: string) => setCampo(campo.pantalla, campo.id, sanitizar(campo, v, valores));
+
+  if (campo.tipo === "multiselect") {
+    return (
+      <MultiSelectField
+        id={id}
+        label={campo.label}
+        required={obligatorio}
+        values={bancosDe(valor)}
+        onChange={(v) => setCampo(campo.pantalla, campo.id, unirBancos(v))}
+        options={campo.opciones?.(valores) ?? []}
+        badge={badge}
+        error={error}
+        hint={hint ?? "Podés elegir más de uno: se pide un CBU por cada banco."}
+        className={className}
+      />
+    );
+  }
+
+  if (campo.tipo === "paisTelefono") {
+    return (
+      <div className={className}>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <label htmlFor={id} className="text-sm font-medium text-ink-700">
+            {campo.label}
+            {obligatorio && <span className="ml-0.5 text-danger-500">*</span>}
+          </label>
+          {badge}
+        </div>
+        <PaisSelect id={id} value={valor} onChange={onChange} invalid={!!error} />
+        {error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
+      </div>
+    );
+  }
 
   if (campo.tipo === "select" && !bloqueado) {
     const opciones = campo.opciones?.(app.postOferta[campo.pantalla]) ?? [];
@@ -80,6 +120,7 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
       hint={hint}
       type={campo.tipo === "email" ? "email" : "text"}
       inputMode={INPUT_MODE[campo.tipo]}
+      placeholder={campo.tipo === "cuit" ? "xx-xxxxxxxx-x" : undefined}
       className={className}
     />
   );

@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import type { CambioOferta } from "@/lib/application-context";
 import {
-  OFFER_TERMS,
   calcularCuota,
+  getTerm,
+  grillaDe,
   importeTerceros,
+  planDeSolicitud,
   totalPrecancelaciones,
 } from "@/lib/credit";
-import { getPlan } from "@/lib/config";
 import { formatARS } from "@/lib/format";
 import type { Plazo } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
@@ -27,8 +28,9 @@ import { IconArrowRight } from "@/components/icons";
  * de cero: si las cancelaciones se comen el capital nuevo, la operación no se puede cambiar
  * y corresponde rechazarla ("el nuevo monto no permite la precancelación").
  *
- * Al confirmar, el crédito vuelve al canal de venta en estado Observado con el nuevo
- * importe, para que el vendedor lo hable con el cliente.
+ * Un cambio de oferta requiere la refrendación del supervisor: al confirmar queda pendiente y
+ * recién cuando lo refrenda el crédito vuelve al canal de venta en estado Observado con el
+ * nuevo importe, para que el vendedor lo hable con el cliente.
  */
 export function CambiarOfertaModal({
   open,
@@ -41,8 +43,8 @@ export function CambiarOfertaModal({
 }) {
   const { app } = useApplication();
   const o = app.oferta;
-  const plan = getPlan(app.configuracion.organismoId);
-  const plazosDisponibles = OFFER_TERMS.filter((t) => plan.plazos.includes(t.plazo));
+  const plan = planDeSolicitud(app);
+  const plazosDisponibles = grillaDe(plan);
 
   const [monto, setMonto] = useState(o.montoSolicitado);
   const [plazo, setPlazo] = useState<Plazo>(o.plazo);
@@ -54,8 +56,8 @@ export function CambiarOfertaModal({
   const precancel = totalPrecancelaciones(o);
   const terceros = importeTerceros(o);
   const netoALiquidar = monto - precancel - terceros;
-  const term = OFFER_TERMS.find((t) => t.plazo === plazo) ?? OFFER_TERMS[0];
-  const nuevaCuota = calcularCuota(monto, plazo, term.tna);
+  const term = getTerm(plazo, plan);
+  const nuevaCuota = calcularCuota(monto, plazo, term.tna, plan.sistema);
 
   const errorNeto = neto > bruto ? "El ingreso neto no puede superar al bruto." : null;
   const errorLiquidar =
@@ -89,15 +91,15 @@ export function CambiarOfertaModal({
             Cancelar
           </Button>
           <Button variant="primary" onClick={confirmar}>
-            Devolver al canal de venta
+            Enviar a refrendación
           </Button>
         </div>
       }
     >
       <p className="text-sm text-ink-600">
         Corregí el capital, el plazo o los sueldos que se cargaron mal. La cuota se recalcula
-        sola. La solicitud vuelve al vendedor en estado <strong>Observado</strong> con la nueva
-        oferta, para que la converse con el cliente.
+        sola. El cambio <strong>requiere la refrendación del supervisor</strong>: recién entonces
+        la solicitud vuelve al vendedor en estado <strong>Observado</strong> con la nueva oferta.
       </p>
 
       <div className="mt-4 grid gap-x-5 gap-y-1 sm:grid-cols-2">

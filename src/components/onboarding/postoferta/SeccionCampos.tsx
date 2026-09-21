@@ -7,6 +7,7 @@ import {
   type PantallaConCampos,
   type SeccionCampo,
 } from "@/lib/campos-post-oferta";
+import { useApplication } from "@/lib/application-context";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { CampoPostOferta } from "./CampoPostOferta";
 
@@ -22,12 +23,13 @@ export function SeccionCampos({
   icon: ReactNode;
   action?: ReactNode;
 }) {
+  const { app } = useApplication();
   const meta = SECCIONES[seccion];
   return (
     <Card>
       <CardHeader title={meta.titulo} description={meta.descripcion} icon={icon} action={action} />
       <div className="grid gap-x-5 gap-y-3 p-5 sm:grid-cols-2 sm:p-6">
-        {camposDe(pantalla, seccion).map((campo) => (
+        {camposDe(pantalla, seccion, app.postOferta[pantalla]).map((campo) => (
           <CampoPostOferta key={campo.id} campo={campo} />
         ))}
       </div>

@@ -40,6 +40,13 @@ export function PantallaLegajo() {
 
   return (
     <div className="space-y-5">
+      {app.identificacion.tipoCliente === "NUEVO" && (
+        <Banner tone="info" title="Firma física del cliente">
+          {app.identificacion.firmaRegistrada
+            ? "Si se carga una firma física en el legajo, se compara con el registro de firma que el cliente hizo al identificarse. Es sólo una referencia: no es la firma electrónica del crédito."
+            : "En la identificación no se registró la firma del cliente, así que no habrá una referencia para comparar la firma física que se cargue al legajo."}
+        </Banner>
+      )}
       <Card>
         <CardHeader
           title="Legajo virtual"

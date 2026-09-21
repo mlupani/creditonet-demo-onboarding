@@ -24,6 +24,38 @@ export function onlyDigits(value: string): string {
   return value.replace(/\D+/g, "");
 }
 
+export function nombreApellido(p: { nombre: string; apellido: string }): string {
+  return `${p.nombre} ${p.apellido}`.trim();
+}
+
+const sinAcentos = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+
+// Buscador de las bandejas: con dígitos busca por DNI/CUIL, si no por apellido o nombre.
+export function coincideCliente(
+  c: { dni: string; cuil: string; apellido: string; nombre: string },
+  busqueda: string
+): boolean {
+  const q = busqueda.trim();
+  if (!q) return true;
+  if (/\d/.test(q)) {
+    const d = onlyDigits(q);
+    return c.dni.includes(d) || onlyDigits(c.cuil).includes(d);
+  }
+  return sinAcentos(`${c.apellido} ${c.nombre}`).includes(sinAcentos(q));
+}
+
+// Máscara de entrada de CUIT/CUIL xx-xxxxxxxx-x: sólo dígitos, con los guiones puestos solos.
+export function maskCuit(value: string): string {
+  const d = onlyDigits(value).slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 10) return `${d.slice(0, 2)}-${d.slice(2)}`;
+  return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`;
+}
+
 export function isValidDNI(value: string): boolean {
   const d = onlyDigits(value);
   return d.length >= 7 && d.length <= 8;
@@ -39,10 +71,6 @@ export function isValidCBU(value: string): boolean {
 
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
-}
-
-export function isValidPhone(value: string): boolean {
-  return onlyDigits(value).length >= 8;
 }
 
 export function formatDNI(value: string): string {
@@ -65,6 +93,22 @@ function aTexto(d: Date): string {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+// Máscara de entrada dd/mm/aaaa: deja sólo dígitos e inserta las barras a medida que se escribe.
+// Si se tipea la barra después de un día o mes de un dígito ("5/4/1988"), lo completa con 0.
+export function maskFecha(value: string): string {
+  const partes = value.split("/").slice(0, 3);
+  const d = partes
+    .map((p, i) => {
+      const digitos = onlyDigits(p);
+      return i < 2 && i < partes.length - 1 && digitos.length === 1 ? `0${digitos}` : digitos;
+    })
+    .join("")
+    .slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
 }
 
 export function parseFecha(value: string): Date | null {

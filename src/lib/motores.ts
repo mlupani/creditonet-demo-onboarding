@@ -6,13 +6,22 @@
 // En la demo los motores son datos fijos: no hay motor real ni reglas persistidas.
 
 import type {
+  TipoCliente,
   CreditApplication,
   EscenarioMotor,
   ResultadoRegla,
   RiskResultado,
   RiskRule,
 } from "./types";
-import { getOrganismo, getProductoConfig, nombreOpcion, PRODUCTOS } from "./config";
+import {
+  excepcionesDe,
+  getOrganismo,
+  getProductoConfig,
+  motorAsignado,
+  nombreOpcion,
+  PLANES_CUOTAS,
+  PRODUCTOS,
+} from "./config";
 import { calcularEdad, formatARS, parseFecha } from "./format";
 
 export interface MotorRiesgo {
@@ -87,6 +96,14 @@ export const MOTORES: MotorRiesgo[] = [
   },
 ];
 
+// Condiciones laborales conocidas (planes y motores): sirven para asignar motor por condición.
+export const CONDICIONES_LABORALES: string[] = [
+  ...new Set([
+    ...Object.values(PLANES_CUOTAS).flatMap((p) => p.condicionesLaborales),
+    ...MOTORES.flatMap((m) => m.condicionesLaborales),
+  ]),
+];
+
 export function getMotor(id: string | null): MotorRiesgo {
   return MOTORES.find((m) => m.id === id) ?? MOTORES[MOTORES.length - 1];
 }
@@ -99,13 +116,15 @@ export interface SeleccionMotor {
 }
 
 /**
- * Motor §2 y reunión 11/09 (02:09–02:13): dentro del producto se asigna un motor por
- * condición laboral, y el organismo puede definir una excepción que tiene prioridad.
- * La asociación exacta sigue siendo un pendiente funcional; acá es una tabla fija.
+ * Motor §2 y resumen del Producto: el producto asigna el motor (grupo de reglas) según el tipo
+ * de cliente (nuevo / existente) y la condición laboral, y el organismo puede pisar esa
+ * asignación. Si el organismo define la suya y ésta aplica al cliente, manda; si no, la del
+ * producto; si tampoco, el motor general.
  */
 export function seleccionarMotor(
   configuracion: { productoId: string; organismoId: string },
-  condicionLaboral = ""
+  condicionLaboral = "",
+  tipoCliente: TipoCliente | null = null
 ): SeleccionMotor {
   const producto = getProductoConfig(configuracion.productoId);
   const organismo = getOrganismo(configuracion.organismoId);
@@ -115,18 +134,15 @@ export function seleccionarMotor(
   let motorId = "motor-general";
   let criterio = `Sin configuración específica para ${nombreProducto} · ${organismo.nombre}`;
 
-  if (producto.id === "credito-judicial") {
-    motorId = "motor-judicial";
-    criterio = `El producto ${nombreProducto} tiene motor propio, con prioridad sobre el organismo`;
-  } else if (organismo.id === "policia-provincial") {
-    motorId = "motor-seguridad";
+  const motorOrganismo = excepcionesDe(configuracion.organismoId, configuracion.productoId).motor;
+  const delOrganismo = motorOrganismo ? motorAsignado(motorOrganismo, condicion, tipoCliente) : null;
+  const delProducto = motorAsignado(producto.motor, condicion, tipoCliente);
+  if (delOrganismo) {
+    motorId = delOrganismo;
     criterio = `Excepción del organismo ${organismo.nombre} sobre ${nombreProducto}`;
-  } else if (organismo.id === "jubilados-provincial") {
-    motorId = "motor-pasivos";
-    criterio = `Excepción del organismo ${organismo.nombre} sobre ${nombreProducto}`;
-  } else if (organismo.id === "empleados-salud") {
-    motorId = "motor-salud";
-    criterio = `${nombreProducto} · ${organismo.nombre}`;
+  } else if (delProducto) {
+    motorId = delProducto;
+    criterio = `Motor asignado al producto ${nombreProducto}`;
   }
 
   const motor = getMotor(motorId);

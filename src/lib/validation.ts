@@ -6,7 +6,8 @@ import type {
   PersonaVinculada,
   TipoPersonaVinculada,
 } from "./types";
-import { isValidCBU, isValidCUIL, isValidDNI, isValidEmail, isValidPhone, parseFecha } from "./format";
+import { isValidCBU, isValidCUIL, isValidDNI, isValidEmail, parseFecha } from "./format";
+import { parseTelefono, validarNumero } from "./telefono";
 import { configEfectiva, pantallasVisibles } from "./config";
 import { erroresPantalla } from "./campos-post-oferta";
 import { getTipoDocumento } from "./parametros";
@@ -57,7 +58,8 @@ export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
     e.fechaInicioLaboral = "Ingresá la fecha de inicio laboral (dd/mm/aaaa).";
   else if (!parseFecha(l.fechaInicioLaboral))
     e.fechaInicioLaboral = "La fecha debe tener el formato dd/mm/aaaa.";
-  if (!l.bancoCobro.trim()) e.bancoCobro = "Seleccioná el banco donde el cliente cobra.";
+  if (l.bancosCobro.length === 0)
+    e.bancosCobro = "Seleccioná al menos un banco donde el cliente cobra.";
   if (l.ingresoNeto <= 0)
     e.ingresoNeto = "No puede ser $0. Ingresá el ingreso neto mensual del cliente.";
   if (l.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto mensual del cliente.";
@@ -93,19 +95,24 @@ export function validarDeudaTerceros(
 export type CampoPersona =
   | "vinculo"
   | "dni"
-  | "nombreCompleto"
+  | "nombre"
+  | "apellido"
   | "domicilio"
   | "email"
   | "telefono"
   | "condicionLaboral"
   | "ingresoBruto"
   | "ingresoNeto"
-  | "reciboSueldo";
+  | "reciboSueldo"
+  | "empleadorCalle"
+  | "empleadorLocalidad"
+  | "empleadorTelefono";
 
 export const LABEL_PERSONA: Record<CampoPersona, string> = {
   vinculo: "Vínculo",
   dni: "DNI",
-  nombreCompleto: "Nombre completo",
+  nombre: "Nombre",
+  apellido: "Apellido",
   domicilio: "Domicilio",
   email: "Email",
   telefono: "Teléfono",
@@ -113,6 +120,9 @@ export const LABEL_PERSONA: Record<CampoPersona, string> = {
   ingresoBruto: "Ingreso bruto",
   ingresoNeto: "Ingreso neto",
   reciboSueldo: "Recibo de sueldo",
+  empleadorCalle: "Calle del empleador",
+  empleadorLocalidad: "Localidad del empleador",
+  empleadorTelefono: "Teléfono del empleador",
 };
 
 export function validarPersona(
@@ -123,20 +133,32 @@ export function validarPersona(
   if (!p.vinculo.trim()) e.vinculo = "Seleccioná el vínculo con el cliente.";
   if (!p.dni.trim()) e.dni = "Ingresá el DNI.";
   else if (!isValidDNI(p.dni)) e.dni = "El DNI debe tener 7 u 8 dígitos.";
-  if (!p.nombreCompleto.trim()) e.nombreCompleto = "Ingresá el nombre completo.";
+  if (!p.nombre.trim()) e.nombre = "Ingresá el nombre.";
+  if (!p.apellido.trim()) e.apellido = "Ingresá el apellido.";
   if (!p.domicilio.trim()) e.domicilio = "Ingresá el domicilio completo.";
   if (!p.email.trim()) e.email = "Ingresá el email de contacto.";
   else if (!isValidEmail(p.email))
     e.email = "El formato del email no es válido. Ej.: nombre@dominio.com";
-  if (!p.telefono.trim()) e.telefono = "Ingresá el teléfono de contacto.";
-  else if (!isValidPhone(p.telefono))
-    e.telefono = "El teléfono debe tener al menos 8 dígitos.";
+  const tel = parseTelefono(p.telefono);
+  if (!tel.numero) e.telefono = "Ingresá el teléfono de contacto.";
+  else {
+    const errorTel = validarNumero(tel.pais, tel.numero);
+    if (errorTel) e.telefono = errorTel;
+  }
   // El garante debe demostrar capacidad de pago para firmar la documentación del préstamo.
   if (tipo === "garante") {
     if (!p.condicionLaboral.trim()) e.condicionLaboral = "Seleccioná la condición laboral.";
     if (p.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto.";
     if (p.ingresoNeto <= 0) e.ingresoNeto = "Ingresá el ingreso neto.";
     if (p.reciboSueldo.length === 0) e.reciboSueldo = "Adjuntá el recibo de sueldo.";
+    if (!p.empleadorCalle.trim()) e.empleadorCalle = "Ingresá la calle del empleador.";
+    if (!p.empleadorLocalidad.trim()) e.empleadorLocalidad = "Ingresá la localidad del empleador.";
+    const telEmpleador = parseTelefono(p.empleadorTelefono);
+    if (!telEmpleador.numero) e.empleadorTelefono = "Ingresá el teléfono del empleador.";
+    else {
+      const errorTel = validarNumero(telEmpleador.pais, telEmpleador.numero);
+      if (errorTel) e.empleadorTelefono = errorTel;
+    }
   }
   return e;
 }
@@ -220,7 +242,7 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
             )
           );
         });
-        conDatos = lista.some((p) => p.dni.trim() || p.nombreCompleto.trim());
+        conDatos = lista.some((p) => p.dni.trim() || p.nombre.trim() || p.apellido.trim());
         break;
       }
       case "legajo": {
