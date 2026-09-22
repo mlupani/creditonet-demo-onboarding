@@ -1,0 +1,212 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e13]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e16] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja de análisis" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja de análisis
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - link "Productos" [ref=e30] [cursor=pointer]:
+            - /url: /productos
+            - img [ref=e31]
+            - text: Productos
+          - link "Organismos" [ref=e34] [cursor=pointer]:
+            - /url: /organismos
+            - img [ref=e35]
+            - text: Organismos
+          - link "Planes de cuotas" [ref=e38] [cursor=pointer]:
+            - /url: /planes
+            - img [ref=e39]
+            - text: Planes de cuotas
+          - generic [ref=e43]:
+            - img [ref=e44]
+            - generic [ref=e46]: Liquidación
+            - generic [ref=e47]: Pronto
+          - generic [ref=e49]:
+            - img [ref=e50]
+            - generic [ref=e54]: Clientes
+            - generic [ref=e55]: Pronto
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e60]: Créditos
+            - generic [ref=e61]: Pronto
+          - generic [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e67]: Motor de riesgo
+            - generic [ref=e68]: Pronto
+          - generic [ref=e70]:
+            - img [ref=e71]
+            - generic [ref=e74]: Reportes
+            - generic [ref=e75]: Pronto
+          - generic [ref=e77]:
+            - img [ref=e78]
+            - generic [ref=e81]: Parámetros
+            - generic [ref=e82]: Pronto
+        - generic [ref=e83]:
+          - button "Reiniciar demo" [ref=e84]
+          - paragraph [ref=e85]: Demo interactiva · v0.3
+    - generic [ref=e86]:
+      - banner [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - paragraph [ref=e90]: Solicitar crédito
+            - paragraph [ref=e91]: CreditoNet · Casa Central
+          - generic [ref=e92]: Demo
+          - button "Notificaciones" [ref=e96]:
+            - img [ref=e97]
+          - generic [ref=e101]:
+            - generic [ref=e102]: JP
+            - generic [ref=e103]:
+              - paragraph [ref=e104]: Juan Pérez
+              - paragraph [ref=e105]: Canal de venta · CreditoNet
+      - main [ref=e106]:
+        - generic [ref=e179]:
+          - generic [ref=e180]:
+            - generic [ref=e181]:
+              - generic [ref=e182]:
+                - paragraph [ref=e183]: Solicitar crédito · Originación
+                - heading "Identificación" [level=1] [ref=e184]
+                - generic [ref=e185]:
+                  - img [ref=e186]
+                  - generic [ref=e189]: Préstamo personal · Empleados de salud
+              - generic [ref=e190]:
+                - paragraph [ref=e191]: Paso 1 de 6
+                - paragraph [ref=e192]: Etapa 1 de 2
+            - list [ref=e196]:
+              - listitem [ref=e197]:
+                - button "1 Identificación" [disabled] [ref=e198]:
+                  - generic [ref=e199]: "1"
+                  - generic [ref=e200]: Identificación
+              - listitem [ref=e202]:
+                - button "2 Producto y organismo" [disabled] [ref=e203]:
+                  - generic [ref=e204]: "2"
+                  - generic [ref=e205]: Producto y organismo
+              - listitem [ref=e207]:
+                - button "3 Datos del cliente" [disabled] [ref=e208]:
+                  - generic [ref=e209]: "3"
+                  - generic [ref=e210]: Datos del cliente
+              - listitem [ref=e212]:
+                - button "4 Datos laborales" [disabled] [ref=e213]:
+                  - generic [ref=e214]: "4"
+                  - generic [ref=e215]: Datos laborales
+              - listitem [ref=e217]:
+                - button "5 Evaluación" [disabled] [ref=e218]:
+                  - generic [ref=e219]: "5"
+                  - generic [ref=e220]: Evaluación
+              - listitem [ref=e222]:
+                - button "6 Oferta" [disabled] [ref=e223]:
+                  - generic [ref=e224]: "6"
+                  - generic [ref=e225]: Oferta
+          - generic [ref=e226]:
+            - generic [ref=e228]:
+              - generic [ref=e230]:
+                - img [ref=e232]
+                - generic [ref=e236]:
+                  - heading "¿Quién solicita el crédito?" [level=2] [ref=e237]
+                  - paragraph [ref=e238]: El tipo de persona determina con qué documento se identifica al solicitante.
+              - generic [ref=e239]:
+                - button "Persona física Se identifica por DNI Empleado, jubilado o monotributista que solicita a título personal." [pressed] [ref=e240]:
+                  - img [ref=e242]
+                  - img [ref=e245]
+                  - paragraph [ref=e248]: Persona física
+                  - paragraph [ref=e249]: Se identifica por DNI
+                  - paragraph [ref=e250]: Empleado, jubilado o monotributista que solicita a título personal.
+                - button "Persona jurídica Se identifica por CUIT Empresa o entidad. Requiere datos societarios y del firmante. No navegable en la demo" [ref=e251]:
+                  - img [ref=e253]
+                  - paragraph [ref=e257]: Persona jurídica
+                  - paragraph [ref=e258]: Se identifica por CUIT
+                  - paragraph [ref=e259]: Empresa o entidad. Requiere datos societarios y del firmante.
+                  - generic [ref=e260]: No navegable en la demo
+              - generic [ref=e261]:
+                - generic [ref=e262]: DNI o CUIL del cliente
+                - generic [ref=e263]:
+                  - textbox "DNI o CUIL del cliente" [ref=e265]:
+                    - /placeholder: "Ej.: 20111111 o 20222222"
+                  - button "Consultar cliente" [ref=e266]:
+                    - img [ref=e267]
+                    - text: Consultar cliente
+                - paragraph [ref=e270]: DNI de 7 u 8 dígitos o CUIL de 11, sin puntos ni guiones. Podés hacer clic en un caso de prueba abajo o ingresar cualquier otro DNI para probar el flujo de cliente nuevo.
+                - generic [ref=e271]:
+                  - button "Casos preconfigurados para la demo Ocultar" [expanded] [active] [ref=e300]:
+                    - paragraph [ref=e273]: Casos preconfigurados para la demo
+                    - generic [ref=e274]:
+                      - text: Ocultar
+                      - img [ref=e275]
+                  - generic [ref=e301]:
+                    - button "20111111 DNI 1 Happy path Motor pasa, sin deudas previas, oferta limpia" [ref=e302]:
+                      - generic [ref=e303]:
+                        - generic [ref=e304]: "20111111"
+                        - generic [ref=e305]: DNI 1
+                      - paragraph [ref=e306]: Happy path
+                      - paragraph [ref=e307]: Motor pasa, sin deudas previas, oferta limpia
+                    - button "20222222 DNI 2 Rechazo BCRA 4, motor rechaza con carencia 30 días" [ref=e308]:
+                      - generic [ref=e309]:
+                        - generic [ref=e310]: "20222222"
+                        - generic [ref=e311]: DNI 2
+                      - paragraph [ref=e312]: Rechazo
+                      - paragraph [ref=e313]: BCRA 4, motor rechaza con carencia 30 días
+                    - button "20333333 DNI 3 Crédito interno Préstamo propio vigente CR-000102 a renovar" [ref=e314]:
+                      - generic [ref=e315]:
+                        - generic [ref=e316]: "20333333"
+                        - generic [ref=e317]: DNI 3
+                      - paragraph [ref=e318]: Crédito interno
+                      - paragraph [ref=e319]: Préstamo propio vigente CR-000102 a renovar
+                    - button "20666666 DNI 6 Crédito interno en mora Préstamo propio en mora, cancelación obligatoria en oferta" [ref=e320]:
+                      - generic [ref=e321]:
+                        - generic [ref=e322]: "20666666"
+                        - generic [ref=e323]: DNI 6
+                      - paragraph [ref=e324]: Crédito interno en mora
+                      - paragraph [ref=e325]: Préstamo propio en mora, cancelación obligatoria en oferta
+                    - button "20777777 DNI 7 Dos créditos internos Dos préstamos propios vigentes CR-000110 y CR-000111, ambos a renovar" [ref=e326]:
+                      - generic [ref=e327]:
+                        - generic [ref=e328]: "20777777"
+                        - generic [ref=e329]: DNI 7
+                      - paragraph [ref=e330]: Dos créditos internos
+                      - paragraph [ref=e331]: Dos préstamos propios vigentes CR-000110 y CR-000111, ambos a renovar
+                    - button "20444444 DNI 4 Crédito externo Deuda terceros en Tarjeta Naranja $350.000" [ref=e332]:
+                      - generic [ref=e333]:
+                        - generic [ref=e334]: "20444444"
+                        - generic [ref=e335]: DNI 4
+                      - paragraph [ref=e336]: Crédito externo
+                      - paragraph [ref=e337]: Deuda terceros en Tarjeta Naranja $350.000
+                    - button "20555555 DNI 5 Ambos créditos Crédito interno CR-000215 + deuda Santander $300.000" [ref=e338]:
+                      - generic [ref=e339]:
+                        - generic [ref=e340]: "20555555"
+                        - generic [ref=e341]: DNI 5
+                      - paragraph [ref=e342]: Ambos créditos
+                      - paragraph [ref=e343]: Crédito interno CR-000215 + deuda Santander $300.000
+                    - button "40999999 DNI X Cliente nuevo Sin historial previo, aplica limitante nuevo" [ref=e344]:
+                      - generic [ref=e345]:
+                        - generic [ref=e346]: "40999999"
+                        - generic [ref=e347]: DNI X
+                      - paragraph [ref=e348]: Cliente nuevo
+                      - paragraph [ref=e349]: Sin historial previo, aplica limitante nuevo
+            - generic [ref=e278]:
+              - button "Anular crédito" [ref=e279]
+              - status [ref=e281]:
+                - img [ref=e283]
+                - generic [ref=e286]: Consultá el DNI o CUIL del cliente para identificarlo.
+              - button "Continuar" [disabled] [ref=e287]:
+                - text: Continuar
+                - img [ref=e288]
+  - button "Open Next.js Dev Tools" [ref=e295] [cursor=pointer]:
+    - img [ref=e296]
+  - alert [ref=e299]

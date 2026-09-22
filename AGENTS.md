@@ -104,10 +104,16 @@ retomar la sesión cuando llegue la respuesta.
 
 las variables de entorno de telegram se encuentran en el archivo .env del proyecto.
 
+
 ```bash
+ICONO="🔄"  # 🔄 si está en progreso, ✅ si está terminado/PR listo
 curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
   --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
-  --data-urlencode "text=<resumen breve: qué se hizo, link al PR>"
+  --data-urlencode "text=Proyecto: creditonet
+Tarea: <ID> - <título corto>
+Estado: $ICONO <En progreso | Terminado>
+PR: <link o \"—\" si no corresponde todavía>
+Link de tarea: https://miguel.youtrack.cloud/issue/<ID>"
 
 <!-- BEGIN:nextjs-agent-rules -->
 
