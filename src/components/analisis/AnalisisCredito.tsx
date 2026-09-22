@@ -22,10 +22,22 @@ import {
   nombreOpcion,
   pantallasVisibles,
 } from "@/lib/config";
-import { camposRectificados } from "@/lib/campos-post-oferta";
+import {
+  camposDe,
+  camposRectificados,
+  campoVisible,
+  valorCampo,
+  valorCampoDisplay,
+} from "@/lib/campos-post-oferta";
 import type { PantallaPostOfertaId } from "@/lib/types";
 import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO, tarjetaValida } from "@/lib/validation";
-import { formatARS, formatDNI, formatPct, nombreApellido } from "@/lib/format";
+import {
+  calcularEdad,
+  formatARS,
+  formatDNI,
+  formatPct,
+  nombreApellido,
+} from "@/lib/format";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -50,6 +62,7 @@ import {
   IconCalendar,
   IconCheck,
   IconCreditCard,
+  IconEye,
   IconFileText,
   IconLandmark,
   IconRefresh,
@@ -152,6 +165,38 @@ export function AnalisisCredito({
   const aRenovar = o.creditosActivos.filter(seCancela);
   // Cambio de oferta propuesto que espera la refrendación del supervisor.
   const cambioPendiente = app.analista.cambioOfertaPendiente;
+  const cfgEfectiva = configEfectiva(app.configuracion);
+  const edad = app.cliente ? calcularEdad(app.cliente.fechaNacimiento) : null;
+  // Campos post-oferta visibles para el analista (respeta excepciones por organismo).
+  const personalesVisibles = camposDe("personales", undefined, po.personales).filter((c) =>
+    campoVisible(app, c)
+  );
+  const laboralVisibles = camposDe("laboral", undefined, po.laboral).filter((c) =>
+    campoVisible(app, c)
+  );
+
+  function valorOPresentacion(v: string): string {
+    const t = v?.trim();
+    return t ? t : "—";
+  }
+
+  function domicilioCompleto(d: {
+    calle: string;
+    numero: string;
+    piso: string;
+    departamento: string;
+    provincia: string;
+    localidad: string;
+    codigoPostal: string;
+  }): string {
+    const base = `${d.calle} ${d.numero}`.trim();
+    const piso = d.piso ? ` piso ${d.piso}` : "";
+    const depto = d.departamento ? ` dpto ${d.departamento}` : "";
+    const loc = [d.localidad, d.provincia].filter(Boolean).join(", ");
+    const cp = d.codigoPostal ? ` (CP ${d.codigoPostal})` : "";
+    if (!base && !loc) return "—";
+    return `${base}${piso}${depto}${loc ? ` · ${loc}` : ""}${cp}`.trim() || "—";
+  }
 
   function abrir(tipo: "observar" | "rechazar" | "anular") {
     setMotivo("");
@@ -260,7 +305,27 @@ export function AnalisisCredito({
             },
             { label: "ID de Cliente", value: app.numeroCliente ?? "—" },
             { label: "DNI / CUIL", value: `${formatDNI(app.cliente.dni)} · ${app.cliente.cuil}` },
-            { label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) },
+            {
+              label: "Género / Nacimiento",
+              value: `${valorOPresentacion(app.cliente.genero)} · ${valorOPresentacion(app.cliente.fechaNacimiento)}${edad !== null ? ` (${edad} años)` : ""}`,
+            },
+            { label: "Email", value: valorOPresentacion(app.cliente.email) },
+            { label: "Teléfono", value: valorOPresentacion(app.cliente.telefono) },
+            {
+              label: "Domicilio",
+              value: `${app.cliente.calle} ${app.cliente.numero} · ${valorOPresentacion(app.cliente.localidad)}, ${valorOPresentacion(app.cliente.provincia)}`,
+            },
+            {
+              label: "Tipo persona / Cliente",
+              value: `${app.tipoPersona === "JURIDICA" ? "Jurídica" : "Física"} · ${app.identificacion.tipoCliente === "NUEVO" ? "Nuevo" : app.identificacion.tipoCliente === "EXISTENTE" ? "Existente" : "—"}`,
+            },
+            {
+              label: "Identidad verificada",
+              value: app.identidadVerificada ? "✓ Verificada" : "No verificada",
+              tone: app.identidadVerificada ? "success" : "warning",
+            },
+            { label: "Ingreso neto (pre-oferta)", value: formatARS(app.laboral.ingresoNeto) },
+            { label: "Ingreso bruto (pre-oferta)", value: formatARS(app.laboral.ingresoBruto) },
           ]}
         />
         <SummaryCard
@@ -271,6 +336,55 @@ export function AnalisisCredito({
             { label: "Organismo", value: nombreOpcion(ORGANISMOS, app.configuracion.organismoId) },
             { label: "Canal", value: nombreOpcion(CANALES, app.configuracion.canalId) },
             { label: "Vendedor", value: nombreOpcion(VENDEDORES, app.configuracion.vendedorId) },
+            { label: "Crédito", value: app.numeroCredito ?? "Sin ID" },
+            { label: "Estado / Etapa", value: `${app.estado} · ${app.etapa}` },
+          ]}
+        />
+        <SummaryCard
+          title="Datos laborales (pre-oferta)"
+          icon={<IconWallet width={16} height={16} />}
+          rows={[
+            { label: "Condición laboral", value: valorOPresentacion(app.laboral.condicionLaboral) },
+            { label: "Fecha inicio laboral", value: valorOPresentacion(app.laboral.fechaInicioLaboral) },
+            { label: "Bancos de cobro", value: app.laboral.bancosCobro.join(", ") || "—" },
+            { label: "CUITs empleador", value: app.laboral.cuitsEmpleador.join(", ") || "—" },
+            { label: "Ingreso bruto / neto", value: `${formatARS(app.laboral.ingresoBruto)} / ${formatARS(app.laboral.ingresoNeto)}` },
+            { label: "Disponible", value: formatARS(app.laboral.disponible) },
+            { label: "Débitos no remun.", value: formatARS(app.laboral.debitosNoRemunerativos) },
+            {
+              label: "Extracciones",
+              value:
+                app.laboral.extraccionesFecha || app.laboral.extraccionesImporte
+                  ? `${valorOPresentacion(app.laboral.extraccionesFecha)} · ${formatARS(app.laboral.extraccionesImporte)}`
+                  : "—",
+            },
+            {
+              label: "Transferencias",
+              value:
+                app.laboral.transferenciasFecha || app.laboral.transferenciasImporte
+                  ? `${valorOPresentacion(app.laboral.transferenciasFecha)} · ${formatARS(app.laboral.transferenciasImporte)}`
+                  : "—",
+            },
+          ]}
+        />
+        <SummaryCard
+          title="Situaciones y validación"
+          icon={<IconShieldCheck width={16} height={16} />}
+          rows={[
+            { label: "Situación BCRA", value: app.situaciones ? `Situación ${app.situaciones.bcra}` : "—" },
+            { label: "Situación interna", value: app.situaciones ? `${app.situaciones.interna}` : "—" },
+            { label: "Solicitada", value: app.fechaSolicitud ?? "—" },
+            { label: "Preaprobada", value: app.fechaPreaprobacion ?? "—" },
+            { label: "Enviada a análisis", value: app.fechaEnvioAnalisis ?? "—" },
+            { label: "Aprobada", value: app.fechaAprobacion ?? "—" },
+            ...(app.riesgo.evaluadoCon
+              ? [
+                  {
+                    label: "Evaluado con ingreso",
+                    value: formatARS(app.riesgo.evaluadoCon.ingresoNeto),
+                  },
+                ]
+              : []),
           ]}
         />
         <SummaryCard
@@ -375,9 +489,17 @@ export function AnalisisCredito({
           title="Oferta"
           icon={<IconWallet width={16} height={16} />}
           rows={[
+            { label: "Plan aplicado", value: o.planId ?? "Sin plan (pre-evaluación)" },
             { label: "Capital solicitado", value: formatARS(o.montoSolicitado), strong: true },
+            { label: "Capital máximo actual", value: formatARS(o.capitalMaximoActual) },
+            { label: "Capital máximo base", value: formatARS(o.capitalMaximoBase) },
+            { label: "Capital máximo renovación", value: formatARS(o.capitalMaximoRenovacion) },
             { label: "Plazo", value: `${o.plazo} cuotas` },
+            { label: "TNA", value: `${o.tna} %` },
             { label: "Valor cuota", value: formatARS(o.valorCuota) },
+            { label: "Total a pagar", value: formatARS(o.totalAPagar) },
+            { label: "1ª cuota vence", value: valorOPresentacion(o.primeraCuotaVencimiento) },
+            { label: "Aceptada por cliente", value: o.aceptada ? "Sí" : "No" },
             ...(precancel > 0
               ? [
                   {
@@ -391,11 +513,18 @@ export function AnalisisCredito({
               ? [
                   {
                     label: `Terceros · ${o.deudaTerceros.entidad}`,
-                    value: `−${formatARS(terceros)}`,
+                    value: `−${formatARS(terceros)} · CBU ${valorOPresentacion(o.deudaTerceros.cbu)}`,
                     tone: "danger" as const,
                   },
                 ]
-              : []),
+              : [
+                  {
+                    label: "Deuda terceros",
+                    value: o.deudaTerceros.habilitado
+                      ? `${valorOPresentacion(o.deudaTerceros.entidad)} · ${formatARS(o.deudaTerceros.importe)}`
+                      : "Sin deuda declarada",
+                  },
+                ]),
             {
               label: "Acreditación neta",
               value: formatARS(netoAAcreditar(o)),
@@ -420,8 +549,25 @@ export function AnalisisCredito({
               label: "Situación BCRA",
               value: app.situaciones ? `Situación ${app.situaciones.bcra}` : "—",
             },
+            { label: "Situación interna", value: app.situaciones ? `${app.situaciones.interna}` : "—" },
             { label: "Último pago", value: "hace 25 días" },
           ]}
+        />
+        <SummaryCard
+          title="Datos personales (post-oferta)"
+          icon={<IconUser width={16} height={16} />}
+          rows={personalesVisibles.map((c) => ({
+            label: c.label,
+            value: valorOPresentacion(valorCampoDisplay(app, c) || valorCampo(app, c)),
+          }))}
+        />
+        <SummaryCard
+          title="Datos laborales (post-oferta)"
+          icon={<IconBuilding width={16} height={16} />}
+          rows={laboralVisibles.map((c) => ({
+            label: c.label,
+            value: valorOPresentacion(valorCampoDisplay(app, c) || valorCampo(app, c)),
+          }))}
         />
         <SummaryCard
           title="Documentación"
@@ -490,6 +636,54 @@ export function AnalisisCredito({
                 ]
           }
         />
+        <SummaryCard
+          title="Tarjetas tokenizadas (post-oferta)"
+          icon={<IconCreditCard width={16} height={16} />}
+          rows={
+            po.tarjetas.length === 0
+              ? [{ label: "Tarjetas", value: "Sin tarjetas cargadas", tone: "muted" as const }]
+              : po.tarjetas.flatMap((t, idx) => [
+                  {
+                    label: `Tarjeta ${idx + 1} · Vía`,
+                    value: `${t.via}${t.verificada === false ? " (no verificada)" : t.verificada ? " (verificada)" : ""} · ${t.estado}`,
+                  },
+                  {
+                    label: `Tarjeta ${idx + 1} · Detalle`,
+                    value:
+                      t.estado === "TOKENIZADA"
+                        ? `${valorOPresentacion(t.tipo ?? "")} · ${valorOPresentacion(t.marca ?? "")} · ${valorOPresentacion(t.nombreTitular ?? "")} · •••• ${valorOPresentacion(t.ultimos4 ?? "")} · ${valorOPresentacion(t.vencimiento ?? "")} · ${valorOPresentacion(t.emisor ?? "")}`
+                        : `Enviada a ${valorOPresentacion(t.enviadoA ?? "—")} · esperando cliente`,
+                  },
+                  {
+                    label: `Tarjeta ${idx + 1} · Token`,
+                    value: valorOPresentacion(t.token ?? "—"),
+                  },
+                ])
+          }
+        />
+        <SummaryCard
+          title="Legajo virtual (post-oferta)"
+          icon={<IconFileText width={16} height={16} />}
+          rows={[
+            {
+              label: "Obligatorios",
+              value: `${docsCargados} de ${docsObligatorios.length} obligatorios`,
+            },
+            ...cfgEfectiva.documentos.map((d) => ({
+              label: d.tipoId,
+              value: (po.legajo[d.tipoId]?.length ?? 0) > 0
+                ? po.legajo[d.tipoId]!.map((a) => `${a.nombre} (${a.detalle})`).join(" · ")
+                : d.obligatorio ? "Falta · obligatorio" : "—",
+              tone: (po.legajo[d.tipoId]?.length ?? 0) === 0 && d.obligatorio ? ("danger" as const) : undefined,
+            })),
+            {
+              label: "Impresión",
+              value: po.impresion
+                ? `${po.impresion.accion === "IMPRESO" ? "Impreso" : "Visualizado"} · ${po.impresion.fecha}`
+                : "Sin imprimir",
+            },
+          ]}
+        />
         {rectificados.length > 0 && (
           <SummaryCard
             title="Datos rectificados en el onboarding"
@@ -501,6 +695,118 @@ export function AnalisisCredito({
             }))}
           />
         )}
+      </div>
+
+      {/* Detalle expandido: referencias, garantes y créditos (tablas post-oferta) */}
+      <div className="grid gap-4">
+        <Card className="p-5">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <IconUser width={16} height={16} />
+            </span>
+            Referencias personales (post-oferta)
+          </h3>
+          {po.referencias.length === 0 ? (
+            <p className="mt-3 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-500">
+              Sin referencias cargadas.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {po.referencias.map((r, idx) => (
+                <li key={r.id} className="rounded-xl border border-ink-200 px-4 py-3">
+                  <p className="text-sm font-semibold text-ink-900">
+                    {idx + 1}. {valorOPresentacion(r.vinculo) || "Sin vínculo"} · {nombreApellido(r) || "Sin nombre"} · DNI {valorOPresentacion(r.dni)}
+                    {r.autocompletado && <span className="ml-2 text-xs font-medium text-success-700">autocompletado por DNI</span>}
+                  </p>
+                  <div className="mt-2 grid gap-1 text-xs text-ink-600 sm:grid-cols-2">
+                    <span>Domicilio: {domicilioCompleto(r.domicilio)}</span>
+                    <span>Email: {valorOPresentacion(r.email)}</span>
+                    <span>Teléfono: {valorOPresentacion(r.telefono)}</span>
+                    <span>Condición laboral: {valorOPresentacion(r.condicionLaboral)}</span>
+                    <span>Banco / CBU: {valorOPresentacion(r.banco)} {valorOPresentacion(r.cbu) !== "—" ? `· ${r.cbu}` : ""}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <IconShieldCheck width={16} height={16} />
+            </span>
+            Garantes (post-oferta)
+          </h3>
+          {po.garantes.length === 0 ? (
+            <p className="mt-3 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-500">
+              Sin garantes cargados{cfgEfectiva.garantes.minimo > 0 ? ` (mínimo requerido: ${cfgEfectiva.garantes.minimo})` : ""}.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {po.garantes.map((g, idx) => (
+                <li key={g.id} className="rounded-xl border border-ink-200 px-4 py-3">
+                  <p className="text-sm font-semibold text-ink-900">
+                    {idx + 1}. {valorOPresentacion(g.vinculo) || "Sin vínculo"} · {nombreApellido(g) || "Sin nombre"} · DNI {valorOPresentacion(g.dni)}
+                    {g.autocompletado && <span className="ml-2 text-xs font-medium text-success-700">autocompletado</span>}
+                  </p>
+                  <div className="mt-2 grid gap-1 text-xs text-ink-600 sm:grid-cols-2">
+                    <span>Domicilio: {domicilioCompleto(g.domicilio)}</span>
+                    <span>Email: {valorOPresentacion(g.email)}</span>
+                    <span>Teléfono: {valorOPresentacion(g.telefono)}</span>
+                    <span>Condición laboral: {valorOPresentacion(g.condicionLaboral)} · Bruto {formatARS(g.ingresoBruto)} / Neto {formatARS(g.ingresoNeto)}</span>
+                    <span>Empleador: {valorOPresentacion(g.empleadorCalle)} · {valorOPresentacion(g.empleadorLocalidad)} · {valorOPresentacion(g.empleadorTelefono)}</span>
+                    <span>Banco / CBU: {valorOPresentacion(g.banco)} {valorOPresentacion(g.cbu) !== "—" ? `· ${g.cbu}` : ""}</span>
+                    <span>Recibos sueldo: {g.reciboSueldo.length > 0 ? g.reciboSueldo.map((a) => a.nombre).join(", ") : "—"}</span>
+                    <span>Otros docs garante: {g.otrosDocumentos.length > 0 ? g.otrosDocumentos.map((a) => a.nombre).join(", ") : "—"}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <IconRefresh width={16} height={16} />
+            </span>
+            Créditos vigentes y detalle de precancelación
+          </h3>
+          {o.creditosActivos.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-500">Sin créditos vigentes.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-left text-xs">
+                <thead className="bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+                  <tr>
+                    <th className="px-3 py-2">ID</th>
+                    <th className="px-3 py-2">Cuotas</th>
+                    <th className="px-3 py-2">Cuota</th>
+                    <th className="px-3 py-2">Residual</th>
+                    <th className="px-3 py-2">Cancelación</th>
+                    <th className="px-3 py-2">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-100">
+                  {o.creditosActivos.map((c) => (
+                    <tr key={c.id} className={c.enMora ? "bg-danger-50/40" : ""}>
+                      <td className="px-3 py-2 font-mono font-semibold text-brand-700">{c.id}</td>
+                      <td className="px-3 py-2">{c.cuotasAbonadas}/{c.cuotasOriginales} ({Math.round((c.cuotasAbonadas/c.cuotasOriginales)*100)} %)</td>
+                      <td className="px-3 py-2">{formatARS(c.valorCuota)}</td>
+                      <td className="px-3 py-2">{formatARS(c.capitalResidual)}</td>
+                      <td className="px-3 py-2">
+                        {formatARS(c.montoCancelacion)}
+                        <span className="ml-1 text-[11px] text-ink-400">rest {formatARS(c.desglose.capitalResidual)} + int {formatARS(c.desglose.interesesAVencer)} + IVA {formatARS(c.desglose.iva)} + cargos {formatARS(c.desglose.cargosCancelacion)} {c.desglose.punitorios ? `+ punitorios ${formatARS(c.desglose.punitorios)}` : ""}</span>
+                      </td>
+                      <td className="px-3 py-2">{seCancela(c) ? (c.enMora ? "En mora · a cancelar" : "A renovar") : "Vigente"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
       </div>
 
       {app.comentarios.length > 0 && (
