@@ -6,12 +6,13 @@ import { maskCuit } from "@/lib/format";
 import { BANCOS } from "@/lib/parametros";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { Banner } from "@/components/ui/Banner";
+import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { OrigenBadge } from "@/components/ui/OrigenBadge";
-import { IconBriefcase, IconLock } from "@/components/icons";
+import { IconBriefcase, IconLock, IconPlus, IconTrash } from "@/components/icons";
 
 // Datos laborales y financieros mínimos configurados para el producto (Guía §3.2). El recibo
 // que respalda el ingreso se pide en el legajo virtual, post-oferta.
@@ -20,6 +21,16 @@ export function PasoLaboralIngresos() {
   const l = app.laboral;
   const errores = validarLaboral(l);
   const completos = Object.keys(errores).length === 0;
+  const cuitsEmpleador = l.cuitsEmpleador.length > 0 ? l.cuitsEmpleador : [""];
+
+  function actualizarCuitEmpleador(i: number, valor: string) {
+    const siguiente = cuitsEmpleador.map((c, idx) => (idx === i ? maskCuit(valor) : c));
+    patchLaboral({ cuitsEmpleador: siguiente });
+  }
+
+  function quitarCuitEmpleador(i: number) {
+    patchLaboral({ cuitsEmpleador: l.cuitsEmpleador.filter((_, idx) => idx !== i) });
+  }
 
   return (
     <Card>
@@ -67,17 +78,50 @@ export function PasoLaboralIngresos() {
               hint="Podés elegir más de uno: en la carga post-oferta se asigna un CBU a cada banco."
               className="sm:col-span-2"
             />
-            <FormField
-              id="cuit-empleador"
-              label="CUIT del empleador"
-              value={maskCuit(l.cuitEmpleador)}
-              onChange={(v) => patchLaboral({ cuitEmpleador: maskCuit(v) })}
-              error={errores.cuitEmpleador}
-              inputMode="numeric"
-              maxLength={13}
-              placeholder="xx-xxxxxxxx-x"
-              hint="11 dígitos: los guiones se completan solos."
-            />
+            <div className="sm:col-span-2">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-ink-700">CUIT del empleador</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => patchLaboral({ cuitsEmpleador: [...cuitsEmpleador, ""] })}
+                >
+                  <IconPlus width={14} height={14} />
+                  Agregar empleador
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {cuitsEmpleador.map((cuit, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <FormField
+                      id={`cuit-empleador-${i}`}
+                      label={cuitsEmpleador.length > 1 ? `Empleador ${i + 1}` : "CUIT"}
+                      className="flex-1"
+                      value={maskCuit(cuit)}
+                      onChange={(v) => actualizarCuitEmpleador(i, v)}
+                      error={errores.cuitsEmpleador?.[i]}
+                      inputMode="numeric"
+                      maxLength={13}
+                      placeholder="xx-xxxxxxxx-x"
+                    />
+                    {cuitsEmpleador.length > 1 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="mt-5 shrink-0"
+                        onClick={() => quitarCuitEmpleador(i)}
+                      >
+                        <IconTrash width={14} height={14} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-ink-500">
+                11 dígitos: los guiones se completan solos. Agregá más de uno si el cliente tiene
+                más de un empleador (pluriempleo).
+              </p>
+            </div>
           </div>
         </div>
 
