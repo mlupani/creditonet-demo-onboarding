@@ -14,15 +14,11 @@ Este archivo define cómo trabajar sobre tickets de YouTrack en este repo. Aplic
 - **Backlog**: specs en borrador. Solo el humano las crea/edita.
 - **Por hacer**: spec o tarea lista para tomar.
 - **En progreso**: se está implementando.
-- **En testing**: implementación completa, corriendo self-review antes
-  del PR.
-- **Terminado**: PR abierto, esperando revisión humana.
-- **En producción**: la mueve el humano a mano después de revisar y
-  mergear. El harness nunca mueve un issue a esta columna.
-
-(Ver "Transiciones de estado" más abajo para el orden exacto en que se
-mueve el issue entre estas columnas — no es opcional ni descriptivo,
-son pasos obligatorios.)
+- **Hecho**: PR abierto, esperando revisión humana.
+- **Mergeado**: el humano revisó y mergeó el PR. La mueve el humano,
+  nunca el harness.
+- **En producción**: deploy real confirmado. La mueve el humano, nunca
+  el harness.
 
 ## Al tomar un ticket de "Por hacer"
 
@@ -45,18 +41,21 @@ resuelve de punta a punta sin beneficio real de partirla?
 
 Estos son pasos de ejecución, no una descripción — cada uno requiere su
 propia llamada de API/MCP para cambiar el State, ANTES de seguir al
-siguiente. Nunca saltar de "Por hacer" directo a "Terminado".
+siguiente. El harness solo controla hasta "Hecho" — "Mergeado" y "En
+producción" las mueve el humano.
 
 1. Antes de escribir una sola línea de código: mover el issue a
-   **"En progreso"** y notificar por Telegram que se empezó (ver sección Notificaciones).
+   **"En progreso"** y notificar por Telegram que se empezó (ver
+   sección Notificaciones).
 2. Mientras se implementa (con o sin plan formal, en Claude Code:
    `superpowers:subagent-driven-development` si hubo plan): el issue
-   queda en "En progreso".
-3. Al terminar la implementación, ANTES de crear el PR: mover el issue
-   a **"En testing"**. Esta columna NO significa "ahora arranca el testing" — significa el gate final: whole-branch review completa +
-corrida de la suite de tests entera, el último chequeo antes de abrir el PR.
+   queda en "En progreso". El testing real (TDD por tarea, review por
+   tarea) ya ocurre continuamente en esta etapa.
+3. Antes de crear el PR: correr la whole-branch review final / suite de
+   tests completa (el único punto donde es puramente verificación, sin
+   código nuevo).
 4. Recién cuando la review está limpia: crear el PR, comentar el link,
-   y mover el issue a **"Terminado"**.
+   y mover el issue a **"Hecho"** — notificar por Telegram.
 
 Si en algún punto el estado actual del issue no coincide con el paso
 que se está por hacer, corregirlo antes de continuar — no asumir que
@@ -67,8 +66,7 @@ ya está bien.
 - Branch: `<YOUTRACK-ID>-slug-corto` (ej. `creditonet-123-fix-auth`).
   El nombre del branch y del PR deben incluir el ID del issue — la
   integración VCS de YouTrack ya está configurada para linkear
-  commits/PRs automáticamente cuando aparece ese ID, así que no hace
-  falta pegar el link a mano.
+  commits/PRs automáticamente cuando aparece ese ID.
 - Cada comentario que se deja en YouTrack debe ser breve: qué se hizo,
   qué falta, link a commits/PR — no pegar el diff completo.
 - Acceso a YouTrack: si el harness tiene disponible el MCP de YouTrack,
@@ -88,39 +86,23 @@ cuatro cosas ameritan preguntar:
 4. Un plan tan roto que cualquier camino hacia adelante es una adivinanza
 
 Para cualquier otra ambigüedad: decidir, dejarlo registrado en el
-comentario del issue como una decisión tomada (qué se decidió y por qué),
-y seguir — no bloquear esperando respuesta.
+comentario del issue, y seguir — no bloquear esperando respuesta.
 
 Cuando sí aplica uno de los 4 casos: imprimir la pregunta con el
 marcador `NEEDS_INPUT: <pregunta>` y terminar el turno ahí. El
-orquestador externo se encarga de mandar esa pregunta por Telegram y
-retomar la sesión cuando llegue la respuesta.
+orquestador externo manda esa pregunta por Telegram y retoma la sesión
+cuando llegue la respuesta.
 
 ## Notificaciones (Telegram)
 
- Notificar por Telegram en dos momentos:
-- Al mover el issue a "En progreso" (arranca la tarea): un mensaje corto con el ID del issue y qué se va a hacer.
-- Al abrir el PR / terminar la tarea: resumen + link al PR.
-
-las variables de entorno de telegram se encuentran en el archivo .env del proyecto.
-
+Notificar por Telegram al mover a "En progreso" y al llegar a "Hecho",
+con este formato (icono 🔄 mientras se hace, ✅ cuando está terminada):
 
 ```bash
-ICONO="🔄"  # 🔄 si está en progreso, ✅ si está terminado/PR listo
 curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
   --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
   --data-urlencode "text=Proyecto: creditonet
 Tarea: <ID> - <título corto>
-Estado: $ICONO <En progreso | Terminado>
-PR: <link o \"—\" si no corresponde todavía>
+Estado: <🔄 En progreso | ✅ Hecho>
+PR: <link o \"—\">
 Link de tarea: https://miguel.youtrack.cloud/issue/<ID>"
-
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
