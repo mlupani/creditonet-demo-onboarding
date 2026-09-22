@@ -163,6 +163,7 @@ interface ApplicationContextValue {
     nombreTitular: string;
     vencimiento: string;
   }) => void;
+  confirmarTarjetaGuardada: (tarjetaId: string) => void;
   quitarTarjeta: (tarjetaId: string) => void;
   agregarPersona: (tipo: TipoPersonaVinculada) => void;
   actualizarPersona: (
@@ -709,6 +710,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  // El vendedor confirma que la tarjeta guardada de un trámite anterior sigue siendo correcta.
+  const confirmarTarjetaGuardada = useCallback((tarjetaId: string) => {
+    setApp((prev) => ({
+      ...prev,
+      postOferta: {
+        ...prev.postOferta,
+        tarjetas: prev.postOferta.tarjetas.map((t) =>
+          t.id === tarjetaId ? { ...t, verificada: true } : t
+        ),
+      },
+    }));
+  }, []);
+
   // --- Referencias y garantes (Onboarding §7–§8) ---
 
   const agregarPersona = useCallback((tipo: TipoPersonaVinculada) => {
@@ -1051,6 +1065,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       enviarLinkWhatsApp,
       simularCompletaCliente,
       tokenizarPresencial,
+      confirmarTarjetaGuardada,
       quitarTarjeta,
       agregarPersona,
       actualizarPersona,
@@ -1106,6 +1121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       enviarLinkWhatsApp,
       simularCompletaCliente,
       tokenizarPresencial,
+      confirmarTarjetaGuardada,
       quitarTarjeta,
       agregarPersona,
       actualizarPersona,

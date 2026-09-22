@@ -11,7 +11,9 @@ import type {
   PersonaVinculada,
   PostOferta,
   SituacionesCliente,
+  TarjetaTokenizada,
   TipoCliente,
+  TipoTarjeta,
   WizardStepMeta,
 } from "./types";
 import {
@@ -44,6 +46,18 @@ export interface RespuestaConsultaCliente {
     provincia: string;
     localidad: string;
     codigoPostal: string;
+  };
+  // Cliente recurrente: tarjeta que quedó tokenizada en un trámite anterior. El vendedor tiene
+  // que comprobarla en la pantalla de tokenización antes de que cuente como válida.
+  tarjetaGuardada?: {
+    tipo: TipoTarjeta;
+    marca: string;
+    primeros4: string;
+    ultimos4: string;
+    vencimiento: string;
+    emisor: string;
+    fechaTokenizacion: string;
+    token: string;
   };
 }
 
@@ -116,6 +130,16 @@ export const CASO_HAPPY_PATH: CasoDemoCliente = {
     provincia: "Córdoba",
     localidad: "Córdoba",
     codigoPostal: "5000",
+  },
+  tarjetaGuardada: {
+    tipo: "DEBITO",
+    marca: "Visa",
+    primeros4: "4509",
+    ultimos4: "4821",
+    vencimiento: "11/29",
+    emisor: "Banco Santander",
+    fechaTokenizacion: "14/03/2026",
+    token: "tok_prev_A1B2C3",
   },
   laboral: {
     condicionLaboral: "Empleado fijo",
@@ -901,6 +925,30 @@ const CARGA_DEMO: Record<string, string> = {
 export function precargarPostOferta(app: CreditApplication): PostOferta {
   const c = app.cliente;
   const base = c?.dni ? obtenerCasoPorDocumento(c.dni) : CONSULTA_CLIENTE_MOCK;
+  // Cliente recurrente con una tarjeta guardada de un trámite anterior: se precarga, pero
+  // el vendedor tiene que comprobarla antes de que cuente como válida (ver `tarjetaValida`).
+  const tg = base.tarjetaGuardada;
+  const tarjetaPrecargada: TarjetaTokenizada[] =
+    app.identificacion.tipoCliente === "EXISTENTE" && tg
+      ? [
+          {
+            id: "tarjeta-precargada",
+            via: "BASE_INTERNA",
+            estado: "TOKENIZADA",
+            verificada: false,
+            enviadoA: null,
+            tipo: tg.tipo,
+            marca: tg.marca,
+            nombreTitular: c ? `${c.nombre} ${c.apellido}`.toUpperCase() : null,
+            primeros4: tg.primeros4,
+            ultimos4: tg.ultimos4,
+            vencimiento: tg.vencimiento,
+            emisor: tg.emisor,
+            fechaTokenizacion: tg.fechaTokenizacion,
+            token: tg.token,
+          },
+        ]
+      : [];
   const precarga: Record<string, string> = {
     nombre: c?.nombre ?? "",
     apellido: c?.apellido ?? "",
@@ -979,7 +1027,7 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     precarga,
     personales: valores("personales"),
     laboral: valores("laboral"),
-    tarjetas: [],
+    tarjetas: tarjetaPrecargada,
     referencias: [
       {
         id: "referencia-1",

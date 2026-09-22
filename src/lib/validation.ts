@@ -4,6 +4,7 @@ import type {
   LaboralIngresos,
   PantallaPostOfertaId,
   PersonaVinculada,
+  TarjetaTokenizada,
   TipoPersonaVinculada,
 } from "./types";
 import { isValidCBU, isValidCUIL, isValidDNI, isValidEmail, parseFecha } from "./format";
@@ -203,6 +204,12 @@ export interface PantallaEstado {
 const conTexto = (valores: Record<string, string>) =>
   Object.values(valores).some((v) => v.trim().length > 0);
 
+// Tokenizada y, si viene precargada de un trámite anterior (Onboarding §6), ya comprobada
+// por el vendedor: recién ahí cuenta como una tarjeta válida para el cobro.
+export function tarjetaValida(t: TarjetaTokenizada): boolean {
+  return t.estado === "TOKENIZADA" && t.verificada !== false;
+}
+
 /**
  * Estado de cada pantalla visible según la configuración efectiva (Producto + Organismo):
  * obligatoriedad de campos, cantidades de referencias y garantes, documentos y tarjetas.
@@ -228,9 +235,20 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
         break;
       }
       case "tokenizacion": {
-        const tokenizadas = po.tarjetas.filter((t) => t.estado === "TOKENIZADA").length;
-        if (tokenizadas === 0)
-          push(po.tarjetas.length > 0 ? "Tarjeta esperando al cliente" : "Tarjeta sin tokenizar");
+        const validas = po.tarjetas.filter(tarjetaValida).length;
+        if (validas === 0) {
+          const esperandoCliente = po.tarjetas.some((t) => t.estado === "ESPERANDO_CLIENTE");
+          const esperandoComprobacion = po.tarjetas.some(
+            (t) => t.estado === "TOKENIZADA" && t.verificada === false
+          );
+          push(
+            esperandoCliente
+              ? "Tarjeta esperando al cliente"
+              : esperandoComprobacion
+                ? "Tarjeta pendiente de comprobar"
+                : "Tarjeta sin tokenizar"
+          );
+        }
         conDatos = po.tarjetas.length > 0;
         break;
       }

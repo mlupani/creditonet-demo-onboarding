@@ -74,32 +74,6 @@ function LogoAmex() {
   return <span className="text-lg font-extrabold tracking-tight text-white">AMEX</span>;
 }
 
-// Logo compacto para usar sobre fondos claros (p. ej. la lista de tarjetas tokenizadas).
-export function LogoMarcaCompacto({ marca }: { marca: string | null }) {
-  if (marca === "Visa") {
-    return (
-      <span
-        className="inline-block px-1.5 py-0.5 bg-[#1A1F71] text-white text-xs font-black italic tracking-tight rounded"
-        style={{ fontFamily: "Arial, sans-serif" }}
-      >
-        VISA
-      </span>
-    );
-  }
-  if (marca === "Mastercard") {
-    return (
-      <span className="inline-flex items-center">
-        <span className="inline-block h-4 w-4 rounded-full bg-[#EB001B]" />
-        <span className="-ml-1.5 inline-block h-4 w-4 rounded-full bg-[#F79E1B] mix-blend-multiply" />
-      </span>
-    );
-  }
-  if (marca === "American Express") {
-    return <span className="text-xs font-extrabold tracking-tight text-[#016fd0]">AMEX</span>;
-  }
-  return null;
-}
-
 // Chip EMV dorado, como en una tarjeta física.
 function ChipEMV() {
   return (
@@ -111,6 +85,22 @@ function ChipEMV() {
       </div>
     </div>
   );
+}
+
+// Colores de marca reales: Visa (azul marino #1A1F71) y Mastercard (negro/gris, el color lo
+// aporta el logo). Sin marca detectada, gris neutro genérico. Compartido con TarjetaMini.
+function fondoPorMarca(marca: string): string {
+  if (marca === "Visa") return "bg-gradient-to-br from-[#1A1F71] via-[#232a8a] to-[#0d1140]";
+  if (marca === "Mastercard") return "bg-gradient-to-br from-neutral-800 via-neutral-900 to-black";
+  if (marca === "American Express") return "bg-gradient-to-br from-[#016fd0] to-[#014b91]";
+  return "bg-gradient-to-br from-gray-500 to-gray-700";
+}
+
+function LogoMarca({ marca }: { marca: string }) {
+  if (marca === "Visa") return <LogoVisa />;
+  if (marca === "Mastercard") return <LogoMastercard />;
+  if (marca === "American Express") return <LogoAmex />;
+  return null;
 }
 
 export function TarjetaAnimada({
@@ -131,22 +121,6 @@ export function TarjetaAnimada({
         .trim()
     : "•••• •••• •••• ••••";
 
-  // Colores de marca reales: Visa (azul marino #1A1F71) y Mastercard (negro/gris, el color
-  // lo aporta el logo). Sin marca detectada, gris neutro genérico.
-  const getFondo = () => {
-    if (marcaFinal === "Visa") return "bg-gradient-to-br from-[#1A1F71] via-[#232a8a] to-[#0d1140]";
-    if (marcaFinal === "Mastercard") return "bg-gradient-to-br from-neutral-800 via-neutral-900 to-black";
-    if (marcaFinal === "American Express") return "bg-gradient-to-br from-[#016fd0] to-[#014b91]";
-    return "bg-gradient-to-br from-gray-500 to-gray-700";
-  };
-
-  const renderLogo = () => {
-    if (marcaFinal === "Visa") return <LogoVisa />;
-    if (marcaFinal === "Mastercard") return <LogoMastercard />;
-    if (marcaFinal === "American Express") return <LogoAmex />;
-    return null;
-  };
-
   const cvvFormato = cvv ? cvv.replace(/./g, "•") : "•••";
 
   return (
@@ -160,7 +134,7 @@ export function TarjetaAnimada({
       >
         {/* Frente de la tarjeta */}
         <div
-          className={`absolute w-full h-full rounded-2xl p-6 text-white shadow-lg flex flex-col justify-between ${getFondo()}`}
+          className={`absolute w-full h-full rounded-2xl p-6 text-white shadow-lg flex flex-col justify-between ${fondoPorMarca(marcaFinal)}`}
           style={{ backfaceVisibility: "hidden" }}
         >
           <div className="flex items-start justify-between">
@@ -189,7 +163,9 @@ export function TarjetaAnimada({
               <p className="text-[10px] opacity-75">VENCE</p>
               <p className="text-base font-mono font-bold">{vencimiento || "MM/AA"}</p>
             </div>
-            <div className="shrink-0">{renderLogo()}</div>
+            <div className="shrink-0">
+              <LogoMarca marca={marcaFinal} />
+            </div>
           </div>
         </div>
 
@@ -204,6 +180,57 @@ export function TarjetaAnimada({
             <p className="text-xl font-mono font-bold tracking-widest">{cvvFormato}</p>
           </div>
           <p className="text-xs text-gray-400 mt-6 text-center">Escriba el código de seguridad</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Versión chica y estática (sin flip ni CVV) para mostrar una tarjeta ya tokenizada: mismos
+// colores y logo de marca que TarjetaAnimada, con los datos enmascarados que devuelve el
+// proveedor (nunca el número completo).
+export function TarjetaMini({
+  marca,
+  tipo,
+  nombreTitular,
+  primeros4,
+  ultimos4,
+  vencimiento,
+}: {
+  marca: string | null;
+  tipo: "DEBITO" | "CREDITO" | null;
+  nombreTitular: string | null;
+  primeros4: string | null;
+  ultimos4: string | null;
+  vencimiento: string | null;
+}) {
+  const marcaFinal = marca ?? "";
+  return (
+    <div
+      className={`w-full max-w-[240px] shrink-0 rounded-xl p-4 text-white shadow-md ${fondoPorMarca(marcaFinal)}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="h-5 w-7 rounded bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600" />
+        {tipo && (
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-white/80">
+            {tipo === "CREDITO" ? "Crédito" : "Débito"}
+          </p>
+        )}
+      </div>
+      <p className="mt-3 font-mono text-sm tracking-wider">
+        {primeros4 ?? "••••"} •• •••• {ultimos4 ?? "••••"}
+      </p>
+      <div className="mt-3 flex items-end justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[8px] opacity-75">TITULAR</p>
+          <p className="max-w-[9rem] truncate text-xs font-semibold">{nombreTitular || "—"}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[8px] opacity-75">VENCE</p>
+          <p className="font-mono text-xs font-bold">{vencimiento ?? "--/--"}</p>
+        </div>
+        <div className="shrink-0">
+          <LogoMarca marca={marcaFinal} />
         </div>
       </div>
     </div>

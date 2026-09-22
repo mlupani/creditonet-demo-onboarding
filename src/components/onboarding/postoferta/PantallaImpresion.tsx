@@ -19,7 +19,7 @@ import {
 import { getTipoDocumento } from "@/lib/parametros";
 import { netoAAcreditar, planDeSolicitud } from "@/lib/credit";
 import { formatARS, nombreApellido } from "@/lib/format";
-import { estadoPantallasPostOferta } from "@/lib/validation";
+import { estadoPantallasPostOferta, tarjetaValida } from "@/lib/validation";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -58,7 +58,7 @@ function DocumentoLegajo() {
   const cfg = configEfectiva(app.configuracion);
   const po = app.postOferta;
   const o = app.oferta;
-  const tokenizadas = po.tarjetas.filter((t) => t.estado === "TOKENIZADA");
+  const tokenizadas = po.tarjetas.filter(tarjetaValida);
   const sistema = (
     SISTEMAS_AMORTIZACION.find((s) => s.value === planDeSolicitud(app).sistema)?.label ?? ""
   )
