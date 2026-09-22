@@ -20,7 +20,8 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
-import { CampoNumero, Panel, Subtitulo, fechaAIso, isoAFecha } from "@/components/productos/campos";
+import { CampoNumero, Panel, Subtitulo } from "@/components/productos/campos";
+import { fechaAIso, isoAFecha } from "@/lib/format";
 import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
 import { IconPlus, IconTrash } from "@/components/icons";
 
@@ -677,11 +678,10 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
                 </td>
                 <td className="w-36 px-3 py-2">
                   <input
-                    type="text"
+                    type="date"
                     aria-label={`Primera cuota de la fila ${i + 1}`}
-                    value={f.primeraCuota}
-                    placeholder="dd/mm/aaaa"
-                    onChange={(e) => cambiar(i, { primeraCuota: e.target.value })}
+                    value={fechaAIso(f.primeraCuota)}
+                    onChange={(e) => cambiar(i, { primeraCuota: isoAFecha(e.target.value) })}
                     className="h-9 w-full rounded-lg border border-ink-300 bg-white px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   />
                 </td>

@@ -101,27 +101,22 @@ function aTexto(d: Date): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-// Máscara de entrada dd/mm/aaaa: deja sólo dígitos e inserta las barras a medida que se escribe.
-// Si se tipea la barra después de un día o mes de un dígito ("5/4/1988"), lo completa con 0.
-export function maskFecha(value: string): string {
-  const partes = value.split("/").slice(0, 3);
-  const d = partes
-    .map((p, i) => {
-      const digitos = onlyDigits(p);
-      return i < 2 && i < partes.length - 1 && digitos.length === 1 ? `0${digitos}` : digitos;
-    })
-    .join("")
-    .slice(0, 8);
-  if (d.length <= 2) return d;
-  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
-}
-
 export function parseFecha(value: string): Date | null {
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
   if (!m) return null;
   const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// Conversión para <input type="date">, que usa aaaa-mm-dd: la demo guarda las fechas dd/mm/aaaa.
+export function fechaAIso(texto: string | null): string {
+  const m = texto ? /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto.trim()) : null;
+  return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : "";
+}
+
+export function isoAFecha(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
 }
 
 export function fechaHoy(): string {

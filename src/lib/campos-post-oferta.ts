@@ -6,7 +6,7 @@
 
 import type { CreditApplication, Domicilio, OrigenCampo } from "./types";
 import { configEfectiva } from "./config";
-import { isValidCBU, isValidEmail, maskCuit, maskDNI, maskFecha, onlyDigits, parseFecha } from "./format";
+import { isoAFecha, isValidCBU, isValidEmail, maskCuit, maskDNI, onlyDigits, parseFecha } from "./format";
 import { PAIS_POR_DEFECTO, sanitizarCaracteristica, sanitizarNumero, validarNumero } from "./telefono";
 import {
   BANCOS,
@@ -544,7 +544,8 @@ export function sanitizar(campo: CampoDef, valor: string, valores: Valores): str
   if (campo.tipo === "telefono")
     return sanitizarNumero(paisDe(campo, valores), caracteristicaDe(campo, valores), valor);
   if (campo.tipo === "caracteristica") return sanitizarCaracteristica(valor);
-  if (campo.tipo === "fecha") return maskFecha(valor);
+  // Viene del <input type="date"> nativo en aaaa-mm-dd: se guarda como dd/mm/aaaa.
+  if (campo.tipo === "fecha") return isoAFecha(valor);
   if (campo.tipo === "cuit") return maskCuit(valor);
   if (campo.tipo === "dni") return maskDNI(valor);
   const max = MAX_DIGITOS[campo.tipo];
@@ -576,7 +577,7 @@ export function validarCampo(
     case "numero":
       return /^\d+$/.test(v) ? null : "Ingresá sólo números.";
     case "fecha":
-      return parseFecha(v) ? null : "La fecha debe tener el formato dd/mm/aaaa.";
+      return parseFecha(v) ? null : "La fecha no es válida.";
     default:
       return null;
   }

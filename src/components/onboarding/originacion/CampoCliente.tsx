@@ -1,7 +1,7 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { maskFecha } from "@/lib/format";
+import { fechaAIso, isoAFecha } from "@/lib/format";
 import type { ClienteDatos } from "@/lib/types";
 
 export function CampoCliente({
@@ -42,12 +42,11 @@ export function CampoCliente({
       ) : (
         <input
           id={id}
-          value={valor}
+          type={esFecha ? "date" : undefined}
+          value={esFecha ? fechaAIso(valor) : valor}
           onChange={(e) =>
-            patchCliente({ [campo]: esFecha ? maskFecha(e.target.value) : e.target.value })
+            patchCliente({ [campo]: esFecha ? isoAFecha(e.target.value) : e.target.value })
           }
-          placeholder={esFecha ? "dd/mm/aaaa" : undefined}
-          inputMode={esFecha ? "numeric" : undefined}
           className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm text-ink-900 shadow-xs outline-none transition placeholder:text-ink-400 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         />
       )}

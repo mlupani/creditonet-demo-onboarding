@@ -14,6 +14,7 @@ import {
   valorCampoDisplay,
   type CampoDef,
 } from "@/lib/campos-post-oferta";
+import { fechaAIso } from "@/lib/format";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
 import { OrigenCampoBadge } from "@/components/ui/OrigenBadge";
@@ -51,9 +52,7 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
     ? "Participó en la generación de la oferta: no se puede cambiar."
     : rectificado
       ? `Precargado: ${app.postOferta.precarga[campo.id] || "vacío"}`
-      : campo.tipo === "fecha"
-        ? "dd/mm/aaaa"
-        : undefined;
+      : undefined;
   const id = `po-${campo.id.replace(/\./g, "-")}`;
   const className = campo.ancho === "completo" ? "sm:col-span-2" : undefined;
   const onChange = (v: string) => setCampo(campo.pantalla, campo.id, sanitizar(campo, v, valores));
@@ -114,13 +113,13 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
       id={id}
       label={campo.label}
       required={obligatorio && !bloqueado}
-      value={valorCampoDisplay(app, campo)}
+      value={campo.tipo === "fecha" ? fechaAIso(valor) : valorCampoDisplay(app, campo)}
       onChange={onChange}
       disabled={bloqueado}
       badge={badge}
       error={error}
       hint={hint}
-      type={campo.tipo === "email" ? "email" : "text"}
+      type={campo.tipo === "email" ? "email" : campo.tipo === "fecha" ? "date" : "text"}
       inputMode={INPUT_MODE[campo.tipo]}
       placeholder={campo.tipo === "cuit" ? "xx-xxxxxxxx-x" : undefined}
       className={className}

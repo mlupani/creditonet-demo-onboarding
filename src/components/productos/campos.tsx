@@ -69,17 +69,6 @@ export function CampoNumero({
   );
 }
 
-// Las fechas de la demo se guardan como dd/mm/aaaa; el selector nativo usa aaaa-mm-dd.
-export function fechaAIso(texto: string | null): string {
-  const m = texto ? /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto.trim()) : null;
-  return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : "";
-}
-
-export function isoAFecha(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
-}
-
 // Encabezado común de cada sección: deja claro si lo que se edita cambia el flujo de la demo.
 export function Panel({
   titulo,

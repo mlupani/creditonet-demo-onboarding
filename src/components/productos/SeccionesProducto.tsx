@@ -20,7 +20,8 @@ import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
-import { CampoNumero, Panel, Subtitulo, fechaAIso, isoAFecha } from "./campos";
+import { CampoNumero, Panel, Subtitulo } from "./campos";
+import { fechaAIso, isoAFecha } from "@/lib/format";
 import {
   EditorDocumentos,
   EditorGestion,
