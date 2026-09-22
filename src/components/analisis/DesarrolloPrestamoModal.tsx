@@ -67,7 +67,7 @@ export function DesarrolloPrestamoModal({ open, onClose }: Props) {
           </thead>
           <tbody className="divide-y divide-ink-100 bg-white">
             {cuotas.map((c) => (
-              <tr key={c.nro} className={c.saldoCuota > 0 ? "bg-warning-50/30" : ""}>
+              <tr key={c.nro}>
                 <td className="px-2 py-1.5 tabular-nums text-ink-600">{app.numeroCredito?.slice(-6) ?? "—"}</td>
                 <td className="px-2 py-1.5 text-center font-semibold text-ink-900">{c.nro}</td>
                 <td className="px-2 py-1.5 tabular-nums text-ink-900">{formatCuotaValor(c.valorCuota)}</td>
@@ -95,7 +95,7 @@ export function DesarrolloPrestamoModal({ open, onClose }: Props) {
       <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-ink-400">
         <span className="inline-flex items-center gap-1">
           <IconBuilding width={11} height={11} />
-          {cuotas.length} cuotas · primeras {cuotas.length - 2} pagas, últimas 2 pendientes (demo)
+          {cuotas.length} cuotas · crédito arrancando — Pagos, Saldo y Rem. en 0,00 (demo)
         </span>
         <span>·</span>
         <span className="inline-flex items-center gap-1">

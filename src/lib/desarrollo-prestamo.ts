@@ -114,12 +114,8 @@ export function generarDesarrolloCuotas(app: CreditApplication): CuotaDesarrollo
   const interesCuota = plazo > 0 && valorCuota > 0 ? (valorCuota - capitalCuota) / (1 + ivaPct / 100) : 0;
   const ivaCuota = interesCuota * (ivaPct / 100);
 
-  // Para simular estado pagado/pendiente como en captura (8 pagadas, 2 pendientes en 10 cuotas),
-  // marcamos las últimas 2 cuotas como pendientes, el resto pagadas.
-  // Si el préstamo es nuevo (sin historial), igual mostramos grilla completa; el remanente
-  // se refleja sólo en pendientes.
-  const pendientesDesde = Math.max(1, plazo - 1); // últimas 2 cuotas pendientes (n >= plazo-1)
-
+  // Crédito arrancando: aún sin pagos registrados. Todos los importes de
+  // Pagos/NC, Saldo y Remanentes van en 0 hasta que se impute el primer pago.
   for (let n = 1; n <= plazo; n++) {
     const vtoDate = addMonths(baseVto, n - 1);
     const haberDate = addMonths(vtoDate, -1);
@@ -130,12 +126,11 @@ export function generarDesarrolloCuotas(app: CreditApplication): CuotaDesarrollo
     const interes = Number(interesCuota.toFixed(2));
     const ivaInteres = Number(ivaCuota.toFixed(2));
 
-    const esPendiente = n >= pendientesDesde;
-    const pagos = esPendiente ? 0 : valorCuota;
-    const saldoCuota = esPendiente ? valorCuota : 0;
-    const remCapital = esPendiente ? capital : 0;
-    const remInteres = esPendiente ? interes : 0;
-    const remIvaInteres = esPendiente ? ivaInteres : 0;
+    const pagos = 0;
+    const saldoCuota = 0;
+    const remCapital = 0;
+    const remInteres = 0;
+    const remIvaInteres = 0;
 
     cuotas.push({
       nro: n,
