@@ -33,13 +33,8 @@ export function ConfirmarOfertaModal({
   const rows: { label: string; value: string; tone?: "success" | "danger" }[] = [
     { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
     { label: "Cliente", value: `${app.cliente?.nombre ?? ""} ${app.cliente?.apellido ?? ""}` },
-    {
-      label: "Producto / organismo",
-      value: `${nombreOpcion(PRODUCTOS, app.configuracion.productoId)} · ${nombreOpcion(
-        ORGANISMOS,
-        app.configuracion.organismoId
-      )}`,
-    },
+    { label: "Producto", value: nombreOpcion(PRODUCTOS, app.configuracion.productoId) },
+    { label: "Organismo", value: nombreOpcion(ORGANISMOS, app.configuracion.organismoId) },
     { label: "Plan de cuotas", value: planDeSolicitud(app).nombre },
     { label: "Capital solicitado", value: formatARS(o.montoSolicitado) },
     ...(precancel > 0

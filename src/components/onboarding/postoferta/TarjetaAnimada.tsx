@@ -186,9 +186,8 @@ export function TarjetaAnimada({
   );
 }
 
-// Versión chica y estática (sin flip ni CVV) para mostrar una tarjeta ya tokenizada: mismos
-// colores y logo de marca que TarjetaAnimada, con los datos enmascarados que devuelve el
-// proveedor (nunca el número completo).
+// Versión chica y estática para mostrar una tarjeta ya tokenizada: mismos
+// colores y logo de marca que TarjetaAnimada. Con revelado muestra PAN completo y CVV.
 export function TarjetaMini({
   marca,
   tipo,
@@ -196,6 +195,9 @@ export function TarjetaMini({
   primeros4,
   ultimos4,
   vencimiento,
+  numeroCompleto,
+  cvv,
+  revelado,
 }: {
   marca: string | null;
   tipo: "DEBITO" | "CREDITO" | null;
@@ -203,8 +205,15 @@ export function TarjetaMini({
   primeros4: string | null;
   ultimos4: string | null;
   vencimiento: string | null;
+  numeroCompleto?: string | null;
+  cvv?: string | null;
+  revelado?: boolean;
 }) {
   const marcaFinal = marca ?? "";
+  const mostrarCompleto = revelado && numeroCompleto;
+  const numeroMostrar = mostrarCompleto
+    ? numeroCompleto.replace(/(\d{4})/g, "$1 ").trim()
+    : `${primeros4 ?? "••••"} •• •••• ${ultimos4 ?? "••••"}`;
   return (
     <div
       className={`w-full max-w-[240px] shrink-0 rounded-xl p-4 text-white shadow-md ${fondoPorMarca(marcaFinal)}`}
@@ -217,9 +226,7 @@ export function TarjetaMini({
           </p>
         )}
       </div>
-      <p className="mt-3 font-mono text-sm tracking-wider">
-        {primeros4 ?? "••••"} •• •••• {ultimos4 ?? "••••"}
-      </p>
+      <p className="mt-3 font-mono text-sm tracking-wider">{numeroMostrar}</p>
       <div className="mt-3 flex items-end justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[8px] opacity-75">TITULAR</p>
@@ -233,6 +240,11 @@ export function TarjetaMini({
           <LogoMarca marca={marcaFinal} />
         </div>
       </div>
+      {revelado && cvv && (
+        <p className="mt-2 text-right font-mono text-[11px] tracking-widest text-white/90">
+          CVV {cvv}
+        </p>
+      )}
     </div>
   );
 }

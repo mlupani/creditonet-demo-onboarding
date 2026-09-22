@@ -162,6 +162,7 @@ interface ApplicationContextValue {
     numero: string;
     nombreTitular: string;
     vencimiento: string;
+    cvv?: string;
   }) => void;
   confirmarTarjetaGuardada: (tarjetaId: string) => void;
   quitarTarjeta: (tarjetaId: string) => void;
@@ -634,6 +635,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         emisor: null,
         fechaTokenizacion: null,
         token: null,
+        numeroCompleto: null,
+        cvv: null,
       };
       return {
         ...prev,
@@ -660,6 +663,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 emisor: emisorMock(tarjetaId),
                 fechaTokenizacion: selloTiempo(),
                 token: `tok_demo_${tarjetaId.slice(-6).toUpperCase()}`,
+                numeroCompleto: "4509953566234821",
+                cvv: "123",
               }
             : t
         ),
@@ -674,6 +679,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       numero: string;
       nombreTitular: string;
       vencimiento: string;
+      cvv?: string;
     }) => {
       setApp((prev) => {
         const id = `tarjeta-${Date.now()}`;
@@ -692,6 +698,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           emisor: emisorMock(id),
           fechaTokenizacion: selloTiempo(),
           token: `tok_demo_${id.slice(-6).toUpperCase()}`,
+          numeroCompleto: digitos,
+          cvv: datos.cvv ? onlyDigits(datos.cvv) : null,
         };
         return {
           ...prev,

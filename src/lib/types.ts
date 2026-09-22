@@ -242,6 +242,9 @@ export interface TarjetaTokenizada {
   emisor: string | null;
   fechaTokenizacion: string | null;
   token: string | null;
+  // Sólo demo: número completo y CVV para "Ver Datos". En prod nunca se guardan.
+  numeroCompleto: string | null;
+  cvv: string | null;
 }
 
 // Onboarding §7–§8: referencias y garantes comparten estructura.

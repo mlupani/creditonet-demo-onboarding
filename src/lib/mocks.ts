@@ -946,6 +946,8 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
             emisor: tg.emisor,
             fechaTokenizacion: tg.fechaTokenizacion,
             token: tg.token,
+            numeroCompleto: `${tg.primeros4}00000000${tg.ultimos4}`.slice(0, 16),
+            cvv: "123",
           },
         ]
       : [];

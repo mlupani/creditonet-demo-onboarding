@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { nombreProveedor } from "@/lib/parametros";
@@ -18,6 +18,8 @@ import {
   IconCheck,
   IconClock,
   IconCreditCard,
+  IconEye,
+  IconEyeOff,
   IconKey,
   IconLandmark,
   IconSend,
@@ -43,6 +45,40 @@ export function PantallaTokenizacion() {
   const [form, setForm] = useState(FORM_VACIO);
   const [procesando, setProcesando] = useState<string | null>(null);
   const [verReverso, setVerReverso] = useState(false);
+  const [reveladas, setReveladas] = useState<Set<string>>(new Set());
+  const timeoutsRef = useRef<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach((id) => window.clearTimeout(id));
+    };
+  }, []);
+
+  function toggleRevelar(id: string) {
+    setReveladas((prev) => {
+      const next = new Set(prev);
+      const existing = timeoutsRef.current.get(id);
+      if (existing) {
+        window.clearTimeout(existing);
+        timeoutsRef.current.delete(id);
+      }
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        const tid = window.setTimeout(() => {
+          setReveladas((c) => {
+            const n = new Set(c);
+            n.delete(id);
+            return n;
+          });
+          timeoutsRef.current.delete(id);
+        }, 20000);
+        timeoutsRef.current.set(id, tid);
+      }
+      return next;
+    });
+  }
 
   const cfg = configEfectiva(app.configuracion);
   const obligatoria = cfg.pantallas.find((p) => p.id === "tokenizacion")?.obligatoria ?? false;
@@ -94,6 +130,7 @@ export function PantallaTokenizacion() {
         numero: form.numero,
         nombreTitular: form.nombreTitular,
         vencimiento: form.vencimiento,
+        cvv: form.cvv,
       });
       setForm(FORM_VACIO);
       setVerReverso(false);
@@ -124,23 +161,22 @@ export function PantallaTokenizacion() {
           </div>
 
           {tarjetas.length > 0 && (
-            <ul className="space-y-3">
+            <ul className="grid gap-3 sm:grid-cols-2">
               {tarjetas.map((t) => {
                 const tokenizada = t.estado === "TOKENIZADA";
                 const porComprobar = tokenizada && t.via === "BASE_INTERNA" && t.verificada === false;
                 const valida = tarjetaValida(t);
+                const revelada = reveladas.has(t.id);
                 return (
                   <li
                     key={t.id}
-                    className={`rounded-xl border p-4 ${
-                      valida
-                        ? "border-success-200 bg-success-50/60"
-                        : "border-warning-200 bg-warning-50/60"
+                    className={`flex flex-col rounded-xl border p-4 ${
+                      valida ? "border-success-200 bg-success-50/60" : "border-ink-200 bg-white"
                     }`}
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      {tokenizada ? (
-                        <div className="flex min-w-0 flex-wrap items-start gap-4">
+                    {tokenizada ? (
+                      <>
+                        <div className="flex justify-center">
                           <TarjetaMini
                             marca={t.marca}
                             tipo={t.tipo}
@@ -148,82 +184,135 @@ export function PantallaTokenizacion() {
                             primeros4={t.primeros4}
                             ultimos4={t.ultimos4}
                             vencimiento={t.vencimiento}
+                            numeroCompleto={t.numeroCompleto}
+                            cvv={t.cvv}
+                            revelado={revelada}
                           />
-                          <div className="min-w-0">
-                            {porComprobar && (
-                              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-warning-700">
-                                <IconClock width={13} height={13} />
-                                Tarjeta guardada · cliente recurrente
-                              </p>
-                            )}
-                            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-500">
-                              <IconLandmark width={12} height={12} />
-                              {t.emisor ?? "Emisor no informado"}·
-                              <IconCalendar width={12} height={12} />
-                              {t.fechaTokenizacion ?? "--"}·
-                              <IconKey width={12} height={12} />
-                              <span className="font-mono">{t.token}</span>·{" "}
+                        </div>
+                        <div className="mt-3 space-y-1.5 border-t border-ink-100 pt-3">
+                          <p className="flex items-center justify-between gap-2 text-xs">
+                            <span className="flex items-center gap-1.5 text-ink-500">
+                              <IconLandmark width={12} height={12} className="shrink-0" />
+                              Emisor
+                            </span>
+                            <span className="truncate font-medium text-ink-700">
+                              {t.emisor ?? "No informado"}
+                            </span>
+                          </p>
+                          <p className="flex items-center justify-between gap-2 text-xs">
+                            <span className="flex items-center gap-1.5 text-ink-500">
+                              <IconCalendar width={12} height={12} className="shrink-0" />
+                              Fecha
+                            </span>
+                            <span className="font-medium text-ink-700">{t.fechaTokenizacion ?? "--"}</span>
+                          </p>
+                          <p className="flex items-center justify-between gap-2 text-xs">
+                            <span className="flex items-center gap-1.5 text-ink-500">
+                              <IconKey width={12} height={12} className="shrink-0" />
+                              Token
+                            </span>
+                            <span className="truncate font-mono text-[11px] font-medium text-ink-700">
+                              {t.token}
+                            </span>
+                          </p>
+                          <p className="flex items-center justify-between gap-2 text-xs">
+                            <span className="flex items-center gap-1.5 text-ink-500">
+                              <IconSend width={12} height={12} className="shrink-0" />
+                              Origen
+                            </span>
+                            <span className="text-right font-medium text-ink-700">
                               {t.via === "WHATSAPP"
-                                ? "cargada por el cliente desde el link"
+                                ? "Link WhatsApp"
                                 : t.via === "BASE_INTERNA"
-                                  ? "de un trámite anterior"
-                                  : "carga presencial"}
-                            </p>
-                            {porComprobar && (
-                              <p className="mt-1 text-xs text-warning-700">
-                                Comprobá con el cliente que los datos siguen siendo correctos
-                                antes de continuar.
-                              </p>
-                            )}
-                          </div>
+                                  ? "Trámite anterior"
+                                  : "Presencial"}
+                            </span>
+                          </p>
                         </div>
-                      ) : (
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-100 text-warning-700">
-                            <IconClock width={16} height={16} />
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-ink-900">
-                              Link enviado por WhatsApp a {t.enviadoA}
-                            </p>
-                            <p className="text-xs text-warning-700">
-                              Esperando que el cliente complete el formulario de tokenización.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {!tokenizada && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            loading={procesando === t.id}
-                            disabled={procesando !== null}
-                            onClick={() => conDemora(t.id, () => simularCompletaCliente(t.id))}
-                          >
-                            Simular que el cliente completó
-                          </Button>
-                        )}
                         {porComprobar && (
-                          <Button
-                            size="sm"
-                            variant="success"
-                            onClick={() => confirmarTarjetaGuardada(t.id)}
-                          >
-                            <IconCheck width={14} height={14} strokeWidth={2.6} />
-                            Marcar como comprobada
-                          </Button>
+                          <p className="mt-2 text-xs leading-relaxed text-ink-500">
+                            Comprobá con el cliente que los datos siguen siendo correctos antes de
+                            continuar.
+                          </p>
                         )}
+                      </>
+                    ) : (
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-100 text-ink-600">
+                          <IconClock width={16} height={16} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold leading-tight text-ink-900">
+                            Link enviado por WhatsApp a {t.enviadoA}
+                          </p>
+                          <p className="mt-0.5 text-xs leading-tight text-ink-500">
+                            Esperando que el cliente complete el formulario.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-100 pt-3">
+                      {!tokenizada && (
                         <Button
                           size="sm"
-                          variant="ghost"
-                          disabled={procesando === t.id}
-                          onClick={() => quitarTarjeta(t.id)}
+                          variant="outline"
+                          loading={procesando === t.id}
+                          disabled={procesando !== null}
+                          onClick={() => conDemora(t.id, () => simularCompletaCliente(t.id))}
+                          className="flex-1 sm:flex-none"
                         >
-                          <IconTrash width={14} height={14} />
-                          {tokenizada ? "Quitar" : "Cancelar"}
+                          Simular completado
                         </Button>
-                      </div>
+                      )}
+                      {tokenizada && (
+                        <Button
+                          size="sm"
+                          variant={revelada ? "outline" : "ghost"}
+                          onClick={() => toggleRevelar(t.id)}
+                          disabled={procesando !== null}
+                          className="flex-1 sm:flex-none"
+                        >
+                          {revelada ? (
+                            <IconEyeOff width={14} height={14} />
+                          ) : (
+                            <IconEye width={14} height={14} />
+                          )}
+                          {revelada ? "Ocultar" : "Ver datos"}
+                        </Button>
+                      )}
+                      {porComprobar && (
+                        <Button
+                          size="sm"
+                          variant="success"
+                          onClick={() => confirmarTarjetaGuardada(t.id)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <IconCheck width={14} height={14} strokeWidth={2.6} />
+                          Comprobada
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={procesando === t.id}
+                        onClick={() => {
+                          const tid = timeoutsRef.current.get(t.id);
+                          if (tid) {
+                            window.clearTimeout(tid);
+                            timeoutsRef.current.delete(t.id);
+                          }
+                          setReveladas((c) => {
+                            const n = new Set(c);
+                            n.delete(t.id);
+                            return n;
+                          });
+                          quitarTarjeta(t.id);
+                        }}
+                        className="ml-auto"
+                      >
+                        <IconTrash width={14} height={14} />
+                        {tokenizada ? "Quitar" : "Cancelar"}
+                      </Button>
                     </div>
                   </li>
                 );

@@ -271,6 +271,17 @@ export function IconEye(p: IconProps) {
   );
 }
 
+export function IconEyeOff(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M3 3 21 21" />
+      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+      <path d="M9.7 5.1A11 11 0 0 1 12 5c7 0 10 7 10 7a13.6 13.6 0 0 1-2.3 3.2" />
+      <path d="M14.8 14.8A13.6 13.6 0 0 1 12 17c-6.5 0-10-7-10-7a13.2 13.2 0 0 1 3.5-4.2" />
+    </svg>
+  );
+}
+
 export function IconWallet(p: IconProps) {
   return (
     <svg {...base(p)}>
