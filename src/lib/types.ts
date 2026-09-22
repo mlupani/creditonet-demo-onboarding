@@ -142,7 +142,8 @@ export interface LaboralIngresos {
   bancosCobro: string[];
   ingresoBruto: number;
   ingresoNeto: number;
-  cuitEmpleador: string;
+  // Puede tener más de un empleador (pluriempleo).
+  cuitsEmpleador: string[];
   // Información adicional: no bloquea continuar (Onboarding §4.4).
   disponible: number;
   debitosNoRemunerativos: number;

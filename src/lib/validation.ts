@@ -48,7 +48,9 @@ export const MOTIVOS_OBSERVACION = [
 
 // --- Pre-oferta: datos laborales y financieros mínimos ---
 
-export type ErroresLaboral = Partial<Record<keyof LaboralIngresos, string>>;
+export type ErroresLaboral = Partial<
+  Record<Exclude<keyof LaboralIngresos, "cuitsEmpleador">, string>
+> & { cuitsEmpleador?: string[] };
 
 export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
   const e: ErroresLaboral = {};
@@ -65,9 +67,10 @@ export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
   if (l.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto mensual del cliente.";
   else if (l.ingresoBruto < l.ingresoNeto)
     e.ingresoBruto = "El ingreso bruto no puede ser menor al neto. Revisá los valores.";
-  if (l.cuitEmpleador.trim() && !isValidCUIL(l.cuitEmpleador)) {
-    e.cuitEmpleador = "El CUIT debe tener 11 dígitos.";
-  }
+  const erroresCuits = l.cuitsEmpleador.map((c) =>
+    c.trim() && !isValidCUIL(c) ? "El CUIT debe tener 11 dígitos." : ""
+  );
+  if (erroresCuits.some(Boolean)) e.cuitsEmpleador = erroresCuits;
   return e;
 }
 
