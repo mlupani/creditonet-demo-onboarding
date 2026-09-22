@@ -20,7 +20,7 @@ import {
 } from "./credit";
 import { configEfectiva } from "./config";
 import { bancosDe, camposDe, unirBancos } from "./campos-post-oferta";
-import { maskCuit, onlyDigits } from "./format";
+import { maskCuit, maskDNI, onlyDigits } from "./format";
 
 // --- Datos que devuelve la consulta por DNI / CUIL (simula API pública + base interna) ---
 
@@ -910,7 +910,7 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
   const precarga: Record<string, string> = {
     nombre: c?.nombre ?? "",
     apellido: c?.apellido ?? "",
-    dni: c?.dni ?? "",
+    dni: maskDNI(c?.dni ?? ""),
     cuit: maskCuit(c?.cuil ?? ""),
     fechaNacimiento: c?.fechaNacimiento ?? "",
     genero: c?.genero ?? "",
@@ -954,7 +954,7 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
   const garante: PersonaVinculada = {
     id: "garante-1",
     vinculo: "Cónyuge",
-    dni: "25984123",
+    dni: maskDNI("25984123"),
     nombre: "Roberto",
     apellido: "González",
     domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
@@ -979,7 +979,7 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
       {
         id: "referencia-1",
         vinculo: "Familiar directo",
-        dni: "30111222",
+        dni: maskDNI("30111222"),
         nombre: "Carla",
         apellido: "Giménez",
         domicilio: "Av. Colón 1450, Córdoba",
