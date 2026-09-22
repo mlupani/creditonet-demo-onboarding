@@ -181,6 +181,8 @@ interface ApplicationContextValue {
   quitarPersona: (tipo: TipoPersonaVinculada, id: string) => void;
   adjuntarReciboSueldo: (tipo: TipoPersonaVinculada, id: string) => void;
   quitarReciboSueldo: (tipo: TipoPersonaVinculada, id: string, archivoId: string) => void;
+  adjuntarOtroDocumento: (tipo: TipoPersonaVinculada, id: string) => void;
+  quitarOtroDocumento: (tipo: TipoPersonaVinculada, id: string, archivoId: string) => void;
   adjuntarDocumento: (tipoId: string) => void;
   quitarArchivo: (tipoId: string, archivoId: string) => void;
   registrarLegajo: (accion: AccionLegajo) => void;
@@ -752,6 +754,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ingresoBruto: 0,
           ingresoNeto: 0,
           reciboSueldo: [],
+          otrosDocumentos: [],
           empleadorCalle: "",
           empleadorLocalidad: "",
           empleadorTelefono: "",
@@ -839,6 +842,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
           lista.map((p) =>
             p.id === id
               ? { ...p, reciboSueldo: p.reciboSueldo.filter((a) => a.id !== archivoId) }
+              : p
+          )
+        ),
+      }));
+    },
+    []
+  );
+
+  // Otros documentos del garante (opcionales, se cargan en Legajo virtual).
+  const adjuntarOtroDocumento = useCallback((tipo: TipoPersonaVinculada, id: string) => {
+    setApp((prev) => ({
+      ...prev,
+      postOferta: conPersonas(prev.postOferta, tipo, (lista) =>
+        lista.map((p) => {
+          if (p.id !== id) return p;
+          const actual = p.otrosDocumentos ?? [];
+          const archivo: ArchivoLegajo = {
+            id: `otro-${id}-${Date.now()}`,
+            nombre: `doc_garante_${actual.length + 1}.jpg`,
+            detalle: `1.0 MB · ${selloTiempo()}`,
+          };
+          return { ...p, otrosDocumentos: [...actual, archivo] };
+        })
+      ),
+    }));
+  }, []);
+
+  const quitarOtroDocumento = useCallback(
+    (tipo: TipoPersonaVinculada, id: string, archivoId: string) => {
+      setApp((prev) => ({
+        ...prev,
+        postOferta: conPersonas(prev.postOferta, tipo, (lista) =>
+          lista.map((p) =>
+            p.id === id
+              ? { ...p, otrosDocumentos: (p.otrosDocumentos ?? []).filter((a) => a.id !== archivoId) }
               : p
           )
         ),
@@ -1076,6 +1114,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       quitarPersona,
       adjuntarReciboSueldo,
       quitarReciboSueldo,
+      adjuntarOtroDocumento,
+      quitarOtroDocumento,
       adjuntarDocumento,
       quitarArchivo,
       registrarLegajo,
@@ -1132,6 +1172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       quitarPersona,
       adjuntarReciboSueldo,
       quitarReciboSueldo,
+      adjuntarOtroDocumento,
+      quitarOtroDocumento,
       adjuntarDocumento,
       quitarArchivo,
       registrarLegajo,
