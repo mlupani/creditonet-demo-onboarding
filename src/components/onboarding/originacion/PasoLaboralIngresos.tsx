@@ -102,21 +102,6 @@ export function PasoLaboralIngresos() {
               error={errores.ingresoNeto}
               hint="Ingreso mensual de bolsillo. Base del cálculo de RCI."
             />
-            <MoneyInput
-              id="monto-extraido"
-              label="Monto extraído / transferido el día de cobro"
-              required
-              value={l.montoExtraidoDiaCobro}
-              onChange={(v) => patchLaboral({ montoExtraidoDiaCobro: v })}
-              error={errores.montoExtraidoDiaCobro}
-              hint="Movimiento de la cuenta sueldo el día de la acreditación."
-            />
-            <MoneyInput
-              id="disponible"
-              label="Disponible"
-              value={l.disponible}
-              onChange={(v) => patchLaboral({ disponible: v })}
-            />
             <FormField
               id="extracciones-fecha"
               label="Extracciones · Fecha de acreditación"
@@ -130,6 +115,12 @@ export function PasoLaboralIngresos() {
               value={l.transferenciasFecha}
               onChange={(v) => patchLaboral({ transferenciasFecha: v })}
               hint="dd/mm/aaaa"
+            />
+            <MoneyInput
+              id="disponible"
+              label="Disponible"
+              value={l.disponible}
+              onChange={(v) => patchLaboral({ disponible: v })}
             />
           </div>
         </div>

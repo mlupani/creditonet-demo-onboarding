@@ -258,10 +258,6 @@ export function AnalisisCredito({
             { label: "ID de Cliente", value: app.numeroCliente ?? "—" },
             { label: "DNI / CUIL", value: `${formatDNI(app.cliente.dni)} · ${app.cliente.cuil}` },
             { label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) },
-            {
-              label: "Extraído el día de cobro",
-              value: formatARS(app.laboral.montoExtraidoDiaCobro),
-            },
           ]}
         />
         <SummaryCard

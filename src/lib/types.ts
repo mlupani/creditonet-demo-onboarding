@@ -142,7 +142,6 @@ export interface LaboralIngresos {
   bancosCobro: string[];
   ingresoBruto: number;
   ingresoNeto: number;
-  montoExtraidoDiaCobro: number;
   cuitEmpleador: string;
   // Información adicional: no bloquea continuar (Onboarding §4.4).
   disponible: number;
