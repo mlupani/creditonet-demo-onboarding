@@ -1017,7 +1017,8 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     condicionLaboral: "", // PENDIENTE
     ingresoBruto: 0, // PENDIENTE
     ingresoNeto: 0, // PENDIENTE
-    reciboSueldo: [], // PENDIENTE
+    reciboSueldo: [], // PENDIENTE — se adjunta en Legajo virtual
+    otrosDocumentos: [],
     empleadorCalle: "", // PENDIENTE
     empleadorLocalidad: "", // PENDIENTE
     empleadorTelefono: "", // PENDIENTE
@@ -1053,6 +1054,7 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
         ingresoBruto: 0,
         ingresoNeto: 0,
         reciboSueldo: [],
+        otrosDocumentos: [],
         empleadorCalle: "",
         empleadorLocalidad: "",
         empleadorTelefono: "",

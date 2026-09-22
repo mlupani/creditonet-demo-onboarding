@@ -21,12 +21,10 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
 import { TelefonoField } from "@/components/ui/TelefonoField";
 import {
-  IconCheck,
   IconCheckCircle,
   IconPlus,
   IconSearch,
   IconTrash,
-  IconUpload,
 } from "@/components/icons";
 
 const TEXTOS: Record<
@@ -57,11 +55,8 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
     actualizarDomicilioPersona,
     buscarPersonaPorDni,
     quitarPersona,
-    adjuntarReciboSueldo,
-    quitarReciboSueldo,
   } = useApplication();
   const [buscando, setBuscando] = useState<string | null>(null);
-  const [subiendoRecibo, setSubiendoRecibo] = useState<string | null>(null);
 
   const cfg = configEfectiva(app.configuracion);
   const t = TEXTOS[tipo];
@@ -76,14 +71,6 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
       buscarPersonaPorDni(tipo, id);
       setBuscando(null);
     }, 800);
-  }
-
-  function subirRecibo(id: string) {
-    setSubiendoRecibo(id);
-    window.setTimeout(() => {
-      adjuntarReciboSueldo(tipo, id);
-      setSubiendoRecibo(null);
-    }, 900);
   }
 
   return (
@@ -355,59 +342,6 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                     onChange={(v) => actualizarPersona(tipo, p.id, { cbu: onlyDigits(v).slice(0, 22) })}
                     error={err.cbu}
                   />
-                </div>
-
-                <div className="mt-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-ink-700">
-                        Recibo de sueldo <span className="text-danger-500">*</span>
-                      </p>
-                      <p className="text-xs text-ink-500">
-                        {p.reciboSueldo.length > 0
-                          ? `${p.reciboSueldo.length} archivo${p.reciboSueldo.length === 1 ? "" : "s"} adjunto${p.reciboSueldo.length === 1 ? "" : "s"}`
-                          : "Sin adjuntar todavía."}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => subirRecibo(p.id)}
-                      disabled={subiendoRecibo !== null}
-                      loading={subiendoRecibo === p.id}
-                    >
-                      {subiendoRecibo !== p.id && <IconUpload width={14} height={14} />}
-                      {p.reciboSueldo.length > 0 ? "Agregar otro" : "Adjuntar recibo"}
-                    </Button>
-                  </div>
-                  {err.reciboSueldo && (
-                    <p className="mt-1.5 text-xs font-medium text-danger-600">
-                      {err.reciboSueldo}
-                    </p>
-                  )}
-                  {p.reciboSueldo.length > 0 && (
-                    <ul className="mt-2 space-y-1 rounded-lg border border-success-200 bg-success-50/60 p-2">
-                      {p.reciboSueldo.map((a) => (
-                        <li
-                          key={a.id}
-                          className="flex items-center justify-between gap-2 text-xs"
-                        >
-                          <span className="flex items-center gap-1.5 truncate font-medium text-success-700">
-                            <IconCheck width={13} height={13} strokeWidth={2.6} />
-                            {a.nombre} · {a.detalle}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => quitarReciboSueldo(tipo, p.id, a.id)}
-                          >
-                            <IconTrash width={13} height={13} />
-                            Quitar
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
               </div>
             )}

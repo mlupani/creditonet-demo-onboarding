@@ -165,11 +165,11 @@ export function validarPersona(
     if (errorTel) e.telefono = errorTel;
   }
   // El garante debe demostrar capacidad de pago para firmar la documentación del préstamo.
+  // Nota creditonet-33: el recibo de sueldo ya no se valida acá; se exige en Legajo virtual por garante.
   if (tipo === "garante") {
     if (!p.condicionLaboral.trim()) e.condicionLaboral = "Seleccioná la condición laboral.";
     if (p.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto.";
     if (p.ingresoNeto <= 0) e.ingresoNeto = "Ingresá el ingreso neto.";
-    if (p.reciboSueldo.length === 0) e.reciboSueldo = "Adjuntá el recibo de sueldo.";
     if (!p.empleadorCalle.trim()) e.empleadorCalle = "Ingresá la calle del empleador.";
     if (!p.empleadorLocalidad.trim()) e.empleadorLocalidad = "Ingresá la localidad del empleador.";
     const telEmpleador = parseTelefono(p.empleadorTelefono);
@@ -289,7 +289,16 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
         cfg.documentos
           .filter((d) => d.obligatorio && (po.legajo[d.tipoId]?.length ?? 0) === 0)
           .forEach((d) => push(getTipoDocumento(d.tipoId).nombre));
-        conDatos = Object.values(po.legajo).some((archivos) => archivos.length > 0);
+        // creditonet-33: si hay garantes, cada uno debe tener su recibo de sueldo en el legajo
+        po.garantes.forEach((g, idx) => {
+          if ((g.reciboSueldo?.length ?? 0) === 0) {
+            const nombre = [g.nombre, g.apellido].filter(Boolean).join(" ") || `Garante ${idx + 1}`;
+            push(`Recibo de sueldo de ${nombre}`);
+          }
+        });
+        conDatos =
+          Object.values(po.legajo).some((archivos) => archivos.length > 0) ||
+          po.garantes.some((g) => (g.reciboSueldo?.length ?? 0) > 0 || (g.otrosDocumentos?.length ?? 0) > 0);
         break;
       }
       case "impresion": {
