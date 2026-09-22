@@ -57,9 +57,9 @@ export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
   if (!l.condicionLaboral.trim())
     e.condicionLaboral = "Seleccioná la condición laboral: define la línea y el motor aplicables.";
   if (!l.fechaInicioLaboral.trim())
-    e.fechaInicioLaboral = "Ingresá la fecha de inicio laboral (dd/mm/aaaa).";
+    e.fechaInicioLaboral = "Seleccioná la fecha de inicio laboral.";
   else if (!parseFecha(l.fechaInicioLaboral))
-    e.fechaInicioLaboral = "La fecha debe tener el formato dd/mm/aaaa.";
+    e.fechaInicioLaboral = "La fecha de inicio laboral no es válida.";
   if (l.bancosCobro.length === 0)
     e.bancosCobro = "Seleccioná al menos un banco donde el cliente cobra.";
   if (l.ingresoNeto <= 0)

@@ -2,7 +2,7 @@
 
 import { useApplication } from "@/lib/application-context";
 import { CONDICIONES_LABORALES, validarLaboral } from "@/lib/validation";
-import { maskCuit } from "@/lib/format";
+import { fechaAIso, isoAFecha, maskCuit } from "@/lib/format";
 import { BANCOS } from "@/lib/parametros";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { Banner } from "@/components/ui/Banner";
@@ -61,11 +61,11 @@ export function PasoLaboralIngresos() {
             <FormField
               id="fecha-inicio"
               label="Fecha de inicio laboral"
+              type="date"
               required
-              value={l.fechaInicioLaboral}
-              onChange={(v) => patchLaboral({ fechaInicioLaboral: v })}
+              value={fechaAIso(l.fechaInicioLaboral)}
+              onChange={(v) => patchLaboral({ fechaInicioLaboral: isoAFecha(v) })}
               error={errores.fechaInicioLaboral}
-              hint="dd/mm/aaaa"
             />
             <MultiSelectField
               id="banco-cobro"
@@ -149,16 +149,16 @@ export function PasoLaboralIngresos() {
             <FormField
               id="extracciones-fecha"
               label="Extracciones · Fecha de acreditación"
-              value={l.extraccionesFecha}
-              onChange={(v) => patchLaboral({ extraccionesFecha: v })}
-              hint="dd/mm/aaaa"
+              type="date"
+              value={fechaAIso(l.extraccionesFecha)}
+              onChange={(v) => patchLaboral({ extraccionesFecha: isoAFecha(v) })}
             />
             <FormField
               id="transferencias-fecha"
               label="Transferencias · Fecha de acreditación"
-              value={l.transferenciasFecha}
-              onChange={(v) => patchLaboral({ transferenciasFecha: v })}
-              hint="dd/mm/aaaa"
+              type="date"
+              value={fechaAIso(l.transferenciasFecha)}
+              onChange={(v) => patchLaboral({ transferenciasFecha: isoAFecha(v) })}
             />
             <MoneyInput
               id="disponible"
