@@ -1021,6 +1021,8 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     empleadorCalle: "", // PENDIENTE
     empleadorLocalidad: "", // PENDIENTE
     empleadorTelefono: "", // PENDIENTE
+    banco: "", // PENDIENTE
+    cbu: "", // PENDIENTE
   };
 
   return {
@@ -1054,6 +1056,8 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
         empleadorCalle: "",
         empleadorLocalidad: "",
         empleadorTelefono: "",
+        banco: "",
+        cbu: "",
       },
     ],
     garantes: conGarantias ? [garante] : [],
@@ -1075,10 +1079,10 @@ const domicilioCordoba = (calle: string, numero: string): Domicilio => ({
 });
 
 const PERSONAS_API = [
-  { nombre: "Lucía", apellido: "Fernández", domicilio: domicilioCordoba("Obispo Trejo", "520"), email: "lucia.fernandez@email.com", telefono: "351 6543210", condicionLaboral: "Empleado fijo", ingresoBruto: 980_000, ingresoNeto: 780_000 },
-  { nombre: "Martín", apellido: "Sosa", domicilio: domicilioCordoba("Av. Vélez Sarsfield", "1820"), email: "martin.sosa@email.com", telefono: "351 6543211", condicionLaboral: "Contratado", ingresoBruto: 850_000, ingresoNeto: 680_000 },
-  { nombre: "Valeria", apellido: "Paz", domicilio: domicilioCordoba("Duarte Quirós", "910"), email: "valeria.paz@email.com", telefono: "351 6543212", condicionLaboral: "Monotributista", ingresoBruto: 720_000, ingresoNeto: 720_000 },
-  { nombre: "Diego", apellido: "Romero", domicilio: domicilioCordoba("Av. Hipólito Yrigoyen", "355"), email: "diego.romero@email.com", telefono: "351 6543213", condicionLaboral: "Empleado fijo", ingresoBruto: 1_100_000, ingresoNeto: 890_000 },
+  { nombre: "Lucía", apellido: "Fernández", domicilio: domicilioCordoba("Obispo Trejo", "520"), email: "lucia.fernandez@email.com", telefono: "351 6543210", condicionLaboral: "Empleado fijo", ingresoBruto: 980_000, ingresoNeto: 780_000, banco: "Banco Galicia", cbu: "0070199530000012345678" },
+  { nombre: "Martín", apellido: "Sosa", domicilio: domicilioCordoba("Av. Vélez Sarsfield", "1820"), email: "martin.sosa@email.com", telefono: "351 6543211", condicionLaboral: "Contratado", ingresoBruto: 850_000, ingresoNeto: 680_000, banco: "Banco Nación", cbu: "0110599520000023456789" },
+  { nombre: "Valeria", apellido: "Paz", domicilio: domicilioCordoba("Duarte Quirós", "910"), email: "valeria.paz@email.com", telefono: "351 6543212", condicionLaboral: "Monotributista", ingresoBruto: 720_000, ingresoNeto: 720_000, banco: "Banco de Córdoba", cbu: "0200599540000034567890" },
+  { nombre: "Diego", apellido: "Romero", domicilio: domicilioCordoba("Av. Hipólito Yrigoyen", "355"), email: "diego.romero@email.com", telefono: "351 6543213", condicionLaboral: "Empleado fijo", ingresoBruto: 1_100_000, ingresoNeto: 890_000, banco: "Banco Macro", cbu: "0285599560000045678901" },
 ];
 
 export function consultarPersonaMock(dni: string) {

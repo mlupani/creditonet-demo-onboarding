@@ -112,7 +112,9 @@ export type CampoPersona =
   | "reciboSueldo"
   | "empleadorCalle"
   | "empleadorLocalidad"
-  | "empleadorTelefono";
+  | "empleadorTelefono"
+  | "banco"
+  | "cbu";
 
 export const LABEL_PERSONA: Record<CampoPersona, string> = {
   vinculo: "Vínculo",
@@ -133,6 +135,8 @@ export const LABEL_PERSONA: Record<CampoPersona, string> = {
   empleadorCalle: "Calle del empleador",
   empleadorLocalidad: "Localidad del empleador",
   empleadorTelefono: "Teléfono del empleador",
+  banco: "Banco",
+  cbu: "CBU",
 };
 
 export function validarPersona(
@@ -174,6 +178,10 @@ export function validarPersona(
       const errorTel = validarNumero(telEmpleador.pais, telEmpleador.caracteristica, telEmpleador.numero);
       if (errorTel) e.empleadorTelefono = errorTel;
     }
+    // ?? "": sesiones persistidas en sessionStorage antes de este campo no lo tienen.
+    if (!(p.banco ?? "").trim()) e.banco = "Seleccioná el banco.";
+    if (!(p.cbu ?? "").trim()) e.cbu = "Ingresá el CBU.";
+    else if (!isValidCBU(p.cbu)) e.cbu = "El CBU debe tener 22 dígitos.";
   }
   return e;
 }
