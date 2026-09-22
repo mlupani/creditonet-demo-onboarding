@@ -454,7 +454,7 @@ const LABORAL: CampoDef[] = [
     ancho: "completo",
     valorFijo: (app) => unirBancos(app.laboral.bancosCobro),
   },
-  { pantalla: "laboral", seccion: "acreditacion", id: "cbu", label: "CBU", origen: "A_CARGAR", obligatorio: true, tipo: "cbu", porBanco: true },
+  { pantalla: "laboral", seccion: "acreditacion", id: "cbu", label: "CBU", origen: "NO_MODIFICABLE", obligatorio: true, tipo: "cbu", porBanco: true },
 ];
 
 export const CAMPOS_POST_OFERTA: CampoDef[] = [...PERSONALES, ...LABORAL];
