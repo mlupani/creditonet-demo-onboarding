@@ -65,8 +65,6 @@ export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
   if (l.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto mensual del cliente.";
   else if (l.ingresoBruto < l.ingresoNeto)
     e.ingresoBruto = "El ingreso bruto no puede ser menor al neto. Revisá los valores.";
-  if (l.montoExtraidoDiaCobro <= 0)
-    e.montoExtraidoDiaCobro = "Ingresá el monto extraído o transferido el día de cobro.";
   if (l.cuitEmpleador.trim() && !isValidCUIL(l.cuitEmpleador)) {
     e.cuitEmpleador = "El CUIT debe tener 11 dígitos.";
   }
