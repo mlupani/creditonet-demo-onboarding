@@ -10,11 +10,10 @@ import {
   PRODUCTOS,
 } from "@/lib/config";
 import {
-  bancosDe,
   campoVisible,
   camposDe,
   SECCIONES,
-  valorCampo,
+  valorCampoDisplay,
   type PantallaConCampos,
 } from "@/lib/campos-post-oferta";
 import { getTipoDocumento } from "@/lib/parametros";
@@ -72,10 +71,7 @@ function DocumentoLegajo() {
         {camposDe(pantalla, seccion, po[pantalla])
           .filter((c) => campoVisible(app, c))
           .map((c) => {
-          const valor =
-            c.tipo === "multiselect"
-              ? bancosDe(valorCampo(app, c)).join(", ")
-              : valorCampo(app, c);
+          const valor = valorCampoDisplay(app, c);
           return valor ? <Fila key={c.id} label={c.label} value={valor} /> : null;
         })}
       </Bloque>

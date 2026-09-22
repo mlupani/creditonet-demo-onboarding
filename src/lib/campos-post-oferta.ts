@@ -447,11 +447,12 @@ const LABORAL: CampoDef[] = [
     seccion: "acreditacion",
     id: "banco",
     label: "Bancos",
-    origen: "PRECARGADO",
+    origen: "NO_MODIFICABLE",
     obligatorio: true,
     tipo: "multiselect",
     opciones: () => BANCOS,
     ancho: "completo",
+    valorFijo: (app) => unirBancos(app.laboral.bancosCobro),
   },
   { pantalla: "laboral", seccion: "acreditacion", id: "cbu", label: "CBU", origen: "A_CARGAR", obligatorio: true, tipo: "cbu", porBanco: true },
 ];
@@ -505,6 +506,12 @@ export function obligatorioEfectivo(
 export function valorCampo(app: CreditApplication, campo: CampoDef): string {
   if (campo.valorFijo) return campo.valorFijo(app);
   return app.postOferta[campo.pantalla][campo.id] ?? "";
+}
+
+// Valor de un campo listo para mostrar: los multiselect (bancos) se listan separados por coma.
+export function valorCampoDisplay(app: CreditApplication, campo: CampoDef): string {
+  const valor = valorCampo(app, campo);
+  return campo.tipo === "multiselect" ? bancosDe(valor).join(", ") : valor;
 }
 
 // Un campo no se muestra ni se valida si el organismo lo quitó del formulario (excepción sobre
@@ -640,11 +647,6 @@ export function aplicarCambioCampo(valores: Valores, campoId: string, valor: str
     const numero = `${seccion}.numero`;
     const pais = siguiente[`${seccion}.pais`] || PAIS_POR_DEFECTO;
     if (siguiente[numero]) siguiente[numero] = sanitizarNumero(pais, valor, siguiente[numero]);
-  }
-  if (campoId === "banco") {
-    // Al sacar un banco se descarta el CBU que se había cargado para él.
-    const elegidos = bancosDe(valor);
-    for (const b of BANCOS) if (!elegidos.includes(b)) delete siguiente[idCbu(b)];
   }
   if (campo === "provincia") {
     const localidad = siguiente[`${seccion}.localidad`];
