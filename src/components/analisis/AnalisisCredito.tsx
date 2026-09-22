@@ -43,6 +43,7 @@ import {
 } from "@/components/bandeja/ModalesBandeja";
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
 import { BuroMotorModal, CreditosRenovarModal } from "./ModalesAnalisis";
+import { LegajoVirtualModal } from "./LegajoVirtualModal";
 import {
   IconAlertTriangle,
   IconArrowLeft,
@@ -50,6 +51,7 @@ import {
   IconCalendar,
   IconCheck,
   IconCreditCard,
+  IconEye,
   IconFileText,
   IconLandmark,
   IconRefresh,
@@ -128,6 +130,7 @@ export function AnalisisCredito({
   >(null);
   const [pantallas, setPantallas] = useState<PantallaPostOfertaId[]>([]);
   const [cambioAbierto, setCambioAbierto] = useState(false);
+  const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
@@ -473,6 +476,17 @@ export function AnalisisCredito({
                 : "Sin imprimir",
             },
           ]}
+          footer={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setLegajoAbierto(true)}
+              aria-label="Ver legajo virtual"
+            >
+              <IconEye width={14} height={14} />
+              Ver legajo virtual
+            </Button>
+          }
         />
         <SummaryCard
           title="Renovaciones"
@@ -605,6 +619,7 @@ export function AnalisisCredito({
           proponerCambioOferta(cambio);
         }}
       />
+      <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
 
       <Modal
         open={modal !== null}
