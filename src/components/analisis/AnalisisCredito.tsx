@@ -56,6 +56,7 @@ import {
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
 import { BuroMotorModal, CreditosRenovarModal } from "./ModalesAnalisis";
 import { HistorialPagosModal } from "./HistorialPagosModal";
+import { DesarrolloPrestamoModal } from "./DesarrolloPrestamoModal";
 import { LegajoVirtualModal } from "./LegajoVirtualModal";
 import {
   IconAlertTriangle,
@@ -145,6 +146,7 @@ export function AnalisisCredito({
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
+  const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
@@ -549,6 +551,17 @@ export function AnalisisCredito({
               big: true,
             },
           ]}
+          footer={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDesarrolloAbierto(true)}
+              aria-label="Ver desarrollo del préstamo"
+            >
+              <IconWallet width={14} height={14} />
+              Ver desarrollo del préstamo
+            </Button>
+          }
         />
         <SummaryCard
           title="Buró / historial"
@@ -967,6 +980,7 @@ export function AnalisisCredito({
       />
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
       <HistorialPagosModal open={historialAbierto} onClose={() => setHistorialAbierto(false)} />
+      <DesarrolloPrestamoModal open={desarrolloAbierto} onClose={() => setDesarrolloAbierto(false)} />
 
       <Modal
         open={modal !== null}
