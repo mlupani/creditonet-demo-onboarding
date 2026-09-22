@@ -3,8 +3,14 @@
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
-import { PROVINCIAS, VINCULOS_GARANTE, VINCULOS_REFERENCIA, localidadesDe } from "@/lib/parametros";
-import { isValidDNI, maskDNI } from "@/lib/format";
+import {
+  BANCOS,
+  PROVINCIAS,
+  VINCULOS_GARANTE,
+  VINCULOS_REFERENCIA,
+  localidadesDe,
+} from "@/lib/parametros";
+import { isValidDNI, maskDNI, onlyDigits } from "@/lib/format";
 import { CONDICIONES_LABORALES, validarPersona } from "@/lib/validation";
 import type { TipoPersonaVinculada } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
@@ -329,6 +335,25 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                     value={p.empleadorTelefono}
                     onChange={(v) => actualizarPersona(tipo, p.id, { empleadorTelefono: v })}
                     error={err.empleadorTelefono}
+                  />
+                  <SelectField
+                    id={`${p.id}-banco`}
+                    label="Banco"
+                    required
+                    value={p.banco ?? ""}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { banco: v })}
+                    options={BANCOS.map((b) => ({ value: b, label: b }))}
+                    error={err.banco}
+                  />
+                  <FormField
+                    id={`${p.id}-cbu`}
+                    label="CBU"
+                    required
+                    inputMode="numeric"
+                    maxLength={22}
+                    value={p.cbu ?? ""}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { cbu: onlyDigits(v).slice(0, 22) })}
+                    error={err.cbu}
                   />
                 </div>
 

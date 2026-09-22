@@ -755,6 +755,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           empleadorCalle: "",
           empleadorLocalidad: "",
           empleadorTelefono: "",
+          banco: "",
+          cbu: "",
         },
       ]),
     }));

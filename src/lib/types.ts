@@ -276,6 +276,9 @@ export interface PersonaVinculada {
   empleadorCalle: string;
   empleadorLocalidad: string;
   empleadorTelefono: string;
+  // Cuenta del garante, para eventuales débitos si el firmante tiene que responder.
+  banco: string;
+  cbu: string;
 }
 
 export interface ArchivoLegajo {
