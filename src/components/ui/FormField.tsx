@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { IconCheck, IconSparkles } from "@/components/icons";
+import { RequiredBadge } from "./RequiredBadge";
 import { ValidationMessage } from "./ValidationMessage";
 
 const inputBase =
@@ -53,7 +54,6 @@ export function FormField({
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <label htmlFor={id} className="text-sm font-medium text-ink-700">
           {label}
-          {required && <span className="ml-0.5 text-danger-500">*</span>}
         </label>
         {badge
           ? badge
@@ -90,6 +90,7 @@ export function FormField({
             className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-success-600"
           />
         )}
+        {required && <RequiredBadge />}
       </div>
       {showError ? (
         <ValidationMessage tipo="error">{error}</ValidationMessage>

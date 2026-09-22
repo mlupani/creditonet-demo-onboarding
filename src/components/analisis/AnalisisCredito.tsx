@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
+import { RequiredBadge } from "@/components/ui/RequiredBadge";
 import { SelectField } from "@/components/ui/SelectField";
 import { SummaryCard } from "@/components/ui/SummaryCard";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
@@ -80,20 +81,22 @@ function AreaTexto({
     <div className="mt-4">
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink-700">
         {label}
-        <span className="ml-0.5 text-danger-500">*</span>
       </label>
-      <textarea
-        id={id}
-        rows={3}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 ${
-          invalido
-            ? "border-danger-400 focus:border-danger-500 focus:ring-2 focus:ring-danger-100"
-            : "border-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-        }`}
-      />
+      <div className="relative">
+        <textarea
+          id={id}
+          rows={3}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 ${
+            invalido
+              ? "border-danger-400 focus:border-danger-500 focus:ring-2 focus:ring-danger-100"
+              : "border-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          }`}
+        />
+        <RequiredBadge />
+      </div>
       {invalido && <p className="mt-1.5 text-xs font-medium text-danger-600">{error}</p>}
     </div>
   );

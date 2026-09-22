@@ -16,6 +16,7 @@ import type { Plazo } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { RequiredBadge } from "@/components/ui/RequiredBadge";
 import { SelectField } from "@/components/ui/SelectField";
 import { Banner } from "@/components/ui/Banner";
 import { IconArrowRight } from "@/components/icons";
@@ -186,20 +187,22 @@ export function CambiarOfertaModal({
       <div className="mt-4">
         <label htmlFor="ca-nota" className="mb-1.5 block text-sm font-medium text-ink-700">
           Nota para el vendedor
-          <span className="ml-0.5 text-danger-500">*</span>
         </label>
-        <textarea
-          id="ca-nota"
-          rows={3}
-          value={nota}
-          onChange={(e) => setNota(e.target.value)}
-          placeholder="Ej.: El recibo informa $980.000 de neto, no $1.200.000. Se baja el capital a $1.000.000."
-          className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 ${
-            intentado && !notaValida
-              ? "border-danger-400 focus:border-danger-500 focus:ring-2 focus:ring-danger-100"
-              : "border-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-          }`}
-        />
+        <div className="relative">
+          <textarea
+            id="ca-nota"
+            rows={3}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Ej.: El recibo informa $980.000 de neto, no $1.200.000. Se baja el capital a $1.000.000."
+            className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 ${
+              intentado && !notaValida
+                ? "border-danger-400 focus:border-danger-500 focus:ring-2 focus:ring-danger-100"
+                : "border-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            }`}
+          />
+          <RequiredBadge />
+        </div>
         {intentado && !notaValida && (
           <p className="mt-1.5 text-xs font-medium text-danger-600">
             Explicá el cambio en al menos 5 caracteres: el vendedor se lo tiene que transmitir

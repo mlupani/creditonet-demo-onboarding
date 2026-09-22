@@ -1,6 +1,7 @@
 "use client";
 
 import { formatNumber, onlyDigits } from "@/lib/format";
+import { RequiredBadge } from "./RequiredBadge";
 import { ValidationMessage } from "./ValidationMessage";
 
 interface MoneyInputProps {
@@ -35,7 +36,6 @@ export function MoneyInput({
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <label htmlFor={id} className="text-sm font-medium text-ink-700">
           {label}
-          {required && <span className="ml-0.5 text-danger-500">*</span>}
         </label>
       </div>
       <div className="relative">
@@ -66,6 +66,7 @@ export function MoneyInput({
               : "border-ink-300 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           } ${disabled ? "cursor-not-allowed bg-ink-50 text-ink-500" : "text-ink-900"}`}
         />
+        {required && <RequiredBadge />}
       </div>
       {error ? (
         <ValidationMessage tipo="error">{error}</ValidationMessage>
