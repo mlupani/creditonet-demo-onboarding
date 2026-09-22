@@ -5,6 +5,7 @@ import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { nombreProveedor } from "@/lib/parametros";
 import { isValidCard } from "@/lib/format";
+import { tarjetaValida } from "@/lib/validation";
 import type { TipoTarjeta } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -23,15 +24,21 @@ import {
   IconTrash,
   IconUser,
 } from "@/components/icons";
-import { detectarMarca, LogoMarcaCompacto, TarjetaAnimada } from "./TarjetaAnimada";
+import { detectarMarca, TarjetaAnimada, TarjetaMini } from "./TarjetaAnimada";
 
 const FORM_VACIO = { tipo: "CREDITO" as TipoTarjeta, numero: "", vencimiento: "", nombreTitular: "", marca: "", cvv: "" };
 
 // Pantalla 3 · Tokenización de tarjetas (Onboarding §6): una o varias tarjetas, por link de
 // WhatsApp o carga presencial, con el proveedor configurado en el producto.
 export function PantallaTokenizacion() {
-  const { app, enviarLinkWhatsApp, simularCompletaCliente, tokenizarPresencial, quitarTarjeta } =
-    useApplication();
+  const {
+    app,
+    enviarLinkWhatsApp,
+    simularCompletaCliente,
+    tokenizarPresencial,
+    confirmarTarjetaGuardada,
+    quitarTarjeta,
+  } = useApplication();
   const [presencial, setPresencial] = useState(false);
   const [form, setForm] = useState(FORM_VACIO);
   const [procesando, setProcesando] = useState<string | null>(null);
@@ -41,7 +48,7 @@ export function PantallaTokenizacion() {
   const obligatoria = cfg.pantallas.find((p) => p.id === "tokenizacion")?.obligatoria ?? false;
   const { proveedorId } = cfg.tokenizacion;
   const tarjetas = app.postOferta.tarjetas;
-  const tokenizadas = tarjetas.filter((t) => t.estado === "TOKENIZADA").length;
+  const tokenizadas = tarjetas.filter(tarjetaValida).length;
   const p = app.postOferta.personales;
   const celular = formatTelefono(
     p["telefono.pais"] ?? "",
@@ -117,75 +124,76 @@ export function PantallaTokenizacion() {
           </div>
 
           {tarjetas.length > 0 && (
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {tarjetas.map((t) => {
-                const lista = t.estado === "TOKENIZADA";
+                const tokenizada = t.estado === "TOKENIZADA";
+                const porComprobar = tokenizada && t.via === "BASE_INTERNA" && t.verificada === false;
+                const valida = tarjetaValida(t);
                 return (
                   <li
                     key={t.id}
-                    className={`rounded-xl border px-4 py-3 ${
-                      lista
+                    className={`rounded-xl border p-4 ${
+                      valida
                         ? "border-success-200 bg-success-50/60"
                         : "border-warning-200 bg-warning-50/60"
                     }`}
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                            lista ? "bg-success-600 text-white" : "bg-warning-100 text-warning-700"
-                          }`}
-                        >
-                          {lista ? (
-                            <IconCheck width={16} height={16} strokeWidth={2.6} />
-                          ) : (
-                            <IconClock width={16} height={16} />
-                          )}
-                        </span>
-                        <div className="min-w-0">
-                          {lista ? (
-                            <>
-                              <p className="flex items-center gap-2 text-sm font-bold text-ink-900">
-                                <LogoMarcaCompacto marca={t.marca} />
-                                {t.nombreTitular}
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      {tokenizada ? (
+                        <div className="flex min-w-0 flex-wrap items-start gap-4">
+                          <TarjetaMini
+                            marca={t.marca}
+                            tipo={t.tipo}
+                            nombreTitular={t.nombreTitular}
+                            primeros4={t.primeros4}
+                            ultimos4={t.ultimos4}
+                            vencimiento={t.vencimiento}
+                          />
+                          <div className="min-w-0">
+                            {porComprobar && (
+                              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-warning-700">
+                                <IconClock width={13} height={13} />
+                                Tarjeta guardada · cliente recurrente
                               </p>
-                              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-600 mt-1">
-                                <span className="font-mono">
-                                  {t.primeros4 ?? "••••"} •• •••• {t.ultimos4}
-                                </span>
-                                <span>Vence {t.vencimiento ?? "--/--"}</span>
-                                {t.tipo && (
-                                  <span className="font-semibold">
-                                    {t.tipo === "CREDITO" ? "Crédito" : "Débito"}
-                                  </span>
-                                )}
-                              </p>
-                              <p className="flex flex-wrap items-center gap-1.5 text-xs text-ink-500 mt-1">
-                                <IconLandmark width={12} height={12} />
-                                {t.emisor ?? "Emisor no informado"}·
-                                <IconCalendar width={12} height={12} />
-                                {t.fechaTokenizacion ?? "--"}·
-                                <IconKey width={12} height={12} />
-                                <span className="font-mono">{t.token}</span>·{" "}
-                                {t.via === "WHATSAPP"
-                                  ? "cargada por el cliente desde el link"
+                            )}
+                            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-500">
+                              <IconLandmark width={12} height={12} />
+                              {t.emisor ?? "Emisor no informado"}·
+                              <IconCalendar width={12} height={12} />
+                              {t.fechaTokenizacion ?? "--"}·
+                              <IconKey width={12} height={12} />
+                              <span className="font-mono">{t.token}</span>·{" "}
+                              {t.via === "WHATSAPP"
+                                ? "cargada por el cliente desde el link"
+                                : t.via === "BASE_INTERNA"
+                                  ? "de un trámite anterior"
                                   : "carga presencial"}
+                            </p>
+                            {porComprobar && (
+                              <p className="mt-1 text-xs text-warning-700">
+                                Comprobá con el cliente que los datos siguen siendo correctos
+                                antes de continuar.
                               </p>
-                            </>
-                          ) : (
-                            <>
-                              <p className="text-sm font-bold text-ink-900">
-                                Link enviado por WhatsApp a {t.enviadoA}
-                              </p>
-                              <p className="text-xs text-warning-700">
-                                Esperando que el cliente complete el formulario de tokenización.
-                              </p>
-                            </>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning-100 text-warning-700">
+                            <IconClock width={16} height={16} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-ink-900">
+                              Link enviado por WhatsApp a {t.enviadoA}
+                            </p>
+                            <p className="text-xs text-warning-700">
+                              Esperando que el cliente complete el formulario de tokenización.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex flex-wrap items-center gap-2">
-                        {!lista && (
+                        {!tokenizada && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -196,6 +204,16 @@ export function PantallaTokenizacion() {
                             Simular que el cliente completó
                           </Button>
                         )}
+                        {porComprobar && (
+                          <Button
+                            size="sm"
+                            variant="success"
+                            onClick={() => confirmarTarjetaGuardada(t.id)}
+                          >
+                            <IconCheck width={14} height={14} strokeWidth={2.6} />
+                            Marcar como comprobada
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -203,7 +221,7 @@ export function PantallaTokenizacion() {
                           onClick={() => quitarTarjeta(t.id)}
                         >
                           <IconTrash width={14} height={14} />
-                          {lista ? "Quitar" : "Cancelar"}
+                          {tokenizada ? "Quitar" : "Cancelar"}
                         </Button>
                       </div>
                     </div>

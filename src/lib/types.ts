@@ -219,12 +219,16 @@ export type PantallaPostOfertaId =
 
 export type TipoTarjeta = "DEBITO" | "CREDITO";
 
-// Onboarding §6: una o varias tarjetas, por link de WhatsApp o carga presencial. El número
-// completo y el código de seguridad nunca se guardan: sólo lo que devuelve el proveedor.
+// Onboarding §6: una o varias tarjetas, por link de WhatsApp, carga presencial o ya guardada
+// de un trámite anterior (cliente recurrente). El número completo y el código de seguridad
+// nunca se guardan: sólo lo que devuelve el proveedor.
 export interface TarjetaTokenizada {
   id: string;
-  via: "WHATSAPP" | "PRESENCIAL";
+  via: "WHATSAPP" | "PRESENCIAL" | "BASE_INTERNA";
   estado: "ESPERANDO_CLIENTE" | "TOKENIZADA";
+  // Sólo aplica a via "BASE_INTERNA": el vendedor tiene que comprobar que la tarjeta
+  // precargada del cliente recurrente sigue siendo correcta antes de que cuente como válida.
+  verificada?: boolean;
   enviadoA: string | null;
   tipo: TipoTarjeta | null;
   marca: string | null;

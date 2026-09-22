@@ -24,7 +24,7 @@ import {
 } from "@/lib/config";
 import { camposRectificados } from "@/lib/campos-post-oferta";
 import type { PantallaPostOfertaId } from "@/lib/types";
-import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO } from "@/lib/validation";
+import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO, tarjetaValida } from "@/lib/validation";
 import { formatARS, formatDNI, formatPct, nombreApellido } from "@/lib/format";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
@@ -139,7 +139,7 @@ export function AnalisisCredito({
   );
   const docsCargados = docsObligatorios.filter((d) => (po.legajo[d.tipoId]?.length ?? 0) > 0)
     .length;
-  const tokenizadas = po.tarjetas.filter((t) => t.estado === "TOKENIZADA");
+  const tokenizadas = po.tarjetas.filter(tarjetaValida);
   // Precargados que el vendedor corrigió en la carga post-oferta (Onboarding §3).
   const rectificados = camposRectificados(app);
   const plan = evaluarPlan(app);
