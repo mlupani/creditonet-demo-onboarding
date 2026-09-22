@@ -27,15 +27,22 @@ checklist fijo de tamaño. Pregunta guía: ¿tiene pasos independientes que
 valga la pena trackear o revisar por separado, o es una unidad que se
 resuelve de punta a punta sin beneficio real de partirla?
 
-- **Sin plan formal**: comentar en el issue un resumen de una línea de
+ **Sin plan formal**: comentar en el issue un resumen de una línea de
   lo que se va a hacer, implementar directo (con TDD), y seguir igual
   las transiciones de estado obligatorias de abajo.
-- **Con plan formal**: leer la spec completa y generar un plan (en
+ **Con plan formal**: leer la spec completa y generar un plan (en
   Claude Code: `superpowers:writing-plans`). El propio plan decide la
   granularidad en YouTrack con el mismo criterio de tamaño de tarea:
   varias unidades independientes → sub-issue por tarea (y
   sub-subtareas si alguna lo amerita); plan chico o secuencial →
   trabajar sobre el issue padre comentando el progreso.
+ **Con plan formal** (en Claude Code): además de lo anterior, seguir
+  la sección "Model Selection" de `subagent-driven-development` —
+  especificar SIEMPRE el modelo explícito al dispatchear cada
+  subagente (mecánico → barato, integración/juicio → estándar,
+  arquitectura y review final de todo el branch → el más capaz). No
+  omitir el modelo — si se omite, hereda el de la sesión, generalmente
+  el más caro, y anula el ahorro.
 
 ## Transiciones de estado — obligatorias, en este orden
 
@@ -54,6 +61,10 @@ producción" las mueve el humano.
 3. Antes de crear el PR: correr la whole-branch review final / suite de
    tests completa (el único punto donde es puramente verificación, sin
    código nuevo).
+   tests completa — **solo si hubo plan formal**. Si fue una tarea
+   sin plan formal, el self-review que ya hizo la implementación TDD
+   (tests corridos, diff propio revisado) alcanza — no dispatchear un
+   reviewer separado para un cambio chico y mecánico.
 4. Recién cuando la review está limpia: crear el PR, comentar el link,
    y mover el issue a **"Hecho"** — notificar por Telegram.
 
@@ -63,7 +74,11 @@ ya está bien.
 
 ## Convenciones
 
-- Branch: `<YOUTRACK-ID>-slug-corto` (ej. `creditonet-123-fix-auth`).
+  - Branch: `<YOUTRACK-ID>-slug-corto` (ej. `creditonet-123-fix-auth`).
+  - Cada ticket trabaja en su propio git worktree/branch — nunca
+  compartir worktree entre tickets distintos, incluso si corren en
+  paralelo (dos tickets en paralelo son seguros; dos tareas del MISMO
+  ticket en paralelo, no — por eso nunca pasa, ver más abajo).
   El nombre del branch y del PR deben incluir el ID del issue — la
   integración VCS de YouTrack ya está configurada para linkear
   commits/PRs automáticamente cuando aparece ese ID.
