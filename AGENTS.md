@@ -98,6 +98,12 @@ cuando llegue la respuesta.
 Notificar por Telegram al mover a "En progreso" y al llegar a "Hecho",
 con este formato (icono 🔄 mientras se hace, ✅ cuando está terminada):
 
+IMPORTANTE: nunca pasar este texto con emoji como argumento directo de
+un comando de shell (`-d`, `echo`, `printf`) — en este entorno se
+corrompe. Escribirlo primero a un archivo de texto plano usando una
+operación de escritura de archivo (no un comando de shell que
+embeba el emoji en su propio texto), y recién ahí:
+
 ```bash
 curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
   --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
@@ -106,3 +112,13 @@ Tarea: <ID> - <título corto>
 Estado: <🔄 En progreso | ✅ Hecho>
 PR: <link o \"—\">
 Link de tarea: https://miguel.youtrack.cloud/issue/<ID>"
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
