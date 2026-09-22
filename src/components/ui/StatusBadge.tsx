@@ -11,15 +11,18 @@ const toneClasses: Record<Tone, string> = {
   brand: "bg-brand-600 text-white border-brand-600",
 };
 
-// Etiquetas de la máquina de estados de la Guía Definitiva §8.
+// Etiquetas de la máquina de estados — incluye los 8 estados de creditonet-34 (Guía §8).
 export const ESTADO_META: Record<EstadoCredito, { label: string; tone: Tone }> = {
   BORRADOR: { label: "Borrador", tone: "neutral" },
   EN_TRAMITE: { label: "En trámite", tone: "info" },
   PREAPROBADO: { label: "Preaprobado", tone: "brand" },
   ANALISIS_TOMADO: { label: "En análisis", tone: "info" },
   OBSERVADO: { label: "Observado", tone: "warning" },
+  CAMBIO_OFERTA: { label: "Cambio de oferta", tone: "warning" },
   RECHAZADO: { label: "Rechazado", tone: "danger" },
   ANULADO: { label: "Anulado", tone: "neutral" },
+  EN_FIRMA: { label: "En firma", tone: "info" },
+  FIRMADO: { label: "Firmado", tone: "success" },
   PARA_LIQUIDAR: { label: "Para liquidar", tone: "success" },
 };
 

@@ -10,10 +10,16 @@ import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { IconFileStack, IconSearch } from "@/components/icons";
 
-type Pestana = "PRE" | "OBS" | "LIQ";
+type Pestana = "PEND" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
 
-// Pestañas de la bandeja. COFE / FEL / AFEL quedan pendientes hasta definir esos estados.
+// Bandeja del analista — 8 estados de creditonet-34.
 const PESTANAS: { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string }[] = [
+  {
+    id: "PEND",
+    titulo: "En trámite",
+    estados: ["BORRADOR", "EN_TRAMITE"],
+    vacio: "No hay solicitudes en trámite.",
+  },
   {
     id: "PRE",
     titulo: "Preaprobados",
@@ -27,6 +33,30 @@ const PESTANAS: { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: 
     vacio: "No hay solicitudes observadas esperando correcciones.",
   },
   {
+    id: "COFE",
+    titulo: "Cambio de oferta",
+    estados: ["CAMBIO_OFERTA"],
+    vacio: "No hay solicitudes con cambio de oferta.",
+  },
+  {
+    id: "RECH",
+    titulo: "Rechazados",
+    estados: ["RECHAZADO"],
+    vacio: "No hay solicitudes rechazadas.",
+  },
+  {
+    id: "FEL",
+    titulo: "En firma",
+    estados: ["EN_FIRMA"],
+    vacio: "No hay solicitudes en firma.",
+  },
+  {
+    id: "AFEL",
+    titulo: "Firmados",
+    estados: ["FIRMADO"],
+    vacio: "No hay solicitudes firmadas.",
+  },
+  {
     id: "LIQ",
     titulo: "Para liquidar",
     estados: ["PARA_LIQUIDAR"],
@@ -37,10 +67,12 @@ const PESTANAS: { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: 
 const COLUMNAS = [
   "Cliente",
   "DNI",
+  "ID Cliente",
   "Producto",
   "Organismo",
   "Vendedor",
   "Monto",
+  "Monto cuota",
   "Cuotas",
   "Estado",
   "Fecha",
@@ -145,7 +177,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[52rem] text-left text-[13px]">
+            <table className="w-full min-w-[64rem] text-left text-[13px]">
               <thead>
                 <tr className="border-b border-ink-100 bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
                   {COLUMNAS.map((c) => (
@@ -167,6 +199,9 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                     </p>
                   </td>
                   <td className="px-3 py-3 tabular-nums text-ink-700">{formatDNI(cliente!.dni)}</td>
+                  <td className="px-3 py-3 font-mono tabular-nums text-ink-700">
+                    {app.numeroCliente ?? "—"}
+                  </td>
                   <td className="px-3 py-3 text-ink-700">
                     {nombreOpcion(PRODUCTOS, app.configuracion.productoId)}
                   </td>
@@ -178,6 +213,9 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                   </td>
                   <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">
                     {formatARS(app.oferta.montoSolicitado)}
+                  </td>
+                  <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">
+                    {formatARS(app.oferta.valorCuota)}
                   </td>
                   <td className="px-3 py-3 tabular-nums text-ink-700">{app.oferta.plazo}</td>
                   <td className="px-3 py-3">
