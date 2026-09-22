@@ -927,7 +927,9 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
   const valores = (pantalla: "personales" | "laboral") => ({
     ...Object.fromEntries(
       camposDe(pantalla)
-        .filter((campo) => campo.origen !== "NO_MODIFICABLE")
+        // "banco" es NO_MODIFICABLE pero igual se guarda: camposDe usa el valor crudo
+        // (no el valorFijo) para expandir el CBU por cada banco elegido.
+        .filter((campo) => campo.origen !== "NO_MODIFICABLE" || campo.id === "banco")
         .map((campo) => [campo.id, precarga[campo.id] ?? CARGA_DEMO[campo.id] ?? ""])
     ),
     ...(pantalla === "laboral" && primerBanco ? { [`cbu.${primerBanco}`]: CARGA_DEMO.cbu } : {}),

@@ -11,6 +11,7 @@ import {
   unirBancos,
   validarCampo,
   valorCampo,
+  valorCampoDisplay,
   type CampoDef,
 } from "@/lib/campos-post-oferta";
 import { FormField } from "@/components/ui/FormField";
@@ -57,7 +58,7 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
   const className = campo.ancho === "completo" ? "sm:col-span-2" : undefined;
   const onChange = (v: string) => setCampo(campo.pantalla, campo.id, sanitizar(campo, v, valores));
 
-  if (campo.tipo === "multiselect") {
+  if (campo.tipo === "multiselect" && !bloqueado) {
     return (
       <MultiSelectField
         id={id}
@@ -113,7 +114,7 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
       id={id}
       label={campo.label}
       required={obligatorio && !bloqueado}
-      value={valor}
+      value={valorCampoDisplay(app, campo)}
       onChange={onChange}
       disabled={bloqueado}
       badge={badge}
