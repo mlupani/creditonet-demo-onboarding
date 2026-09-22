@@ -47,8 +47,25 @@ export function ResumenSolicitudModal({
       // El plan se elige al evaluar, según el perfil del cliente.
       value: app.riesgo.planId ? planDeSolicitud(app).nombre : "Se asigna al evaluar",
     },
+    ...(app.laboral.ingresoBruto > 0
+      ? [{ label: "Ingreso bruto", value: formatARS(app.laboral.ingresoBruto) }]
+      : []),
     ...(app.laboral.ingresoNeto > 0
       ? [{ label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) }]
+      : []),
+    ...(app.laboral.disponible > 0
+      ? [{ label: "Disponible", value: formatARS(app.laboral.disponible) }]
+      : []),
+    ...(app.laboral.extraccionesFecha
+      ? [{ label: "Extracciones · Fecha de acreditación", value: app.laboral.extraccionesFecha }]
+      : []),
+    ...(app.laboral.transferenciasFecha
+      ? [
+          {
+            label: "Transferencias · Fecha de acreditación",
+            value: app.laboral.transferenciasFecha,
+          },
+        ]
       : []),
     ...(riesgoCompleto && app.riesgo.resultado
       ? [
