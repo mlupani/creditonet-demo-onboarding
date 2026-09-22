@@ -191,14 +191,14 @@ export function PasoLaboralIngresos() {
             />
             <FormField
               id="extracciones-fecha"
-              label="Extracciones · Fecha de acreditación"
+              label="Saldo - Fecha de acreditacion"
               type="date"
               value={fechaAIso(l.extraccionesFecha)}
               onChange={(v) => patchLaboral({ extraccionesFecha: isoAFecha(v) })}
             />
             <FormField
               id="transferencias-fecha"
-              label="Transferencias · Fecha de acreditación"
+              label="Extracciones / Transferencias - Fecha de acreditación"
               type="date"
               value={fechaAIso(l.transferenciasFecha)}
               onChange={(v) => patchLaboral({ transferenciasFecha: isoAFecha(v) })}

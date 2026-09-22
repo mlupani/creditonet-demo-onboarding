@@ -30,6 +30,8 @@ export function ResumenSolicitudModal({
       app.identificacion.tipoCliente
     );
 
+  const l = app.laboral;
+
   const rows: { label: string; value: string; tone?: "success" | "danger" | "warning" }[] = [
     { label: "Canal", value: nombreOpcion(CANALES, app.configuracion.canalId) },
     { label: "Vendedor", value: nombreOpcion(VENDEDORES, app.configuracion.vendedorId) },
@@ -47,26 +49,6 @@ export function ResumenSolicitudModal({
       // El plan se elige al evaluar, según el perfil del cliente.
       value: app.riesgo.planId ? planDeSolicitud(app).nombre : "Se asigna al evaluar",
     },
-    ...(app.laboral.ingresoBruto > 0
-      ? [{ label: "Ingreso bruto", value: formatARS(app.laboral.ingresoBruto) }]
-      : []),
-    ...(app.laboral.ingresoNeto > 0
-      ? [{ label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) }]
-      : []),
-    ...(app.laboral.disponible > 0
-      ? [{ label: "Disponible", value: formatARS(app.laboral.disponible) }]
-      : []),
-    ...(app.laboral.extraccionesFecha
-      ? [{ label: "Extracciones · Fecha de acreditación", value: app.laboral.extraccionesFecha }]
-      : []),
-    ...(app.laboral.transferenciasFecha
-      ? [
-          {
-            label: "Transferencias · Fecha de acreditación",
-            value: app.laboral.transferenciasFecha,
-          },
-        ]
-      : []),
     ...(riesgoCompleto && app.riesgo.resultado
       ? [
           {
@@ -85,12 +67,20 @@ export function ResumenSolicitudModal({
       : []),
   ];
 
+  const financieros: { label: string; value: string }[] = [
+    { label: "Ingreso bruto", value: formatARS(l.ingresoBruto) },
+    { label: "Ingreso neto", value: formatARS(l.ingresoNeto) },
+    { label: "Disponible", value: formatARS(l.disponible) },
+    { label: "Saldo - Fecha de acreditacion", value: l.extraccionesFecha || "—" },
+    { label: "Extracciones / Transferencias - Fecha de acreditación", value: l.transferenciasFecha || "—" },
+  ];
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="Resumen de la solicitud"
-      maxWidth="max-w-md"
+      maxWidth="max-w-lg"
       footer={
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={onClose}>
@@ -126,6 +116,18 @@ export function ResumenSolicitudModal({
             >
               {row.value}
             </dd>
+          </div>
+        ))}
+      </dl>
+
+      <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-ink-500">
+        Datos financieros
+      </p>
+      <dl className="mt-1.5 divide-y divide-ink-100 rounded-xl border border-ink-200 bg-ink-25">
+        {financieros.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-4 px-4 py-2.5">
+            <dt className="text-sm text-ink-500">{row.label}</dt>
+            <dd className="text-right text-sm font-semibold tabular-nums text-ink-900">{row.value}</dd>
           </div>
         ))}
       </dl>
