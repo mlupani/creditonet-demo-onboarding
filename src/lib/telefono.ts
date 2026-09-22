@@ -48,32 +48,50 @@ export function textoDigitos(p: PaisTelefono): string {
   return p.min === p.max ? `${p.max} dígitos` : `${p.min} a ${p.max} dígitos`;
 }
 
-// Deja sólo dígitos y corta en el máximo del país.
-export function sanitizarNumero(codigoPais: string, valor: string): string {
-  return onlyDigits(valor).slice(0, getPaisTelefono(codigoPais).max);
+const MAX_DIGITOS_CARACTERISTICA = 5;
+
+// Deja sólo dígitos en la característica (código de área/localidad); no depende del país porque
+// su largo varía mucho entre localidades de un mismo país.
+export function sanitizarCaracteristica(valor: string): string {
+  return onlyDigits(valor).slice(0, MAX_DIGITOS_CARACTERISTICA);
 }
 
-export function validarNumero(codigoPais: string, valor: string): string | null {
+// Deja sólo dígitos y corta en lo que le queda al número una vez descontada la característica,
+// para no superar el máximo del país entre los dos campos.
+export function sanitizarNumero(codigoPais: string, caracteristica: string, valor: string): string {
   const pais = getPaisTelefono(codigoPais);
-  const n = onlyDigits(valor).length;
+  const max = Math.max(0, pais.max - onlyDigits(caracteristica).length);
+  return onlyDigits(valor).slice(0, max);
+}
+
+export function validarNumero(codigoPais: string, caracteristica: string, valor: string): string | null {
+  const pais = getPaisTelefono(codigoPais);
+  const n = onlyDigits(caracteristica).length + onlyDigits(valor).length;
   if (n >= pais.min && n <= pais.max) return null;
-  return `El teléfono de ${pais.nombre} debe tener ${textoDigitos(pais)}.`;
+  return `El teléfono de ${pais.nombre} debe tener ${textoDigitos(pais)} entre característica y número.`;
 }
 
-// Teléfono en un único texto ("+54 3515432100"), como lo guardan el cliente y las personas
-// vinculadas. Un valor sin código (datos previos) se toma como del país por defecto.
-export function armarTelefono(codigoPais: string, numero: string): string {
-  return `${codigoPais} ${numero}`;
+// Teléfono en un único texto ("+54 351 5432100"), como lo guardan el cliente y las personas
+// vinculadas.
+export function armarTelefono(codigoPais: string, caracteristica: string, numero: string): string {
+  return [codigoPais, caracteristica, numero].filter((p) => p !== "").join(" ");
 }
 
-export function parseTelefono(valor: string): { pais: string; numero: string } {
-  const m = /^(\+\d+)(?:\s+(.*))?$/.exec(valor.trim());
-  if (m && PAISES_TELEFONO.some((p) => p.codigo === m[1])) {
-    return { pais: m[1], numero: onlyDigits(m[2] ?? "") };
+// Un valor sin código de país (datos previos) se toma como del país por defecto. Si tras el país
+// quedan dos partes, la primera es la característica; con una sola, es el número completo (no se
+// puede adivinar dónde empieza la característica).
+export function parseTelefono(valor: string): { pais: string; caracteristica: string; numero: string } {
+  const partes = valor.trim().split(/\s+/).filter(Boolean);
+  let pais = PAIS_POR_DEFECTO;
+  if (partes[0] && PAISES_TELEFONO.some((p) => p.codigo === partes[0])) {
+    pais = partes.shift()!;
   }
-  return { pais: PAIS_POR_DEFECTO, numero: onlyDigits(valor) };
+  if (partes.length >= 2) {
+    return { pais, caracteristica: onlyDigits(partes[0]), numero: onlyDigits(partes.slice(1).join("")) };
+  }
+  return { pais, caracteristica: "", numero: onlyDigits(partes.join("")) };
 }
 
-export function formatTelefono(codigoPais: string, numero: string): string {
-  return numero ? `${codigoPais || PAIS_POR_DEFECTO} ${numero}` : "";
+export function formatTelefono(codigoPais: string, caracteristica: string, numero: string): string {
+  return numero ? armarTelefono(codigoPais || PAIS_POR_DEFECTO, caracteristica, numero) : "";
 }

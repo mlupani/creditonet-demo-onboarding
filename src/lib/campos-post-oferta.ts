@@ -7,7 +7,7 @@
 import type { CreditApplication, Domicilio, OrigenCampo } from "./types";
 import { configEfectiva } from "./config";
 import { isValidCBU, isValidEmail, maskCuit, maskDNI, maskFecha, onlyDigits, parseFecha } from "./format";
-import { PAIS_POR_DEFECTO, sanitizarNumero, validarNumero } from "./telefono";
+import { PAIS_POR_DEFECTO, sanitizarCaracteristica, sanitizarNumero, validarNumero } from "./telefono";
 import {
   BANCOS,
   COMPANIAS_TELEFONICAS,
@@ -31,6 +31,7 @@ export type TipoCampo =
   | "cuit"
   | "cbu"
   | "paisTelefono"
+  | "caracteristica"
   | "telefono"
   | "codigoPostal"
   | "select"
@@ -64,6 +65,9 @@ export interface CampoDef {
   ancho?: "completo";
   // Sólo en teléfonos: id del campo que trae el país (área), que define los dígitos del número.
   paisId?: string;
+  // Sólo en teléfonos: id del campo con la característica (código de área/localidad), que
+  // descuenta del máximo de dígitos que le quedan al número.
+  caracteristicaId?: string;
   // Plantilla que se repite una vez por banco elegido (el CBU): `camposDe` la expande.
   porBanco?: boolean;
   // En un campo expandido, id de la plantilla de la que sale (para su obligatoriedad).
@@ -287,12 +291,22 @@ const PERSONALES: CampoDef[] = [
   {
     pantalla: "personales",
     seccion: "contacto",
+    id: "telefono.caracteristica",
+    label: "Característica",
+    origen: "PRECARGADO",
+    obligatorio: true,
+    tipo: "caracteristica",
+  },
+  {
+    pantalla: "personales",
+    seccion: "contacto",
     id: "telefono.numero",
     label: "Teléfono",
     origen: "PRECARGADO",
     obligatorio: true,
     tipo: "telefono",
     paisId: "telefono.pais",
+    caracteristicaId: "telefono.caracteristica",
   },
   {
     pantalla: "personales",
@@ -325,12 +339,22 @@ const PERSONALES: CampoDef[] = [
   {
     pantalla: "personales",
     seccion: "contacto",
+    id: "telefonoAlt.caracteristica",
+    label: "Característica alternativa",
+    origen: "A_CARGAR",
+    obligatorio: false,
+    tipo: "caracteristica",
+  },
+  {
+    pantalla: "personales",
+    seccion: "contacto",
     id: "telefonoAlt.numero",
     label: "Teléfono alternativo",
     origen: "A_CARGAR",
     obligatorio: false,
     tipo: "telefono",
     paisId: "telefonoAlt.pais",
+    caracteristicaId: "telefonoAlt.caracteristica",
   },
 ];
 
@@ -383,12 +407,22 @@ const LABORAL: CampoDef[] = [
   {
     pantalla: "laboral",
     seccion: "telefonoLaboral",
+    id: "telefonoLaboral.caracteristica",
+    label: "Característica",
+    origen: "A_CARGAR",
+    obligatorio: true,
+    tipo: "caracteristica",
+  },
+  {
+    pantalla: "laboral",
+    seccion: "telefonoLaboral",
     id: "telefonoLaboral.numero",
     label: "Teléfono laboral",
     origen: "A_CARGAR",
     obligatorio: true,
     tipo: "telefono",
     paisId: "telefonoLaboral.pais",
+    caracteristicaId: "telefonoLaboral.caracteristica",
   },
   {
     pantalla: "laboral",
@@ -492,10 +526,17 @@ export function paisDe(campo: CampoDef, valores: Valores): string {
   return (campo.paisId && valores[campo.paisId]) || PAIS_POR_DEFECTO;
 }
 
-// Deja sólo dígitos en los campos numéricos y corta en el largo máximo (en los teléfonos, el
-// del país elegido).
+// Característica (código de área/localidad) que aplica a un teléfono; sin cargar, vacía.
+export function caracteristicaDe(campo: CampoDef, valores: Valores): string {
+  return (campo.caracteristicaId && valores[campo.caracteristicaId]) || "";
+}
+
+// Deja sólo dígitos en los campos numéricos y corta en el largo máximo (en los teléfonos, lo que
+// le queda al país elegido una vez descontada la característica).
 export function sanitizar(campo: CampoDef, valor: string, valores: Valores): string {
-  if (campo.tipo === "telefono") return sanitizarNumero(paisDe(campo, valores), valor);
+  if (campo.tipo === "telefono")
+    return sanitizarNumero(paisDe(campo, valores), caracteristicaDe(campo, valores), valor);
+  if (campo.tipo === "caracteristica") return sanitizarCaracteristica(valor);
   if (campo.tipo === "fecha") return maskFecha(valor);
   if (campo.tipo === "cuit") return maskCuit(valor);
   if (campo.tipo === "dni") return maskDNI(valor);
@@ -522,7 +563,7 @@ export function validarCampo(
     case "cbu":
       return isValidCBU(v) ? null : "El CBU debe tener 22 dígitos.";
     case "telefono":
-      return validarNumero(paisDe(campo, valores), v);
+      return validarNumero(paisDe(campo, valores), caracteristicaDe(campo, valores), v);
     case "codigoPostal":
       return d.length === 4 ? null : "El código postal tiene 4 dígitos.";
     case "numero":
@@ -592,7 +633,13 @@ export function aplicarCambioCampo(valores: Valores, campoId: string, valor: str
   const [seccion, campo] = campoId.split(".");
   if (campo === "pais") {
     const numero = `${seccion}.numero`;
-    if (siguiente[numero]) siguiente[numero] = sanitizarNumero(valor, siguiente[numero]);
+    const caracteristica = siguiente[`${seccion}.caracteristica`] ?? "";
+    if (siguiente[numero]) siguiente[numero] = sanitizarNumero(valor, caracteristica, siguiente[numero]);
+  }
+  if (campo === "caracteristica") {
+    const numero = `${seccion}.numero`;
+    const pais = siguiente[`${seccion}.pais`] || PAIS_POR_DEFECTO;
+    if (siguiente[numero]) siguiente[numero] = sanitizarNumero(pais, valor, siguiente[numero]);
   }
   if (campoId === "banco") {
     // Al sacar un banco se descarta el CBU que se había cargado para él.

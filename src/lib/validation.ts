@@ -155,7 +155,7 @@ export function validarPersona(
   const tel = parseTelefono(p.telefono);
   if (!tel.numero) e.telefono = "Ingresá el teléfono de contacto.";
   else {
-    const errorTel = validarNumero(tel.pais, tel.numero);
+    const errorTel = validarNumero(tel.pais, tel.caracteristica, tel.numero);
     if (errorTel) e.telefono = errorTel;
   }
   // El garante debe demostrar capacidad de pago para firmar la documentación del préstamo.
@@ -169,7 +169,7 @@ export function validarPersona(
     const telEmpleador = parseTelefono(p.empleadorTelefono);
     if (!telEmpleador.numero) e.empleadorTelefono = "Ingresá el teléfono del empleador.";
     else {
-      const errorTel = validarNumero(telEmpleador.pais, telEmpleador.numero);
+      const errorTel = validarNumero(telEmpleador.pais, telEmpleador.caracteristica, telEmpleador.numero);
       if (errorTel) e.empleadorTelefono = errorTel;
     }
   }

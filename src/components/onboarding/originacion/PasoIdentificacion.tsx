@@ -28,7 +28,8 @@ export function PasoIdentificacion() {
   if (!encontrado) return null;
 
   const tel = parseTelefono(app.cliente!.telefono);
-  const errorTelefono = (tel.numero ? validarNumero(tel.pais, tel.numero) : null) ?? undefined;
+  const errorTelefono =
+    (tel.numero ? validarNumero(tel.pais, tel.caracteristica, tel.numero) : null) ?? undefined;
 
   return (
     <div className="animate-fade-up space-y-5">

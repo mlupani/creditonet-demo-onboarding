@@ -617,7 +617,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: `tarjeta-${Date.now()}`,
         via: "WHATSAPP",
         estado: "ESPERANDO_CLIENTE",
-        enviadoA: formatTelefono(p["telefono.pais"] ?? "", p["telefono.numero"] ?? ""),
+        enviadoA: formatTelefono(
+          p["telefono.pais"] ?? "",
+          p["telefono.caracteristica"] ?? "",
+          p["telefono.numero"] ?? ""
+        ),
         tipo: null,
         marca: null,
         nombreTitular: null,

@@ -43,7 +43,11 @@ export function PantallaTokenizacion() {
   const tarjetas = app.postOferta.tarjetas;
   const tokenizadas = tarjetas.filter((t) => t.estado === "TOKENIZADA").length;
   const p = app.postOferta.personales;
-  const celular = formatTelefono(p["telefono.pais"] ?? "", p["telefono.numero"] ?? "");
+  const celular = formatTelefono(
+    p["telefono.pais"] ?? "",
+    p["telefono.caracteristica"] ?? "",
+    p["telefono.numero"] ?? ""
+  );
   const formCompleto =
     isValidCard(form.numero) &&
     /^\d{2}\/\d{2}$/.test(form.vencimiento.trim()) &&
