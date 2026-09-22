@@ -75,7 +75,7 @@ function emisorMock(semilla: string): string {
   return BANCOS[hash % BANCOS.length];
 }
 
-const STORAGE_KEY = "creditonet.demo.v18";
+const STORAGE_KEY = "creditonet.demo.v19";
 
 // Referencias y garantes comparten estructura (Onboarding §7–§8).
 function conPersonas(
@@ -231,8 +231,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const raw = sessionStorage.getItem(STORAGE_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw) as Partial<EstadoPersistido>;
-          if (parsed.app) setApp(parsed.app);
+          const parsed = JSON.parse(raw) as Partial<EstadoPersistido> & { app: any };
+          if (parsed.app) {
+            const appPersistida = parsed.app as CreditApplication & {
+              laboral?: Record<string, unknown>;
+            };
+            const lab: any = appPersistida.laboral;
+            if (lab && !Array.isArray(lab.empleadores)) {
+              const bancos: string[] = Array.isArray(lab.bancosCobro) ? lab.bancosCobro : [];
+              const cuits: string[] = Array.isArray(lab.cuitsEmpleador) ? lab.cuitsEmpleador : [];
+              const max = Math.max(bancos.length, cuits.length, 1);
+              const empleadores = Array.from({ length: max }, (_, i) => ({
+                banco: bancos[i] ?? bancos[0] ?? "",
+                cuit: cuits[i] ?? "",
+                razonSocial: "",
+              })).filter((e, idx, arr) => arr.length === 1 || e.banco || e.cuit || e.razonSocial);
+              (appPersistida.laboral as unknown as { empleadores: typeof empleadores }).empleadores = empleadores;
+              delete lab.bancosCobro;
+              delete lab.cuitsEmpleador;
+            } else if (lab && Array.isArray(lab.empleadores)) {
+              lab.empleadores = lab.empleadores.map((e: any) => ({
+                banco: e.banco ?? "",
+                cuit: e.cuit ?? "",
+                razonSocial: e.razonSocial ?? "",
+              }));
+            }
+            setApp(appPersistida as CreditApplication);
+          }
           if (typeof parsed.paso === "number") setPasoState(parsed.paso);
           if (typeof parsed.pasoMaximo === "number") setPasoMaximo(parsed.pasoMaximo);
           if (parsed.pantallaActual) setPantallaActual(parsed.pantallaActual);

@@ -452,7 +452,7 @@ const LABORAL: CampoDef[] = [
     tipo: "multiselect",
     opciones: () => BANCOS,
     ancho: "completo",
-    valorFijo: (app) => unirBancos(app.laboral.bancosCobro),
+    valorFijo: (app) => unirBancos(app.laboral.empleadores.map((e) => e.banco)),
   },
   { pantalla: "laboral", seccion: "acreditacion", id: "cbu", label: "CBU", origen: "NO_MODIFICABLE", obligatorio: true, tipo: "cbu", porBanco: true },
 ];

@@ -50,8 +50,8 @@ export const MOTIVOS_OBSERVACION = [
 // --- Pre-oferta: datos laborales y financieros mínimos ---
 
 export type ErroresLaboral = Partial<
-  Record<Exclude<keyof LaboralIngresos, "cuitsEmpleador">, string>
-> & { cuitsEmpleador?: string[] };
+  Record<Exclude<keyof LaboralIngresos, "empleadores">, string>
+> & { empleadores?: { banco?: string; cuit?: string; razonSocial?: string }[] };
 
 export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
   const e: ErroresLaboral = {};
@@ -61,17 +61,24 @@ export function validarLaboral(l: LaboralIngresos): ErroresLaboral {
     e.fechaInicioLaboral = "Seleccioná la fecha de inicio laboral.";
   else if (!parseFecha(l.fechaInicioLaboral))
     e.fechaInicioLaboral = "La fecha de inicio laboral no es válida.";
-  if (l.bancosCobro.length === 0)
-    e.bancosCobro = "Seleccioná al menos un banco donde el cliente cobra.";
+  if (!l.empleadores || l.empleadores.length === 0) {
+    e.empleadores = [{ banco: "Seleccioná el banco.", cuit: "Ingresá el CUIT.", razonSocial: "Ingresá la razón social." }];
+  } else {
+    const errores = l.empleadores.map((emp) => {
+      const err: { banco?: string; cuit?: string; razonSocial?: string } = {};
+      if (!emp.banco.trim()) err.banco = "Seleccioná el banco.";
+      if (!emp.cuit.trim()) err.cuit = "Ingresá el CUIT.";
+      else if (!isValidCUIL(emp.cuit)) err.cuit = "El CUIT debe tener 11 dígitos.";
+      if (!emp.razonSocial.trim()) err.razonSocial = "Ingresá la razón social.";
+      return err;
+    });
+    if (errores.some((x) => Object.keys(x).length > 0)) e.empleadores = errores;
+  }
   if (l.ingresoNeto <= 0)
     e.ingresoNeto = "No puede ser $0. Ingresá el ingreso neto mensual del cliente.";
   if (l.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto mensual del cliente.";
   else if (l.ingresoBruto < l.ingresoNeto)
     e.ingresoBruto = "El ingreso bruto no puede ser menor al neto. Revisá los valores.";
-  const erroresCuits = l.cuitsEmpleador.map((c) =>
-    c.trim() && !isValidCUIL(c) ? "El CUIT debe tener 11 dígitos." : ""
-  );
-  if (erroresCuits.some(Boolean)) e.cuitsEmpleador = erroresCuits;
   return e;
 }
 

@@ -144,10 +144,9 @@ export const CASO_HAPPY_PATH: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "10/03/2018",
-    bancosCobro: ["Banco Santander"],
+    empleadores: [{ banco: "Banco Santander", cuit: "30712345671", razonSocial: "Sanatorio Modelo S.A." }],
     ingresoBruto: 1_500_000,
     ingresoNeto: 1_200_000,
-    cuitsEmpleador: ["30712345671"],
     disponible: 0,
     debitosNoRemunerativos: 0,
     extraccionesFecha: "",
@@ -216,10 +215,9 @@ export const CASO_RECHAZO: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "05/06/2021",
-    bancosCobro: ["Banco Macro"],
+    empleadores: [{ banco: "Banco Macro", cuit: "30654321982", razonSocial: "Clínica del Sol S.R.L." }],
     ingresoBruto: 950_000,
     ingresoNeto: 750_000,
-    cuitsEmpleador: ["30654321982"],
     disponible: 0,
     debitosNoRemunerativos: 0,
     extraccionesFecha: "",
@@ -288,10 +286,9 @@ export const CASO_CREDITO_INTERNO: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "12/03/2019",
-    bancosCobro: ["Banco Galicia"],
+    empleadores: [{ banco: "Banco Galicia", cuit: "30712345671", razonSocial: "Sanatorio Modelo S.A." }],
     ingresoBruto: 1_250_000,
     ingresoNeto: 1_000_000,
-    cuitsEmpleador: ["30712345671"],
     disponible: 0,
     debitosNoRemunerativos: 0,
     extraccionesFecha: "",
@@ -378,10 +375,9 @@ export const CASO_CREDITO_INTERNO_MORA: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "18/01/2017",
-    bancosCobro: ["Banco Santander"],
+    empleadores: [{ banco: "Banco Santander", cuit: "30712345671", razonSocial: "Sanatorio Modelo S.A." }],
     ingresoBruto: 1_100_000,
     ingresoNeto: 880_000,
-    cuitsEmpleador: ["30712345671"],
     disponible: 0,
     debitosNoRemunerativos: 0,
     extraccionesFecha: "",
@@ -469,10 +465,9 @@ export const CASO_DOS_CREDITOS_INTERNOS: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "05/06/2015",
-    bancosCobro: ["Banco Macro"],
+    empleadores: [{ banco: "Banco Macro", cuit: "30712345671", razonSocial: "Sanatorio Modelo S.A." }],
     ingresoBruto: 1_450_000,
     ingresoNeto: 1_150_000,
-    cuitsEmpleador: ["30712345671"],
     disponible: 0,
     debitosNoRemunerativos: 0,
     extraccionesFecha: "",
@@ -576,10 +571,9 @@ export const CASO_CREDITO_EXTERNO: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "01/09/2020",
-    bancosCobro: ["Banco BBVA"],
+    empleadores: [{ banco: "Banco BBVA", cuit: "30709988771", razonSocial: "Tarjeta Naranja S.A." }],
     ingresoBruto: 1_400_000,
     ingresoNeto: 1_100_000,
-    cuitsEmpleador: ["30709988771"],
     disponible: 0,
     debitosNoRemunerativos: 0,
     extraccionesFecha: "",
@@ -653,10 +647,9 @@ export const CASO_AMBOS_CREDITOS: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "15/04/2017",
-    bancosCobro: ["Banco Provincia"],
+    empleadores: [{ banco: "Banco Provincia", cuit: "30715566778", razonSocial: "Provincia Salud S.A." }],
     ingresoBruto: 1_700_000,
     ingresoNeto: 1_350_000,
-    cuitsEmpleador: ["30715566778"],
     disponible: 0,
     debitosNoRemunerativos: 0,
     extraccionesFecha: "",
@@ -748,10 +741,9 @@ export const CASO_CLIENTE_NUEVO_BASE: CasoDemoCliente = {
   laboral: {
     condicionLaboral: "Empleado fijo",
     fechaInicioLaboral: "10/02/2023",
-    bancosCobro: ["Banco Nación"],
+    empleadores: [{ banco: "Banco Nación", cuit: "30708912345", razonSocial: "Banco Nación Servicios S.A." }],
     ingresoBruto: 1_150_000,
     ingresoNeto: 950_000,
-    cuitsEmpleador: ["30708912345"],
     disponible: 0,
     debitosNoRemunerativos: 0,
     extraccionesFecha: "",
@@ -970,17 +962,22 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     "telefono.numero": base.contacto.numero,
     companiaTelefonica: base.contacto.compania,
     email: base.contacto.email,
-    banco: unirBancos(app.laboral.bancosCobro),
+    banco: unirBancos(app.laboral.empleadores.map((e) => e.banco)),
   };
   // El CBU se carga por banco: en la demo el primero ya viene cargado y los demás quedan pendientes.
   const [primerBanco] = bancosDe(precarga.banco);
+  const primerEmpleador = app.laboral.empleadores[0];
   const valores = (pantalla: "personales" | "laboral") => ({
     ...Object.fromEntries(
       camposDe(pantalla)
         // "banco" es NO_MODIFICABLE pero igual se guarda: camposDe usa el valor crudo
         // (no el valorFijo) para expandir el CBU por cada banco elegido.
         .filter((campo) => campo.origen !== "NO_MODIFICABLE" || campo.id === "banco")
-        .map((campo) => [campo.id, precarga[campo.id] ?? CARGA_DEMO[campo.id] ?? ""])
+        .map((campo) => {
+          if (campo.id === "cuitEmpleador" && primerEmpleador?.cuit) return [campo.id, maskCuit(primerEmpleador.cuit)];
+          if (campo.id === "razonSocial" && primerEmpleador?.razonSocial) return [campo.id, primerEmpleador.razonSocial];
+          return [campo.id, precarga[campo.id] ?? CARGA_DEMO[campo.id] ?? ""];
+        })
     ),
     ...(pantalla === "laboral" && primerBanco ? { [`cbu.${primerBanco}`]: CARGA_DEMO.cbu } : {}),
   });
@@ -1117,10 +1114,9 @@ export function crearAplicacionInicial(): CreditApplication {
     laboral: {
       condicionLaboral: "",
       fechaInicioLaboral: "",
-      bancosCobro: [],
+      empleadores: [],
       ingresoBruto: 0,
-      ingresoNeto: 0,
-      cuitsEmpleador: [],
+      ingresoNeto: 0,
       disponible: 0,
       debitosNoRemunerativos: 0,
       extraccionesFecha: "",

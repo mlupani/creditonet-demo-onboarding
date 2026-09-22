@@ -348,8 +348,15 @@ export function AnalisisCredito({
           rows={[
             { label: "Condición laboral", value: valorOPresentacion(app.laboral.condicionLaboral) },
             { label: "Fecha inicio laboral", value: valorOPresentacion(app.laboral.fechaInicioLaboral) },
-            { label: "Bancos de cobro", value: app.laboral.bancosCobro.join(", ") || "—" },
-            { label: "CUITs empleador", value: app.laboral.cuitsEmpleador.join(", ") || "—" },
+            { label: "Bancos de cobro", value: app.laboral.empleadores.map((e) => e.banco).join(", ") || "—" },
+            {
+              label: "CUITs empleador",
+              value: app.laboral.empleadores.map((e) => e.cuit).join(", ") || "—",
+            },
+            {
+              label: "Razón social",
+              value: app.laboral.empleadores.map((e) => e.razonSocial).join(", ") || "—",
+            },
             { label: "Ingreso bruto / neto", value: `${formatARS(app.laboral.ingresoBruto)} / ${formatARS(app.laboral.ingresoNeto)}` },
             { label: "Disponible", value: formatARS(app.laboral.disponible) },
             { label: "Débitos no remun.", value: formatARS(app.laboral.debitosNoRemunerativos) },

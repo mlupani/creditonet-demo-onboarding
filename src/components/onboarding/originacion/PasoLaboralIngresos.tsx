@@ -4,7 +4,6 @@ import { useApplication } from "@/lib/application-context";
 import { CONDICIONES_LABORALES, validarLaboral } from "@/lib/validation";
 import { fechaAIso, isoAFecha, maskCuit } from "@/lib/format";
 import { BANCOS } from "@/lib/parametros";
-import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -21,15 +20,42 @@ export function PasoLaboralIngresos() {
   const l = app.laboral;
   const errores = validarLaboral(l);
   const completos = Object.keys(errores).length === 0;
-  const cuitsEmpleador = l.cuitsEmpleador.length > 0 ? l.cuitsEmpleador : [""];
+  const empleadores = l.empleadores.length > 0 ? l.empleadores : [{ banco: "", cuit: "", razonSocial: "" }];
+  const esPlaceholder = l.empleadores.length === 0;
 
-  function actualizarCuitEmpleador(i: number, valor: string) {
-    const siguiente = cuitsEmpleador.map((c, idx) => (idx === i ? maskCuit(valor) : c));
-    patchLaboral({ cuitsEmpleador: siguiente });
+  function actualizarEmpleador(i: number, patch: Partial<{ banco: string; cuit: string; razonSocial: string }>) {
+    if (esPlaceholder) {
+      const base = { banco: "", cuit: "", razonSocial: "" };
+      const nuevo = { ...base, ...patch };
+      if (patch.cuit !== undefined) nuevo.cuit = maskCuit(patch.cuit);
+      patchLaboral({ empleadores: [nuevo] });
+      return;
+    }
+    const siguiente = l.empleadores.map((emp, idx) => {
+      if (idx !== i) return emp;
+      const actualizado = { ...emp, ...patch };
+      if (patch.cuit !== undefined) actualizado.cuit = maskCuit(patch.cuit);
+      return actualizado;
+    });
+    patchLaboral({ empleadores: siguiente });
   }
 
-  function quitarCuitEmpleador(i: number) {
-    patchLaboral({ cuitsEmpleador: l.cuitsEmpleador.filter((_, idx) => idx !== i) });
+  function quitarEmpleador(i: number) {
+    if (esPlaceholder) return;
+    patchLaboral({ empleadores: l.empleadores.filter((_, idx) => idx !== i) });
+  }
+
+  function agregarEmpleador() {
+    if (esPlaceholder) {
+      patchLaboral({
+        empleadores: [
+          { banco: "", cuit: "", razonSocial: "" },
+          { banco: "", cuit: "", razonSocial: "" },
+        ],
+      });
+      return;
+    }
+    patchLaboral({ empleadores: [...l.empleadores, { banco: "", cuit: "", razonSocial: "" }] });
   }
 
   return (
@@ -67,59 +93,76 @@ export function PasoLaboralIngresos() {
               onChange={(v) => patchLaboral({ fechaInicioLaboral: isoAFecha(v) })}
               error={errores.fechaInicioLaboral}
             />
-            <MultiSelectField
-              id="banco-cobro"
-              label="Bancos de cobro"
-              required
-              values={l.bancosCobro}
-              onChange={(v) => patchLaboral({ bancosCobro: v })}
-              options={BANCOS}
-              error={errores.bancosCobro}
-              hint="Podés elegir más de uno: en la carga post-oferta se asigna un CBU a cada banco."
-              className="sm:col-span-2"
-            />
             <div className="sm:col-span-2">
-              <div className="mb-1.5 flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-ink-700">CUIT del empleador</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => patchLaboral({ cuitsEmpleador: [...cuitsEmpleador, ""] })}
-                >
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-ink-800">Empleadores</span>
+                <Button size="sm" variant="outline" onClick={agregarEmpleador}>
                   <IconPlus width={14} height={14} />
                   Agregar empleador
                 </Button>
               </div>
-              <div className="space-y-3">
-                {cuitsEmpleador.map((cuit, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <FormField
-                      id={`cuit-empleador-${i}`}
-                      label={cuitsEmpleador.length > 1 ? `Empleador ${i + 1}` : "CUIT"}
-                      className="flex-1"
-                      value={maskCuit(cuit)}
-                      onChange={(v) => actualizarCuitEmpleador(i, v)}
-                      error={errores.cuitsEmpleador?.[i]}
-                      inputMode="numeric"
-                      maxLength={13}
-                      placeholder="xx-xxxxxxxx-x"
-                    />
-                    {cuitsEmpleador.length > 1 && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="mt-5 shrink-0"
-                        onClick={() => quitarCuitEmpleador(i)}
-                      >
-                        <IconTrash width={14} height={14} />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-4">
+                {empleadores.map((emp, i) => {
+                  const err = errores.empleadores?.[i];
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-xl border border-ink-200 bg-ink-50/50 p-4"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-ink-500">
+                          Empleador {i + 1}
+                        </span>
+                        {empleadores.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={`Quitar empleador ${i + 1}`}
+                            onClick={() => quitarEmpleador(i)}
+                          >
+                            <IconTrash width={14} height={14} />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid gap-x-4 gap-y-1 sm:grid-cols-3">
+                        <SelectField
+                          id={`empleador-${i}-banco`}
+                          label="Banco"
+                          required
+                          value={emp.banco}
+                          onChange={(v) => actualizarEmpleador(i, { banco: v })}
+                          options={BANCOS.map((b) => ({ value: b, label: b }))}
+                          placeholder="Seleccionar banco"
+                          error={err?.banco}
+                        />
+                        <FormField
+                          id={`empleador-${i}-cuit`}
+                          label="CUIT del empleador"
+                          required
+                          value={maskCuit(emp.cuit)}
+                          onChange={(v) => actualizarEmpleador(i, { cuit: v })}
+                          error={err?.cuit}
+                          inputMode="numeric"
+                          maxLength={13}
+                          placeholder="xx-xxxxxxxx-x"
+                        />
+                        <FormField
+                          id={`empleador-${i}-razon`}
+                          label="Razón social"
+                          required
+                          value={emp.razonSocial}
+                          onChange={(v) => actualizarEmpleador(i, { razonSocial: v })}
+                          error={err?.razonSocial}
+                          placeholder="Ej.: Sanatorio Modelo S.A."
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="mt-1.5 text-xs text-ink-500">
-                11 dígitos: los guiones se completan solos. Agregá más de uno si el cliente tiene
-                más de un empleador (pluriempleo).
+              <p className="mt-2 text-xs text-ink-500">
+                Seleccioná el banco donde cobra, el CUIT (11 dígitos, guiones automáticos) y la
+                razón social. Agregá más filas si el cliente tiene pluriempleo.
               </p>
             </div>
           </div>

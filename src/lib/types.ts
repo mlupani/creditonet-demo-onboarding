@@ -135,18 +135,23 @@ export interface ClienteDatos {
 
 export type OrigenCampos = Partial<Record<keyof ClienteDatos, OrigenDato>>;
 
+// Un empleador con su banco de cobro, CUIT y razón social (pluriempleo: varios).
+export interface Empleador {
+  banco: string;
+  cuit: string;
+  razonSocial: string;
+}
+
 // --- Datos laborales y financieros mínimos (pre-oferta) ---
 
 export interface LaboralIngresos {
   // Fijo, contratado, monotributista… Determina la línea y el motor aplicables.
   condicionLaboral: string;
   fechaInicioLaboral: string;
-  // Puede cobrar en más de un banco: en la carga post-oferta se asigna un CBU a cada uno.
-  bancosCobro: string[];
+  // Uno por empleador: banco donde cobra, CUIT y razón social. Agregables uno abajo del otro.
+  empleadores: Empleador[];
   ingresoBruto: number;
   ingresoNeto: number;
-  // Puede tener más de un empleador (pluriempleo).
-  cuitsEmpleador: string[];
   // Información adicional: no bloquea continuar (Onboarding §4.4).
   disponible: number;
   debitosNoRemunerativos: number;
