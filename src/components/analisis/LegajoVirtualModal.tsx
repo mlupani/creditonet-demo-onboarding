@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { getTipoDocumento } from "@/lib/parametros";
+import type { ArchivoLegajo } from "@/lib/types";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { IconCheck, IconFileText } from "@/components/icons";
+import { DocumentoPreviewModal } from "@/components/ui/DocumentoPreviewModal";
+import { IconCheck, IconEye, IconFileText } from "@/components/icons";
 
 export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { app } = useApplication();
@@ -14,6 +17,7 @@ export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: 
   const obligatorios = cfg.documentos.filter((d) => d.obligatorio);
   const cargados = obligatorios.filter((d) => (po.legajo[d.tipoId]?.length ?? 0) > 0).length;
   const garantes = po.garantes;
+  const [preview, setPreview] = useState<{ archivo: ArchivoLegajo; tipo: string } | null>(null);
 
   return (
     <Modal
@@ -54,9 +58,19 @@ export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: 
                 {lista.length > 0 ? (
                   <ul className="mt-1.5 space-y-1">
                     {lista.map((a) => (
-                      <li key={a.id} className="flex items-center gap-1.5 text-xs text-success-700">
-                        <IconCheck width={12} height={12} strokeWidth={2.6} />
-                        {a.nombre} - {a.detalle}
+                      <li key={a.id} className="flex items-center justify-between gap-2 text-xs text-success-700">
+                        <span className="flex items-center gap-1.5">
+                          <IconCheck width={12} height={12} strokeWidth={2.6} />
+                          {a.nombre} - {a.detalle}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPreview({ archivo: a, tipo: tipo.nombre })}
+                        >
+                          <IconEye width={12} height={12} />
+                          Ver
+                        </Button>
                       </li>
                     ))}
                   </ul>
@@ -86,9 +100,19 @@ export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: 
                   {(g.reciboSueldo ?? []).length > 0 ? (
                     <ul className="mt-1 space-y-1">
                       {(g.reciboSueldo ?? []).map((a) => (
-                        <li key={a.id} className="flex items-center gap-1.5 text-xs text-success-700">
-                          <IconCheck width={12} height={12} strokeWidth={2.6} />
-                          {a.nombre} - {a.detalle}
+                        <li key={a.id} className="flex items-center justify-between gap-2 text-xs text-success-700">
+                          <span className="flex items-center gap-1.5">
+                            <IconCheck width={12} height={12} strokeWidth={2.6} />
+                            {a.nombre} - {a.detalle}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setPreview({ archivo: a, tipo: `Recibo · ${nombre}` })}
+                          >
+                            <IconEye width={12} height={12} />
+                            Ver
+                          </Button>
                         </li>
                       ))}
                     </ul>
@@ -96,14 +120,24 @@ export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: 
                     <p className="mt-1 text-xs text-warning-700">Pendiente - sin recibo cargado.</p>
                   )}
                 </div>
-                {(g.otrosDocumentos ?? []).length > 0 && (
+                  {(g.otrosDocumentos ?? []).length > 0 && (
                   <div className="mt-2">
                     <p className="text-xs font-semibold text-ink-700">Otros documentos</p>
                     <ul className="mt-1 space-y-1">
                       {(g.otrosDocumentos ?? []).map((a) => (
-                        <li key={a.id} className="flex items-center gap-1.5 text-xs text-ink-600">
-                          <IconFileText width={12} height={12} />
-                          {a.nombre} - {a.detalle}
+                        <li key={a.id} className="flex items-center justify-between gap-2 text-xs text-ink-600">
+                          <span className="flex items-center gap-1.5">
+                            <IconFileText width={12} height={12} />
+                            {a.nombre} - {a.detalle}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setPreview({ archivo: a, tipo: `Otro doc · ${nombre}` })}
+                          >
+                            <IconEye width={12} height={12} />
+                            Ver
+                          </Button>
                         </li>
                       ))}
                     </ul>
@@ -120,6 +154,13 @@ export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: 
           {app.identificacion.firmaRegistrada ? "Firma de referencia registrada en la identificacion." : "Sin firma de referencia registrada."}
         </p>
       )}
+
+      <DocumentoPreviewModal
+        open={!!preview}
+        onClose={() => setPreview(null)}
+        archivo={preview?.archivo ?? null}
+        tipoLabel={preview?.tipo}
+      />
     </Modal>
   );
 }

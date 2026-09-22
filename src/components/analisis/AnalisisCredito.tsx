@@ -157,6 +157,12 @@ export function AnalisisCredito({
   );
   const docsCargados = docsObligatorios.filter((d) => (po.legajo[d.tipoId]?.length ?? 0) > 0)
     .length;
+  const totalLegajoArchivos =
+    Object.values(po.legajo).reduce((acc, arr) => acc + arr.length, 0) +
+    po.garantes.reduce(
+      (acc, g) => acc + (g.reciboSueldo?.length ?? 0) + (g.otrosDocumentos?.length ?? 0),
+      0
+    );
   const tokenizadas = po.tarjetas.filter(tarjetaValida);
   // Precargados que el vendedor corrigió en la carga post-oferta (Onboarding §3).
   const rectificados = camposRectificados(app);
@@ -703,6 +709,16 @@ export function AnalisisCredito({
                 : "Sin imprimir",
             },
           ]}
+          footer={
+            <Button
+              size="sm"
+              variant={totalLegajoArchivos > 0 ? "outline" : "ghost"}
+              onClick={() => setLegajoAbierto(true)}
+            >
+              <IconEye width={14} height={14} />
+              {totalLegajoArchivos > 0 ? `Ver documentos del legajo (${totalLegajoArchivos})` : "Ver legajo virtual"}
+            </Button>
+          }
         />
         {rectificados.length > 0 && (
           <SummaryCard
@@ -834,6 +850,28 @@ export function AnalisisCredito({
           <ListaComentarios titulo="Comentarios" />
         </Card>
       )}
+
+      {/* Acceso rápido al legajo al final del resumen — pedido: botón para abrir documentos en el resumen del analista */}
+      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+            <IconFileText width={18} height={18} />
+          </span>
+          <div>
+            <h3 className="text-sm font-semibold text-ink-900">Legajo virtual — documentos adjuntos</h3>
+            <p className="text-xs text-ink-500">
+              {totalLegajoArchivos > 0
+                ? `${totalLegajoArchivos} archivo${totalLegajoArchivos === 1 ? "" : "s"} para revisar · ${docsCargados} de ${docsObligatorios.length} obligatorios`
+                : "Aún sin archivos — el vendedor carga la documentación en el paso Legajo."}
+              {po.impresion ? ` · ${po.impresion.accion === "IMPRESO" ? "Impreso" : "Visualizado"} ${po.impresion.fecha}` : ""}
+            </p>
+          </div>
+        </div>
+        <Button variant={totalLegajoArchivos > 0 ? "primary" : "outline"} onClick={() => setLegajoAbierto(true)}>
+          <IconEye width={16} height={16} />
+          Ver documentos del legajo
+        </Button>
+      </Card>
 
       <Banner tone="info">
         El motor de riesgo ya filtró la solicitud. El analista controla los datos sensibles y

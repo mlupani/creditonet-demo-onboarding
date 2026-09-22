@@ -4,13 +4,16 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { getTipoDocumento } from "@/lib/parametros";
+import type { ArchivoLegajo } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { DocumentoPreviewModal } from "@/components/ui/DocumentoPreviewModal";
 import {
   IconCheck,
   IconCheckCircle,
   IconClock,
+  IconEye,
   IconFileText,
   IconPlus,
   IconTrash,
@@ -35,6 +38,8 @@ export function PantallaLegajo() {
   const [subiendo, setSubiendo] = useState<string | null>(null);
   const [subiendoRecibo, setSubiendoRecibo] = useState<string | null>(null);
   const [subiendoOtro, setSubiendoOtro] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ archivo: ArchivoLegajo; tipo: string } | null>(null);
+  const [legajoVista, setLegajoVista] = useState(false);
   const docs = configEfectiva(app.configuracion).documentos;
   const archivos = app.postOferta.legajo;
   const obligatorios = docs.filter((d) => d.obligatorio);
@@ -43,6 +48,10 @@ export function PantallaLegajo() {
   const garantes = app.postOferta.garantes;
   const garantesCompletos = garantes.filter((g) => (g.reciboSueldo?.length ?? 0) > 0).length;
   const legajoCompleto = completo && garantesCompletos === garantes.length;
+  const totalArchivos =
+    Object.values(archivos).reduce((acc, arr) => acc + arr.length, 0) +
+    garantes.reduce((acc, g) => acc + (g.reciboSueldo?.length ?? 0) + (g.otrosDocumentos?.length ?? 0), 0);
+  const tieneArchivos = totalArchivos > 0;
 
   function adjuntar(tipoId: string) {
     setSubiendo(tipoId);
@@ -83,16 +92,24 @@ export function PantallaLegajo() {
           description="Imágenes y documentos solicitados al cliente. Cada tipo de documento se define en Parámetros."
           icon={<IconFileText width={18} height={18} />}
           action={
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
-                completo
-                  ? "border-success-200 bg-success-50 text-success-700"
-                  : "border-warning-200 bg-warning-50 text-warning-700"
-              }`}
-            >
-              {completo && <IconCheckCircle width={13} height={13} />}
-              {cargados} de {obligatorios.length} obligatorios
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {tieneArchivos && (
+                <Button size="sm" variant="outline" onClick={() => setLegajoVista(true)}>
+                  <IconEye width={14} height={14} />
+                  Ver legajo
+                </Button>
+              )}
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
+                  completo
+                    ? "border-success-200 bg-success-50 text-success-700"
+                    : "border-warning-200 bg-warning-50 text-warning-700"
+                }`}
+              >
+                {completo && <IconCheckCircle width={13} height={13} />}
+                {cargados} de {obligatorios.length} obligatorios
+              </span>
+            </div>
           }
         />
         <ul className="space-y-2.5 p-5 sm:p-6">
@@ -171,10 +188,20 @@ export function PantallaLegajo() {
                         <span className="truncate font-medium text-success-700">
                           {a.nombre} · {a.detalle}
                         </span>
-                        <Button size="sm" variant="ghost" onClick={() => quitarArchivo(d.tipoId, a.id)}>
-                          <IconTrash width={13} height={13} />
-                          Quitar
-                        </Button>
+                        <span className="flex shrink-0 items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setPreview({ archivo: a, tipo: tipo.nombre })}
+                          >
+                            <IconEye width={13} height={13} />
+                            Ver
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => quitarArchivo(d.tipoId, a.id)}>
+                            <IconTrash width={13} height={13} />
+                            Quitar
+                          </Button>
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -267,10 +294,20 @@ export function PantallaLegajo() {
                               <IconCheck width={13} height={13} strokeWidth={2.6} />
                               {a.nombre} · {a.detalle}
                             </span>
-                            <Button size="sm" variant="ghost" onClick={() => quitarReciboSueldo("garante", g.id, a.id)}>
-                              <IconTrash width={13} height={13} />
-                              Quitar
-                            </Button>
+                            <span className="flex shrink-0 items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setPreview({ archivo: a, tipo: `Recibo · ${nombre}` })}
+                              >
+                                <IconEye width={13} height={13} />
+                                Ver
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => quitarReciboSueldo("garante", g.id, a.id)}>
+                                <IconTrash width={13} height={13} />
+                                Quitar
+                              </Button>
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -304,10 +341,20 @@ export function PantallaLegajo() {
                             <span className="truncate font-medium text-ink-700">
                               {a.nombre} · {a.detalle}
                             </span>
-                            <Button size="sm" variant="ghost" onClick={() => quitarOtroDocumento("garante", g.id, a.id)}>
-                              <IconTrash width={13} height={13} />
-                              Quitar
-                            </Button>
+                            <span className="flex shrink-0 items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setPreview({ archivo: a, tipo: `Otro doc · ${nombre}` })}
+                              >
+                                <IconEye width={13} height={13} />
+                                Ver
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => quitarOtroDocumento("garante", g.id, a.id)}>
+                                <IconTrash width={13} height={13} />
+                                Quitar
+                              </Button>
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -327,6 +374,117 @@ export function PantallaLegajo() {
             ? `Falta el recibo de sueldo de ${garantes.length - garantesCompletos} garante${garantes.length - garantesCompletos === 1 ? "" : "s"}.`
             : "La carga es simulada. En el sistema real se validan formato, tamaño y legibilidad."}
       </Banner>
+
+      {tieneArchivos && (
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={() => setLegajoVista(true)}>
+            <IconEye width={16} height={16} />
+            Ver documentos del legajo ({totalArchivos})
+          </Button>
+        </div>
+      )}
+
+      <DocumentoPreviewModal
+        open={!!preview}
+        onClose={() => setPreview(null)}
+        archivo={preview?.archivo ?? null}
+        tipoLabel={preview?.tipo}
+      />
+
+      {/* Vista resumida del legajo completo - reutiliza la misma info que ve el analista */}
+      {legajoVista && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+          <div className="absolute inset-0 bg-ink-900/50 backdrop-blur-[2px]" onClick={() => setLegajoVista(false)} />
+          <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-lift">
+            <div className="flex items-center justify-between gap-4 border-b border-ink-100 px-6 py-4">
+              <h3 className="text-base font-semibold tracking-tight text-ink-900">Legajo virtual — vista previa</h3>
+              <Button size="sm" variant="ghost" onClick={() => setLegajoVista(false)}>
+                Cerrar
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-5">
+              <p className="text-sm text-ink-600">
+                {totalArchivos} archivo{totalArchivos === 1 ? "" : "s"} adjunto{totalArchivos === 1 ? "" : "s"} ·{" "}
+                {cargados} de {obligatorios.length} obligatorios completos.
+              </p>
+              <ul className="space-y-2">
+                {docs.map((d) => {
+                  const tipo = getTipoDocumento(d.tipoId);
+                  const lista = archivos[d.tipoId] ?? [];
+                  if (lista.length === 0) return null;
+                  return (
+                    <li key={d.tipoId} className="rounded-lg border border-ink-200 bg-white px-3 py-2.5">
+                      <p className="text-sm font-semibold text-ink-900">{tipo.nombre}</p>
+                      <ul className="mt-1.5 space-y-1">
+                        {lista.map((a) => (
+                          <li key={a.id} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="flex items-center gap-1.5 text-success-700">
+                              <IconCheck width={12} height={12} strokeWidth={2.6} />
+                              {a.nombre} — {a.detalle}
+                            </span>
+                            <Button size="sm" variant="ghost" onClick={() => setPreview({ archivo: a, tipo: tipo.nombre })}>
+                              <IconEye width={13} height={13} />
+                              Ver
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+              {garantes.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-ink-400">Garantes</p>
+                  {garantes.map((g, idx) => {
+                    const nombre = [g.nombre, g.apellido].filter(Boolean).join(" ") || `Garante ${idx + 1}`;
+                    const todos = [...(g.reciboSueldo ?? []), ...(g.otrosDocumentos ?? [])];
+                    if (todos.length === 0) return null;
+                    return (
+                      <div key={g.id} className="rounded-lg border border-ink-200 bg-ink-50/40 px-3 py-3">
+                        <p className="text-sm font-semibold text-ink-900">
+                          {idx + 1}. {nombre}
+                        </p>
+                        <ul className="mt-1.5 space-y-1">
+                          {[...(g.reciboSueldo ?? [])].map((a) => (
+                            <li key={a.id} className="flex items-center justify-between gap-2 text-xs text-success-700">
+                              <span className="flex items-center gap-1.5">
+                                <IconCheck width={12} height={12} />
+                                {a.nombre} — {a.detalle}
+                              </span>
+                              <Button size="sm" variant="ghost" onClick={() => setPreview({ archivo: a, tipo: `Recibo · ${nombre}` })}>
+                                <IconEye width={13} height={13} />
+                                Ver
+                              </Button>
+                            </li>
+                          ))}
+                          {[...(g.otrosDocumentos ?? [])].map((a) => (
+                            <li key={a.id} className="flex items-center justify-between gap-2 text-xs text-ink-600">
+                              <span className="flex items-center gap-1.5">
+                                <IconFileText width={12} height={12} />
+                                {a.nombre} — {a.detalle}
+                              </span>
+                              <Button size="sm" variant="ghost" onClick={() => setPreview({ archivo: a, tipo: `Otro doc · ${nombre}` })}>
+                                <IconEye width={13} height={13} />
+                                Ver
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-ink-100 bg-ink-25 px-6 py-4 flex justify-end">
+              <Button variant="outline" onClick={() => setLegajoVista(false)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
