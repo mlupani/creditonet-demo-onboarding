@@ -4,6 +4,7 @@ import type {
   CreditApplication,
   CreditoActivo,
   DeudaTerceros,
+  Domicilio,
   EscenarioMotor,
   LaboralIngresos,
   OrigenCampos,
@@ -957,7 +958,15 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     dni: maskDNI("25984123"),
     nombre: "Roberto",
     apellido: "González",
-    domicilio: "Av. Rafael Núñez 3245, 3° B, Córdoba",
+    domicilio: {
+      calle: "Av. Rafael Núñez",
+      numero: "3245",
+      piso: "3",
+      departamento: "B",
+      provincia: "Córdoba",
+      localidad: "Córdoba",
+      codigoPostal: "5000",
+    },
     email: "roberto.gonzalez@gmail.com",
     telefono: "351 6543200",
     autocompletado: true,
@@ -982,7 +991,15 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
         dni: maskDNI("30111222"),
         nombre: "Carla",
         apellido: "Giménez",
-        domicilio: "Av. Colón 1450, Córdoba",
+        domicilio: {
+          calle: "Av. Colón",
+          numero: "1450",
+          piso: "",
+          departamento: "",
+          provincia: "Córdoba",
+          localidad: "Córdoba",
+          codigoPostal: "5000",
+        },
         email: "", // PENDIENTE
         telefono: "", // PENDIENTE
         autocompletado: true,
@@ -1003,11 +1020,21 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
 
 // API simulada de consulta por DNI para referencias y garantes (Onboarding §7): cualquier
 // DNI válido devuelve una persona de prueba.
+const domicilioCordoba = (calle: string, numero: string): Domicilio => ({
+  calle,
+  numero,
+  piso: "",
+  departamento: "",
+  provincia: "Córdoba",
+  localidad: "Córdoba",
+  codigoPostal: "5000",
+});
+
 const PERSONAS_API = [
-  { nombre: "Lucía", apellido: "Fernández", domicilio: "Obispo Trejo 520, Córdoba", email: "lucia.fernandez@email.com", telefono: "351 6543210", condicionLaboral: "Empleado fijo", ingresoBruto: 980_000, ingresoNeto: 780_000 },
-  { nombre: "Martín", apellido: "Sosa", domicilio: "Av. Vélez Sarsfield 1820, Córdoba", email: "martin.sosa@email.com", telefono: "351 6543211", condicionLaboral: "Contratado", ingresoBruto: 850_000, ingresoNeto: 680_000 },
-  { nombre: "Valeria", apellido: "Paz", domicilio: "Duarte Quirós 910, Córdoba", email: "valeria.paz@email.com", telefono: "351 6543212", condicionLaboral: "Monotributista", ingresoBruto: 720_000, ingresoNeto: 720_000 },
-  { nombre: "Diego", apellido: "Romero", domicilio: "Av. Hipólito Yrigoyen 355, Córdoba", email: "diego.romero@email.com", telefono: "351 6543213", condicionLaboral: "Empleado fijo", ingresoBruto: 1_100_000, ingresoNeto: 890_000 },
+  { nombre: "Lucía", apellido: "Fernández", domicilio: domicilioCordoba("Obispo Trejo", "520"), email: "lucia.fernandez@email.com", telefono: "351 6543210", condicionLaboral: "Empleado fijo", ingresoBruto: 980_000, ingresoNeto: 780_000 },
+  { nombre: "Martín", apellido: "Sosa", domicilio: domicilioCordoba("Av. Vélez Sarsfield", "1820"), email: "martin.sosa@email.com", telefono: "351 6543211", condicionLaboral: "Contratado", ingresoBruto: 850_000, ingresoNeto: 680_000 },
+  { nombre: "Valeria", apellido: "Paz", domicilio: domicilioCordoba("Duarte Quirós", "910"), email: "valeria.paz@email.com", telefono: "351 6543212", condicionLaboral: "Monotributista", ingresoBruto: 720_000, ingresoNeto: 720_000 },
+  { nombre: "Diego", apellido: "Romero", domicilio: domicilioCordoba("Av. Hipólito Yrigoyen", "355"), email: "diego.romero@email.com", telefono: "351 6543213", condicionLaboral: "Empleado fijo", ingresoBruto: 1_100_000, ingresoNeto: 890_000 },
 ];
 
 export function consultarPersonaMock(dni: string) {

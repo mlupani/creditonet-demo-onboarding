@@ -48,12 +48,13 @@ propia llamada de API/MCP para cambiar el State, ANTES de seguir al
 siguiente. Nunca saltar de "Por hacer" directo a "Terminado".
 
 1. Antes de escribir una sola línea de código: mover el issue a
-   **"En progreso"**.
+   **"En progreso"** y notificar por Telegram que se empezó (ver sección Notificaciones).
 2. Mientras se implementa (con o sin plan formal, en Claude Code:
    `superpowers:subagent-driven-development` si hubo plan): el issue
    queda en "En progreso".
 3. Al terminar la implementación, ANTES de crear el PR: mover el issue
-   a **"En testing"** y correr el self-review / whole-branch review.
+   a **"En testing"**. Esta columna NO significa "ahora arranca el testing" — significa el gate final: whole-branch review completa +
+corrida de la suite de tests entera, el último chequeo antes de abrir el PR.
 4. Recién cuando la review está limpia: crear el PR, comentar el link,
    y mover el issue a **"Terminado"**.
 
@@ -97,9 +98,23 @@ retomar la sesión cuando llegue la respuesta.
 
 ## Notificaciones (Telegram)
 
-Al abrir un PR o terminar una tarea, notificar por Telegram:
+ Notificar por Telegram en dos momentos:
+- Al mover el issue a "En progreso" (arranca la tarea): un mensaje corto con el ID del issue y qué se va a hacer.
+- Al abrir el PR / terminar la tarea: resumen + link al PR.
+
+las variables de entorno de telegram se encuentran en el archivo .env del proyecto.
 
 ```bash
 curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
   --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
   --data-urlencode "text=<resumen breve: qué se hizo, link al PR>"
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

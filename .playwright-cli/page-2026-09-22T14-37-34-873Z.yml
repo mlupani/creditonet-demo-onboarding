@@ -1,0 +1,145 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja de análisis" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja de análisis
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - link "Productos" [ref=e30] [cursor=pointer]:
+            - /url: /productos
+            - img [ref=e31]
+            - text: Productos
+          - link "Organismos" [ref=e34] [cursor=pointer]:
+            - /url: /organismos
+            - img [ref=e35]
+            - text: Organismos
+          - link "Planes de cuotas" [ref=e38] [cursor=pointer]:
+            - /url: /planes
+            - img [ref=e39]
+            - text: Planes de cuotas
+          - generic [ref=e43]:
+            - img [ref=e44]
+            - generic [ref=e46]: Liquidación
+            - generic [ref=e47]: Pronto
+          - generic [ref=e49]:
+            - img [ref=e50]
+            - generic [ref=e54]: Clientes
+            - generic [ref=e55]: Pronto
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e60]: Créditos
+            - generic [ref=e61]: Pronto
+          - generic [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e67]: Motor de riesgo
+            - generic [ref=e68]: Pronto
+          - generic [ref=e70]:
+            - img [ref=e71]
+            - generic [ref=e74]: Reportes
+            - generic [ref=e75]: Pronto
+          - generic [ref=e77]:
+            - img [ref=e78]
+            - generic [ref=e81]: Parámetros
+            - generic [ref=e82]: Pronto
+        - generic [ref=e83]:
+          - button "Reiniciar demo" [ref=e84]
+          - paragraph [ref=e85]: Demo interactiva · v0.3
+    - generic [ref=e86]:
+      - banner [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - paragraph [ref=e90]: Solicitar crédito
+            - paragraph [ref=e91]: CreditoNet · Casa Central
+          - generic [ref=e92]: Demo
+          - button "Notificaciones" [ref=e96]:
+            - img [ref=e97]
+          - generic [ref=e101]:
+            - generic [ref=e102]: JP
+            - generic [ref=e103]:
+              - paragraph [ref=e104]: Juan Pérez
+              - paragraph [ref=e105]: Canal de venta · CreditoNet
+      - main [ref=e106]:
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - generic [ref=e122]:
+                - paragraph [ref=e123]: Solicitar crédito · Originación
+                - heading "Reglas, motor, límites y plan" [level=1] [ref=e539]
+                - generic [ref=e125]:
+                  - img [ref=e126]
+                  - generic [ref=e129]: Juan Ignacio Gómez · DNI 20.111.111 · ID de Cliente 000412 · Préstamo personal · Empleados de salud
+              - generic [ref=e130]:
+                - paragraph [ref=e131]: Paso 5 de 6
+                - paragraph [ref=e132]: Etapa 1 de 2
+            - list [ref=e136]:
+              - listitem [ref=e137]:
+                - button "Identificación" [ref=e260] [cursor=pointer]:
+                  - img [ref=e261]
+                  - generic [ref=e140]: Identificación
+              - listitem [ref=e142]:
+                - button "Producto y organismo" [ref=e311] [cursor=pointer]:
+                  - img [ref=e312]
+                  - generic [ref=e145]: Producto y organismo
+              - listitem [ref=e147]:
+                - button "Datos del cliente" [ref=e427] [cursor=pointer]:
+                  - img [ref=e428]
+                  - generic [ref=e150]: Datos del cliente
+              - listitem [ref=e152]:
+                - button "Datos laborales" [ref=e540] [cursor=pointer]:
+                  - img [ref=e541]
+                  - generic [ref=e155]: Datos laborales
+              - listitem [ref=e157]:
+                - button "5 Evaluación" [disabled] [ref=e158]:
+                  - generic [ref=e159]: "5"
+                  - generic [ref=e160]: Evaluación
+              - listitem [ref=e162]:
+                - button "6 Oferta" [disabled] [ref=e163]:
+                  - generic [ref=e164]: "6"
+                  - generic [ref=e165]: Oferta
+          - generic [ref=e543]:
+            - generic [ref=e582]:
+              - paragraph [ref=e583]:
+                - img [ref=e584]
+                - text: Seleccionando el motor de riesgo correspondiente…
+              - list [ref=e586]:
+                - listitem [ref=e587]:
+                  - img [ref=e589]
+                  - text: Generando ID de crédito…
+                - listitem [ref=e591]:
+                  - img [ref=e593]
+                  - text: Evaluando las reglas institucionales…
+                - listitem [ref=e595]:
+                  - img [ref=e597]
+                  - text: Seleccionando el motor de riesgo correspondiente…
+                - listitem [ref=e599]: Consultando BCRA y base interna…
+                - listitem [ref=e602]: Aplicando las reglas del motor…
+            - generic [ref=e570]:
+              - button "Anular crédito" [ref=e571]
+              - status [ref=e573]:
+                - img [ref=e575]
+                - generic [ref=e578]: Presioná Solicitar y esperá el resultado de la evaluación.
+              - button "Continuar" [disabled] [ref=e579]:
+                - text: Continuar
+                - img [ref=e580]
+  - button "Open Next.js Dev Tools" [ref=e115] [cursor=pointer]:
+    - img [ref=e116]
+  - alert [ref=e230]

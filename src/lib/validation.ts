@@ -97,7 +97,11 @@ export type CampoPersona =
   | "dni"
   | "nombre"
   | "apellido"
-  | "domicilio"
+  | "domicilioCalle"
+  | "domicilioNumero"
+  | "domicilioProvincia"
+  | "domicilioLocalidad"
+  | "domicilioCodigoPostal"
   | "email"
   | "telefono"
   | "condicionLaboral"
@@ -113,7 +117,11 @@ export const LABEL_PERSONA: Record<CampoPersona, string> = {
   dni: "DNI",
   nombre: "Nombre",
   apellido: "Apellido",
-  domicilio: "Domicilio",
+  domicilioCalle: "Calle",
+  domicilioNumero: "Número",
+  domicilioProvincia: "Provincia",
+  domicilioLocalidad: "Localidad",
+  domicilioCodigoPostal: "Código postal",
   email: "Email",
   telefono: "Teléfono",
   condicionLaboral: "Condición laboral",
@@ -135,7 +143,12 @@ export function validarPersona(
   else if (!isValidDNI(p.dni)) e.dni = "El DNI debe tener 7 u 8 dígitos.";
   if (!p.nombre.trim()) e.nombre = "Ingresá el nombre.";
   if (!p.apellido.trim()) e.apellido = "Ingresá el apellido.";
-  if (!p.domicilio.trim()) e.domicilio = "Ingresá el domicilio completo.";
+  if (!p.domicilio.calle.trim()) e.domicilioCalle = "Ingresá la calle.";
+  if (!p.domicilio.numero.trim()) e.domicilioNumero = "Ingresá el número.";
+  if (!p.domicilio.provincia.trim()) e.domicilioProvincia = "Seleccioná la provincia.";
+  if (!p.domicilio.localidad.trim()) e.domicilioLocalidad = "Seleccioná la localidad.";
+  if (!p.domicilio.codigoPostal.trim())
+    e.domicilioCodigoPostal = "Ingresá el código postal.";
   if (!p.email.trim()) e.email = "Ingresá el email de contacto.";
   else if (!isValidEmail(p.email))
     e.email = "El formato del email no es válido. Ej.: nombre@dominio.com";

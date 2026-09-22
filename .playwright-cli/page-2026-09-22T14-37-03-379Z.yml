@@ -1,0 +1,169 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja de análisis" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja de análisis
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - link "Productos" [ref=e30] [cursor=pointer]:
+            - /url: /productos
+            - img [ref=e31]
+            - text: Productos
+          - link "Organismos" [ref=e34] [cursor=pointer]:
+            - /url: /organismos
+            - img [ref=e35]
+            - text: Organismos
+          - link "Planes de cuotas" [ref=e38] [cursor=pointer]:
+            - /url: /planes
+            - img [ref=e39]
+            - text: Planes de cuotas
+          - generic [ref=e43]:
+            - img [ref=e44]
+            - generic [ref=e46]: Liquidación
+            - generic [ref=e47]: Pronto
+          - generic [ref=e49]:
+            - img [ref=e50]
+            - generic [ref=e54]: Clientes
+            - generic [ref=e55]: Pronto
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e60]: Créditos
+            - generic [ref=e61]: Pronto
+          - generic [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e67]: Motor de riesgo
+            - generic [ref=e68]: Pronto
+          - generic [ref=e70]:
+            - img [ref=e71]
+            - generic [ref=e74]: Reportes
+            - generic [ref=e75]: Pronto
+          - generic [ref=e77]:
+            - img [ref=e78]
+            - generic [ref=e81]: Parámetros
+            - generic [ref=e82]: Pronto
+        - generic [ref=e83]:
+          - button "Reiniciar demo" [ref=e84]
+          - paragraph [ref=e85]: Demo interactiva · v0.3
+    - generic [ref=e86]:
+      - banner [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - paragraph [ref=e90]: Solicitar crédito
+            - paragraph [ref=e91]: CreditoNet · Casa Central
+          - generic [ref=e92]: Demo
+          - button "Notificaciones" [ref=e96]:
+            - img [ref=e97]
+          - generic [ref=e101]:
+            - generic [ref=e102]: JP
+            - generic [ref=e103]:
+              - paragraph [ref=e104]: Juan Pérez
+              - paragraph [ref=e105]: Canal de venta · CreditoNet
+      - main [ref=e106]:
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - generic [ref=e122]:
+                - paragraph [ref=e123]: Solicitar crédito · Originación
+                - heading "Producto y organismo" [level=1] [ref=e259]
+                - generic [ref=e125]:
+                  - img [ref=e126]
+                  - generic [ref=e129]: Juan Ignacio Gómez · DNI 20.111.111 · ID de Cliente 000412 · Préstamo personal · Empleados de salud
+              - generic [ref=e130]:
+                - paragraph [ref=e131]: Paso 2 de 6
+                - paragraph [ref=e132]: Etapa 1 de 2
+            - list [ref=e136]:
+              - listitem [ref=e137]:
+                - button "Identificación" [ref=e260] [cursor=pointer]:
+                  - img [ref=e261]
+                  - generic [ref=e140]: Identificación
+              - listitem [ref=e142]:
+                - button "2 Producto y organismo" [disabled] [ref=e143]:
+                  - generic [ref=e144]: "2"
+                  - generic [ref=e145]: Producto y organismo
+              - listitem [ref=e147]:
+                - button "3 Datos del cliente" [disabled] [ref=e148]:
+                  - generic [ref=e149]: "3"
+                  - generic [ref=e150]: Datos del cliente
+              - listitem [ref=e152]:
+                - button "4 Datos laborales" [disabled] [ref=e153]:
+                  - generic [ref=e154]: "4"
+                  - generic [ref=e155]: Datos laborales
+              - listitem [ref=e157]:
+                - button "5 Evaluación" [disabled] [ref=e158]:
+                  - generic [ref=e159]: "5"
+                  - generic [ref=e160]: Evaluación
+              - listitem [ref=e162]:
+                - button "6 Oferta" [disabled] [ref=e163]:
+                  - generic [ref=e164]: "6"
+                  - generic [ref=e165]: Oferta
+          - generic [ref=e263]:
+            - generic [ref=e264]:
+              - generic [ref=e267]:
+                - generic [ref=e268]:
+                  - generic [ref=e269]: JP
+                  - generic [ref=e270]:
+                    - generic [ref=e271]: Vendedor · Juan Pérez
+                    - generic [ref=e272]: Legajo V-118 · CreditoNet Casa Central
+                - checkbox "Asignar a otro vendedor" [ref=e274]:
+                  - generic [ref=e277]: Asignar a otro vendedor
+              - generic [ref=e278]:
+                - generic [ref=e280]:
+                  - img [ref=e282]
+                  - generic [ref=e285]:
+                    - heading "Selección comercial" [level=2] [ref=e286]
+                    - paragraph [ref=e287]: El producto y el organismo definen las reglas, el plan de cuotas y las pantallas post-oferta.
+                - generic [ref=e288]:
+                  - generic [ref=e289]:
+                    - generic [ref=e291]: Producto*
+                    - generic [ref=e292]:
+                      - combobox "Producto*" [ref=e293]:
+                        - option "Seleccioná una opción…"
+                        - option "Préstamo personal" [selected]
+                        - option "Crédito judicial"
+                        - option "Préstamo prendario"
+                        - option "Adelanto de sueldo"
+                        - option "Línea de consumo"
+                      - img
+                    - paragraph [ref=e294]: Productos que ofrece Empleados de salud.
+                  - generic [ref=e295]:
+                    - generic [ref=e297]: Organismo*
+                    - generic [ref=e298]:
+                      - combobox "Organismo*" [ref=e299]:
+                        - option "Seleccioná una opción…"
+                        - option "Empleados de salud" [selected]
+                        - option "Policía de la Provincia"
+                        - option "Jubilados y pensionados"
+                        - option "Docentes de la Provincia"
+                        - option "Empleados municipales"
+                      - img
+                    - paragraph [ref=e300]: Empleador o ente pagador. Define qué productos ofrece y parametriza excepciones.
+            - generic [ref=e302]:
+              - button "Anular crédito" [ref=e303]
+              - paragraph [ref=e305]:
+                - generic [ref=e306]: "Próximo: 3. Datos del cliente"
+                - text: "— Revisá lo que trajo la consulta: si es un cliente nuevo o existente, autocompleta los datos y evalúa las reglas institucionales que ya tienen sus datos."
+              - button "Continuar" [ref=e307]:
+                - text: Continuar
+                - img [ref=e308]
+  - button "Open Next.js Dev Tools" [ref=e115] [cursor=pointer]:
+    - img [ref=e116]
+  - alert [ref=e230]
