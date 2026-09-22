@@ -6,7 +6,7 @@
 
 import type { CreditApplication, OrigenCampo } from "./types";
 import { configEfectiva } from "./config";
-import { isValidCBU, isValidEmail, maskCuit, maskFecha, onlyDigits, parseFecha } from "./format";
+import { isValidCBU, isValidEmail, maskCuit, maskDNI, maskFecha, onlyDigits, parseFecha } from "./format";
 import { PAIS_POR_DEFECTO, sanitizarNumero, validarNumero } from "./telefono";
 import {
   BANCOS,
@@ -482,7 +482,6 @@ export function campoVisible(app: CreditApplication, campo: CampoDef): boolean {
 }
 
 const MAX_DIGITOS: Partial<Record<TipoCampo, number>> = {
-  dni: 8,
   cbu: 22,
   codigoPostal: 4,
   numero: 6,
@@ -499,6 +498,7 @@ export function sanitizar(campo: CampoDef, valor: string, valores: Valores): str
   if (campo.tipo === "telefono") return sanitizarNumero(paisDe(campo, valores), valor);
   if (campo.tipo === "fecha") return maskFecha(valor);
   if (campo.tipo === "cuit") return maskCuit(valor);
+  if (campo.tipo === "dni") return maskDNI(valor);
   const max = MAX_DIGITOS[campo.tipo];
   return max ? onlyDigits(valor).slice(0, max) : valor;
 }

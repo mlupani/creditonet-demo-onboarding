@@ -56,6 +56,12 @@ export function maskCuit(value: string): string {
   return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`;
 }
 
+// Máscara de entrada de DNI: sólo dígitos (máx. 8), con el punto puesto solo cada 3 desde la derecha.
+export function maskDNI(value: string): string {
+  const d = onlyDigits(value).slice(0, 8);
+  return d.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 export function isValidDNI(value: string): boolean {
   const d = onlyDigits(value);
   return d.length >= 7 && d.length <= 8;

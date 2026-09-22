@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { VINCULOS_GARANTE, VINCULOS_REFERENCIA } from "@/lib/parametros";
-import { isValidDNI } from "@/lib/format";
+import { isValidDNI, maskDNI } from "@/lib/format";
 import { CONDICIONES_LABORALES, validarPersona } from "@/lib/validation";
 import type { TipoPersonaVinculada } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
@@ -150,7 +150,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   value={p.dni}
                   onChange={(v) =>
                     actualizarPersona(tipo, p.id, {
-                      dni: v.replace(/\D/g, "").slice(0, 8),
+                      dni: maskDNI(v),
                       autocompletado: false,
                     })
                   }
