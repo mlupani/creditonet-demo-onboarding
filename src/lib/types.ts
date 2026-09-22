@@ -14,10 +14,13 @@ export type EstadoCredito =
   | "PREAPROBADO"
   | "ANALISIS_TOMADO"
   | "OBSERVADO"
+  | "CAMBIO_OFERTA"
   | "RECHAZADO"
   // Anulado: el cliente desistió. Lo puede anular el vendedor o el analista, y es distinto
   // de rechazado, que es una decisión de riesgo (reunión 11/09, 01:19).
   | "ANULADO"
+  | "EN_FIRMA"
+  | "FIRMADO"
   | "PARA_LIQUIDAR";
 
 export type TipoCliente = "NUEVO" | "EXISTENTE";
