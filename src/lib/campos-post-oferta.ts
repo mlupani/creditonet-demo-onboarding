@@ -4,7 +4,7 @@
 // defecto. El Producto puede cambiar la obligatoriedad y el Organismo excepcionarla
 // (Producto §7 bis · Organismo §4 bis): `obligatorioEfectivo` resuelve el valor final.
 
-import type { CreditApplication, OrigenCampo } from "./types";
+import type { CreditApplication, Domicilio, OrigenCampo } from "./types";
 import { configEfectiva } from "./config";
 import { isValidCBU, isValidEmail, maskCuit, maskDNI, maskFecha, onlyDigits, parseFecha } from "./format";
 import { PAIS_POR_DEFECTO, sanitizarNumero, validarNumero } from "./telefono";
@@ -611,4 +611,33 @@ export function aplicarCambioCampo(valores: Valores, campoId: string, valor: str
     if (l) siguiente[`${seccion}.codigoPostal`] = l.codigoPostal;
   }
   return siguiente;
+}
+
+// Mismos efectos que aplicarCambioCampo, para un Domicilio como objeto (referencias y
+// garantes, Onboarding §7–§8, en vez de la grilla de Valores de las pantallas de datos).
+export function aplicarCambioDomicilio(
+  actual: Domicilio,
+  campo: keyof Domicilio,
+  valor: string
+): Domicilio {
+  const siguiente = { ...actual, [campo]: valor };
+  if (campo === "provincia") {
+    if (siguiente.localidad && getLocalidad(siguiente.localidad)?.provincia !== valor) {
+      siguiente.localidad = "";
+      siguiente.codigoPostal = "";
+    }
+  }
+  if (campo === "localidad") {
+    const l = getLocalidad(valor);
+    if (l) siguiente.codigoPostal = l.codigoPostal;
+  }
+  return siguiente;
+}
+
+// Sanitiza un campo de Domicilio como objeto, igual que `sanitizar` para las pantallas de
+// datos: sólo dígitos en número y código postal, cortando en el largo máximo.
+export function sanitizarCampoDomicilio(campo: keyof Domicilio, valor: string): string {
+  if (campo === "numero") return onlyDigits(valor).slice(0, MAX_DIGITOS.numero!);
+  if (campo === "codigoPostal") return onlyDigits(valor).slice(0, MAX_DIGITOS.codigoPostal!);
+  return valor;
 }

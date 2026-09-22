@@ -1,0 +1,139 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: C
+        - generic [ref=e7]:
+          - paragraph [ref=e8]: CreditoNet
+          - paragraph [ref=e9]: Módulo Onboarding
+      - navigation [ref=e10]:
+        - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+          - /url: /
+          - img [ref=e13]
+          - text: Bandeja canal de venta
+        - link "Solicitar crédito" [ref=e16] [cursor=pointer]:
+          - /url: /onboarding
+          - img [ref=e17]
+          - text: Solicitar crédito
+        - link "Bandeja de análisis" [ref=e21] [cursor=pointer]:
+          - /url: /analisis
+          - img [ref=e22]
+          - text: Bandeja de análisis
+        - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+          - /url: /graph
+          - img [ref=e26]
+          - text: Diagrama de flujo
+        - link "Productos" [ref=e30] [cursor=pointer]:
+          - /url: /productos
+          - img [ref=e31]
+          - text: Productos
+        - link "Organismos" [ref=e34] [cursor=pointer]:
+          - /url: /organismos
+          - img [ref=e35]
+          - text: Organismos
+        - link "Planes de cuotas" [ref=e38] [cursor=pointer]:
+          - /url: /planes
+          - img [ref=e39]
+          - text: Planes de cuotas
+        - generic [ref=e43]:
+          - img [ref=e44]
+          - generic [ref=e46]: Liquidación
+          - generic [ref=e47]: Pronto
+        - generic [ref=e49]:
+          - img [ref=e50]
+          - generic [ref=e54]: Clientes
+          - generic [ref=e55]: Pronto
+        - generic [ref=e57]:
+          - img [ref=e58]
+          - generic [ref=e60]: Créditos
+          - generic [ref=e61]: Pronto
+        - generic [ref=e63]:
+          - img [ref=e64]
+          - generic [ref=e67]: Motor de riesgo
+          - generic [ref=e68]: Pronto
+        - generic [ref=e70]:
+          - img [ref=e71]
+          - generic [ref=e74]: Reportes
+          - generic [ref=e75]: Pronto
+        - generic [ref=e77]:
+          - img [ref=e78]
+          - generic [ref=e81]: Parámetros
+          - generic [ref=e82]: Pronto
+      - generic [ref=e83]:
+        - button "Reiniciar demo" [ref=e84]
+        - paragraph [ref=e85]: Demo interactiva · v0.3
+  - generic [ref=e86]:
+    - banner [ref=e87]:
+      - generic [ref=e88]:
+        - generic [ref=e89]:
+          - paragraph [ref=e90]: Bandeja del canal de venta
+          - paragraph [ref=e91]: CreditoNet · Casa Central
+        - generic [ref=e92]: Demo
+        - button "Notificaciones" [ref=e96]:
+          - img [ref=e97]
+        - generic [ref=e101]:
+          - generic [ref=e102]: JP
+          - generic [ref=e103]:
+            - paragraph [ref=e104]: Juan Pérez
+            - paragraph [ref=e105]: Canal de venta · CreditoNet
+    - main [ref=e106]:
+      - generic [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - paragraph [ref=e110]: Canal de venta · Módulo Onboarding
+            - heading "Bandeja de solicitudes" [level=1] [ref=e111]
+          - generic [ref=e112]:
+            - generic [ref=e113]:
+              - img
+              - textbox "Buscar por DNI o apellido" [ref=e114]:
+                - /placeholder: Buscar DNI/apellido
+            - button "Nueva solicitud" [ref=e115]:
+              - img [ref=e116]
+              - text: Nueva solicitud
+        - generic [ref=e118]:
+          - region "En trámite" [ref=e119]:
+            - generic [ref=e120]:
+              - heading "En trámite" [level=2] [ref=e121]
+              - generic [ref=e122]: "0"
+            - paragraph [ref=e124]: Cargando…
+          - region "Observadas" [ref=e125]:
+            - generic [ref=e126]:
+              - heading "Observadas" [level=2] [ref=e127]
+              - generic [ref=e128]: "0"
+            - paragraph [ref=e130]: Cargando…
+          - region "En análisis" [ref=e131]:
+            - generic [ref=e132]:
+              - heading "En análisis" [level=2] [ref=e133]
+              - generic [ref=e134]: "0"
+            - paragraph [ref=e136]: Cargando…
+          - region "Activos / Cancelados / Rechazados" [ref=e137]:
+            - generic [ref=e138]:
+              - heading "Activos / Cancelados / Rechazados" [level=2] [ref=e139]
+              - generic [ref=e140]: "0"
+            - paragraph [ref=e142]: Cargando…
+        - generic [ref=e143]:
+          - heading "Otras vías de entrada" [level=2] [ref=e144]
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - img [ref=e148]
+              - generic [ref=e151]:
+                - heading "Precancelación / Renovación" [level=3] [ref=e152]
+                - paragraph [ref=e153]: Cancelación anticipada o renovación de créditos propios vigentes.
+                - generic [ref=e154]:
+                  - img [ref=e155]
+                  - text: Disponible próximamente
+            - generic [ref=e158]:
+              - img [ref=e160]
+              - generic [ref=e163]:
+                - heading "Gestión de mora" [level=3] [ref=e164]
+                - paragraph [ref=e165]: Refinanciación autorizada y regularización de créditos con atraso.
+                - generic [ref=e166]:
+                  - img [ref=e167]
+                  - text: Disponible próximamente
+        - generic [ref=e170]:
+          - paragraph [ref=e171]: Ambiente de demostración · datos simulados · sin conexión a sistemas reales.
+          - generic [ref=e172]:
+            - button "Bandeja del analista" [ref=e173]:
+              - img [ref=e174]
+              - text: Bandeja del analista
+            - button "Reiniciar demo" [ref=e177]

@@ -240,13 +240,25 @@ export interface TarjetaTokenizada {
 // Onboarding §7–§8: referencias y garantes comparten estructura.
 export type TipoPersonaVinculada = "referencia" | "garante";
 
+// Domicilio desglosado (Onboarding §4/§7-§8): mismos campos que Datos personales, provincia
+// y localidad salen de Parámetros y el código postal se autocompleta al elegir la localidad.
+export interface Domicilio {
+  calle: string;
+  numero: string;
+  piso: string;
+  departamento: string;
+  provincia: string;
+  localidad: string;
+  codigoPostal: string;
+}
+
 export interface PersonaVinculada {
   id: string;
   vinculo: string;
   dni: string;
   nombre: string;
   apellido: string;
-  domicilio: string;
+  domicilio: Domicilio;
   email: string;
   telefono: string;
   autocompletado: boolean;

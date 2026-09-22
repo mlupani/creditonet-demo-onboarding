@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
-import { VINCULOS_GARANTE, VINCULOS_REFERENCIA } from "@/lib/parametros";
+import { PROVINCIAS, VINCULOS_GARANTE, VINCULOS_REFERENCIA, localidadesDe } from "@/lib/parametros";
 import { isValidDNI, maskDNI } from "@/lib/format";
 import { CONDICIONES_LABORALES, validarPersona } from "@/lib/validation";
 import type { TipoPersonaVinculada } from "@/lib/types";
@@ -48,6 +48,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
     app,
     agregarPersona,
     actualizarPersona,
+    actualizarDomicilioPersona,
     buscarPersonaPorDni,
     quitarPersona,
     adjuntarReciboSueldo,
@@ -202,15 +203,75 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 onChange={(v) => actualizarPersona(tipo, p.id, { telefono: v })}
                 error={err.telefono}
               />
-              <FormField
-                id={`${p.id}-domicilio`}
-                label="Domicilio completo"
-                required
-                value={p.domicilio}
-                onChange={(v) => actualizarPersona(tipo, p.id, { domicilio: v })}
-                error={err.domicilio}
-                className="sm:col-span-2"
-              />
+            </div>
+
+            <div className="mt-3 border-t border-ink-100 pt-3">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-400">
+                Domicilio particular
+              </p>
+              <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2">
+                <FormField
+                  id={`${p.id}-domicilio-calle`}
+                  label="Calle"
+                  required
+                  value={p.domicilio.calle}
+                  onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "calle", v)}
+                  error={err.domicilioCalle}
+                />
+                <FormField
+                  id={`${p.id}-domicilio-numero`}
+                  label="Número"
+                  required
+                  inputMode="numeric"
+                  value={p.domicilio.numero}
+                  onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "numero", v)}
+                  error={err.domicilioNumero}
+                />
+                <FormField
+                  id={`${p.id}-domicilio-piso`}
+                  label="Piso"
+                  value={p.domicilio.piso}
+                  onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "piso", v)}
+                />
+                <FormField
+                  id={`${p.id}-domicilio-departamento`}
+                  label="Departamento"
+                  value={p.domicilio.departamento}
+                  onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "departamento", v)}
+                />
+                <SelectField
+                  id={`${p.id}-domicilio-provincia`}
+                  label="Provincia"
+                  required
+                  value={p.domicilio.provincia}
+                  onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "provincia", v)}
+                  options={PROVINCIAS.map((v) => ({ value: v, label: v }))}
+                  error={err.domicilioProvincia}
+                />
+                <SelectField
+                  id={`${p.id}-domicilio-localidad`}
+                  label="Localidad"
+                  required
+                  value={p.domicilio.localidad}
+                  onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "localidad", v)}
+                  options={localidadesDe(p.domicilio.provincia).map((l) => ({
+                    value: l.nombre,
+                    label: l.nombre,
+                  }))}
+                  error={err.domicilioLocalidad}
+                  hint="Provincia y localidad salen de Parámetros."
+                />
+                <FormField
+                  id={`${p.id}-domicilio-codigo-postal`}
+                  label="Código postal"
+                  required
+                  inputMode="numeric"
+                  value={p.domicilio.codigoPostal}
+                  onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "codigoPostal", v)}
+                  error={err.domicilioCodigoPostal}
+                  hint="Se completa al elegir la localidad; se puede editar."
+                />
+              </div>
             </div>
 
             {tipo === "garante" && (

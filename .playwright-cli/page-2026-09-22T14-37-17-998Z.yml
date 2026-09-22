@@ -1,0 +1,214 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]: C
+          - generic [ref=e7]:
+            - paragraph [ref=e8]: CreditoNet
+            - paragraph [ref=e9]: Módulo Onboarding
+        - navigation [ref=e10]:
+          - link "Bandeja canal de venta" [ref=e11] [cursor=pointer]:
+            - /url: /
+            - img [ref=e12]
+            - text: Bandeja canal de venta
+          - link "Solicitar crédito" [ref=e15] [cursor=pointer]:
+            - /url: /onboarding
+            - img [ref=e17]
+            - text: Solicitar crédito
+          - link "Bandeja de análisis" [ref=e21] [cursor=pointer]:
+            - /url: /analisis
+            - img [ref=e22]
+            - text: Bandeja de análisis
+          - link "Diagrama de flujo" [ref=e25] [cursor=pointer]:
+            - /url: /graph
+            - img [ref=e26]
+            - text: Diagrama de flujo
+          - link "Productos" [ref=e30] [cursor=pointer]:
+            - /url: /productos
+            - img [ref=e31]
+            - text: Productos
+          - link "Organismos" [ref=e34] [cursor=pointer]:
+            - /url: /organismos
+            - img [ref=e35]
+            - text: Organismos
+          - link "Planes de cuotas" [ref=e38] [cursor=pointer]:
+            - /url: /planes
+            - img [ref=e39]
+            - text: Planes de cuotas
+          - generic [ref=e43]:
+            - img [ref=e44]
+            - generic [ref=e46]: Liquidación
+            - generic [ref=e47]: Pronto
+          - generic [ref=e49]:
+            - img [ref=e50]
+            - generic [ref=e54]: Clientes
+            - generic [ref=e55]: Pronto
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e60]: Créditos
+            - generic [ref=e61]: Pronto
+          - generic [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e67]: Motor de riesgo
+            - generic [ref=e68]: Pronto
+          - generic [ref=e70]:
+            - img [ref=e71]
+            - generic [ref=e74]: Reportes
+            - generic [ref=e75]: Pronto
+          - generic [ref=e77]:
+            - img [ref=e78]
+            - generic [ref=e81]: Parámetros
+            - generic [ref=e82]: Pronto
+        - generic [ref=e83]:
+          - button "Reiniciar demo" [ref=e84]
+          - paragraph [ref=e85]: Demo interactiva · v0.3
+    - generic [ref=e86]:
+      - banner [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - paragraph [ref=e90]: Solicitar crédito
+            - paragraph [ref=e91]: CreditoNet · Casa Central
+          - generic [ref=e92]: Demo
+          - button "Notificaciones" [ref=e96]:
+            - img [ref=e97]
+          - generic [ref=e101]:
+            - generic [ref=e102]: JP
+            - generic [ref=e103]:
+              - paragraph [ref=e104]: Juan Pérez
+              - paragraph [ref=e105]: Canal de venta · CreditoNet
+      - main [ref=e106]:
+        - generic [ref=e119]:
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - generic [ref=e122]:
+                - paragraph [ref=e123]: Solicitar crédito · Originación
+                - heading "Datos del cliente" [level=1] [ref=e310]
+                - generic [ref=e125]:
+                  - img [ref=e126]
+                  - generic [ref=e129]: Juan Ignacio Gómez · DNI 20.111.111 · ID de Cliente 000412 · Préstamo personal · Empleados de salud
+              - generic [ref=e130]:
+                - paragraph [ref=e131]: Paso 3 de 6
+                - paragraph [ref=e132]: Etapa 1 de 2
+            - list [ref=e136]:
+              - listitem [ref=e137]:
+                - button "Identificación" [ref=e260] [cursor=pointer]:
+                  - img [ref=e261]
+                  - generic [ref=e140]: Identificación
+              - listitem [ref=e142]:
+                - button "Producto y organismo" [ref=e311] [cursor=pointer]:
+                  - img [ref=e312]
+                  - generic [ref=e145]: Producto y organismo
+              - listitem [ref=e147]:
+                - button "3 Datos del cliente" [disabled] [ref=e148]:
+                  - generic [ref=e149]: "3"
+                  - generic [ref=e150]: Datos del cliente
+              - listitem [ref=e152]:
+                - button "4 Datos laborales" [disabled] [ref=e153]:
+                  - generic [ref=e154]: "4"
+                  - generic [ref=e155]: Datos laborales
+              - listitem [ref=e157]:
+                - button "5 Evaluación" [disabled] [ref=e158]:
+                  - generic [ref=e159]: "5"
+                  - generic [ref=e160]: Evaluación
+              - listitem [ref=e162]:
+                - button "6 Oferta" [disabled] [ref=e163]:
+                  - generic [ref=e164]: "6"
+                  - generic [ref=e165]: Oferta
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - generic [ref=e316]:
+                - generic [ref=e317]:
+                  - generic [ref=e318]:
+                    - img [ref=e320]
+                    - generic [ref=e324]:
+                      - heading "Juan Ignacio Gómez" [level=2] [ref=e325]
+                      - paragraph [ref=e326]: DNI 20.111.111 · CUIL 20-20111111-3
+                  - generic [ref=e327]:
+                    - paragraph [ref=e328]: Producto · Organismo
+                    - paragraph [ref=e329]: Préstamo personal · Empleados de salud
+                - generic [ref=e331]:
+                  - generic [ref=e332]:
+                    - generic [ref=e333]: Nombre
+                    - textbox "Nombre" [ref=e334]: Juan Ignacio
+                  - generic [ref=e335]:
+                    - generic [ref=e336]: Apellido
+                    - textbox "Apellido" [ref=e337]: Gómez
+                  - generic [ref=e338]:
+                    - generic [ref=e339]: Fecha de nacimiento
+                    - textbox "Fecha de nacimiento" [ref=e340]:
+                      - /placeholder: dd/mm/aaaa
+                      - text: 15/04/1988
+                  - generic [ref=e341]:
+                    - generic [ref=e342]: Género
+                    - combobox "Género" [ref=e343]:
+                      - option "Femenino"
+                      - option "Masculino" [selected]
+                      - option "No binario"
+                  - generic [ref=e344]:
+                    - generic [ref=e345]: Calle
+                    - textbox "Calle" [ref=e346]: Av. Colón
+                  - generic [ref=e347]:
+                    - generic [ref=e348]: Número
+                    - textbox "Número" [ref=e349]: "2450"
+                  - generic [ref=e350]:
+                    - generic [ref=e351]: Localidad
+                    - textbox "Localidad" [ref=e352]: Córdoba
+                  - generic [ref=e353]:
+                    - generic [ref=e354]: Provincia
+                    - combobox "Provincia" [ref=e355]:
+                      - option "Buenos Aires"
+                      - option "CABA"
+                      - option "Córdoba" [selected]
+                      - option "Mendoza"
+                      - option "Santa Fe"
+                      - option "Tucumán"
+                  - generic [ref=e356]:
+                    - generic [ref=e357]: Teléfono
+                    - generic [ref=e358]:
+                      - 'button "Área (país): Argentina (+54)" [ref=e360]':
+                        - generic [ref=e362]: "+54"
+                        - img [ref=e363]
+                      - textbox "Teléfono" [ref=e365]: "3515432100"
+                  - generic [ref=e366]:
+                    - generic [ref=e367]: Email
+                    - textbox "Email" [ref=e368]: juanignacio.gomez@gmail.com
+              - generic [ref=e369]:
+                - generic [ref=e371]:
+                  - img [ref=e373]
+                  - generic [ref=e376]:
+                    - heading "Verificación presencial" [level=2] [ref=e377]
+                    - paragraph [ref=e378]: Compará la foto archivada con la persona presente y validá su identidad.
+                - generic [ref=e379]:
+                  - generic [ref=e380]:
+                    - generic [ref=e381]:
+                      - img "Foto archivada" [ref=e383]
+                      - paragraph [ref=e384]: Foto archivada · 12/03/2022
+                    - generic [ref=e385]:
+                      - generic [ref=e386]:
+                        - generic [ref=e387]: JG
+                        - generic [ref=e388]: En vivo
+                      - paragraph [ref=e390]: Persona presente
+                  - generic [ref=e391]:
+                    - button "Subir foto" [ref=e392]:
+                      - img [ref=e393]
+                      - text: Subir foto
+                    - button "Capturar imagen" [ref=e396]:
+                      - img [ref=e397]
+                      - text: Capturar imagen
+                  - generic [ref=e417]:
+                    - img [ref=e419]
+                    - generic [ref=e421]:
+                      - paragraph [ref=e422]: Identidad verificada
+                      - paragraph [ref=e423]: El vendedor confirmó la coincidencia con la persona presente.
+            - generic [ref=e405]:
+              - button "Anular crédito" [ref=e406]
+              - paragraph [ref=e424]:
+                - generic [ref=e425]: "Próximo: 4. Datos laborales"
+                - text: — Sólo los datos que las reglas y el motor necesitan para evaluar. El resto del legajo se carga después de la oferta.
+              - button "Continuar" [ref=e414]:
+                - text: Continuar
+                - img [ref=e415]
+  - button "Open Next.js Dev Tools" [ref=e115] [cursor=pointer]:
+    - img [ref=e116]
+  - alert [ref=e230]

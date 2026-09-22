@@ -15,6 +15,7 @@ import type {
   ClienteDatos,
   CreditApplication,
   DeudaTerceros,
+  Domicilio,
   LaboralIngresos,
   Oferta,
   PantallaPostOfertaId,
@@ -45,7 +46,12 @@ import {
 } from "./credit";
 import { reglaBloquea } from "./motores";
 import { institucionalesBloquean } from "./reglas-institucionales";
-import { aplicarCambioCampo, type PantallaConCampos } from "./campos-post-oferta";
+import {
+  aplicarCambioCampo,
+  aplicarCambioDomicilio,
+  sanitizarCampoDomicilio,
+  type PantallaConCampos,
+} from "./campos-post-oferta";
 import { fechaHoy, onlyDigits, selloTiempo } from "./format";
 import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
@@ -163,6 +169,12 @@ interface ApplicationContextValue {
     tipo: TipoPersonaVinculada,
     id: string,
     patch: Partial<PersonaVinculada>
+  ) => void;
+  actualizarDomicilioPersona: (
+    tipo: TipoPersonaVinculada,
+    id: string,
+    campo: keyof Domicilio,
+    valor: string
   ) => void;
   buscarPersonaPorDni: (tipo: TipoPersonaVinculada, id: string) => void;
   quitarPersona: (tipo: TipoPersonaVinculada, id: string) => void;
@@ -706,7 +718,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           dni: "",
           nombre: "",
           apellido: "",
-          domicilio: "",
+          domicilio: {
+            calle: "",
+            numero: "",
+            piso: "",
+            departamento: "",
+            provincia: "",
+            localidad: "",
+            codigoPostal: "",
+          },
           email: "",
           telefono: "",
           autocompletado: false,
@@ -728,6 +748,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev,
         postOferta: conPersonas(prev.postOferta, tipo, (lista) =>
           lista.map((p) => (p.id === id ? { ...p, ...patch } : p))
+        ),
+      }));
+    },
+    []
+  );
+
+  // Domicilio de referencias y garantes (Onboarding §7–§8): mismos efectos de cascada que el
+  // domicilio de Datos personales (provincia limpia localidad/CP si ya no corresponden;
+  // localidad completa el código postal).
+  const actualizarDomicilioPersona = useCallback(
+    (tipo: TipoPersonaVinculada, id: string, campo: keyof Domicilio, valor: string) => {
+      const valorSanitizado = sanitizarCampoDomicilio(campo, valor);
+      setApp((prev) => ({
+        ...prev,
+        postOferta: conPersonas(prev.postOferta, tipo, (lista) =>
+          lista.map((p) =>
+            p.id === id
+              ? { ...p, domicilio: aplicarCambioDomicilio(p.domicilio, campo, valorSanitizado) }
+              : p
+          )
         ),
       }));
     },
@@ -1010,6 +1050,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       quitarTarjeta,
       agregarPersona,
       actualizarPersona,
+      actualizarDomicilioPersona,
       buscarPersonaPorDni,
       quitarPersona,
       adjuntarReciboSueldo,
@@ -1064,6 +1105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       quitarTarjeta,
       agregarPersona,
       actualizarPersona,
+      actualizarDomicilioPersona,
       buscarPersonaPorDni,
       quitarPersona,
       adjuntarReciboSueldo,
