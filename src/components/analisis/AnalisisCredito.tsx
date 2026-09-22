@@ -55,6 +55,7 @@ import {
 } from "@/components/bandeja/ModalesBandeja";
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
 import { BuroMotorModal, CreditosRenovarModal } from "./ModalesAnalisis";
+import { HistorialPagosModal } from "./HistorialPagosModal";
 import { LegajoVirtualModal } from "./LegajoVirtualModal";
 import {
   IconAlertTriangle,
@@ -143,6 +144,7 @@ export function AnalisisCredito({
   const [pantallas, setPantallas] = useState<PantallaPostOfertaId[]>([]);
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
+  const [historialAbierto, setHistorialAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
@@ -567,6 +569,18 @@ export function AnalisisCredito({
             { label: "Situación interna", value: app.situaciones ? `${app.situaciones.interna}` : "—" },
             { label: "Último pago", value: "hace 25 días" },
           ]}
+          footer={
+            <Button
+              size="sm"
+              variant={o.creditosActivos.length > 0 ? "outline" : "ghost"}
+              onClick={() => setHistorialAbierto(true)}
+              aria-label="Ver historial de pagos"
+            >
+              <IconEye width={14} height={14} />
+              Ver historial de pagos
+              {o.creditosActivos.length > 0 && ` · ${o.creditosActivos.length} crédito${o.creditosActivos.length === 1 ? "" : "s"}`}
+            </Button>
+          }
         />
         <SummaryCard
           title="Datos personales (post-oferta)"
@@ -952,6 +966,7 @@ export function AnalisisCredito({
         }}
       />
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
+      <HistorialPagosModal open={historialAbierto} onClose={() => setHistorialAbierto(false)} />
 
       <Modal
         open={modal !== null}
