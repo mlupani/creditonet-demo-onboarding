@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { IconChevronDown } from "@/components/icons";
+import { RequiredBadge } from "./RequiredBadge";
 import { ValidationMessage } from "./ValidationMessage";
 
 interface SelectFieldProps {
@@ -39,7 +40,6 @@ export function SelectField({
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <label htmlFor={id} className="text-sm font-medium text-ink-700">
           {label}
-          {required && <span className="ml-0.5 text-danger-500">*</span>}
         </label>
         {badge}
       </div>
@@ -70,6 +70,7 @@ export function SelectField({
           height={16}
           className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-400"
         />
+        {required && <RequiredBadge />}
       </div>
       {error ? (
         <ValidationMessage tipo="error">{error}</ValidationMessage>

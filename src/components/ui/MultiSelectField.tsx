@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { IconCheck } from "@/components/icons";
+import { RequiredBadge } from "./RequiredBadge";
 import { ValidationMessage } from "./ValidationMessage";
 
 // Selección múltiple con opciones visibles: cada opción se marca o desmarca por separado.
@@ -40,7 +41,6 @@ export function MultiSelectField({
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span id={`${id}-label`} className="text-sm font-medium text-ink-700">
           {label}
-          {required && <span className="ml-0.5 text-danger-500">*</span>}
         </span>
         {badge}
       </div>
@@ -48,8 +48,9 @@ export function MultiSelectField({
         id={id}
         role="group"
         aria-labelledby={`${id}-label`}
-        className="flex flex-wrap gap-2"
+        className="relative flex flex-wrap gap-2"
       >
+        {required && <RequiredBadge />}
         {options.map((opcion) => {
           const activa = values.includes(opcion);
           return (

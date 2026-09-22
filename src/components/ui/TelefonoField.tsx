@@ -8,6 +8,7 @@ import {
   sanitizarNumero,
 } from "@/lib/telefono";
 import { PaisSelect } from "./PaisSelect";
+import { RequiredBadge } from "./RequiredBadge";
 import { ValidationMessage } from "./ValidationMessage";
 
 const control =
@@ -44,9 +45,9 @@ export function TelefonoField({
     <div className={className}>
       <label htmlFor={`${id}-numero`} className="mb-1.5 block text-sm font-medium text-ink-700">
         {label}
-        {required && <span className="ml-0.5 text-danger-500">*</span>}
       </label>
-      <div className="flex gap-2">
+      <div className="relative flex gap-2">
+        {required && <RequiredBadge />}
         <PaisSelect
           id={`${id}-pais`}
           value={pais}

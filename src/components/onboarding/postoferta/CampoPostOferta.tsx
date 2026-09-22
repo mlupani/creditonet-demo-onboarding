@@ -20,6 +20,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { OrigenCampoBadge } from "@/components/ui/OrigenBadge";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { PaisSelect } from "@/components/ui/PaisSelect";
+import { RequiredBadge } from "@/components/ui/RequiredBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 
 const INPUT_MODE: Partial<Record<CampoDef["tipo"], "numeric" | "email" | "tel">> = {
@@ -80,11 +81,13 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <label htmlFor={id} className="text-sm font-medium text-ink-700">
             {campo.label}
-            {obligatorio && <span className="ml-0.5 text-danger-500">*</span>}
           </label>
           {badge}
         </div>
-        <PaisSelect id={id} value={valor} onChange={onChange} invalid={!!error} />
+        <div className="relative">
+          <PaisSelect id={id} value={valor} onChange={onChange} invalid={!!error} />
+          {obligatorio && <RequiredBadge />}
+        </div>
         {error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
       </div>
     );
