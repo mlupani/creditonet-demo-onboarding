@@ -27,6 +27,7 @@ const INPUT_MODE: Partial<Record<CampoDef["tipo"], "numeric" | "email" | "tel">>
   cbu: "numeric",
   codigoPostal: "numeric",
   telefono: "tel",
+  caracteristica: "tel",
   email: "email",
 };
 
