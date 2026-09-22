@@ -83,4 +83,12 @@ pregunta por Telegram y retomar la sesión cuando llegue la respuesta.
   quién haya tomado el job).
 - Nunca mergear un PR sin confirmación explícita del humano.
 
-hola como estas
+## Notificaciones (Telegram)
+
+Al abrir un PR o terminar una tarea, notificar por Telegram:
+
+curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+  --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+  --data-urlencode "text=<resumen breve: qué se hizo, link al PR>"
+
+No mandar el diff ni texto largo — un resumen de una línea alcanza.
