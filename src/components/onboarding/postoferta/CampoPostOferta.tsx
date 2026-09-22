@@ -94,18 +94,36 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
   }
 
   if (campo.tipo === "select" && !bloqueado) {
-    const opciones = campo.opciones?.(app.postOferta[campo.pantalla]) ?? [];
+    let opciones = campo.opciones?.(app.postOferta[campo.pantalla]) ?? [];
+    // Post-oferta · Banco de acreditación: solo los bancos elegidos en Datos laborales (previo)
+    const esBancoAcreditacion = campo.id === "banco" && campo.pantalla === "laboral";
+    if (esBancoAcreditacion) {
+      const previos = app.laboral.empleadores.map((e) => e.banco).filter(Boolean);
+      // Si hay bancos previos declarados, filtrar opciones a ese subconjunto
+      if (previos.length > 0) {
+        const disponibles = [...new Set(previos)];
+        // Mantener coherencia con el orden de Parámetros
+        opciones = opciones.filter((o) => disponibles.includes(o));
+        // Si la lista filtrada queda vacía (banco no catalogado), usar los previos directo
+        if (opciones.length === 0) opciones = disponibles;
+      }
+    }
+    // El banco es el único editable de la acreditación; el CBU ya es A_CARGAR
+    const hintBanco =
+      esBancoAcreditacion
+        ? "Solo se listan los bancos elegidos en Datos laborales. Elegí uno para la acreditación."
+        : hint;
     return (
       <SelectField
         id={id}
         label={campo.label}
         required={obligatorio}
-        value={valor}
+        value={bancosDe(valor)[0] ?? valor}
         onChange={onChange}
         options={opciones.map((o) => ({ value: o, label: o }))}
         badge={badge}
         error={error}
-        hint={hint}
+        hint={hintBanco ?? hint}
         className={className}
       />
     );

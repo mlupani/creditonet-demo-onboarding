@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
 import { estadoPantallasPostOferta } from "@/lib/validation";
@@ -17,8 +17,11 @@ import {
   MotivoModal,
   PosicionClienteModal,
 } from "@/components/bandeja/ModalesBandeja";
+import { CREDITOS_DB } from "@/lib/creditos-db";
+import type { CreditApplication } from "@/lib/types";
 import {
   IconAlertTriangle,
+  IconChevronDown,
   IconClock,
   IconFileStack,
   IconPlus,
@@ -73,17 +76,45 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
 
 export default function BandejaCanalVentaPage() {
   const router = useRouter();
-  const { app, paso, hidratado, reiniciarDemo, retomarObservada, anularCredito } =
-    useApplication();
+  const {
+    app,
+    paso,
+    hidratado,
+    reiniciarDemo,
+    retomarObservada,
+    anularCredito,
+    patchApp,
+    setPaso,
+    setPantallaActual,
+  } = useApplication();
   const [busqueda, setBusqueda] = useState("");
   const [modal, setModal] = useState<ModalId | null>(null);
+  const [colapsados, setColapsados] = useState<Record<Grupo, boolean>>({
+    TRAMITE: false,
+    OBSERVADAS: false,
+    ANALISIS: false,
+    RESUELTAS: false,
+  });
+  const [pagina, setPagina] = useState<Record<Grupo, number>>({
+    TRAMITE: 1,
+    OBSERVADAS: 1,
+    ANALISIS: 1,
+    RESUELTAS: 1,
+  });
+  const POR_PAGINA = 5;
 
   const cliente = app.cliente;
   const identificada = app.identificacion.consultado && cliente !== null;
 
   const q = busqueda.trim();
-  const coincide = identificada && coincideCliente(cliente!, busqueda);
-  const grupoActual = GRUPO_POR_ESTADO[app.estado];
+
+  useEffect(() => {
+    setPagina({ TRAMITE: 1, OBSERVADAS: 1, ANALISIS: 1, RESUELTAS: 1 });
+  }, [q]);
+
+  function toggleColapso(g: Grupo) {
+    setColapsados((prev) => ({ ...prev, [g]: !prev[g] }));
+  }
 
   function irASolicitud() {
     if (app.estado === "OBSERVADO") retomarObservada();
@@ -95,129 +126,88 @@ export default function BandejaCanalVentaPage() {
     router.push("/onboarding");
   }
 
-  // --- Datos de la fila de la bandeja ---
-  const pasoMeta = STEPS_ORIGINACION[Math.min(Math.max(paso, 1), STEPS_ORIGINACION.length) - 1];
-  let detalle = "";
-  let vencimiento = "";
-
-  if (app.estado === "BORRADOR" || app.estado === "EN_TRAMITE") {
-    if (app.etapa === "ORIGINACION") {
-      detalle = `Originación · paso ${pasoMeta.numero} de ${STEPS_ORIGINACION.length}: ${pasoMeta.titulo}`;
-    } else {
-      const estados = estadoPantallasPostOferta(app);
-      detalle = `Carga post-oferta · ${estados.filter((e) => e.completa).length} de ${
-        estados.length
-      } pantallas completas`;
+  function abrirCreditoDB(cred: (typeof CREDITOS_DB)[number]) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _bandeja, _descripcion, ...rest } = cred as unknown as Record<string, unknown>;
+    const data = rest as unknown as CreditApplication;
+    patchApp(data);
+    // Derivar paso/pantalla según etapa para que /onboarding muestre la pantalla correcta
+    if (data.etapa === "POST_OFERTA") {
+      // En post-oferta la navegación usa pantallas, no paso de originación
+      // Buscar primera pantalla incompleta o dejar la primera
+      const estados = estadoPantallasPostOferta(data);
+      const primeraIncompleta = estados.find((e) => !e.completa);
+      if (primeraIncompleta) setPantallaActual(primeraIncompleta.id);
+      else setPantallaActual("personales");
+    } else if (data.etapa === "ORIGINACION") {
+      // Originación: estimar paso según datos
+      if (data.riesgo.estado === "COMPLETO" && data.oferta.planId) setPaso(6);
+      else if (data.laboral.ingresoNeto > 0) setPaso(5);
+      else if (data.identidadVerificada) setPaso(4);
+      else if (data.configuracion.productoId) setPaso(3);
+      else setPaso(1);
     }
-    if (app.fechaSolicitud)
-      vencimiento = `Condiciones vigentes hasta ${sumarDias(app.fechaSolicitud, 30)}`;
-  } else if (app.estado === "OBSERVADO") {
-    const obs = app.analista.observacion;
-    detalle = obs ? `${obs.motivo}: ${obs.nota}` : "Observada por el analista";
-    if (obs) vencimiento = `Corregir antes del ${sumarDias(obs.fecha, 15)}`;
-  } else if (app.estado === "PREAPROBADO" || app.estado === "ANALISIS_TOMADO") {
-    detalle = app.analista.reenviada
-      ? "Reenviada con correcciones · en la bandeja del analista"
-      : app.estado === "ANALISIS_TOMADO"
-        ? "Tomada por el analista de riesgo · en revisión"
-        : "Preaprobada · pendiente de toma en la bandeja del analista";
-  } else if (app.estado === "ANULADO") {
-    const obs = app.analista.observacion;
-    detalle = obs?.nota ? `Anulada · ${obs.nota}` : "Anulada: el cliente desistió de la operación.";
-  } else if (app.estado === "PARA_LIQUIDAR") {
-    detalle = "Aprobada · en la Bandeja de Liquidación (Tesorería)";
-  } else if (app.estado === "RECHAZADO" && app.rechazo) {
-    const { origen, codigos, motivo, fecha } = app.rechazo;
-    const detalleRechazo: Record<typeof origen, string> = {
-      INSTITUCIONAL: `Rechazo por regla institucional · ${codigos.join(", ")}`,
-      MOTOR: `Rechazo automático del motor · ${codigos.join(", ")}`,
-      SIN_LINEA: `Sin línea disponible · ${codigos.join(", ")}`,
-      ANALISTA: `Rechazo del analista · ${codigos.join(", ")} ${motivo}`,
-    };
-    detalle = detalleRechazo[origen];
-    if (origen === "MOTOR") vencimiento = `Carencia hasta ${sumarDias(fecha, 30)}`;
+    // OBSERVADO se retoma como POST_OFERTA al continuar
+    if (data.estado === "OBSERVADO") {
+      // patch ya dejó estado OBSERVADO, retomarObservada lo pasa a POST_OFERTA al clic
+      // No hacemos retomar aquí, lo hará irASolicitud al continuar
+    }
+    router.push("/onboarding");
   }
 
-  // Acciones de la fila según el grupo (Bandeja de solicitudes).
-  const posicion = { label: "Posición cliente", onClick: () => setModal("posicion") };
-  const anular = { label: "Anular", onClick: () => setModal("anular") };
-  const verEstado = { label: "Ver estado", onClick: () => setModal("estado") };
-  const acciones: { label: string; onClick: () => void }[] =
-    grupoActual === "TRAMITE"
-      ? [{ label: "Continuar carga", onClick: irASolicitud }, anular, posicion]
-      : grupoActual === "OBSERVADAS"
-        ? [{ label: "Tramitar observación", onClick: irASolicitud }, anular, posicion]
-        : grupoActual === "ANALISIS"
-          ? [verEstado, { label: "Agregar comentario", onClick: () => setModal("comentario") }, posicion]
-          : [
-              verEstado,
-              ...(app.estado === "RECHAZADO" || app.estado === "ANULADO"
-                ? [
-                    {
-                      label: app.estado === "ANULADO" ? "Ver motivo anulación" : "Ver motivo rechazo",
-                      onClick: () => setModal("motivo"),
-                    },
-                  ]
-                : []),
-              posicion,
-            ];
+  function detallePara(c: CreditApplication, pasoActual: number) {
+    const pasoMeta = STEPS_ORIGINACION[Math.min(Math.max(pasoActual, 1), STEPS_ORIGINACION.length) - 1];
+    if (c.estado === "BORRADOR" || (c.estado === "EN_TRAMITE" && c.etapa === "ORIGINACION")) {
+      if (!c.riesgo.planId && c.riesgo.estado !== "COMPLETO") {
+        // Sin oferta aún
+        if (c.etapa === "ORIGINACION" && c.laboral.ingresoNeto === 0) {
+          return `Originación · paso ${pasoMeta.numero}: ${pasoMeta.titulo} · sin oferta`;
+        }
+        return `Originación · ${pasoMeta.titulo} · oferta pendiente`;
+      }
+      return `Originación · paso ${pasoMeta.numero} de ${STEPS_ORIGINACION.length}: ${pasoMeta.titulo}`;
+    }
+    if (c.estado === "EN_TRAMITE" && c.etapa === "POST_OFERTA") {
+                    const estados = estadoPantallasPostOferta(c);
+                      const completas = estados.filter((e) => e.completa).length;
+                      const base = `Carga post-oferta · ${completas} de ${estados.length} pantallas`;
+                      if (c.oferta.aceptada || c.oferta.planId) {
+                        return `${base} · ${formatARS(c.oferta.montoSolicitado)} · ${c.oferta.plazo} cuotas · TNA ${c.oferta.tna}%`;
+                      }
+                      return base;
+    }
+    if (c.estado === "OBSERVADO") {
+      const obs = c.analista.observacion;
+      return obs ? `${obs.motivo}: ${obs.nota}` : "Observada por el analista";
+    }
+    if (c.estado === "PREAPROBADO" || c.estado === "ANALISIS_TOMADO") {
+      return c.analista.reenviada
+        ? "Reenviada con correcciones · en bandeja del analista"
+        : c.estado === "ANALISIS_TOMADO"
+          ? "Tomada por analista · en revisión"
+          : "Preaprobada · pendiente de toma";
+    }
+    if (c.estado === "PARA_LIQUIDAR") return "Aprobada · en Bandeja de Liquidación (Tesorería)";
+    if (c.estado === "RECHAZADO" && c.rechazo) {
+      const { origen, codigos, motivo } = c.rechazo;
+      const map: Record<typeof origen, string> = {
+        INSTITUCIONAL: `Rechazo institucional · ${codigos.join(", ")}`,
+        MOTOR: `Rechazo motor · ${codigos.join(", ")}`,
+        SIN_LINEA: `Sin línea · ${codigos.join(", ")}`,
+        ANALISTA: `Rechazo analista · ${codigos.join(", ")} ${motivo}`,
+      };
+      return map[origen];
+    }
+    if (c.estado === "ANULADO") return "Anulada · cliente desistió";
+    return `${c.estado} · ${formatARS(c.oferta.montoSolicitado)} · ${c.oferta.plazo} cuotas`;
+  }
 
-  const fila = (
-    <div className="px-5 py-4">
-      <div className="grid gap-3 md:grid-cols-[1fr_1.3fr_0.9fr_1.6fr] md:items-center md:gap-4">
-        <div>
-          <p className="font-mono text-sm font-bold text-brand-700">
-            {app.numeroCredito ?? "Sin ID"}
-          </p>
-          <p className="text-[11px] text-ink-400">
-            {app.numeroCredito
-              ? `Solicitada ${app.fechaSolicitud ?? ""}`
-              : "Se genera al presionar Solicitar"}
-          </p>
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-ink-900">
-            {cliente?.nombre} {cliente?.apellido}
-          </p>
-          <p className="text-xs text-ink-500">
-            DNI {formatDNI(cliente?.dni ?? "")} · ID de Cliente {app.numeroCliente}
-          </p>
-        </div>
-        <div>
-          <EstadoBadge estado={app.estado} />
-          {app.oferta.aceptada && (
-            <p className="mt-1 text-[11px] tabular-nums text-ink-500">
-              {formatARS(app.oferta.montoSolicitado)} · {app.oferta.plazo} cuotas
-            </p>
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm text-ink-700">{detalle}</p>
-          {vencimiento && (
-            <p
-              className={`mt-0.5 text-[11px] font-medium ${
-                app.estado === "OBSERVADO" ? "text-warning-700" : "text-ink-400"
-              }`}
-            >
-              {vencimiento}
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2 md:justify-end">
-        {acciones.map((a, i) => (
-          <Button
-            key={a.label}
-            size="sm"
-            variant={i === 0 ? (app.estado === "OBSERVADO" ? "primary" : "outline") : "ghost"}
-            onClick={a.onClick}
-          >
-            {a.label}
-          </Button>
-        ))}
-      </div>
-    </div>
-  );
+  function vencimientoPara(c: CreditApplication, pasoActual: number) {
+    if (c.estado === "OBSERVADO" && c.analista.observacion) return `Corregir antes del ${sumarDias(c.analista.observacion.fecha, 15)}`;
+    if (c.fechaSolicitud) return `Condiciones vigentes hasta ${sumarDias(c.fechaSolicitud, 30)}`;
+    if (c.estado === "BORRADOR") return "Se genera al presionar Solicitar";
+    return "";
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -253,33 +243,154 @@ export default function BandejaCanalVentaPage() {
         </div>
       </div>
 
-      <div className="mt-8 space-y-7">
+      <div className="mt-8 space-y-5">
         {GRUPOS.map((g) => {
-          const filas = hidratado && coincide && grupoActual === g.id ? 1 : 0;
+          const dbFiltrados = CREDITOS_DB.filter(
+            (c) => GRUPO_POR_ESTADO[c.estado] === g.id && (!q || (c.cliente && coincideCliente(c.cliente, q)))
+          );
+          const appGrupo = hidratado ? GRUPO_POR_ESTADO[app.estado] : null;
+          const appCoincide = hidratado && cliente && coincideCliente(cliente, busqueda);
+          const mostrarApp =
+            appCoincide && appGrupo === g.id && !CREDITOS_DB.some((c) => c.numeroCredito && c.numeroCredito === app.numeroCredito);
+          const totalFilas = dbFiltrados.length + (mostrarApp ? 1 : 0);
+          const colapsado = colapsados[g.id];
+          const paginaActual = pagina[g.id] ?? 1;
+          const totalPaginas = Math.ceil(dbFiltrados.length / POR_PAGINA) || 1;
+          const paginaSafe = Math.min(paginaActual, totalPaginas);
+          const inicio = (paginaSafe - 1) * POR_PAGINA;
+          const paginados = dbFiltrados.slice(inicio, inicio + POR_PAGINA);
+
           return (
-            <section key={g.id} aria-label={g.titulo}>
-              <div className="mb-2 flex items-center gap-2 border-b border-ink-200 pb-2">
-                <h2 className="text-xs font-bold uppercase tracking-widest text-ink-700">
-                  {g.titulo}
-                </h2>
-                <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">
-                  {filas}
+            <section key={g.id} aria-label={g.titulo} className="rounded-xl border border-ink-200 bg-white shadow-xs">
+              <button
+                onClick={() => toggleColapso(g.id)}
+                className="flex w-full items-center justify-between gap-2 px-5 py-3 text-left hover:bg-ink-25 transition"
+                aria-expanded={!colapsado}
+              >
+                <span className="flex items-center gap-2">
+                  <IconChevronDown width={16} height={16} className={`text-ink-500 transition-transform ${colapsado ? "-rotate-90" : ""}`} />
+                  <span className="text-xs font-bold uppercase tracking-widest text-ink-700">{g.titulo}</span>
+                  <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">{totalFilas}</span>
+                  {g.id === "TRAMITE" && totalFilas > POR_PAGINA && !colapsado && (
+                    <span className="hidden text-[11px] text-ink-400 sm:inline">· pág. {paginaSafe}/{totalPaginas} · 5 por página</span>
+                  )}
                 </span>
-              </div>
-              <Card className="overflow-hidden">
-                {!hidratado ? (
-                  <p className="px-5 py-6 text-center text-sm text-ink-400">Cargando…</p>
-                ) : filas ? (
-                  fila
-                ) : (
-                  <p className="flex items-center justify-center gap-2 px-5 py-6 text-center text-sm text-ink-400">
-                    <IconFileStack width={15} height={15} />
-                    {identificada && q && !coincide
-                      ? `Sin coincidencias para “${busqueda}”.`
-                      : g.vacio}
-                  </p>
-                )}
-              </Card>
+                <IconChevronDown width={16} height={16} className={`shrink-0 text-ink-400 transition-transform ${colapsado ? "-rotate-180" : ""}`} />
+              </button>
+
+              {!colapsado && (
+                <>
+                  {!hidratado ? (
+                    <p className="px-5 py-6 text-center text-sm text-ink-400">Cargando…</p>
+                  ) : totalFilas === 0 ? (
+                    <p className="flex items-center justify-center gap-2 px-5 py-6 text-center text-sm text-ink-400">
+                      <IconFileStack width={15} height={15} />
+                      {q ? `Sin coincidencias para “${busqueda}”.` : g.vacio}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="divide-y divide-ink-100 border-t border-ink-100">
+                        {mostrarApp && paginaSafe === 1 && (
+                          <div className="px-5 py-4 bg-brand-50/40">
+                            <div className="mb-2 inline-flex items-center gap-1 rounded bg-brand-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">En curso</div>
+                            <div className="grid gap-3 md:grid-cols-[1fr_1.3fr_0.9fr_1.6fr] md:items-center md:gap-4">
+                              <div>
+                                <p className="font-mono text-sm font-bold text-brand-700">{app.numeroCredito ?? "Sin ID"}</p>
+                                <p className="text-[11px] text-ink-400">{app.numeroCredito ? `Solicitada ${app.fechaSolicitud ?? ""}` : "Se genera al presionar Solicitar"}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-ink-900">{cliente?.nombre} {cliente?.apellido}</p>
+                                <p className="text-xs text-ink-500">DNI {formatDNI(cliente?.dni ?? "")} · ID {app.numeroCliente}</p>
+                                {app.oferta.planId && <p className="mt-1 text-xs font-semibold tabular-nums text-ink-700">{formatARS(app.oferta.montoSolicitado)} · {app.oferta.plazo} cuotas</p>}
+                              </div>
+                              <div>
+                                <EstadoBadge estado={app.estado} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm text-ink-700">{detallePara(app, paso)}</p>
+                                <p className="mt-0.5 text-[11px] font-medium text-ink-400">{vencimientoPara(app, paso)}</p>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2 md:justify-end">
+                              <Button size="sm" variant={app.estado === "OBSERVADO" ? "primary" : "outline"} onClick={irASolicitud}>
+                                {app.estado === "OBSERVADO" ? "Tramitar observación" : "Continuar carga"}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setModal("posicion")}>Posición cliente</Button>
+                            </div>
+                          </div>
+                        )}
+                        {paginados.map((cred) => {
+                          const cli = cred.cliente;
+                          const det = detallePara(cred as unknown as CreditApplication, paso);
+                          const venc = vencimientoPara(cred as unknown as CreditApplication, paso);
+                          const conOferta = cred.oferta.planId !== null && cred.riesgo.estado === "COMPLETO";
+                          const esTramite = g.id === "TRAMITE";
+                          const esObservada = g.id === "OBSERVADAS";
+                          let accionPrincipal: { label: string; variant: "outline" | "primary" } = { label: "Ver datos", variant: "outline" };
+                          if (esTramite) accionPrincipal = { label: "Continuar carga", variant: "outline" };
+                          else if (esObservada) accionPrincipal = { label: "Tramitar observación", variant: "primary" };
+                          else if (g.id === "ANALISIS") accionPrincipal = { label: "Ver estado", variant: "outline" };
+
+                          return (
+                            <div key={cred.numeroCredito ?? cred.cliente?.dni ?? cred._descripcion} className="px-5 py-4 hover:bg-ink-25 transition">
+                              <div className="grid gap-3 md:grid-cols-[1fr_1.3fr_0.9fr_1.6fr] md:items-center md:gap-4">
+                                <div>
+                                  <p className="font-mono text-sm font-bold text-brand-700">{cred.numeroCredito ?? "Sin ID"}</p>
+                                  <p className="text-[11px] text-ink-400">{cred.numeroCredito ? `Solicitada ${cred.fechaSolicitud ?? ""}` : "Se genera al presionar Solicitar"}</p>
+                                  {cred.oferta.planId && <p className="mt-1 text-[11px] font-medium text-ink-500">{cred.configuracion.productoId} · {cred.configuracion.organismoId}</p>}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-ink-900">{cli ? `${cli.nombre} ${cli.apellido}` : "—"}</p>
+                                  <p className="text-xs text-ink-500">{cli ? `DNI ${formatDNI(cli.dni)} · ID ${cred.numeroCliente ?? "—"}` : "Sin cliente"}</p>
+                                  {conOferta ? (
+                                    <p className="mt-1 text-xs font-semibold tabular-nums text-ink-700">{formatARS(cred.oferta.montoSolicitado)} · {cred.oferta.plazo} cuotas · {formatARS(cred.oferta.valorCuota)}/mes</p>
+                                  ) : (
+                                    cred.estado !== "BORRADOR" && <p className="mt-1 text-xs italic text-ink-400">Sin oferta aún</p>
+                                  )}
+                                </div>
+                                <div>
+                                  <EstadoBadge estado={cred.estado} />
+                                  {conOferta && <p className="mt-1 text-[11px] tabular-nums text-ink-500">TNA {cred.oferta.tna}% · {cred.oferta.primeraCuotaVencimiento}</p>}
+                                  {cred._descripcion && <p className="mt-1 text-[10px] italic leading-tight text-ink-400 line-clamp-2">{cred._descripcion}</p>}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm text-ink-700">{det}</p>
+                                  {venc && <p className={`mt-0.5 text-[11px] font-medium ${cred.estado === "OBSERVADO" ? "text-warning-700" : "text-ink-400"}`}>{venc}</p>}
+                                  {cred.etapa === "POST_OFERTA" && conOferta && (
+                                    <p className="mt-1 text-[11px] text-ink-500">{estadoPantallasPostOferta(cred as unknown as CreditApplication).filter((e) => e.completa).length}/{estadoPantallasPostOferta(cred as unknown as CreditApplication).length} pantallas post-oferta</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2 md:justify-end">
+                                <Button size="sm" variant={accionPrincipal.variant} onClick={() => abrirCreditoDB(cred)}>{accionPrincipal.label}</Button>
+                                <Button size="sm" variant="ghost" onClick={() => abrirCreditoDB(cred)}>Ver préstamo</Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {dbFiltrados.length > POR_PAGINA && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 bg-ink-25 px-5 py-3">
+                          <p className="text-xs text-ink-500">Mostrando {inicio + 1}–{Math.min(inicio + POR_PAGINA, dbFiltrados.length)} de {dbFiltrados.length} · 5 por página</p>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" disabled={paginaSafe <= 1} onClick={() => setPagina((p) => ({ ...p, [g.id]: paginaSafe - 1 }))}>Anterior</Button>
+                            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) => (
+                              <button
+                                key={n}
+                                onClick={() => setPagina((p) => ({ ...p, [g.id]: n }))}
+                                className={`min-w-8 rounded-lg px-2.5 py-1.5 text-xs font-bold ${n === paginaSafe ? "bg-brand-600 text-white shadow-sm" : "bg-white text-ink-700 hover:bg-ink-100 border border-ink-200"}`}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                            <Button size="sm" variant="ghost" disabled={paginaSafe >= totalPaginas} onClick={() => setPagina((p) => ({ ...p, [g.id]: paginaSafe + 1 }))}>Siguiente</Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
             </section>
           );
         })}

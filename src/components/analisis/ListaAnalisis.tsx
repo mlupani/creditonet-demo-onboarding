@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { CANALES, ORGANISMOS, PRODUCTOS, SESION_ANALISTA, VENDEDORES, nombreOpcion } from "@/lib/config";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
@@ -8,7 +8,8 @@ import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconFileStack, IconSearch } from "@/components/icons";
+import { IconChevronDown, IconFileStack, IconSearch } from "@/components/icons";
+import { CREDITOS_DB } from "@/lib/creditos-db";
 
 type Pestana = "PEND" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
 
@@ -80,15 +81,38 @@ const COLUMNAS = [
 ];
 
 export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
-  const { app } = useApplication();
+  const { app, patchApp } = useApplication();
   const [eleccion, setEleccion] = useState<Pestana | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [canal, setCanal] = useState("");
+  const [colapsado, setColapsado] = useState(false);
+  const [pagina, setPagina] = useState<Record<Pestana, number>>({
+    PEND: 1,
+    PRE: 1,
+    OBS: 1,
+    COFE: 1,
+    RECH: 1,
+    FEL: 1,
+    AFEL: 1,
+    LIQ: 1,
+  });
+  const POR_PAGINA = 5;
 
   const cliente = app.cliente;
   const propia = PESTANAS.find((p) => p.estados.includes(app.estado));
-  // Sin elección explícita se muestra la pestaña donde está la solicitud.
+  // Sin elección explícita se muestra la pestaña donde está la solicitud; si no hay solicitud, default PRE.
   const activa = PESTANAS.find((p) => p.id === (eleccion ?? propia?.id ?? "PRE")) ?? PESTANAS[0];
+
+  // DB simulada: créditos filtrados por pestaña, canal y búsqueda
+  function creditosDBEnPestana(p: Pestana) {
+    return CREDITOS_DB.filter((c) => {
+      if (!PESTANAS.find((x) => x.id === p)!.estados.includes(c.estado)) return false;
+      if (canal && c.configuracion.canalId !== canal) return false;
+      if (busqueda.trim() && c.cliente && !coincideCliente(c.cliente, busqueda)) return false;
+      if (busqueda.trim() && !c.cliente) return false;
+      return true;
+    });
+  }
 
   const visible =
     cliente !== null &&
@@ -96,14 +120,46 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
     propia !== undefined &&
     (!canal || app.configuracion.canalId === canal) &&
     coincideCliente(cliente, busqueda);
-  const filas = (p: Pestana) => (visible && propia?.id === p ? 1 : 0);
 
-  const fecha =
+  // Filas = DB + solicitud en curso (si coincide y no está ya en DB)
+  const filas = (p: Pestana) => {
+    const dbCount = creditosDBEnPestana(p).length;
+    const extra = visible && propia?.id === p && !CREDITOS_DB.some((c) => c.numeroCredito === app.numeroCredito) ? 1 : 0;
+    return dbCount + extra;
+  };
+
+  const listaActiva = creditosDBEnPestana(activa.id);
+  const totalPaginas = Math.ceil(listaActiva.length / POR_PAGINA) || 1;
+  const paginaActual = Math.min(pagina[activa.id] ?? 1, totalPaginas);
+  const inicio = (paginaActual - 1) * POR_PAGINA;
+  const paginados = listaActiva.slice(inicio, inicio + POR_PAGINA);
+
+  // Reset paginación al cambiar filtros o pestaña
+  const resetPagina = (p: Pestana) => setPagina((prev) => ({ ...prev, [p]: 1 }));
+
+  const fechaApp =
     app.estado === "PARA_LIQUIDAR"
       ? app.fechaAprobacion
       : app.estado === "OBSERVADO"
         ? app.analista.observacion?.fecha
         : (app.fechaEnvioAnalisis ?? app.fechaSolicitud);
+
+  useEffect(() => {
+    setPagina((prev) => ({ ...prev, [activa.id]: 1 }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busqueda, canal, activa.id]);
+
+  useEffect(() => {
+    setColapsado(false);
+  }, [activa.id]);
+
+  function cargarCreditoDB(c: (typeof CREDITOS_DB)[number]) {
+    const { _bandeja: _b, _descripcion: _d, ...rest } = c as unknown as Record<string, unknown>;
+    void _b;
+    void _d;
+    patchApp(rest as unknown as typeof app);
+    onAbrir();
+  }
 
   return (
     <div className="space-y-4">
@@ -146,7 +202,10 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
               key={p.id}
               role="tab"
               aria-selected={seleccionada}
-              onClick={() => setEleccion(p.id)}
+              onClick={() => {
+                setEleccion(p.id);
+                setColapsado(false);
+              }}
               title={p.titulo}
               className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-bold tracking-wide transition ${
                 seleccionada
@@ -167,77 +226,163 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
         })}
       </div>
 
-      <Card className="overflow-hidden">
-        {filas(activa.id) === 0 ? (
-          <p className="flex items-center justify-center gap-2 px-5 py-8 text-center text-sm text-ink-400">
-            <IconFileStack width={15} height={15} />
-            {propia && (busqueda.trim() || canal) && propia.id === activa.id
-              ? "Ninguna solicitud coincide con la búsqueda o el filtro."
-              : activa.vacio}
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[64rem] text-left text-[13px]">
-              <thead>
-                <tr className="border-b border-ink-100 bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                  {COLUMNAS.map((c) => (
-                    <th key={c} className="px-3 py-2.5 font-semibold">
-                      {c}
-                    </th>
-                  ))}
-                  <th className="px-3 py-2.5" />
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="cursor-pointer align-middle transition hover:bg-ink-25" onClick={onAbrir}>
-                  <td className="px-3 py-3">
-                    <p className="font-semibold text-ink-900">
-                      {cliente!.nombre} {cliente!.apellido}
-                    </p>
-                    <p className="font-mono text-[11px] font-bold text-brand-700">
-                      {app.numeroCredito}
-                    </p>
-                  </td>
-                  <td className="px-3 py-3 tabular-nums text-ink-700">{formatDNI(cliente!.dni)}</td>
-                  <td className="px-3 py-3 font-mono tabular-nums text-ink-700">
-                    {app.numeroCliente ?? "—"}
-                  </td>
-                  <td className="px-3 py-3 text-ink-700">
-                    {nombreOpcion(PRODUCTOS, app.configuracion.productoId)}
-                  </td>
-                  <td className="px-3 py-3 text-ink-700">
-                    {nombreOpcion(ORGANISMOS, app.configuracion.organismoId)}
-                  </td>
-                  <td className="px-3 py-3 text-ink-700">
-                    {nombreOpcion(VENDEDORES, app.configuracion.vendedorId)}
-                  </td>
-                  <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">
-                    {formatARS(app.oferta.montoSolicitado)}
-                  </td>
-                  <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">
-                    {formatARS(app.oferta.valorCuota)}
-                  </td>
-                  <td className="px-3 py-3 tabular-nums text-ink-700">{app.oferta.plazo}</td>
-                  <td className="px-3 py-3">
-                    <EstadoBadge estado={app.estado} />
-                  </td>
-                  <td className="px-3 py-3 text-ink-700">{fecha ?? "—"}</td>
-                  <td className="px-3 py-3 text-ink-700">
-                    {app.estado === "OBSERVADO" || !app.analista.tomado
-                      ? "Sin asignar"
-                      : SESION_ANALISTA.nombre}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <Button size="sm" variant="outline" onClick={onAbrir}>
-                      Abrir
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2">
+        <button onClick={() => setColapsado((v) => !v)} className="flex items-center gap-2 text-left">
+          <IconChevronDown width={16} height={16} className={`text-ink-500 transition-transform ${colapsado ? "-rotate-90" : ""}`} />
+          <span className="text-xs font-bold uppercase tracking-widest text-ink-700">{activa.titulo}</span>
+          <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">
+            {filas(activa.id)}
+          </span>
+          {listaActiva.length > POR_PAGINA && !colapsado && (
+            <span className="hidden text-[11px] text-ink-400 sm:inline">
+              · pág. {paginaActual}/{totalPaginas} · 5 por página
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setColapsado((v) => !v)}
+          aria-label={colapsado ? "Expandir" : "Colapsar"}
+          className="rounded p-1 hover:bg-ink-100 transition"
+        >
+          <IconChevronDown width={16} height={16} className={`text-ink-400 transition-transform ${colapsado ? "-rotate-180" : ""}`} />
+        </button>
+      </div>
+
+      {!colapsado && (
+        <Card className="overflow-hidden">
+          {filas(activa.id) === 0 ? (
+            <p className="flex items-center justify-center gap-2 px-5 py-8 text-center text-sm text-ink-400">
+              <IconFileStack width={15} height={15} />
+              {propia && (busqueda.trim() || canal) && propia.id === activa.id
+                ? "Ninguna solicitud coincide con la búsqueda o el filtro."
+                : activa.vacio}
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[64rem] text-left text-[13px]">
+                  <thead>
+                    <tr className="border-b border-ink-100 bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                      {COLUMNAS.map((c) => (
+                        <th key={c} className="px-3 py-2.5 font-semibold">
+                          {c}
+                        </th>
+                      ))}
+                      <th className="px-3 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginados.map((c) => {
+                      const cli = c.cliente!;
+                      const fecha =
+                        c.estado === "PARA_LIQUIDAR"
+                          ? c.fechaAprobacion
+                          : c.estado === "OBSERVADO"
+                            ? c.analista.observacion?.fecha
+                            : (c.fechaEnvioAnalisis ?? c.fechaSolicitud);
+                      return (
+                        <tr
+                          key={c.numeroCredito ?? cli.dni}
+                          className="cursor-pointer align-middle transition hover:bg-ink-25"
+                          onClick={() => cargarCreditoDB(c)}
+                          title={c._descripcion}
+                        >
+                          <td className="px-3 py-3">
+                            <p className="font-semibold text-ink-900">
+                              {cli.nombre} {cli.apellido}
+                            </p>
+                            <p className="font-mono text-[11px] font-bold text-brand-700">
+                              {c.numeroCredito ?? "Sin ID"}
+                            </p>
+                          </td>
+                          <td className="px-3 py-3 tabular-nums text-ink-700">{formatDNI(cli.dni)}</td>
+                          <td className="px-3 py-3 font-mono tabular-nums text-ink-700">{c.numeroCliente ?? "—"}</td>
+                          <td className="px-3 py-3 text-ink-700">{nombreOpcion(PRODUCTOS, c.configuracion.productoId)}</td>
+                          <td className="px-3 py-3 text-ink-700">{nombreOpcion(ORGANISMOS, c.configuracion.organismoId)}</td>
+                          <td className="px-3 py-3 text-ink-700">{nombreOpcion(VENDEDORES, c.configuracion.vendedorId)}</td>
+                          <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(c.oferta.montoSolicitado)}</td>
+                          <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(c.oferta.valorCuota)}</td>
+                          <td className="px-3 py-3 tabular-nums text-ink-700">{c.oferta.plazo}</td>
+                          <td className="px-3 py-3">
+                            <EstadoBadge estado={c.estado} />
+                          </td>
+                          <td className="px-3 py-3 text-ink-700">{fecha ?? "—"}</td>
+                          <td className="px-3 py-3 text-ink-700">
+                            {c.estado === "OBSERVADO" || !c.analista.tomado ? "Sin asignar" : SESION_ANALISTA.nombre}
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            <Button size="sm" variant="outline" onClick={() => cargarCreditoDB(c)}>
+                              Abrir
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {visible && propia?.id === activa.id && !CREDITOS_DB.some((c) => c.numeroCredito === app.numeroCredito) && cliente && paginaActual === 1 && (
+                      <tr className="cursor-pointer align-middle bg-brand-50/50 transition hover:bg-ink-25" onClick={onAbrir}>
+                        <td className="px-3 py-3">
+                          <p className="font-semibold text-ink-900">
+                            {cliente.nombre} {cliente.apellido} <span className="ml-1 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] text-white">En curso</span>
+                          </p>
+                          <p className="font-mono text-[11px] font-bold text-brand-700">{app.numeroCredito}</p>
+                        </td>
+                        <td className="px-3 py-3 tabular-nums text-ink-700">{formatDNI(cliente.dni)}</td>
+                        <td className="px-3 py-3 font-mono tabular-nums text-ink-700">{app.numeroCliente ?? "—"}</td>
+                        <td className="px-3 py-3 text-ink-700">{nombreOpcion(PRODUCTOS, app.configuracion.productoId)}</td>
+                        <td className="px-3 py-3 text-ink-700">{nombreOpcion(ORGANISMOS, app.configuracion.organismoId)}</td>
+                        <td className="px-3 py-3 text-ink-700">{nombreOpcion(VENDEDORES, app.configuracion.vendedorId)}</td>
+                        <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(app.oferta.montoSolicitado)}</td>
+                        <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(app.oferta.valorCuota)}</td>
+                        <td className="px-3 py-3 tabular-nums text-ink-700">{app.oferta.plazo}</td>
+                        <td className="px-3 py-3">
+                          <EstadoBadge estado={app.estado} />
+                        </td>
+                        <td className="px-3 py-3 text-ink-700">{fechaApp ?? "—"}</td>
+                        <td className="px-3 py-3 text-ink-700">
+                          {app.estado === "OBSERVADO" || !app.analista.tomado ? "Sin asignar" : SESION_ANALISTA.nombre}
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <Button size="sm" variant="outline" onClick={onAbrir}>
+                            Abrir
+                          </Button>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {listaActiva.length > POR_PAGINA && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 bg-ink-25 px-5 py-3">
+                  <p className="text-xs text-ink-500">
+                    Mostrando {inicio + 1}–{Math.min(inicio + POR_PAGINA, listaActiva.length)} de {listaActiva.length} · 5 por página
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="ghost" disabled={paginaActual <= 1} onClick={() => setPagina((p) => ({ ...p, [activa.id]: paginaActual - 1 }))}>
+                      Anterior
                     </Button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+                    {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setPagina((p) => ({ ...p, [activa.id]: n }))}
+                        className={`min-w-8 rounded-lg px-2.5 py-1.5 text-xs font-bold ${n === paginaActual ? "bg-brand-600 text-white shadow-sm" : "bg-white text-ink-700 hover:bg-ink-100 border border-ink-200"}`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <Button size="sm" variant="ghost" disabled={paginaActual >= totalPaginas} onClick={() => setPagina((p) => ({ ...p, [activa.id]: paginaActual + 1 }))}>
+                      Siguiente
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+      )}
+      <p className="text-center text-[11px] text-ink-400">
+        DB simulada: {CREDITOS_DB.length} préstamos · {CREDITOS_DB.filter((c) => c._bandeja === "vendedor").length} vendedor /{" "}
+        {CREDITOS_DB.filter((c) => c._bandeja === "analista").length} analista · <code className="rounded bg-ink-100 px-1">src/data/creditos.json</code>
+      </p>
     </div>
   );
 }

@@ -846,24 +846,6 @@ export function AnalisisCredito({
 
       <Card className="space-y-3 p-4 sm:p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Button size="sm" variant="subtle" onClick={() => setConsulta("posicion")}>
-            <IconUser width={14} height={14} />
-            Posición cliente
-          </Button>
-          <Button size="sm" variant="subtle" onClick={() => setConsulta("buro")}>
-            <IconShieldCheck width={14} height={14} />
-            Ver buró / motor
-          </Button>
-          <Button size="sm" variant="subtle" onClick={() => setConsulta("renovar")}>
-            <IconRefresh width={14} height={14} />
-            Ver créditos a renovar
-          </Button>
-          <Button size="sm" variant="subtle" onClick={() => setConsulta("comentario")}>
-            <IconFileText width={14} height={14} />
-            Comentario
-          </Button>
-        </div>
-        <div className="flex flex-col gap-2 border-t border-ink-100 pt-3 sm:flex-row sm:flex-wrap">
           <Button
             variant="outline"
             disabled={cambioPendiente !== null}

@@ -943,6 +943,10 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
           },
         ]
       : [];
+  // Post-oferta · Banco: solo los bancos de Datos laborales (previo). Se lista ese subconjunto
+  // y el vendedor elige uno para la acreditación. El CBU es A_CARGAR y editable por banco elegido.
+  const bancosPrevios = app.laboral.empleadores.map((e) => e.banco).filter(Boolean);
+  const bancoSeleccionado = bancosPrevios[0] ?? "";
   const precarga: Record<string, string> = {
     nombre: c?.nombre ?? "",
     apellido: c?.apellido ?? "",
@@ -962,24 +966,20 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     "telefono.numero": base.contacto.numero,
     companiaTelefonica: base.contacto.compania,
     email: base.contacto.email,
-    banco: unirBancos(app.laboral.empleadores.map((e) => e.banco)),
+    banco: bancoSeleccionado,
   };
-  // El CBU se carga por banco: en la demo el primero ya viene cargado y los demás quedan pendientes.
-  const [primerBanco] = bancosDe(precarga.banco);
   const primerEmpleador = app.laboral.empleadores[0];
   const valores = (pantalla: "personales" | "laboral") => ({
     ...Object.fromEntries(
-      camposDe(pantalla)
-        // "banco" es NO_MODIFICABLE pero igual se guarda: camposDe usa el valor crudo
-        // (no el valorFijo) para expandir el CBU por cada banco elegido.
-        .filter((campo) => campo.origen !== "NO_MODIFICABLE" || campo.id === "banco")
+      camposDe(pantalla, undefined, { banco: bancoSeleccionado })
+        .filter((campo) => campo.origen !== "NO_MODIFICABLE")
         .map((campo) => {
           if (campo.id === "cuitEmpleador" && primerEmpleador?.cuit) return [campo.id, maskCuit(primerEmpleador.cuit)];
           if (campo.id === "razonSocial" && primerEmpleador?.razonSocial) return [campo.id, primerEmpleador.razonSocial];
           return [campo.id, precarga[campo.id] ?? CARGA_DEMO[campo.id] ?? ""];
         })
     ),
-    ...(pantalla === "laboral" && primerBanco ? { [`cbu.${primerBanco}`]: CARGA_DEMO.cbu } : {}),
+    ...(pantalla === "laboral" && bancoSeleccionado ? { [`cbu.${bancoSeleccionado}`]: CARGA_DEMO.cbu } : {}),
   });
 
   const cfg = configEfectiva(app.configuracion);

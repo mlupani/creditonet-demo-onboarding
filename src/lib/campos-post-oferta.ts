@@ -446,15 +446,14 @@ const LABORAL: CampoDef[] = [
     pantalla: "laboral",
     seccion: "acreditacion",
     id: "banco",
-    label: "Bancos",
-    origen: "NO_MODIFICABLE",
+    label: "Banco de acreditación",
+    origen: "PRECARGADO",
     obligatorio: true,
-    tipo: "multiselect",
+    tipo: "select",
     opciones: () => BANCOS,
     ancho: "completo",
-    valorFijo: (app) => unirBancos(app.laboral.empleadores.map((e) => e.banco)),
   },
-  { pantalla: "laboral", seccion: "acreditacion", id: "cbu", label: "CBU", origen: "NO_MODIFICABLE", obligatorio: true, tipo: "cbu", porBanco: true },
+  { pantalla: "laboral", seccion: "acreditacion", id: "cbu", label: "CBU", origen: "A_CARGAR", obligatorio: true, tipo: "cbu", porBanco: true },
 ];
 
 export const CAMPOS_POST_OFERTA: CampoDef[] = [...PERSONALES, ...LABORAL];
