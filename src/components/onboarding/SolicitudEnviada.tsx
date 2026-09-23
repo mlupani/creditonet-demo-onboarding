@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
 import { formatARS, sumarDias } from "@/lib/format";
-import { netoAAcreditar } from "@/lib/credit";
+import { netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
 import { IconAlertTriangle, IconFileStack } from "@/components/icons";
 
 export function SolicitudEnviada() {
@@ -36,12 +36,16 @@ export function SolicitudEnviada() {
               <Banner tone="warning" title={obs.motivo}>
                 {obs.nota} Corregí antes del <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días)
                 para que no expire.
+                {ofertaAnalistaDe(app) &&
+                  " Sólo podés aceptar la nueva oferta o elegir otra menor en la grilla: el resto de la carga queda bloqueada."}
                 {obs.pantallas.length > 0 &&
                   " Es una corrección puntual: sólo se puede editar lo observado y el resto de la carga queda bloqueada."}
               </Banner>
             )}
             <div className="flex flex-col justify-center gap-2 sm:flex-row">
-              <Button onClick={retomarObservada}>Corregir y reenviar</Button>
+              <Button onClick={retomarObservada}>
+                {ofertaAnalistaDe(app) ? "Ver la nueva oferta" : "Corregir y reenviar"}
+              </Button>
               <Button variant="outline" onClick={() => router.push("/")}>
                 Volver a la bandeja
               </Button>

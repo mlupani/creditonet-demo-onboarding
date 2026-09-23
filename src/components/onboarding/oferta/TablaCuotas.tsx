@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { SISTEMAS_AMORTIZACION } from "@/lib/config";
-import { calcularCuota, grillaDe, planDeSolicitud } from "@/lib/credit";
+import {
+  calcularCuota,
+  grillaDe,
+  importeTerceros,
+  planDeSolicitud,
+  totalPrecancelaciones,
+} from "@/lib/credit";
 import type { Plazo } from "@/lib/types";
 import { formatARS, formatPct } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
@@ -27,15 +33,21 @@ function SkeletonCuota() {
 export function TablaCuotas({
   pendiente = false,
   onSeleccion,
+  tope,
 }: {
   pendiente?: boolean;
   onSeleccion?: () => void;
+  // Oferta del analista: no se puede elegir más capital que este (las cuotas no se limitan).
+  tope?: { capital: number };
 } = {}) {
   const { app, patchOferta } = useApplication();
   const o = app.oferta;
   // Plan y grilla de tasas de la solicitud: la TNA de cada plazo sale del plan.
   const plan = planDeSolicitud(app);
   const terms = grillaDe(plan);
+  const capitalMaximo = tope ? Math.min(tope.capital, o.capitalMaximoActual) : o.capitalMaximoActual;
+  // Con tope, no se ofrecen capitales que las cancelaciones se comerían por completo.
+  const capitalMinimo = tope ? totalPrecancelaciones(o) + importeTerceros(o) : 0;
   const [showAllPlazos, setShowAllPlazos] = useState(false);
 
   // Recalculo ficticio: cada cambio de monto muestra un skeleton 1 segundo para que se note
@@ -239,13 +251,13 @@ export function TablaCuotas({
       >
         <p className="mb-3 text-xs text-ink-500">
           Cuota mensual de cada capital según la cantidad de cuotas, hasta el capital máximo de{" "}
-          <strong className="font-semibold text-ink-700">{formatARS(o.capitalMaximoActual)}</strong>.
-          Elegí una celda para seleccionar ese capital y ese plazo.
+          <strong className="font-semibold text-ink-700">{formatARS(capitalMaximo)}</strong>. Elegí una celda para seleccionar ese capital y ese plazo.
         </p>
         <GrillaCuotas
           terms={terms}
           sistema={plan.sistema}
-          capitalMaximo={o.capitalMaximoActual}
+          capitalMaximo={capitalMaximo}
+          capitalMinimo={capitalMinimo}
           capital={o.montoSolicitado}
           plazo={o.plazo}
           seleccionable={!pendiente}

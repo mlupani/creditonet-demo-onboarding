@@ -17,10 +17,13 @@ export function ConfirmarOfertaModal({
   open,
   onClose,
   onConfirm,
+  reenvio = false,
 }: {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  // Oferta cambiada por el analista: al aceptarla sólo queda finalizar y reenviar.
+  reenvio?: boolean;
 }) {
   const { app } = useApplication();
   const o = app.oferta;
@@ -91,12 +94,19 @@ export function ConfirmarOfertaModal({
         </div>
       }
     >
-      <p className="text-sm text-ink-600">
-        Al confirmar, el cliente acepta la oferta y arranca la carga post-oferta. La solicitud
-        sigue <strong>En trámite</strong>: queda <strong>preaprobada</strong> recién cuando el
-        vendedor termina la carga, y eso la envía al analista. Las condiciones cotizadas se
-        conservan por 30 días.
-      </p>
+      {reenvio ? (
+        <p className="text-sm text-ink-600">
+          Al confirmar, el cliente acepta esta oferta. La carga completa se muestra sin poder
+          editarla y sólo queda <strong>finalizar</strong> para reenviar la solicitud al analista.
+        </p>
+      ) : (
+        <p className="text-sm text-ink-600">
+          Al confirmar, el cliente acepta la oferta y arranca la carga post-oferta. La solicitud
+          sigue <strong>En trámite</strong>: queda <strong>preaprobada</strong> recién cuando el
+          vendedor termina la carga, y eso la envía al analista. Las condiciones cotizadas se
+          conservan por 30 días.
+        </p>
+      )}
 
       <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-ink-500">
         Detalle de la oferta

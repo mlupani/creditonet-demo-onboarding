@@ -120,10 +120,14 @@ export function PostOfertaShell() {
   const pendientes = useMemo(() => pendientesFinalizarCarga(app), [app]);
   const completadas = estados.filter((e) => e.completa).length;
   const observada = app.estado === "OBSERVADO";
+  // El vendedor ya aceptó la oferta que cambió el analista: se ve todo completo, sin poder
+  // editar nada, y sólo queda finalizar.
+  const soloLectura = observada && !!app.analista.ofertaAnalista?.aceptada;
   const obs = app.analista.observacion;
   // Corrección puntual: si el analista señaló pantallas, es lo único que se puede editar y
   // el resto de la carga queda bloqueada hasta reenviar.
-  const observadas = observada ? (obs?.pantallas ?? SIN_PANTALLAS) : SIN_PANTALLAS;
+  const observadas =
+    observada && !soloLectura ? (obs?.pantallas ?? SIN_PANTALLAS) : SIN_PANTALLAS;
   const puntual = observadas.length > 0;
   const corregidas = app.analista.pantallasCorregidas;
   const todasCorregidas = observadas.every((id) => corregidas.includes(id));
@@ -147,7 +151,7 @@ export function PostOfertaShell() {
 
   // Navegación secuencial (configurada en el producto o excepcionada por el organismo): no se
   // avanza más allá de la primera pantalla obligatoria que todavía no está completa.
-  const secuencial = configEfectiva(app.configuracion).navegacion === "SECUENCIAL" && !puntual;
+  const secuencial = configEfectiva(app.configuracion).navegacion === "SECUENCIAL" && !puntual && !soloLectura;
   const limiteSecuencial = secuencial
     ? estados.findIndex((e) => e.obligatoria && e.estadoVisual !== "COMPLETA")
     : -1;
@@ -173,12 +177,14 @@ export function PostOfertaShell() {
   const pendientesEnvio = puntual
     ? pendientes.filter((p) => observadas.includes(p.pantallaId))
     : pendientes;
-  const puedeFinalizar = pendientesEnvio.length === 0 && todasCorregidas;
-  const accionLabel = puntual
-    ? "Enviar nuevamente"
-    : observada
-      ? "Reenviar correcciones"
-      : "Finalizar carga";
+  const puedeFinalizar = soloLectura || (pendientesEnvio.length === 0 && todasCorregidas);
+  const accionLabel = soloLectura
+    ? "Finalizar"
+    : puntual
+      ? "Enviar nuevamente"
+      : observada
+        ? "Reenviar correcciones"
+        : "Finalizar carga";
   const labelObservadas = visibles.filter((p) => observadas.includes(p.id)).map((p) => p.label);
   const estadoActual = estados.find((e) => e.id === pantallaActual);
   // Botón "Continuar" al pie de cada pantalla (Guía, igual que en originación): avanza a la
@@ -202,7 +208,9 @@ export function PostOfertaShell() {
             <EstadoBadge estado={app.estado} />
           </h1>
           <p className="mt-1 text-sm text-ink-500">
-            {puntual
+            {soloLectura
+              ? "Aceptaste la nueva oferta. Todo está completo y no se puede editar: sólo queda finalizar."
+              : puntual
               ? `Corrección puntual: sólo se puede editar ${
                   labelObservadas.length === 1 ? "la pantalla observada" : "las pantallas observadas"
                 }. El resto de la carga está bloqueada.`
@@ -225,7 +233,9 @@ export function PostOfertaShell() {
             {!observada && <IconArrowRight width={16} height={16} />}
           </Button>
           <p className="text-[11px] font-medium text-ink-400">
-            {puntual
+            {soloLectura
+              ? "Se reenvía la solicitud al analista con la nueva oferta."
+              : puntual
               ? puedeFinalizar
                 ? "Corrección guardada: ya podés enviarla nuevamente."
                 : "Editá y guardá la pantalla observada para enviar nuevamente."
@@ -238,7 +248,16 @@ export function PostOfertaShell() {
         </div>
       </div>
 
-      {observada && obs && (
+      {soloLectura && (
+        <div className="mt-5">
+          <Banner tone="info" title="Oferta aceptada">
+            La carga queda bloqueada: podés recorrer las pantallas pero no modificarlas. Finalizá
+            para reenviar la solicitud al analista.
+          </Banner>
+        </div>
+      )}
+
+      {observada && !soloLectura && obs && (
         <div className="mt-5">
           <Banner tone="warning" title={`Observada por el analista · ${obs.motivo}`}>
             {obs.nota}{" "}
@@ -272,13 +291,15 @@ export function PostOfertaShell() {
             onGuardar={() => guardarCorreccion(pantallaActual)}
           />
         ) : (
-          <PantallaActiva />
+          <fieldset disabled={soloLectura} className="min-w-0">
+            <PantallaActiva />
+          </fieldset>
         )}
         {!puntual && siguientePantalla && (
           <Card className="mt-6 p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 flex-1">
-                {estadoActual && !estadoActual.completa ? (
+                {!soloLectura && estadoActual && !estadoActual.completa ? (
                   <ValidationMessage tipo="warning" className="!mt-0 justify-start">
                     Completá los campos obligatorios de esta pantalla para continuar.
                   </ValidationMessage>
@@ -292,7 +313,7 @@ export function PostOfertaShell() {
               </div>
               <Button
                 size="lg"
-                disabled={!estadoActual?.completa}
+                disabled={!soloLectura && !estadoActual?.completa}
                 onClick={() => setPantallaActual(siguientePantalla.id)}
                 className="sm:w-auto"
               >
@@ -307,7 +328,7 @@ export function PostOfertaShell() {
       <Modal
         open={confirmar}
         onClose={() => setConfirmar(false)}
-        title={observada ? "Reenviar correcciones" : "Carga completa"}
+        title={soloLectura ? "Finalizar" : observada ? "Reenviar correcciones" : "Carga completa"}
         maxWidth="max-w-md"
         footer={
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -322,7 +343,7 @@ export function PostOfertaShell() {
                 finalizarCarga();
               }}
             >
-              {observada ? "Enviar nuevamente" : "Enviar a análisis"}
+              {soloLectura ? "Finalizar y enviar" : observada ? "Enviar nuevamente" : "Enviar a análisis"}
             </Button>
           </div>
         }
@@ -332,7 +353,9 @@ export function PostOfertaShell() {
             <IconCheck width={20} height={20} strokeWidth={2.6} />
           </span>
           <p className="text-sm leading-relaxed text-ink-700">
-            {observada
+            {soloLectura
+              ? "Se reenvía la solicitud al analista con la nueva oferta aceptada. La solicitud pasa de Observado a En análisis."
+              : observada
               ? "Las correcciones se reenvían al analista de riesgo. La solicitud pasa de Observado a En análisis."
               : "El crédito ha sido debidamente cargado y pasa a análisis de riesgo. La solicitud pasa de En trámite a En análisis."}
           </p>

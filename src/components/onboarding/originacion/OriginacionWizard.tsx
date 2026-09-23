@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
+import { ofertaAnalistaDe } from "@/lib/credit";
 import { laboralCompleto } from "@/lib/validation";
 import {
   ORGANISMOS,
@@ -28,6 +29,7 @@ import { PasoConfiguracion } from "./PasoConfiguracion";
 import { PasoLaboralIngresos } from "./PasoLaboralIngresos";
 import { PasoEvaluacion } from "./PasoEvaluacion";
 import { PasoOferta } from "./PasoOferta";
+import { PasoOfertaAnalista } from "./PasoOfertaAnalista";
 import { ResumenSolicitudModal } from "./ResumenSolicitudModal";
 
 type App = ReturnType<typeof useApplication>["app"];
@@ -105,7 +107,9 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
 export function OriginacionWizard() {
   const { app, paso, pasoMaximo, setPaso, anularCredito, reiniciarDemo } = useApplication();
   const total = STEPS_ORIGINACION.length;
-  const pasoActual = Math.min(Math.max(paso, 1), total);
+  // Oferta cambiada por el analista: el vendedor sólo ve la pantalla de oferta y nada más se edita.
+  const restringido = !!ofertaAnalistaDe(app);
+  const pasoActual = restringido ? total : Math.min(Math.max(paso, 1), total);
   const meta = STEPS_ORIGINACION[pasoActual - 1];
   const g = useMemo(() => gate(pasoActual, app), [pasoActual, app]);
   const avance = Math.max(pasoMaximo, pasoActual);
@@ -209,8 +213,8 @@ export function OriginacionWizard() {
           <Stepper
             steps={STEPS_ORIGINACION}
             current={pasoActual}
-            maxAlcanzado={pasoMaximo}
-            onStepClick={(n) => setPaso(n)}
+            maxAlcanzado={restringido ? total : pasoMaximo}
+            onStepClick={restringido ? undefined : (n) => setPaso(n)}
           />
         </div>
         {puedeRetomar && (
@@ -228,7 +232,7 @@ export function OriginacionWizard() {
 
       {pasoActual === total ? (
         <div className="mt-6">
-          <PasoOferta />
+          {restringido ? <PasoOfertaAnalista /> : <PasoOferta />}
         </div>
       ) : (
         <div key={meta.id} className="mt-6 animate-fade-up">

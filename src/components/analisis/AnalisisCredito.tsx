@@ -299,8 +299,7 @@ export function AnalisisCredito({
             <strong>
               {formatARS(cambioPendiente.montoSolicitado)} en {cambioPendiente.plazo} cuotas
             </strong>
-            {" · "}
-            neto {formatARS(cambioPendiente.ingresoNeto)}. Propuesto por{" "}
+            . Propuesto por{" "}
             {cambioPendiente.solicitadoPor} ({cambioPendiente.fecha}). No rige y la solicitud no
             vuelve al vendedor hasta que lo refrende {SESION_SUPERVISOR.nombre}.
           </p>
@@ -928,7 +927,7 @@ export function AnalisisCredito({
 
       <Banner tone="info">
         El motor de riesgo ya filtró la solicitud. El analista controla los datos sensibles y
-        decide: <strong>Cambiar oferta</strong> corrige el capital, el plazo o los sueldos y la
+        decide: <strong>Cambiar oferta</strong> baja el capital o las cuotas desde la grilla y la
         devuelve al canal de venta; <strong>Observar</strong> la devuelve para corregir
         documentación; <strong>Anular</strong> la cierra cuando el cliente desiste;{" "}
         <strong>Rechazar</strong> es definitivo y <strong>Aprobar</strong> la envía a la Bandeja

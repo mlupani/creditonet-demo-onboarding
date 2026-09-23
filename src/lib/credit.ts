@@ -5,6 +5,7 @@ import type {
   LimiteCapital,
   LimiteCuota,
   Oferta,
+  OfertaAnalista,
   Plazo,
   ResultadoLimites,
   RiskResultado,
@@ -38,6 +39,17 @@ export const CAPITAL_MAXIMO_CON_PRECANCELACION = 2_850_000;
 export type OfferTerm = FilaGrilla;
 
 export const OFFER_TERMS: OfferTerm[] = GRILLA_BASE;
+
+// Oferta que dejó el analista y el vendedor tiene que resolver (aceptar o reducir). Una
+// solicitud observada por un cambio de oferta anterior a este campo se reconstruye desde la
+// observación y la oferta vigente.
+export function ofertaAnalistaDe(app: CreditApplication): OfertaAnalista | null {
+  if (app.estado !== "OBSERVADO") return null;
+  if (app.analista.ofertaAnalista) return app.analista.ofertaAnalista;
+  const obs = app.analista.observacion;
+  if (obs?.motivo !== "Cambio de oferta del analista") return null;
+  return { montoSolicitado: app.oferta.montoSolicitado, plazo: app.oferta.plazo, nota: obs.nota };
+}
 
 // Grilla de un plan (o la base, si no hay plan).
 export function grillaDe(plan?: PlanCuotas | null): OfferTerm[] {

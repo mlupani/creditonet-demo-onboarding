@@ -44,6 +44,7 @@ import {
   CAPITAL_MAXIMO_CON_PRECANCELACION,
   calcularLimites,
   conMoraCancelada,
+  ofertaAnalistaDe,
   recalcularOferta,
 } from "./credit";
 import { reglaBloquea } from "./motores";
@@ -117,8 +118,6 @@ export interface ResultadoEvaluacion {
 export interface CambioOferta {
   montoSolicitado: number;
   plazo: Plazo;
-  ingresoBruto: number;
-  ingresoNeto: number;
   nota: string;
 }
 
@@ -210,6 +209,8 @@ interface ApplicationContextValue {
   agregarComentario: (texto: string, autor?: string) => void;
   soltarAnalisis: () => void;
   retomarObservada: () => void;
+  // El vendedor acepta la oferta del analista (o una menor de la grilla): sólo queda finalizar.
+  aceptarOfertaAnalista: () => void;
   guardarCorreccion: (pantalla: PantallaPostOfertaId) => void;
   reabrirCorreccion: (pantalla: PantallaPostOfertaId) => void;
   rechazarCredito: (codigo: string, motivo: string, observacion: string) => void;
@@ -598,8 +599,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         cambioOfertaPendiente: {
           montoSolicitado: cambio.montoSolicitado,
           plazo: cambio.plazo,
-          ingresoBruto: cambio.ingresoBruto,
-          ingresoNeto: cambio.ingresoNeto,
           nota: cambio.nota,
           fecha: selloTiempo(),
           solicitadoPor: SESION_ANALISTA.nombre,
@@ -615,11 +614,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         estado: "OBSERVADO",
-        laboral: {
-          ...prev.laboral,
-          ingresoBruto: cambio.ingresoBruto,
-          ingresoNeto: cambio.ingresoNeto,
-        },
         oferta: recalcularOferta({
           ...prev.oferta,
           montoSolicitado: cambio.montoSolicitado,
@@ -632,6 +626,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reenviada: false,
           pantallasCorregidas: [],
           cambioOfertaPendiente: null,
+          ofertaAnalista: {
+            montoSolicitado: cambio.montoSolicitado,
+            plazo: cambio.plazo,
+            nota: cambio.nota,
+          },
           observacion: {
             motivo: "Cambio de oferta del analista",
             nota: `${cambio.nota} (refrendado por ${SESION_SUPERVISOR.nombre})`,
@@ -1062,6 +1061,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev.analista,
         tomado: false,
         reenviada: prev.estado === "OBSERVADO",
+        ofertaAnalista: null,
       },
     }));
   }, []);
@@ -1092,6 +1092,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reenviada: false,
           pantallasCorregidas: [],
           cambioOfertaPendiente: null,
+          ofertaAnalista: null,
           observacion: { motivo, nota, fecha: fechaHoy(), pantallas, campos },
         },
       }));
@@ -1138,8 +1139,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  // Si el analista cambió la oferta, el vendedor retoma en la pantalla de oferta (última de la
+  // originación) y no puede editar nada más: sólo aceptarla o elegir otra menor en la grilla.
   const retomarObservada = useCallback(() => {
-    setApp((prev) => ({ ...prev, etapa: "POST_OFERTA" }));
+    setApp((prev) => {
+      const analista = ofertaAnalistaDe(prev);
+      return {
+        ...prev,
+        // Con el tope ya fijado y aceptado, el vendedor sigue en la vista de sólo lectura.
+        etapa: analista && !analista.aceptada ? "ORIGINACION" : "POST_OFERTA",
+        analista: analista ? { ...prev.analista, ofertaAnalista: analista } : prev.analista,
+      };
+    });
+  }, []);
+
+  // El vendedor acepta la oferta (la del analista u otra menor de la grilla): el resto de la
+  // solicitud se muestra completo y bloqueado, y sólo queda finalizar.
+  const aceptarOfertaAnalista = useCallback(() => {
+    setApp((prev) => {
+      const analista = ofertaAnalistaDe(prev);
+      if (!analista) return prev;
+      return {
+        ...prev,
+        etapa: "POST_OFERTA",
+        oferta: { ...prev.oferta, aceptada: true },
+        analista: { ...prev.analista, ofertaAnalista: { ...analista, aceptada: true } },
+      };
+    });
   }, []);
 
   // Corrección puntual: el vendedor edita la pantalla observada, la guarda y recién ahí puede
@@ -1253,6 +1279,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agregarComentario,
       soltarAnalisis,
       retomarObservada,
+      aceptarOfertaAnalista,
       guardarCorreccion,
       reabrirCorreccion,
       rechazarCredito,
@@ -1313,6 +1340,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agregarComentario,
       soltarAnalisis,
       retomarObservada,
+      aceptarOfertaAnalista,
       guardarCorreccion,
       reabrirCorreccion,
       rechazarCredito,

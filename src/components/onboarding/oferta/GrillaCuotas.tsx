@@ -10,13 +10,15 @@ const PASO_CAPITAL = 100_000;
 
 // Capitales que se muestran: del máximo hacia abajo de a $100.000, más el máximo y el monto
 // elegido si no caen justo en un paso. Nunca superan el capital máximo otorgable.
-function capitalesDe(maximo: number, elegido: number): number[] {
+function capitalesDe(maximo: number, elegido: number, minimo: number): number[] {
   const capitales = new Set<number>();
   if (maximo > 0) capitales.add(maximo);
   for (let c = Math.floor(maximo / PASO_CAPITAL) * PASO_CAPITAL; c >= PASO_CAPITAL; c -= PASO_CAPITAL)
     capitales.add(c);
   if (elegido > 0 && elegido <= maximo) capitales.add(elegido);
-  return Array.from(capitales).sort((a, b) => b - a);
+  return Array.from(capitales)
+    .filter((c) => c > minimo)
+    .sort((a, b) => b - a);
 }
 
 // Grilla capital × cantidad de cuotas: cada celda es la cuota mensual de ese capital en ese
@@ -25,6 +27,7 @@ export function GrillaCuotas({
   terms,
   sistema,
   capitalMaximo,
+  capitalMinimo = 0,
   capital,
   plazo,
   seleccionable,
@@ -34,13 +37,18 @@ export function GrillaCuotas({
   // Sistema de amortización del plan (por defecto, francés).
   sistema?: SistemaAmortizacion;
   capitalMaximo: number;
+  // Se muestran sólo capitales por encima de este piso (ej. lo que se cancela de la oferta).
+  capitalMinimo?: number;
   capital: number;
   plazo: Plazo;
   // Falso si la combinación elegida quedó obsoleta (cambió la renovación).
   seleccionable: boolean;
   onSeleccionar: (capital: number, plazo: Plazo) => void;
 }) {
-  const capitales = useMemo(() => capitalesDe(capitalMaximo, capital), [capitalMaximo, capital]);
+  const capitales = useMemo(
+    () => capitalesDe(capitalMaximo, capital, capitalMinimo),
+    [capitalMaximo, capital, capitalMinimo]
+  );
   const contenedor = useRef<HTMLDivElement>(null);
 
   // Al abrir, deja a la vista la fila del capital elegido.

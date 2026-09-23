@@ -351,11 +351,19 @@ export interface Rechazo {
 export interface CambioOfertaPropuesto {
   montoSolicitado: number;
   plazo: Plazo;
-  ingresoBruto: number;
-  ingresoNeto: number;
   nota: string;
   fecha: string;
   solicitadoPor: string;
+}
+
+// Oferta que dejó el analista al cambiarla (ya refrendada). Es el tope del vendedor: puede
+// aceptarla o elegir otra celda de la grilla, pero nunca con más capital ni más cuotas.
+export interface OfertaAnalista {
+  montoSolicitado: number;
+  plazo: Plazo;
+  nota: string;
+  // El vendedor ya aceptó una oferta dentro del tope: sólo le queda revisar y finalizar.
+  aceptada?: boolean;
 }
 
 // Comentario que el canal de venta agrega a una solicitud En análisis para el analista.
@@ -433,6 +441,8 @@ export interface CreditApplication {
     pantallasCorregidas: PantallaPostOfertaId[];
     // Cambio de oferta pendiente de refrendación del supervisor (o null).
     cambioOfertaPendiente: CambioOfertaPropuesto | null;
+    // Oferta refrendada que el vendedor tiene que aceptar o reducir (o ausente).
+    ofertaAnalista?: OfertaAnalista | null;
   };
   rechazo: Rechazo | null;
   comentarios: ComentarioSolicitud[];
