@@ -109,7 +109,27 @@ export const PESTANA_ESTADOS: Record<PestanaAnalista, EstadoCredito[]> = {
 
 export function creditosPorPestana(pestana: PestanaAnalista): CreditoDB[] {
   const estados = PESTANA_ESTADOS[pestana];
-  return CREDITOS_DB.filter((c) => estados.includes(c.estado));
+  return ordenarPorFechaVisibleAnalista(CREDITOS_DB.filter((c) => estados.includes(c.estado)));
+}
+
+// --- Fecha visible en la bandeja del analista (creditonet-67) ---
+// La columna "Fecha" de ListaAnalisis.tsx no siempre muestra fechaSolicitud: depende del
+// estado. El orden de cada pestaña debe coincidir con esa fecha, no con fechaSolicitud.
+type CreditoConFechasAnalista = Pick<CreditoDB, "estado" | "fechaSolicitud" | "fechaEnvioAnalisis" | "fechaAprobacion" | "analista">;
+
+export function fechaVisibleAnalista(c: CreditoConFechasAnalista): string | null | undefined {
+  if (c.estado === "PARA_LIQUIDAR") return c.fechaAprobacion;
+  if (c.estado === "OBSERVADO") return c.analista.observacion?.fecha;
+  return c.fechaEnvioAnalisis ?? c.fechaSolicitud;
+}
+
+function timestampFechaVisibleAnalista(c: CreditoConFechasAnalista): number {
+  const fecha = fechaVisibleAnalista(c);
+  return fecha ? parseFecha(fecha)?.getTime() ?? 0 : 0;
+}
+
+export function ordenarPorFechaVisibleAnalista<T extends CreditoConFechasAnalista>(creditos: T[]): T[] {
+  return [...creditos].sort((a, b) => timestampFechaVisibleAnalista(b) - timestampFechaVisibleAnalista(a));
 }
 
 // --- Estadísticas para dashboard / demo ---

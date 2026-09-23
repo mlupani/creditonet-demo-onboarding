@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
+import { fechaVisibleAnalista, ordenarPorFechaVisibleAnalista } from "@/lib/creditos-db";
 import { CANALES, ORGANISMOS, PRODUCTOS, SESION_ANALISTA, VENDEDORES, nombreOpcion } from "@/lib/config";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
 import type { EstadoCredito } from "@/lib/types";
@@ -102,15 +103,17 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   // Sin elección explícita se muestra la pestaña donde está la solicitud; si no hay solicitud, default PRE.
   const activa = PESTANAS.find((p) => p.id === (eleccion ?? propia?.id ?? "PRE")) ?? PESTANAS[0];
 
-  // DB simulada: créditos filtrados por pestaña, canal y búsqueda
+  // DB simulada: créditos filtrados por pestaña, canal y búsqueda, ordenados por la misma
+  // fecha que se muestra en la columna "Fecha" de esa pestaña (creditonet-67).
   function creditosDBEnPestana(p: Pestana) {
-    return creditosDB.filter((c) => {
+    const filtrados = creditosDB.filter((c) => {
       if (!PESTANAS.find((x) => x.id === p)!.estados.includes(c.estado)) return false;
       if (canal && c.configuracion.canalId !== canal) return false;
       if (busqueda.trim() && c.cliente && !coincideCliente(c.cliente, busqueda)) return false;
       if (busqueda.trim() && !c.cliente) return false;
       return true;
     });
+    return ordenarPorFechaVisibleAnalista(filtrados);
   }
 
   const visible =
@@ -136,12 +139,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   // Reset paginación al cambiar filtros o pestaña
   const resetPagina = (p: Pestana) => setPagina((prev) => ({ ...prev, [p]: 1 }));
 
-  const fechaApp =
-    app.estado === "PARA_LIQUIDAR"
-      ? app.fechaAprobacion
-      : app.estado === "OBSERVADO"
-        ? app.analista.observacion?.fecha
-        : (app.fechaEnvioAnalisis ?? app.fechaSolicitud);
+  const fechaApp = fechaVisibleAnalista(app);
 
   useEffect(() => {
     setPagina((prev) => ({ ...prev, [activa.id]: 1 }));
@@ -270,12 +268,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                   <tbody>
                     {paginados.map((c) => {
                       const cli = c.cliente!;
-                      const fecha =
-                        c.estado === "PARA_LIQUIDAR"
-                          ? c.fechaAprobacion
-                          : c.estado === "OBSERVADO"
-                            ? c.analista.observacion?.fecha
-                            : (c.fechaEnvioAnalisis ?? c.fechaSolicitud);
+                      const fecha = fechaVisibleAnalista(c);
                       return (
                         <tr
                           key={c.numeroCredito ?? cli.dni}
