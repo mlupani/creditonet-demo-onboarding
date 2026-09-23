@@ -25,9 +25,11 @@ import {
 import {
   camposDe,
   camposRectificados,
+  camposSeleccionablesDe,
   campoVisible,
   valorCampo,
   valorCampoDisplay,
+  type PantallaConCampos,
 } from "@/lib/campos-post-oferta";
 import type { PantallaPostOfertaId } from "@/lib/types";
 import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO, tarjetaValida } from "@/lib/validation";
@@ -74,6 +76,14 @@ import {
   IconWallet,
   IconX,
 } from "@/components/icons";
+
+// Pantallas del catálogo de campos (Onboarding §3–§4): las únicas donde la corrección puntual
+// puede acotarse a campos específicos. El resto de las pantallas (tokenización, referencias,
+// garantes, legajo, impresión) no tienen catálogo y se corrigen completas, como antes.
+const PANTALLAS_CON_CAMPOS: PantallaConCampos[] = ["personales", "laboral"];
+function tieneCatalogoCampos(id: PantallaPostOfertaId): id is PantallaConCampos {
+  return (PANTALLAS_CON_CAMPOS as PantallaPostOfertaId[]).includes(id);
+}
 
 function AreaTexto({
   id,
@@ -123,7 +133,12 @@ export function AnalisisCredito({
   onAprobar,
   onSalir,
 }: {
-  onObservar: (motivo: string, nota: string, pantallas: PantallaPostOfertaId[]) => void;
+  onObservar: (
+    motivo: string,
+    nota: string,
+    pantallas: PantallaPostOfertaId[],
+    campos: Partial<Record<PantallaPostOfertaId, string[]>>
+  ) => void;
   onRechazar: (codigo: string, motivo: string, observacion: string) => void;
   onAprobar: () => void;
   // Vuelve a la lista cuando la solicitud deja el análisis (al soltarla).
@@ -142,6 +157,11 @@ export function AnalisisCredito({
     "posicion" | "buro" | "renovar" | "comentario" | "soltar" | null
   >(null);
   const [pantallas, setPantallas] = useState<PantallaPostOfertaId[]>([]);
+  // Corrección puntual por campo (creditonet-61): campos con problema por pantalla, sólo para
+  // las pantallas con catálogo (personales/laboral). El resto queda bloqueado al reenviar.
+  const [camposPorPantalla, setCamposPorPantalla] = useState<
+    Partial<Record<PantallaPostOfertaId, string[]>>
+  >({});
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
@@ -213,11 +233,16 @@ export function AnalisisCredito({
     setMotivo("");
     setTexto("");
     setPantallas([]);
+    setCamposPorPantalla({});
     setIntentado(false);
     setModal(tipo);
   }
 
   const textoValido = texto.trim().length >= 5;
+  // Pantallas con catálogo elegidas para corregir, sin ningún campo puntual marcado todavía.
+  const pantallasConCampoPendiente = pantallas
+    .filter(tieneCatalogoCampos)
+    .filter((p) => (camposPorPantalla[p]?.length ?? 0) === 0);
 
   function confirmar() {
     setIntentado(true);
@@ -231,7 +256,9 @@ export function AnalisisCredito({
     if (!motivo || !textoValido) return;
     // Corrección puntual: hay que indicar qué pantallas se corrigen, el resto se bloquea.
     if (modal === "observar" && pantallas.length === 0) return;
-    if (modal === "observar") onObservar(motivo, texto.trim(), pantallas);
+    // Y en las pantallas con catálogo, qué campos puntuales tienen el problema.
+    if (modal === "observar" && pantallasConCampoPendiente.length > 0) return;
+    if (modal === "observar") onObservar(motivo, texto.trim(), pantallas, camposPorPantalla);
     if (modal === "rechazar") {
       const m = MOTIVOS_RECHAZO.find((r) => r.codigo === motivo);
       onRechazar(motivo, m?.label ?? motivo, texto.trim());
@@ -1039,13 +1066,17 @@ export function AnalisisCredito({
               values={pantallasVisibles(app.configuracion)
                 .filter((pv) => pantallas.includes(pv.id))
                 .map((pv) => pv.label)}
-              onChange={(labels) =>
-                setPantallas(
-                  pantallasVisibles(app.configuracion)
-                    .filter((pv) => labels.includes(pv.label))
-                    .map((pv) => pv.id)
-                )
-              }
+              onChange={(labels) => {
+                const nuevas = pantallasVisibles(app.configuracion)
+                  .filter((pv) => labels.includes(pv.label))
+                  .map((pv) => pv.id);
+                setPantallas(nuevas);
+                setCamposPorPantalla((prev) => {
+                  const siguiente: typeof prev = {};
+                  for (const id of nuevas) if (prev[id]) siguiente[id] = prev[id];
+                  return siguiente;
+                });
+              }}
               options={pantallasVisibles(app.configuracion).map((pv) => pv.label)}
               error={
                 intentado && pantallas.length === 0
@@ -1056,6 +1087,41 @@ export function AnalisisCredito({
             />
           </div>
         )}
+        {modal === "observar" &&
+          pantallas.filter(tieneCatalogoCampos).map((pantallaId) => {
+            const opciones = camposSeleccionablesDe(app, pantallaId);
+            const seleccionados = camposPorPantalla[pantallaId] ?? [];
+            const labelPantalla = pantallasVisibles(app.configuracion).find(
+              (pv) => pv.id === pantallaId
+            )?.label;
+            return (
+              <div className="mt-4" key={pantallaId}>
+                <MultiSelectField
+                  id={`campos-observados-${pantallaId}`}
+                  label={`Campos a corregir · ${labelPantalla ?? pantallaId}`}
+                  required
+                  values={opciones
+                    .filter((c) => seleccionados.includes(c.id))
+                    .map((c) => c.label)}
+                  onChange={(labels) =>
+                    setCamposPorPantalla((prev) => ({
+                      ...prev,
+                      [pantallaId]: opciones
+                        .filter((c) => labels.includes(c.label))
+                        .map((c) => c.id),
+                    }))
+                  }
+                  options={opciones.map((c) => c.label)}
+                  error={
+                    intentado && seleccionados.length === 0
+                      ? "Seleccioná al menos un campo con el problema."
+                      : undefined
+                  }
+                  hint="Sólo estos campos quedan editables en esta pantalla; el resto se bloquea hasta que reenvíe."
+                />
+              </div>
+            );
+          })}
         <AreaTexto
           id="texto-analista"
           label={

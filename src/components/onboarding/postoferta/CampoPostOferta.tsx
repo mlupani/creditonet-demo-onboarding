@@ -4,6 +4,7 @@ import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import {
   bancosDe,
+  campoBloqueadoPorObservacion,
   campoVisible,
   esRectificado,
   obligatorioEfectivo,
@@ -42,18 +43,22 @@ export function CampoPostOferta({ campo }: { campo: CampoDef }) {
 
   const obligatorio = obligatorioEfectivo(campo, configEfectiva(app.configuracion).camposObligatorios);
   const valor = valorCampo(app, campo);
-  const bloqueado = campo.origen === "NO_MODIFICABLE";
+  const bloqueado =
+    campo.origen === "NO_MODIFICABLE" || campoBloqueadoPorObservacion(app, campo);
   const rectificado = esRectificado(app, campo);
   const valores = app.postOferta[campo.pantalla];
   const error = bloqueado
     ? undefined
     : (validarCampo(campo, valor, obligatorio, valores) ?? undefined);
   const badge = <OrigenCampoBadge origen={campo.origen} rectificado={rectificado} />;
-  const hint = bloqueado
-    ? "Participó en la generación de la oferta: no se puede cambiar."
-    : rectificado
-      ? `Precargado: ${app.postOferta.precarga[campo.id] || "vacío"}`
-      : undefined;
+  const hint =
+    campo.origen === "NO_MODIFICABLE"
+      ? "Participó en la generación de la oferta: no se puede cambiar."
+      : bloqueado
+        ? "El analista no marcó este campo para corregir: queda bloqueado hasta el próximo envío."
+        : rectificado
+          ? `Precargado: ${app.postOferta.precarga[campo.id] || "vacío"}`
+          : undefined;
   const id = `po-${campo.id.replace(/\./g, "-")}`;
   const className = campo.ancho === "completo" ? "sm:col-span-2" : undefined;
   const onChange = (v: string) => setCampo(campo.pantalla, campo.id, sanitizar(campo, v, valores));

@@ -191,7 +191,12 @@ interface ApplicationContextValue {
   finalizarCarga: () => void;
 
   tomarAnalisis: () => void;
-  observarCredito: (motivo: string, nota: string, pantallas: PantallaPostOfertaId[]) => void;
+  observarCredito: (
+    motivo: string,
+    nota: string,
+    pantallas: PantallaPostOfertaId[],
+    campos: Partial<Record<PantallaPostOfertaId, string[]>>
+  ) => void;
   anularCredito: (nota: string) => void;
   agregarComentario: (texto: string, autor?: string) => void;
   soltarAnalisis: () => void;
@@ -996,7 +1001,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Observar devuelve la solicitud a la bandeja del canal de venta (Guía §7.3). El analista
   // indica qué pantalla hay que corregir para que el vendedor vaya derecho ahí (01:09).
   const observarCredito = useCallback(
-    (motivo: string, nota: string, pantallas: PantallaPostOfertaId[]) => {
+    (
+      motivo: string,
+      nota: string,
+      pantallas: PantallaPostOfertaId[],
+      campos: Partial<Record<PantallaPostOfertaId, string[]>>
+    ) => {
       setApp((prev) => ({
         ...prev,
         estado: "OBSERVADO",
@@ -1006,7 +1016,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reenviada: false,
           pantallasCorregidas: [],
           cambioOfertaPendiente: null,
-          observacion: { motivo, nota, fecha: fechaHoy(), pantallas },
+          observacion: { motivo, nota, fecha: fechaHoy(), pantallas, campos },
         },
       }));
     },

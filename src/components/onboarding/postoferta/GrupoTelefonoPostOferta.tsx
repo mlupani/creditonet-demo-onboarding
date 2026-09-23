@@ -3,6 +3,7 @@
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import {
+  campoBloqueadoPorObservacion,
   esRectificado,
   getCampo,
   obligatorioEfectivo,
@@ -46,7 +47,8 @@ export function GrupoTelefonoPostOferta({
   const valorCarac = valorCampo(app, caracCampo);
   const valorNumero = valorCampo(app, numeroCampo);
 
-  const bloqueado = numeroCampo.origen === "NO_MODIFICABLE";
+  const bloqueado =
+    numeroCampo.origen === "NO_MODIFICABLE" || campoBloqueadoPorObservacion(app, numeroCampo);
   // Para precargados mostramos hint de rectificación si alguno cambió
   const rectificado = [paisCampo, caracCampo, numeroCampo].some((c) => esRectificado(app, c));
   const original = rectificado
@@ -63,11 +65,14 @@ export function GrupoTelefonoPostOferta({
 
   // Badge de origen: si los tres comparten origen usamos el del número, si no mostramos el del número
   const badge = <OrigenCampoBadge origen={numeroCampo.origen} rectificado={rectificado} />;
-  const hint = bloqueado
-    ? "Participó en la generación de la oferta: no se puede cambiar."
-    : rectificado && original
-      ? `Precargado: ${original}`
-      : undefined;
+  const hint =
+    numeroCampo.origen === "NO_MODIFICABLE"
+      ? "Participó en la generación de la oferta: no se puede cambiar."
+      : bloqueado
+        ? "El analista no marcó este campo para corregir: queda bloqueado hasta el próximo envío."
+        : rectificado && original
+          ? `Precargado: ${original}`
+          : undefined;
 
   const label = numeroCampo.label;
   const idBase = `po-${prefijo.replace(/\./g, "-")}`;
