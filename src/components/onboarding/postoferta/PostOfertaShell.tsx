@@ -8,9 +8,11 @@ import { sumarDias } from "@/lib/format";
 import type { PantallaPostOfertaId } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { StepperLibre, type PasoLibre } from "@/components/ui/StepperLibre";
+import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { IconArrowRight, IconCheck, IconPencil, IconSend } from "@/components/icons";
 
 import { PantallaLaboral } from "./PantallaLaboral";
@@ -179,6 +181,11 @@ export function PostOfertaShell() {
       : "Finalizar carga";
   const labelObservadas = visibles.filter((p) => observadas.includes(p.id)).map((p) => p.label);
   const estadoActual = estados.find((e) => e.id === pantallaActual);
+  // Botón "Continuar" al pie de cada pantalla (Guía, igual que en originación): avanza a la
+  // siguiente pantalla visible sólo si la actual no tiene pendientes.
+  const indiceActual = estados.findIndex((e) => e.id === pantallaActual);
+  const siguientePantalla =
+    indiceActual >= 0 && indiceActual < estados.length - 1 ? estados[indiceActual + 1] : null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -266,6 +273,34 @@ export function PostOfertaShell() {
           />
         ) : (
           <PantallaActiva />
+        )}
+        {!puntual && siguientePantalla && (
+          <Card className="mt-6 p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1">
+                {estadoActual && !estadoActual.completa ? (
+                  <ValidationMessage tipo="warning" className="!mt-0 justify-start">
+                    Completá los campos obligatorios de esta pantalla para continuar.
+                  </ValidationMessage>
+                ) : (
+                  <p className="text-xs text-ink-500">
+                    <span className="font-semibold text-ink-700">
+                      Próximo: {siguientePantalla.label}
+                    </span>
+                  </p>
+                )}
+              </div>
+              <Button
+                size="lg"
+                disabled={!estadoActual?.completa}
+                onClick={() => setPantallaActual(siguientePantalla.id)}
+                className="sm:w-auto"
+              >
+                Continuar
+                <IconArrowRight width={16} height={16} />
+              </Button>
+            </div>
+          </Card>
         )}
       </div>
 
