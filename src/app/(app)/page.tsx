@@ -91,9 +91,9 @@ export default function BandejaCanalVentaPage() {
   const [modal, setModal] = useState<ModalId | null>(null);
   const [colapsados, setColapsados] = useState<Record<Grupo, boolean>>({
     TRAMITE: false,
-    OBSERVADAS: false,
-    ANALISIS: false,
-    RESUELTAS: false,
+    OBSERVADAS: true,
+    ANALISIS: true,
+    RESUELTAS: true,
   });
   const [pagina, setPagina] = useState<Record<Grupo, number>>({
     TRAMITE: 1,
