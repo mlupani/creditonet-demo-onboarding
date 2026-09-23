@@ -60,7 +60,6 @@ import { DesarrolloPrestamoModal } from "./DesarrolloPrestamoModal";
 import { LegajoVirtualModal } from "./LegajoVirtualModal";
 import {
   IconAlertTriangle,
-  IconArrowLeft,
   IconBuilding,
   IconCalendar,
   IconCheck,
@@ -922,10 +921,6 @@ export function AnalisisCredito({
           <Button variant="outline" onClick={() => abrir("observar")}>
             <IconAlertTriangle width={16} height={16} />
             Observar
-          </Button>
-          <Button variant="outline" onClick={() => setConsulta("soltar")}>
-            <IconArrowLeft width={16} height={16} />
-            Soltar análisis
           </Button>
           <Button variant="ghost" onClick={() => abrir("anular")}>
             <IconTrash width={16} height={16} />
