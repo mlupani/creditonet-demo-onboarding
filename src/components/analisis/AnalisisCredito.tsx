@@ -529,6 +529,17 @@ export function AnalisisCredito({
             },
             { label: "Capital máximo otorgable", value: formatARS(plan.capitalMaximo) },
           ]}
+          footer={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDesarrolloAbierto(true)}
+              aria-label="Ver desarrollo del préstamo"
+            >
+              <IconWallet width={14} height={14} />
+              Ver desarrollo del préstamo
+            </Button>
+          }
         />
         <SummaryCard
           title="Oferta"
@@ -577,17 +588,6 @@ export function AnalisisCredito({
               big: true,
             },
           ]}
-          footer={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setDesarrolloAbierto(true)}
-              aria-label="Ver desarrollo del préstamo"
-            >
-              <IconWallet width={14} height={14} />
-              Ver desarrollo del préstamo
-            </Button>
-          }
         />
         <SummaryCard
           title="Buró / historial"
