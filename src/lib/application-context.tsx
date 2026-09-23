@@ -38,7 +38,7 @@ import {
   obtenerCasoPorDocumento,
   precargarPostOferta,
 } from "./mocks";
-import { creditosSeed, type CreditoDB } from "./creditos-db";
+import { creditosSeed, ordenarPorFechaDesc, type CreditoDB } from "./creditos-db";
 import {
   CAPITAL_MAXIMO_BASE,
   CAPITAL_MAXIMO_CON_PRECANCELACION,
@@ -249,11 +249,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         _descripcion: "Generado en esta demo",
         _id: idActivo,
       };
-      return [...creditosDBBase, nuevo];
+      return ordenarPorFechaDesc([...creditosDBBase, nuevo]);
     }
     const next = [...creditosDBBase];
     next[idx] = { ...creditosDBBase[idx], ...app };
-    return next;
+    return ordenarPorFechaDesc(next);
   }, [creditosDBBase, appDbId, app]);
   // Copia siempre al día de `creditosDB` para leer en callbacks sin agregarlo a sus
   // dependencias (evita recrearlos en cada cambio de `app`).
