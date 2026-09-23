@@ -328,6 +328,11 @@ export interface Observacion {
   // Pantallas que el vendedor tiene que corregir. Corrección puntual: es lo único que puede
   // editar, el resto de la carga queda bloqueada hasta que se reenvíe. Vacío = sin bloqueo.
   pantallas: PantallaPostOfertaId[];
+  // Corrección puntual por campo (creditonet-61): dentro de una pantalla observada, los ids de
+  // campo del catálogo (ver campos-post-oferta.ts) que tienen el problema y el vendedor puede
+  // tocar. Sin entrada para la pantalla = sin restricción de campo, se edita toda la pantalla
+  // (compatibilidad con observaciones previas a esta funcionalidad).
+  campos?: Partial<Record<PantallaPostOfertaId, string[]>>;
 }
 
 export interface Rechazo {

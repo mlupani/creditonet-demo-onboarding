@@ -485,6 +485,44 @@ export function unirBancos(bancos: string[]): string {
 
 export const idCbu = (banco: string) => `cbu.${banco}`;
 
+// Id de referencia que usa la selección de campos observados (creditonet-61): agrupa el CBU
+// expandido por banco bajo su plantilla y el país/característica del teléfono bajo el número,
+// que es el campo que se ve y se selecciona en la pantalla.
+function idReferenciaCampo(campo: CampoDef): string {
+  if (campo.plantilla) return campo.plantilla;
+  if (campo.id.endsWith(".pais") || campo.id.endsWith(".caracteristica")) {
+    return `${campo.id.slice(0, campo.id.lastIndexOf("."))}.numero`;
+  }
+  return campo.id;
+}
+
+// Campos que el analista puede marcar como "el problema" de una pantalla observada: no
+// modificables ni ocultos, y sin duplicar el CBU por banco ni el teléfono en 3 partes.
+export function camposSeleccionablesDe(
+  app: CreditApplication,
+  pantalla: PantallaConCampos
+): CampoDef[] {
+  return CAMPOS_POST_OFERTA.filter(
+    (c) =>
+      c.pantalla === pantalla &&
+      c.origen !== "NO_MODIFICABLE" &&
+      !c.id.endsWith(".pais") &&
+      !c.id.endsWith(".caracteristica") &&
+      campoVisible(app, c)
+  );
+}
+
+// Corrección puntual por campo (creditonet-61): si el analista señaló campos puntuales para la
+// pantalla del campo, sólo esos quedan editables y el resto se bloquea hasta reenviar.
+export function campoBloqueadoPorObservacion(app: CreditApplication, campo: CampoDef): boolean {
+  if (app.estado !== "OBSERVADO") return false;
+  const obs = app.analista.observacion;
+  if (!obs || !obs.pantallas.includes(campo.pantalla)) return false;
+  const seleccionados = obs.campos?.[campo.pantalla];
+  if (!seleccionados || seleccionados.length === 0) return false;
+  return !seleccionados.includes(idReferenciaCampo(campo));
+}
+
 // Campos de una pantalla. Con los valores cargados, el CBU se expande en uno por banco elegido.
 export function camposDe(
   pantalla: PantallaConCampos,
@@ -604,7 +642,12 @@ export function erroresPantalla(
   obligatorios: Partial<Record<string, boolean>>
 ): ErrorCampo[] {
   return camposDe(pantalla, undefined, app.postOferta[pantalla])
-    .filter((c) => c.origen !== "NO_MODIFICABLE" && campoVisible(app, c))
+    .filter(
+      (c) =>
+        c.origen !== "NO_MODIFICABLE" &&
+        campoVisible(app, c) &&
+        !campoBloqueadoPorObservacion(app, c)
+    )
     .map((c) => ({
       campo: c,
       error: validarCampo(
