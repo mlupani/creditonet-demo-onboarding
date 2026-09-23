@@ -790,6 +790,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           otrosDocumentos: [],
           empleadorCalle: "",
           empleadorLocalidad: "",
+          empleadorCompaniaTelefonica: "",
           empleadorTelefono: "",
           banco: "",
           cbu: "",

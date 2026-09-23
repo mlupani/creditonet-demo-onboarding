@@ -285,9 +285,11 @@ export interface PersonaVinculada {
   reciboSueldo: ArchivoLegajo[];
   // Otros documentos del garante (opcionales, se cargan en Legajo virtual junto al recibo).
   otrosDocumentos: ArchivoLegajo[];
-  // Empleador del garante: calle, localidad y teléfono (con área, como "+54 3514228890").
+  // Empleador del garante: calle, localidad, compañía telefónica y teléfono (con área, como
+  // "+54 3514228890").
   empleadorCalle: string;
   empleadorLocalidad: string;
+  empleadorCompaniaTelefonica: string;
   empleadorTelefono: string;
   // Cuenta del garante, para eventuales débitos si el firmante tiene que responder.
   banco: string;

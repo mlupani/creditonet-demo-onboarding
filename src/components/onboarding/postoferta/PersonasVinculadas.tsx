@@ -5,6 +5,7 @@ import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import {
   BANCOS,
+  COMPANIAS_TELEFONICAS,
   PROVINCIAS,
   VINCULOS_GARANTE,
   VINCULOS_REFERENCIA,
@@ -314,6 +315,15 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                     value={p.empleadorLocalidad}
                     onChange={(v) => actualizarPersona(tipo, p.id, { empleadorLocalidad: v })}
                     error={err.empleadorLocalidad}
+                  />
+                  <SelectField
+                    id={`${p.id}-empleador-compania-telefonica`}
+                    label="Compañía telefónica"
+                    required
+                    value={p.empleadorCompaniaTelefonica ?? ""}
+                    onChange={(v) => actualizarPersona(tipo, p.id, { empleadorCompaniaTelefonica: v })}
+                    options={COMPANIAS_TELEFONICAS.map((c) => ({ value: c, label: c }))}
+                    error={err.empleadorCompaniaTelefonica}
                   />
                   <TelefonoField
                     id={`${p.id}-empleador-telefono`}

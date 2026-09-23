@@ -818,7 +818,7 @@ export function AnalisisCredito({
                     <span>Email: {valorOPresentacion(g.email)}</span>
                     <span>Teléfono: {valorOPresentacion(g.telefono)}</span>
                     <span>Condición laboral: {valorOPresentacion(g.condicionLaboral)} · Bruto {formatARS(g.ingresoBruto)} / Neto {formatARS(g.ingresoNeto)}</span>
-                    <span>Empleador: {valorOPresentacion(g.empleadorCalle)} · {valorOPresentacion(g.empleadorLocalidad)} · {valorOPresentacion(g.empleadorTelefono)}</span>
+                    <span>Empleador: {valorOPresentacion(g.empleadorCalle)} · {valorOPresentacion(g.empleadorLocalidad)} · {valorOPresentacion(g.empleadorCompaniaTelefonica)} {valorOPresentacion(g.empleadorTelefono)}</span>
                     <span>Banco / CBU: {valorOPresentacion(g.banco)} {valorOPresentacion(g.cbu) !== "—" ? `· ${g.cbu}` : ""}</span>
                     <span>Recibos sueldo: {g.reciboSueldo.length > 0 ? g.reciboSueldo.map((a) => a.nombre).join(", ") : "—"}</span>
                     <span>Otros docs garante: {g.otrosDocumentos.length > 0 ? g.otrosDocumentos.map((a) => a.nombre).join(", ") : "—"}</span>
