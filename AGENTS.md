@@ -20,6 +20,24 @@ Este archivo define cómo trabajar sobre tickets de YouTrack en este repo. Aplic
 - **En producción**: deploy real confirmado. La mueve el humano, nunca
   el harness.
 
+## Al crear un issue NUEVO (spec propia, no un ticket que ya existía)
+
+Antes de crear el issue, decidí: **¿vas a implementarlo vos mismo, en esta
+misma sesión, ahora?**
+
+- **Sí, lo vas a hacer vos ahora**: crealo directo en **"En progreso"**
+  (nunca en "Por hacer" primero, ni por un instante). El poller
+  automático de YouTrack solo mira "Por hacer" para repartir trabajo —
+  si pasa por ahí aunque sea un segundo, puede que otro agente (el
+  worker automático) lo tome en paralelo y choquen sobre el mismo repo.
+- **No, es para que lo tome otro agente/el worker automático más
+  tarde**: crealo en **"Por hacer"** (o "Backlog" si no es urgente), y
+  ahí parás — no sigas implementándolo vos.
+
+Esta regla aplica sin importar desde dónde te estén llamando (Telegram,
+Orca, una sesión manual, etc.) — lo que importa es si SOS VOS quien va a
+seguir trabajando en el issue inmediatamente después de crearlo.
+
 ## Al tomar un ticket de "Por hacer"
 
 Decidir caso a caso si el trabajo amerita plan formal — no hay un
@@ -129,6 +147,7 @@ usando la herramienta de escritura de archivos (Write/edit de archivo)
 curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
   --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
   --data-urlencode "text@/ruta/al/archivo/del/paso1.txt"
+  
 
 <!-- BEGIN:nextjs-agent-rules -->
 

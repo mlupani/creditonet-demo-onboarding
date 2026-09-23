@@ -42,3 +42,6 @@ next-env.d.ts
 
 #playright files
 .playwright-cli*
+
+#telegram files
+telegram*.txt
