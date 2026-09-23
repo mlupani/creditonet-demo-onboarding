@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -37,6 +38,7 @@ import {
   obtenerCasoPorDocumento,
   precargarPostOferta,
 } from "./mocks";
+import { creditosSeed, type CreditoDB } from "./creditos-db";
 import {
   CAPITAL_MAXIMO_BASE,
   CAPITAL_MAXIMO_CON_PRECANCELACION,
@@ -93,6 +95,8 @@ interface EstadoPersistido {
   paso: number;
   pasoMaximo: number;
   pantallaActual: PantallaPostOfertaId;
+  creditosDB: CreditoDB[];
+  appDbId: string | null;
 }
 
 export interface ResultadoEvaluacion {
@@ -120,6 +124,11 @@ export interface CambioOferta {
 
 interface ApplicationContextValue {
   app: CreditApplication;
+  // DB simulada (src/data/creditos.json) en estado de React: se sincroniza con `app` mientras
+  // haya un registro abierto, así las bandejas ven los cambios del analista/vendedor
+  // (creditonet-64).
+  creditosDB: CreditoDB[];
+  cargarCreditoDeDB: (id: string) => void;
   paso: number;
   // Paso más avanzado alcanzado en la sesión. Volver atrás NO lo reduce: los pasos
   // posteriores siguen completos y navegables (prompt de auditoría §5–§8).
@@ -218,6 +227,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pantallaActual, setPantallaActual] = useState<PantallaPostOfertaId>("personales");
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [hidratado, setHidratado] = useState(false);
+  // DB simulada mutable + qué registro está abierto en `app` (null = solicitud nueva, no
+  // sembrada desde el JSON). `creditosDBBase` es lo último confirmado; mientras `app` esté
+  // ligado a un registro (`appDbId`), la vista expuesta a las bandejas superpone `app` sobre
+  // ese registro sin pasar por un efecto — evita el "setState dentro de un efecto" y refleja
+  // cada cambio de `app` sin tener que enganchar cada acción del analista/vendedor
+  // (creditonet-64).
+  const [creditosDBBase, setCreditosDBBase] = useState<CreditoDB[]>(() => creditosSeed());
+  const [appDbId, setAppDbId] = useState<string | null>(null);
+  const creditosDB = useMemo(() => {
+    // Un crédito generado en la demo no viene del JSON (appDbId null) pero, una vez que tiene
+    // número, se identifica por él: se superpone si ya es un registro o se agrega como uno nuevo.
+    const idActivo = appDbId ?? app.numeroCredito;
+    if (idActivo === null) return creditosDBBase;
+    const idx = creditosDBBase.findIndex((c) => c._id === idActivo);
+    if (idx === -1) {
+      if (appDbId !== null) return creditosDBBase;
+      const nuevo: CreditoDB = {
+        ...app,
+        _bandeja: "vendedor",
+        _descripcion: "Generado en esta demo",
+        _id: idActivo,
+      };
+      return [...creditosDBBase, nuevo];
+    }
+    const next = [...creditosDBBase];
+    next[idx] = { ...creditosDBBase[idx], ...app };
+    return next;
+  }, [creditosDBBase, appDbId, app]);
+  // Copia siempre al día de `creditosDB` para leer en callbacks sin agregarlo a sus
+  // dependencias (evita recrearlos en cada cambio de `app`).
+  const creditosDBRef = useRef(creditosDB);
+  useEffect(() => {
+    creditosDBRef.current = creditosDB;
+  }, [creditosDB]);
 
   // Navegar hacia atrás sólo mueve el paso actual. El máximo alcanzado nunca baja, por eso
   // los pasos posteriores conservan su tilde y siguen siendo navegables.
@@ -266,6 +309,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (typeof parsed.paso === "number") setPasoState(parsed.paso);
           if (typeof parsed.pasoMaximo === "number") setPasoMaximo(parsed.pasoMaximo);
           if (parsed.pantallaActual) setPantallaActual(parsed.pantallaActual);
+          if (Array.isArray(parsed.creditosDB)) setCreditosDBBase(parsed.creditosDB);
+          if (parsed.appDbId !== undefined) setAppDbId(parsed.appDbId);
         }
       } catch {
         /* demo sin persistencia si el storage no está disponible */
@@ -281,12 +326,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ app, paso, pasoMaximo, pantallaActual } satisfies EstadoPersistido)
+        JSON.stringify({
+          app,
+          paso,
+          pasoMaximo,
+          pantallaActual,
+          creditosDB,
+          appDbId,
+        } satisfies EstadoPersistido)
       );
     } catch {
       /* noop */
     }
-  }, [app, paso, pasoMaximo, pantallaActual, hidratado]);
+  }, [app, paso, pasoMaximo, pantallaActual, creditosDB, appDbId, hidratado]);
+
+  // Abre un crédito de la DB simulada en `app` y recuerda de qué registro vino, para que los
+  // cambios posteriores (observar, rechazar, aprobar, tomar análisis, etc.) se reflejen ahí.
+  // Antes de soltar el registro anterior, confirma su estado más reciente en la base — si no,
+  // el próximo cambio de `app` (que ya representa OTRO crédito) dejaría de superponerse sobre
+  // él y esos cambios se perderían.
+  const cargarCreditoDeDB = useCallback((id: string) => {
+    const registro = creditosDBRef.current.find((c) => c._id === id);
+    if (!registro) return;
+    setCreditosDBBase(creditosDBRef.current);
+    const { _bandeja: _b, _descripcion: _d, _id: _i, ...rest } = registro;
+    void _b;
+    void _d;
+    void _i;
+    setApp(rest as CreditApplication);
+    setAppDbId(id);
+  }, []);
 
   /**
    * Recalcula la oferta con la selección actual de precancelaciones (Plan §9).
@@ -417,9 +486,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // "Solicitar" (Guía §8): genera el ID de Crédito inalterable y la solicitud pasa a En trámite.
   const solicitar = useCallback(() => {
+    // Número siguiente al más alto de la DB simulada: uno fijo choca con un registro existente
+    // y el crédito nuevo queda invisible en las bandejas (creditonet-64).
+    const maxNumero = creditosDBRef.current.reduce(
+      (m, c) => Math.max(m, Number((c.numeroCredito ?? "").replace(/\D/g, "")) || 0),
+      0
+    );
+    const nuevoNumero = `CR-${String(maxNumero + 1).padStart(6, "0")}`;
     setApp((prev) => ({
       ...prev,
-      numeroCredito: prev.numeroCredito ?? "CR-000184",
+      numeroCredito: prev.numeroCredito ?? nuevoNumero,
       numeroCliente:
         prev.numeroCliente ??
         (prev.identificacion.tipoCliente === "NUEVO" ? "001450" : "000928"),
@@ -1109,16 +1185,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reiniciarDemo = useCallback(() => {
+    // Confirma el crédito que se estaba editando antes de soltarlo (ver cargarCreditoDeDB).
+    setCreditosDBBase(creditosDBRef.current);
     setApp(crearAplicacionInicial());
     setPasoState(1);
     setPasoMaximo(1);
     setPantallaActual("personales");
     setMenuAbierto(false);
+    // La demo nueva no está ligada a ningún registro de la DB simulada.
+    setAppDbId(null);
   }, []);
 
   const value = useMemo<ApplicationContextValue>(
     () => ({
       app,
+      creditosDB,
+      cargarCreditoDeDB,
       paso,
       pasoMaximo,
       pantallaActual,
@@ -1179,6 +1261,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       app,
+      creditosDB,
+      cargarCreditoDeDB,
       paso,
       pasoMaximo,
       pantallaActual,

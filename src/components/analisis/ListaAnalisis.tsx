@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { IconChevronDown, IconFileStack, IconSearch } from "@/components/icons";
-import { CREDITOS_DB } from "@/lib/creditos-db";
 
 type Pestana = "PEND" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
 
@@ -81,7 +80,7 @@ const COLUMNAS = [
 ];
 
 export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
-  const { app, patchApp } = useApplication();
+  const { app, creditosDB, cargarCreditoDeDB } = useApplication();
   const [eleccion, setEleccion] = useState<Pestana | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [canal, setCanal] = useState("");
@@ -105,7 +104,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
 
   // DB simulada: créditos filtrados por pestaña, canal y búsqueda
   function creditosDBEnPestana(p: Pestana) {
-    return CREDITOS_DB.filter((c) => {
+    return creditosDB.filter((c) => {
       if (!PESTANAS.find((x) => x.id === p)!.estados.includes(c.estado)) return false;
       if (canal && c.configuracion.canalId !== canal) return false;
       if (busqueda.trim() && c.cliente && !coincideCliente(c.cliente, busqueda)) return false;
@@ -124,7 +123,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   // Filas = DB + solicitud en curso (si coincide y no está ya en DB)
   const filas = (p: Pestana) => {
     const dbCount = creditosDBEnPestana(p).length;
-    const extra = visible && propia?.id === p && !CREDITOS_DB.some((c) => c.numeroCredito === app.numeroCredito) ? 1 : 0;
+    const extra = visible && propia?.id === p && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) ? 1 : 0;
     return dbCount + extra;
   };
 
@@ -153,11 +152,8 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
     setColapsado(false);
   }, [activa.id]);
 
-  function cargarCreditoDB(c: (typeof CREDITOS_DB)[number]) {
-    const { _bandeja: _b, _descripcion: _d, ...rest } = c as unknown as Record<string, unknown>;
-    void _b;
-    void _d;
-    patchApp(rest as unknown as typeof app);
+  function cargarCreditoDB(c: (typeof creditosDB)[number]) {
+    cargarCreditoDeDB(c._id);
     onAbrir();
   }
 
@@ -318,7 +314,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                         </tr>
                       );
                     })}
-                    {visible && propia?.id === activa.id && !CREDITOS_DB.some((c) => c.numeroCredito === app.numeroCredito) && cliente && paginaActual === 1 && (
+                    {visible && propia?.id === activa.id && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) && cliente && paginaActual === 1 && (
                       <tr className="cursor-pointer align-middle bg-brand-50/50 transition hover:bg-ink-25" onClick={onAbrir}>
                         <td className="px-3 py-3">
                           <p className="font-semibold text-ink-900">
@@ -380,8 +376,8 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
         </Card>
       )}
       <p className="text-center text-[11px] text-ink-400">
-        DB simulada: {CREDITOS_DB.length} préstamos · {CREDITOS_DB.filter((c) => c._bandeja === "vendedor").length} vendedor /{" "}
-        {CREDITOS_DB.filter((c) => c._bandeja === "analista").length} analista · <code className="rounded bg-ink-100 px-1">src/data/creditos.json</code>
+        DB simulada: {creditosDB.length} préstamos · {creditosDB.filter((c) => c._bandeja === "vendedor").length} vendedor /{" "}
+        {creditosDB.filter((c) => c._bandeja === "analista").length} analista · <code className="rounded bg-ink-100 px-1">src/data/creditos.json</code>
       </p>
     </div>
   );

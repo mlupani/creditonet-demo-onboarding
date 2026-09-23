@@ -7,6 +7,9 @@ import db from "@/data/creditos.json";
 export interface CreditoDB extends CreditApplication {
   _bandeja: "vendedor" | "analista";
   _descripcion: string;
+  // Id estable del registro dentro de la DB simulada — el numeroCredito no sirve solo porque
+  // los BORRADOR todavía no tienen uno (creditonet-64).
+  _id: string;
 }
 
 interface DBFile {
@@ -17,13 +20,22 @@ interface DBFile {
     total: number;
     bandejas: { vendedor: number; analista: number };
   };
-  creditos: CreditoDB[];
+  creditos: Omit<CreditoDB, "_id">[];
 }
 
 const data = db as unknown as DBFile;
 
-export const CREDITOS_DB: CreditoDB[] = data.creditos;
+export const CREDITOS_DB: CreditoDB[] = data.creditos.map((c, i) => ({
+  ...c,
+  _id: c.numeroCredito ?? `borrador-${i}`,
+}));
 export const META_DB = data.meta;
+
+// Copia mutable de la DB simulada para uso en estado de React (application-context): cada
+// consumidor necesita su propia copia porque el import de arriba es una referencia compartida.
+export function creditosSeed(): CreditoDB[] {
+  return CREDITOS_DB.map((c) => ({ ...c }));
+}
 
 // --- Filtros por bandeja ---
 
