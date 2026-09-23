@@ -949,7 +949,7 @@ export function AnalisisCredito({
             <IconAlertTriangle width={16} height={16} />
             Observar
           </Button>
-          <Button variant="ghost" onClick={() => abrir("anular")}>
+          <Button variant="outline" onClick={() => abrir("anular")}>
             <IconTrash width={16} height={16} />
             Anular
           </Button>
@@ -961,7 +961,8 @@ export function AnalisisCredito({
             <IconFileText width={16} height={16} />
             Agregar comentario
           </Button>
-          <div className="flex-1" />
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button variant="danger" onClick={() => abrir("rechazar")}>
             <IconX width={16} height={16} />
             Rechazar
