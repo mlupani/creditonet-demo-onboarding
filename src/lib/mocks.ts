@@ -1020,6 +1020,7 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
     otrosDocumentos: [],
     empleadorCalle: "", // PENDIENTE
     empleadorLocalidad: "", // PENDIENTE
+    empleadorCompaniaTelefonica: "", // PENDIENTE
     empleadorTelefono: "", // PENDIENTE
     banco: "", // PENDIENTE
     cbu: "", // PENDIENTE
@@ -1056,6 +1057,7 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
         otrosDocumentos: [],
         empleadorCalle: "",
         empleadorLocalidad: "",
+        empleadorCompaniaTelefonica: "",
         empleadorTelefono: "",
         banco: "",
         cbu: "",

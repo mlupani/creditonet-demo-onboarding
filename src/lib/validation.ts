@@ -119,6 +119,7 @@ export type CampoPersona =
   | "reciboSueldo"
   | "empleadorCalle"
   | "empleadorLocalidad"
+  | "empleadorCompaniaTelefonica"
   | "empleadorTelefono"
   | "banco"
   | "cbu";
@@ -141,6 +142,7 @@ export const LABEL_PERSONA: Record<CampoPersona, string> = {
   reciboSueldo: "Recibo de sueldo",
   empleadorCalle: "Calle del empleador",
   empleadorLocalidad: "Localidad del empleador",
+  empleadorCompaniaTelefonica: "Compañía telefónica del empleador",
   empleadorTelefono: "Teléfono del empleador",
   banco: "Banco",
   cbu: "CBU",
@@ -179,6 +181,8 @@ export function validarPersona(
     if (p.ingresoNeto <= 0) e.ingresoNeto = "Ingresá el ingreso neto.";
     if (!p.empleadorCalle.trim()) e.empleadorCalle = "Ingresá la calle del empleador.";
     if (!p.empleadorLocalidad.trim()) e.empleadorLocalidad = "Ingresá la localidad del empleador.";
+    if (!(p.empleadorCompaniaTelefonica ?? "").trim())
+      e.empleadorCompaniaTelefonica = "Seleccioná la compañía telefónica.";
     const telEmpleador = parseTelefono(p.empleadorTelefono);
     if (!telEmpleador.numero) e.empleadorTelefono = "Ingresá el teléfono del empleador.";
     else {
