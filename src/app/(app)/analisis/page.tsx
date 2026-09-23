@@ -70,7 +70,7 @@ export default function AnalisisPage() {
 
   if (!abierta || !enBandeja || !app.cliente || !app.numeroCredito) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
