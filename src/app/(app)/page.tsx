@@ -17,7 +17,6 @@ import {
   MotivoModal,
   PosicionClienteModal,
 } from "@/components/bandeja/ModalesBandeja";
-import { CREDITOS_DB } from "@/lib/creditos-db";
 import type { CreditApplication } from "@/lib/types";
 import {
   IconAlertTriangle,
@@ -78,12 +77,13 @@ export default function BandejaCanalVentaPage() {
   const router = useRouter();
   const {
     app,
+    creditosDB,
+    cargarCreditoDeDB,
     paso,
     hidratado,
     reiniciarDemo,
     retomarObservada,
     anularCredito,
-    patchApp,
     setPaso,
     setPantallaActual,
   } = useApplication();
@@ -126,11 +126,11 @@ export default function BandejaCanalVentaPage() {
     router.push("/onboarding");
   }
 
-  function abrirCreditoDB(cred: (typeof CREDITOS_DB)[number]) {
+  function abrirCreditoDB(cred: (typeof creditosDB)[number]) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _bandeja, _descripcion, ...rest } = cred as unknown as Record<string, unknown>;
+    const { _bandeja, _descripcion, _id, ...rest } = cred as unknown as Record<string, unknown>;
     const data = rest as unknown as CreditApplication;
-    patchApp(data);
+    cargarCreditoDeDB(cred._id);
     // Derivar paso/pantalla según etapa para que /onboarding muestre la pantalla correcta
     if (data.etapa === "POST_OFERTA") {
       // En post-oferta la navegación usa pantallas, no paso de originación
@@ -245,13 +245,13 @@ export default function BandejaCanalVentaPage() {
 
       <div className="mt-8 space-y-5">
         {GRUPOS.map((g) => {
-          const dbFiltrados = CREDITOS_DB.filter(
+          const dbFiltrados = creditosDB.filter(
             (c) => GRUPO_POR_ESTADO[c.estado] === g.id && (!q || (c.cliente && coincideCliente(c.cliente, q)))
           );
           const appGrupo = hidratado ? GRUPO_POR_ESTADO[app.estado] : null;
           const appCoincide = hidratado && cliente && coincideCliente(cliente, busqueda);
           const mostrarApp =
-            appCoincide && appGrupo === g.id && !CREDITOS_DB.some((c) => c.numeroCredito && c.numeroCredito === app.numeroCredito);
+            appCoincide && appGrupo === g.id && !creditosDB.some((c) => c.numeroCredito && c.numeroCredito === app.numeroCredito);
           const totalFilas = dbFiltrados.length + (mostrarApp ? 1 : 0);
           const colapsado = colapsados[g.id];
           const paginaActual = pagina[g.id] ?? 1;
