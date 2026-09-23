@@ -2,6 +2,7 @@
 // Cada registro es un CreditApplication completo + metadatos de bandeja (_bandeja, _descripcion).
 
 import type { CreditApplication, EstadoCredito } from "./types";
+import { parseFecha } from "./format";
 import db from "@/data/creditos.json";
 
 export interface CreditoDB extends CreditApplication {
@@ -25,10 +26,25 @@ interface DBFile {
 
 const data = db as unknown as DBFile;
 
-export const CREDITOS_DB: CreditoDB[] = data.creditos.map((c, i) => ({
-  ...c,
-  _id: c.numeroCredito ?? `borrador-${i}`,
-}));
+// --- Orden centralizado: últimos créditos arriba en todas las bandejas ---
+// BORRADOR aún no tiene fechaSolicitud (creditonet-64) — sin una fecha real que los ubique,
+// van al final (fallback = época). Array.prototype.sort es estable, así que entre BORRADOR
+// (todos con timestamp 0) se conserva el orden original de CREDITOS_DB.json.
+function timestampFechaSolicitud(c: Pick<CreditoDB, "fechaSolicitud">): number {
+  if (!c.fechaSolicitud) return 0;
+  return parseFecha(c.fechaSolicitud)?.getTime() ?? 0;
+}
+
+export function ordenarPorFechaDesc<T extends Pick<CreditoDB, "fechaSolicitud">>(creditos: T[]): T[] {
+  return [...creditos].sort((a, b) => timestampFechaSolicitud(b) - timestampFechaSolicitud(a));
+}
+
+export const CREDITOS_DB: CreditoDB[] = ordenarPorFechaDesc(
+  data.creditos.map((c, i) => ({
+    ...c,
+    _id: c.numeroCredito ?? `borrador-${i}`,
+  }))
+);
 export const META_DB = data.meta;
 
 // Copia mutable de la DB simulada para uso en estado de React (application-context): cada
