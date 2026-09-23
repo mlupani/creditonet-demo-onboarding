@@ -39,7 +39,7 @@ export function TransicionEtapa() {
             </span>
           </div>
 
-          <Button size="lg" className="mt-6 w-full" onClick={irAPostOferta}>
+          <Button size="lg" className="mt-6 mb-6 w-full" onClick={irAPostOferta}>
             Cargar datos del legajo
             <IconArrowRight width={17} height={17} />
           </Button>
