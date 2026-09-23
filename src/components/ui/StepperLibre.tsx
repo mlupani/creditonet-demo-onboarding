@@ -79,7 +79,7 @@ export function StepperLibre({
                       : paso.observada
                         ? "bg-warning-500 text-white"
                         : CIRCULO[paso.estado]
-                  } ${activa ? "ring-4 ring-brand-100" : ""}`}
+                  } ${activa ? "ring-4 ring-brand-100 animate-pulse" : ""}`}
                 >
                   {paso.bloqueada ? (
                     <IconLock width={12} height={12} />
