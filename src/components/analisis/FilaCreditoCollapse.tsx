@@ -96,18 +96,18 @@ export function FilaCreditoCollapse({
                 </span>
               )}
             </p>
-            <p className="truncate text-sm text-ink-500">
-              ID Cliente: {credito.numeroCliente ?? "—"} ·{" "}
-              <span className="font-mono text-[12px] font-bold text-brand-700">{credito.numeroCredito ?? "Sin ID"}</span>
-            </p>
+            <p className="truncate text-sm text-ink-500">DNI {formatDNI(cli.dni)}</p>
+            <p className="truncate text-sm text-ink-500">ID Cliente: {credito.numeroCliente ?? "—"}</p>
           </div>
         </div>
-        <div className="border-l border-ink-200 pl-6">
-          <p className="text-xs text-ink-400">DNI</p>
-          <p className="text-sm tabular-nums text-ink-900">{formatDNI(cli.dni)}</p>
+        <div className="w-36 shrink-0 border-l border-ink-200 pl-6">
+          <p className="text-xs text-ink-400">ID Crédito</p>
+          <p className="font-mono text-sm font-bold text-brand-700">{credito.numeroCredito ?? "Sin ID"}</p>
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex w-40 shrink-0 justify-center">
           <EstadoBadge estado={credito.estado} />
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
           <Button
             size="sm"
             variant="outline"
