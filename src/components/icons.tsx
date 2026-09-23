@@ -443,3 +443,21 @@ export function IconGitBranch(p: IconProps) {
     </svg>
   );
 }
+
+export function IconTable(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M3 9h18M3 15h18M9 3v18" />
+    </svg>
+  );
+}
+
+export function IconRows(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect width="18" height="7" x="3" y="3" rx="1.5" />
+      <rect width="18" height="7" x="3" y="14" rx="1.5" />
+    </svg>
+  );
+}

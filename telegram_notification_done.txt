@@ -1,0 +1,5 @@
+Proyecto: creditonet
+Tarea: creditonet-68 - Animación de pulso en el badge del paso actual del stepper
+Estado: ✅ Hecho
+PR: https://github.com/mlupani/creditonet-demo-onboarding/pull/34
+Link de tarea: https://miguel.youtrack.cloud/issue/creditonet-68

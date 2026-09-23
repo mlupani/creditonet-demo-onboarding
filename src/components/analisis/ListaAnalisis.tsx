@@ -9,7 +9,10 @@ import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconChevronDown, IconFileStack, IconSearch } from "@/components/icons";
+import { IconChevronDown, IconFileStack, IconRows, IconSearch, IconTable } from "@/components/icons";
+import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
+
+type Vista = "tabla" | "lista";
 
 type Pestana = "PEND" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
 
@@ -86,6 +89,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const [busqueda, setBusqueda] = useState("");
   const [canal, setCanal] = useState("");
   const [colapsado, setColapsado] = useState(false);
+  const [vista, setVista] = useState<Vista>("tabla");
   const [pagina, setPagina] = useState<Record<Pestana, number>>({
     PEND: 1,
     PRE: 1,
@@ -186,6 +190,27 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
             </option>
           ))}
         </select>
+        <div role="group" aria-label="Vista" className="ml-auto inline-flex rounded-lg border border-ink-300 bg-white p-0.5 shadow-xs">
+          {(
+            [
+              { id: "tabla", titulo: "Tabla", Icono: IconTable },
+              { id: "lista", titulo: "Lista", Icono: IconRows },
+            ] as const
+          ).map(({ id, titulo, Icono }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={vista === id}
+              onClick={() => setVista(id)}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-semibold transition ${
+                vista === id ? "bg-brand-600 text-white shadow-sm" : "text-ink-600 hover:bg-ink-50"
+              }`}
+            >
+              <Icono width={15} height={15} />
+              {titulo}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div role="tablist" aria-label="Estados" className="flex flex-wrap gap-2">
@@ -253,7 +278,22 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
             </p>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {vista === "lista" && (
+                <div className="space-y-3 bg-ink-25 p-3">
+                  {paginados.map((c) => (
+                    <FilaCreditoCollapse
+                      // La pestaña y la página en la key: al cambiarlas las filas vuelven a colapsarse.
+                      key={`${activa.id}-${paginaActual}-${c.numeroCredito ?? c.cliente!.dni}`}
+                      credito={c}
+                      onAbrir={() => cargarCreditoDB(c)}
+                    />
+                  ))}
+                  {visible && propia?.id === activa.id && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) && paginaActual === 1 && (
+                    <FilaCreditoCollapse key={`${activa.id}-en-curso`} credito={app} onAbrir={onAbrir} enCurso />
+                  )}
+                </div>
+              )}
+              <div className={`overflow-x-auto ${vista === "lista" ? "hidden" : ""}`}>
                 <table className="w-full min-w-[64rem] text-left text-[13px]">
                   <thead>
                     <tr className="border-b border-ink-100 bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
