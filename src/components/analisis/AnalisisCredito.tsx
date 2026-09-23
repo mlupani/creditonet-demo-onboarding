@@ -953,6 +953,14 @@ export function AnalisisCredito({
             <IconTrash width={16} height={16} />
             Anular
           </Button>
+          <Button variant="outline" onClick={() => setConsulta("posicion")}>
+            <IconUser width={16} height={16} />
+            Posición cliente
+          </Button>
+          <Button variant="outline" onClick={() => setConsulta("comentario")}>
+            <IconFileText width={16} height={16} />
+            Agregar comentario
+          </Button>
           <div className="flex-1" />
           <Button variant="danger" onClick={() => abrir("rechazar")}>
             <IconX width={16} height={16} />
