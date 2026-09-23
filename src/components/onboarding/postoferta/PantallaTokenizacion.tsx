@@ -7,6 +7,7 @@ import { nombreProveedor } from "@/lib/parametros";
 import { isValidCard } from "@/lib/format";
 import { tarjetaValida } from "@/lib/validation";
 import type { TipoTarjeta } from "@/lib/types";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -46,6 +47,7 @@ export function PantallaTokenizacion() {
   const [procesando, setProcesando] = useState<string | null>(null);
   const [verReverso, setVerReverso] = useState(false);
   const [reveladas, setReveladas] = useState<Set<string>>(new Set());
+  const [tarjetaAQuitar, setTarjetaAQuitar] = useState<string | null>(null);
   const timeoutsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
@@ -96,6 +98,20 @@ export function PantallaTokenizacion() {
     /^\d{2}\/\d{2}$/.test(form.vencimiento.trim()) &&
     form.nombreTitular.trim().length >= 3 &&
     form.cvv.length >= 3;
+
+  function ejecutarQuitar(id: string) {
+    const tid = timeoutsRef.current.get(id);
+    if (tid) {
+      window.clearTimeout(tid);
+      timeoutsRef.current.delete(id);
+    }
+    setReveladas((c) => {
+      const n = new Set(c);
+      n.delete(id);
+      return n;
+    });
+    quitarTarjeta(id);
+  }
 
   function conDemora(clave: string, accion: () => void, ms = 900) {
     setProcesando(clave);
@@ -296,17 +312,11 @@ export function PantallaTokenizacion() {
                         variant="ghost"
                         disabled={procesando === t.id}
                         onClick={() => {
-                          const tid = timeoutsRef.current.get(t.id);
-                          if (tid) {
-                            window.clearTimeout(tid);
-                            timeoutsRef.current.delete(t.id);
+                          if (tokenizada) {
+                            setTarjetaAQuitar(t.id);
+                          } else {
+                            ejecutarQuitar(t.id);
                           }
-                          setReveladas((c) => {
-                            const n = new Set(c);
-                            n.delete(t.id);
-                            return n;
-                          });
-                          quitarTarjeta(t.id);
                         }}
                         className="ml-auto"
                       >
@@ -428,6 +438,26 @@ export function PantallaTokenizacion() {
         módulo integrado al flujo de onboarding. En la demo los tokens son ficticios y no se guarda
         ningún dato sensible de la tarjeta.
       </Banner>
+
+      <ConfirmationModal
+        open={tarjetaAQuitar !== null}
+        title="¿Quitar esta tarjeta?"
+        descripcion="Esta acción no se puede deshacer. Si el cliente la necesita, deberá volver a tokenizarla."
+        rows={(() => {
+          const tj = tarjetas.find((x) => x.id === tarjetaAQuitar);
+          return [
+            { label: "Tarjeta", value: tj ? `${tj.marca} •••• ${tj.ultimos4}` : "—" },
+            { label: "Titular", value: tj?.nombreTitular ?? "—" },
+          ];
+        })()}
+        confirmLabel="Quitar tarjeta"
+        tone="danger"
+        onConfirm={() => {
+          if (tarjetaAQuitar) ejecutarQuitar(tarjetaAQuitar);
+          setTarjetaAQuitar(null);
+        }}
+        onCancel={() => setTarjetaAQuitar(null)}
+      />
     </div>
   );
 }
