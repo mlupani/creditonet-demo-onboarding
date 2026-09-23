@@ -231,9 +231,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [creditosDBBase, setCreditosDBBase] = useState<CreditoDB[]>(() => creditosSeed());
   const [appDbId, setAppDbId] = useState<string | null>(null);
   const creditosDB = useMemo(() => {
-    if (appDbId === null) return creditosDBBase;
-    const idx = creditosDBBase.findIndex((c) => c._id === appDbId);
-    if (idx === -1) return creditosDBBase;
+    // Un crédito generado en la demo no viene del JSON (appDbId null) pero, una vez que tiene
+    // número, se identifica por él: se superpone si ya es un registro o se agrega como uno nuevo.
+    const idActivo = appDbId ?? app.numeroCredito;
+    if (idActivo === null) return creditosDBBase;
+    const idx = creditosDBBase.findIndex((c) => c._id === idActivo);
+    if (idx === -1) {
+      if (appDbId !== null) return creditosDBBase;
+      const nuevo: CreditoDB = {
+        ...app,
+        _bandeja: "vendedor",
+        _descripcion: "Generado en esta demo",
+        _id: idActivo,
+      };
+      return [...creditosDBBase, nuevo];
+    }
     const next = [...creditosDBBase];
     next[idx] = { ...creditosDBBase[idx], ...app };
     return next;
@@ -469,9 +481,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // "Solicitar" (Guía §8): genera el ID de Crédito inalterable y la solicitud pasa a En trámite.
   const solicitar = useCallback(() => {
+    // Número siguiente al más alto de la DB simulada: uno fijo choca con un registro existente
+    // y el crédito nuevo queda invisible en las bandejas (creditonet-64).
+    const maxNumero = creditosDBRef.current.reduce(
+      (m, c) => Math.max(m, Number((c.numeroCredito ?? "").replace(/\D/g, "")) || 0),
+      0
+    );
+    const nuevoNumero = `CR-${String(maxNumero + 1).padStart(6, "0")}`;
     setApp((prev) => ({
       ...prev,
-      numeroCredito: prev.numeroCredito ?? "CR-000184",
+      numeroCredito: prev.numeroCredito ?? nuevoNumero,
       numeroCliente:
         prev.numeroCliente ??
         (prev.identificacion.tipoCliente === "NUEVO" ? "001450" : "000928"),
