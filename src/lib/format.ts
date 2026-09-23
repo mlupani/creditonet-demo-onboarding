@@ -102,7 +102,16 @@ function aTexto(d: Date): string {
 }
 
 export function parseFecha(value: string): Date | null {
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  const texto = value.trim();
+  // Sello de tiempo de la demo (selloTiempo): "Hoy HH:MM" — se usa en fechaEnvioAnalisis y
+  // fechaAprobacion cuando el analista actúa en vivo, y debe ordenar como "ahora".
+  const hoy = /^Hoy\s+(\d{1,2}):(\d{2})$/.exec(texto);
+  if (hoy) {
+    const d = new Date();
+    d.setHours(Number(hoy[1]), Number(hoy[2]), 0, 0);
+    return d;
+  }
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto);
   if (!m) return null;
   const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
   return Number.isNaN(d.getTime()) ? null : d;
