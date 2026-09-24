@@ -21,6 +21,7 @@ export const ESTADO_META: Record<EstadoCredito, { label: string; tone: Tone }> =
   CAMBIO_OFERTA: { label: "Cambio de oferta", tone: "warning" },
   RECHAZADO: { label: "Rechazado", tone: "danger" },
   ANULADO: { label: "Anulado", tone: "neutral" },
+  APROBADO: { label: "Aprobado", tone: "success" },
   EN_FIRMA: { label: "En firma", tone: "info" },
   FIRMADO: { label: "Firma aprobada", tone: "success" },
   CHEQUEO_TELEFONICO: { label: "Chequeo telefónico", tone: "info" },

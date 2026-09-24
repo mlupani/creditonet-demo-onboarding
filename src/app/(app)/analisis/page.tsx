@@ -70,6 +70,7 @@ export default function AnalisisPage() {
     app.estado === "PREAPROBADO" ||
     app.estado === "ANALISIS_TOMADO" ||
     app.estado === "CAMBIO_OFERTA" ||
+    app.estado === "APROBADO" ||
     ESTADOS_FIRMA.includes(app.estado) ||
     app.estado === "PARA_LIQUIDAR" ||
     rechazoAnalista;
@@ -200,6 +201,48 @@ export default function AnalisisPage() {
           )}
         </div>
 
+        <AprobacionModal
+          open={aprobarModal}
+          loading={false}
+          onConfirm={aprobar}
+          onCancel={() => setAprobarModal(false)}
+        />
+      </div>
+    );
+  }
+
+  if (app.estado === "APROBADO") {
+    const o = app.oferta;
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        {volver}
+        <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
+              Analista de riesgo
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
+              Crédito aprobado · {app.numeroCredito}
+            </h1>
+            <p className="mt-1 text-sm text-ink-500">
+              El crédito está aprobado y espera pasar a firma. Al pasarlo a firma queda en FEL, a
+              la espera de la firma del cliente.
+            </p>
+          </div>
+          <EstadoBadge estado={app.estado} />
+        </div>
+        <Card className="mt-6 space-y-4 p-4 sm:p-5">
+          <p className="text-sm text-ink-700">
+            {app.cliente.nombre} {app.cliente.apellido} · <strong>{formatARS(o.montoSolicitado)}</strong>{" "}
+            en {o.plazo} cuotas de {formatARS(o.valorCuota)}
+          </p>
+          <div className="flex justify-end">
+            <Button size="lg" variant="success" onClick={() => setAprobarModal(true)}>
+              Pasar a firma
+            </Button>
+          </div>
+        </Card>
+        <HistorialCredito className="mt-5" />
         <AprobacionModal
           open={aprobarModal}
           loading={false}
