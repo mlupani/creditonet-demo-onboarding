@@ -87,6 +87,14 @@ function conObservacion(prev: CreditApplication, observacion: Observacion) {
   return { observacion, historialObservaciones: [...observacionesDe(prev), observacion] };
 }
 
+// Firma aprobada (y, si se pidió, visto bueno del superior): sigue el chequeo telefónico si el
+// producto lo exige; si no, queda para liquidar.
+function pasoTrasFirma(firmada: CreditApplication, anterior: CreditApplication): CreditApplication {
+  if (!requiereChequeoTelefonico(firmada.configuracion))
+    return puedeLiquidar(firmada) ? { ...firmada, estado: "PARA_LIQUIDAR" } : anterior;
+  return { ...firmada, estado: "CHEQUEO_TELEFONICO", chequeoTelefonico: { ...CHEQUEO_PENDIENTE, fechaInicio: selloTiempo() } };
+}
+
 function plazoValido(planId: string | null, plazo: Plazo): Plazo {
   const grilla = planId ? PLANES_CUOTAS[planId]?.grilla : undefined;
   return grilla && grilla.length > 0 && !grilla.some((f) => f.plazo === plazo)
@@ -312,6 +320,9 @@ interface ApplicationContextValue {
   dejarAprobado: () => void;
   registrarFirmaCliente: () => void;
   verificarFirma: () => void;
+  // AFEL → SUP: pide la aprobación de un superior; `aprobarSuperior` la da y sigue el flujo.
+  enviarASuperior: () => void;
+  aprobarSuperior: () => void;
   solicitarRefirma: () => void;
   // Chequeo telefónico (bandeja del chequeador).
   tomarChequeo: () => void;
@@ -1490,7 +1501,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Rechazar desde AFEL deja constancia en la firma que se estaba verificando.
       firmas:
         prev.estado === "FIRMADO" ? cerrarIntentoActual(prev.firmas, "RECHAZADA") : prev.firmas,
-      rechazo: { origen: "ANALISTA", codigos: [codigo], motivo, observacion, fecha: fechaHoy() },
+      rechazo: {
+        // Un crédito en SUP lo rechaza el superior; el resto, el analista.
+        origen: prev.estado === "SUPERIOR" ? "SUPERIOR" : "ANALISTA",
+        codigos: [codigo],
+        motivo,
+        observacion,
+        fecha: fechaHoy(),
+      },
     }));
   }, []);
 
@@ -1535,15 +1553,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // AFEL: firma aprobada. Sigue el chequeo telefónico si el producto lo exige; si no, queda
-  // para liquidar.
+  // AFEL: firma aprobada.
   const verificarFirma = useCallback(() => {
     setAppOperativo((prev) => {
       if (prev.estado !== "FIRMADO") return prev;
-      const firmada = { ...prev, firmas: cerrarIntentoActual(prev.firmas, "APROBADA") };
-      if (!requiereChequeoTelefonico(prev.configuracion))
-        return puedeLiquidar(firmada) ? { ...firmada, estado: "PARA_LIQUIDAR" } : prev;
-      return { ...firmada, estado: "CHEQUEO_TELEFONICO", chequeoTelefonico: { ...CHEQUEO_PENDIENTE, fechaInicio: selloTiempo() } };
+      return pasoTrasFirma({ ...prev, firmas: cerrarIntentoActual(prev.firmas, "APROBADA") }, prev);
+    });
+  }, []);
+
+  // AFEL → SUP: la firma se da por verificada y el crédito espera la aprobación de un superior.
+  const enviarASuperior = useCallback(() => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "FIRMADO") return prev;
+      return {
+        ...prev,
+        estado: "SUPERIOR",
+        firmas: cerrarIntentoActual(prev.firmas, "APROBADA"),
+        aprobacionSuperior: {
+          enviadaPor: SESION_ANALISTA.nombre,
+          fechaEnvio: selloTiempo(),
+          aprobadaPor: null,
+          fechaAprobacion: null,
+        },
+      };
+    });
+  }, []);
+
+  // SUP: el superior aprueba y el crédito sigue como después de AFEL.
+  const aprobarSuperior = useCallback(() => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "SUPERIOR" || !prev.aprobacionSuperior) return prev;
+      return pasoTrasFirma(
+        {
+          ...prev,
+          aprobacionSuperior: {
+            ...prev.aprobacionSuperior,
+            aprobadaPor: SESION_SUPERVISOR.nombre,
+            fechaAprobacion: selloTiempo(),
+          },
+        },
+        prev
+      );
     });
   }, []);
 
@@ -1705,6 +1755,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dejarAprobado,
       registrarFirmaCliente,
       verificarFirma,
+      enviarASuperior,
+      aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,
       soltarChequeo,
@@ -1777,6 +1829,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dejarAprobado,
       registrarFirmaCliente,
       verificarFirma,
+      enviarASuperior,
+      aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,
       soltarChequeo,

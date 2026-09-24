@@ -83,6 +83,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
   APROBADO: "FIRMA",
   EN_FIRMA: "FIRMA",
   FIRMADO: "FIRMA",
+  SUPERIOR: "FIRMA",
   CHEQUEO_TELEFONICO: "CHEQUEO",
   PARA_LIQUIDAR: "PAGO",
   RECHAZADO: "RESUELTAS",
@@ -101,6 +102,7 @@ const SUBESTADOS: { id: string; label: string }[] = [
   { id: "APROBADO", label: "APR · Aprobada" },
   { id: "EN_FIRMA", label: "FEL · En firma" },
   { id: "FIRMADO", label: "AFEL · Firma aprobada" },
+  { id: "SUPERIOR", label: "SUP · Aprobación superior" },
   { id: "CHEQUEO", label: "Chequeo pendiente" },
   { id: "CHEQUEO_OBS", label: "Chequeo observado" },
   { id: "PARA_LIQUIDAR", label: "Para liquidar" },
@@ -253,6 +255,7 @@ export default function BandejaCanalVentaPage() {
     if (c.estado === "APROBADO") return "Pendiente de pasar a firma";
     if (c.estado === "EN_FIRMA") return "Esperando la firma del cliente";
     if (c.estado === "FIRMADO") return "Firma del cliente verificada por el analista";
+    if (c.estado === "SUPERIOR") return "Esperando la aprobación de un superior";
     if (c.estado === "CHEQUEO_TELEFONICO")
       return `${textoChequeo(c.chequeoTelefonico)} · sólo lectura`;
     if (c.estado === "PARA_LIQUIDAR") return "En Bandeja de Liquidación (Tesorería)";
@@ -264,6 +267,7 @@ export default function BandejaCanalVentaPage() {
         SIN_LINEA: `Sin línea · ${codigos.join(", ")}`,
         ANALISTA: `Rechazo analista · ${codigos.join(", ")} ${motivo}`,
         CHEQUEADOR: `Rechazo en chequeo telefónico · ${codigos.join(", ")} ${motivo}`,
+        SUPERIOR: `Rechazo superior · ${codigos.join(", ")} ${motivo}`,
       };
       return map[origen];
     }

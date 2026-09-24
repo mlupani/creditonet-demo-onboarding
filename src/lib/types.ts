@@ -26,6 +26,9 @@ export type EstadoCredito =
   | "APROBADO"
   | "EN_FIRMA"
   | "FIRMADO"
+  // SUP (creditonet-90): aprobación de un superior. Opcional: el analista la pide desde AFEL y,
+  // con el visto bueno, el crédito sigue al chequeo telefónico o a liquidación.
+  | "SUPERIOR"
   | "CHEQUEO_TELEFONICO"
   | "PARA_LIQUIDAR";
 
@@ -389,7 +392,8 @@ export interface Rechazo {
   // motor y no llega al analista (02:28).
   // INSTITUCIONAL: una regla institucional bloqueante no pasó; el motor no llega a ejecutarse.
   // CHEQUEADOR: el chequeo telefónico posterior a la firma no fue correcto.
-  origen: "INSTITUCIONAL" | "MOTOR" | "SIN_LINEA" | "ANALISTA" | "CHEQUEADOR";
+  // SUPERIOR: el superior no aprobó el crédito enviado a SUP.
+  origen: "INSTITUCIONAL" | "MOTOR" | "SIN_LINEA" | "ANALISTA" | "CHEQUEADOR" | "SUPERIOR";
   codigos: string[];
   motivo: string;
   observacion: string;
@@ -445,6 +449,14 @@ export interface ComentarioSolicitud {
   autor: string;
   texto: string;
   fecha: string;
+}
+
+// Aprobación de un superior (SUP): quién la pidió y, cuando llega, quién la dio.
+export interface AprobacionSuperior {
+  enviadaPor: string;
+  fechaEnvio: string;
+  aprobadaPor: string | null;
+  fechaAprobacion: string | null;
 }
 
 // --- Aplicación ---
@@ -533,6 +545,8 @@ export interface CreditApplication {
   firmas: IntentoFirma[];
   // Chequeo telefónico (sólo si el producto lo requiere): nace al verificarse la firma.
   chequeoTelefonico: ChequeoTelefonico | null;
+  // Aprobación de un superior (sólo si el analista la pidió desde AFEL).
+  aprobacionSuperior?: AprobacionSuperior | null;
   comentarios: ComentarioSolicitud[];
 
   fechaSolicitud: string | null;
