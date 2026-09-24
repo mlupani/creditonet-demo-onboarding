@@ -1,14 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { importeTerceros, netoAAcreditar } from "@/lib/credit";
+import { importeTerceros, netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
 import { bancosDe } from "@/lib/campos-post-oferta";
 import { ESTADOS_FIRMA } from "@/lib/firma";
 import type { MetodoFirma } from "@/lib/types";
 import { FirmaPanel } from "@/components/analisis/FirmaPanel";
+import { ListaComentarios } from "@/components/bandeja/ModalesBandeja";
 import { HistorialCredito } from "@/components/HistorialCredito";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -47,6 +48,13 @@ export default function AnalisisPage() {
   // La bandeja abre en la lista; "Abrir" entra al detalle de la solicitud.
   const [abierta, setAbierta] = useState(false);
 
+  // La oferta la cambió el analista (refrendada o por datos financieros): la tiene que ver
+  // el vendedor, así que se redirige a su bandeja en vez de quedarse en la del analista.
+  const ofertaCambiada = ofertaAnalistaDe(app) !== null;
+  useEffect(() => {
+    if (hidratado && ofertaCambiada) router.push("/");
+  }, [hidratado, ofertaCambiada, router]);
+
   if (!hidratado) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-ink-400">
@@ -63,6 +71,7 @@ export default function AnalisisPage() {
   const enBandeja =
     app.estado === "PREAPROBADO" ||
     app.estado === "ANALISIS_TOMADO" ||
+    app.estado === "CAMBIO_OFERTA" ||
     ESTADOS_FIRMA.includes(app.estado) ||
     app.estado === "PARA_LIQUIDAR" ||
     rechazoAnalista;
@@ -124,6 +133,80 @@ export default function AnalisisPage() {
             La solicitud pasa al tramo de firma antes de liquidarse.
           </p>
         </Card>
+      </div>
+    );
+  }
+
+  if (app.estado === "CAMBIO_OFERTA") {
+    // Confirmar oferta: el vendedor aceptó la del analista o eligió una menor. Confirmar
+    // es aprobar directo: se reutiliza el modal de método de firma y aprobarCredito.
+    const tope = ofertaAnalistaDe(app);
+    const o = app.oferta;
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        {volver}
+        <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
+              Analista de riesgo
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
+              Confirmar oferta · Crédito {app.numeroCredito}
+            </h1>
+            <p className="mt-1 text-sm text-ink-500">
+              El canal de venta respondió al cambio de oferta. Al confirmar, el crédito queda
+              aprobado y sigue el tramo de firma.
+            </p>
+          </div>
+          <EstadoBadge estado={app.estado} />
+        </div>
+
+        <div className="mt-6 space-y-5">
+          <Card className="p-4 sm:p-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-ink-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-ink-400">
+                  Tope del analista
+                </p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-ink-900">
+                  {tope ? formatARS(tope.montoSolicitado) : "—"}
+                </p>
+                <p className="text-sm text-ink-500">
+                  {tope ? `${tope.plazo} cuotas` : ""} {tope?.nota ? `· ${tope.nota}` : ""}
+                </p>
+              </div>
+              <div className="rounded-xl border border-success-200 bg-success-50/50 p-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-success-700">
+                  Oferta final del vendedor
+                </p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-ink-900">
+                  {formatARS(o.montoSolicitado)}
+                </p>
+                <p className="text-sm text-ink-500">
+                  {o.plazo} cuotas de {formatARS(o.valorCuota)}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button size="lg" variant="success" onClick={() => setAprobarModal(true)}>
+                Confirmar oferta
+              </Button>
+            </div>
+          </Card>
+
+          {app.comentarios.length > 0 && (
+            <Card className="px-5 pb-5 pt-1">
+              <ListaComentarios titulo="Comentarios" />
+            </Card>
+          )}
+        </div>
+
+        <AprobacionModal
+          open={aprobarModal}
+          loading={false}
+          onConfirm={aprobar}
+          onCancel={() => setAprobarModal(false)}
+        />
       </div>
     );
   }

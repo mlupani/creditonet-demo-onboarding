@@ -1252,22 +1252,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  // "Finalizar carga" (En trámite → Preaprobado) o "Reenviar correcciones" (Observado →
-  // Preaprobado). Preaprobado es lo que manda la solicitud a la bandeja del analista.
+  // "Finalizar carga" (En trámite → Preaprobado), "Reenviar correcciones" (Observado →
+  // Preaprobado) o reenvío con oferta del analista en juego (aceptada o elegida menor):
+  // vuelve al analista en CAMBIO_OFERTA para que confirme la oferta final. Se conserva
+  // el tope (ofertaAnalista) para poder comparar contra la oferta elegida.
   const finalizarCarga = useCallback(() => {
-    setApp((prev) => ({
-      ...prev,
-      estado: "PREAPROBADO",
-      etapa: "ENVIADA",
-      fechaPreaprobacion: prev.fechaPreaprobacion ?? selloTiempo(),
-      fechaEnvioAnalisis: selloTiempo(),
-      analista: {
-        ...prev.analista,
-        tomado: false,
-        reenviada: prev.estado === "OBSERVADO",
-        ofertaAnalista: null,
-      },
-    }));
+    setApp((prev) => {
+      const tope = ofertaAnalistaDe(prev);
+      return {
+        ...prev,
+        estado: tope !== null ? "CAMBIO_OFERTA" : "PREAPROBADO",
+        etapa: "ENVIADA",
+        fechaPreaprobacion: prev.fechaPreaprobacion ?? selloTiempo(),
+        fechaEnvioAnalisis: selloTiempo(),
+        analista: {
+          ...prev.analista,
+          tomado: false,
+          reenviada: prev.estado === "OBSERVADO",
+          ofertaAnalista: tope,
+        },
+      };
+    });
   }, []);
 
   const tomarAnalisis = useCallback(() => {

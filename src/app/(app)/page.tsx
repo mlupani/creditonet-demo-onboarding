@@ -182,6 +182,9 @@ export default function BandejaCanalVentaPage() {
       const obs = c.analista.observacion;
       return obs ? `${obs.motivo}: ${obs.nota}` : "Observada por el analista";
     }
+    if (c.estado === "CAMBIO_OFERTA") {
+      return "Oferta respondida · aguardando confirmación del analista";
+    }
     if (c.estado === "PREAPROBADO" || c.estado === "ANALISIS_TOMADO") {
       return c.analista.reenviada
         ? "Reenviada con correcciones · en bandeja del analista"
