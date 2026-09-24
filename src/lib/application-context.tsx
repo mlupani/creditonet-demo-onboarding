@@ -228,6 +228,8 @@ interface ApplicationContextValue {
   // Cambio de oferta del analista: requiere refrendación del supervisor para regir.
   proponerCambioOferta: (cambio: CambioOferta) => void;
   refrendarCambioOferta: () => void;
+  // El supervisor autoriza un cambio de oferta por encima del límite.
+  autorizarExcepcionCambioOferta: () => void;
   rechazarCambioOferta: () => void;
   // Cambio de datos financieros del analista: recalcula el Motor de Riesgo de inmediato
   // (no requiere refrendación) y puede terminar en Observado (nueva oferta) o Rechazado.
@@ -748,6 +750,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         },
       };
     });
+  }, []);
+
+  const autorizarExcepcionCambioOferta = useCallback(() => {
+    setAppOperativo((prev) => ({
+      ...prev,
+      analista: {
+        ...prev.analista,
+        excepcionCambioOferta: {
+          n: cambiosOfertaDe(prev).length,
+          autorizadoPor: SESION_SUPERVISOR.nombre,
+          fecha: selloTiempo(),
+        },
+      },
+    }));
   }, []);
 
   const rechazarCambioOferta = useCallback(() => {
@@ -1603,6 +1619,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finalizarRiesgo,
       proponerCambioOferta,
       refrendarCambioOferta,
+      autorizarExcepcionCambioOferta,
       rechazarCambioOferta,
       aplicarCambioDatosFinancieros,
       patchOferta,
@@ -1672,6 +1689,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finalizarRiesgo,
       proponerCambioOferta,
       refrendarCambioOferta,
+      autorizarExcepcionCambioOferta,
       rechazarCambioOferta,
       aplicarCambioDatosFinancieros,
       patchOferta,
