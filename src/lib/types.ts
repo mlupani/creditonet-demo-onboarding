@@ -410,8 +410,8 @@ export interface OfertaAnalista {
   aceptada?: boolean;
 }
 
-// Cambio de oferta que el analista ya hizo sobre la solicitud. Sólo se permite uno: con
-// alguno registrado, un nuevo cambio se bloquea y se muestra este historial.
+// Cambio de oferta que el analista ya hizo sobre la solicitud. Se permiten hasta
+// MAX_CAMBIOS_OFERTA; superado el límite, un nuevo cambio se bloquea salvo excepción del supervisor.
 export interface CambioOfertaRegistro {
   tipo: "OFERTA" | "DATOS_FINANCIEROS";
   fecha: string;
@@ -504,6 +504,9 @@ export interface CreditApplication {
     ofertaAnalista?: OfertaAnalista | null;
     // Cambios de oferta ya hechos por el analista (ausente en créditos anteriores al campo).
     historialCambiosOferta?: CambioOfertaRegistro[];
+    // Excepción del supervisor para superar el límite de cambios de oferta (creditonet-78): vale
+    // sólo para el cambio siguiente al `n`-ésimo (n = cambios ya hechos al autorizarla).
+    excepcionCambioOferta?: { n: number; autorizadoPor: string; fecha: string } | null;
     // El analista leyó y confirmó la observación de una solicitud reenviada (creditonet-75). Hasta
     // entonces no puede operar el crédito; se limpia al observar o al reenviar de nuevo.
     observacionConfirmada?: { fecha: string } | null;

@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import {
   RESULTADO_LABEL,
+  MAX_CAMBIOS_OFERTA,
+  cambioOfertaPermitido,
   cambiosOfertaDe,
   evaluarPlan,
   importeTerceros,
@@ -150,6 +152,7 @@ export function AnalisisCredito({
     app,
     proponerCambioOferta,
     refrendarCambioOferta,
+    autorizarExcepcionCambioOferta,
     rechazarCambioOferta,
     aplicarCambioDatosFinancieros,
     anularCredito,
@@ -262,10 +265,11 @@ export function AnalisisCredito({
     return `${base}${piso}${depto}${loc ? ` · ${loc}` : ""}${cp}`.trim() || "—";
   }
 
-  // Sólo se permite un cambio de oferta por solicitud: el segundo intento muestra el historial.
+  // Hasta MAX_CAMBIOS_OFERTA cambios por solicitud: superado el límite se muestra el historial
+  // y el supervisor puede autorizar una excepción.
   function intentarCambiarOferta() {
-    if (cambiosOfertaDe(app).length > 0) setCambioBloqueadoAbierto(true);
-    else setCambioAbierto(true);
+    if (cambioOfertaPermitido(app)) setCambioAbierto(true);
+    else setCambioBloqueadoAbierto(true);
   }
 
   function abrir(tipo: "observar" | "rechazar" | "anular") {
@@ -903,6 +907,11 @@ export function AnalisisCredito({
           </div>
         ) : (
           <>
+            <p className="text-xs text-ink-500">
+              Cambios de oferta: {cambiosOfertaDe(app).length} de {MAX_CAMBIOS_OFERTA}
+              {app.analista.excepcionCambioOferta &&
+                ` · excepción autorizada por ${app.analista.excepcionCambioOferta.autorizadoPor}`}
+            </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 variant="outline"
@@ -1038,6 +1047,11 @@ export function AnalisisCredito({
       <CambioOfertaBloqueadoModal
         open={cambioBloqueadoAbierto}
         onClose={() => setCambioBloqueadoAbierto(false)}
+        onExcepcion={() => {
+          autorizarExcepcionCambioOferta();
+          setCambioBloqueadoAbierto(false);
+          setCambioAbierto(true);
+        }}
       />
       <CambiarOfertaModal
         open={cambioAbierto}
