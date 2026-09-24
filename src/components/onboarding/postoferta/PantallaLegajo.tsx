@@ -125,7 +125,7 @@ export function PantallaLegajo() {
                   cargado
                     ? "border-success-200 bg-success-50/60"
                     : esteSubiendo
-                      ? "animate-pulse border-brand-200 bg-brand-50/60"
+                      ? "animate-pulse-electric border-brand-200 bg-brand-50/60"
                       : "border-ink-200 bg-white"
                 }`}
               >
