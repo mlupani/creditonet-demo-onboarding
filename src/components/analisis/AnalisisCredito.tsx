@@ -81,6 +81,9 @@ function tieneCatalogoCampos(id: PantallaPostOfertaId): id is PantallaConCampos 
   return (PANTALLAS_CON_CAMPOS as PantallaPostOfertaId[]).includes(id);
 }
 
+// Por ahora el analista sólo puede observar estas pantallas (las demás se ocultan del selector).
+const PANTALLAS_OBSERVABLES: PantallaPostOfertaId[] = ["referencias", "garantias", "legajo"];
+
 function AreaTexto({
   id,
   label,
@@ -1017,10 +1020,12 @@ export function AnalisisCredito({
               label="Pantallas a corregir"
               required
               values={pantallasVisibles(app.configuracion)
+                .filter((pv) => PANTALLAS_OBSERVABLES.includes(pv.id))
                 .filter((pv) => pantallas.includes(pv.id))
                 .map((pv) => pv.label)}
               onChange={(labels) => {
                 const nuevas = pantallasVisibles(app.configuracion)
+                  .filter((pv) => PANTALLAS_OBSERVABLES.includes(pv.id))
                   .filter((pv) => labels.includes(pv.label))
                   .map((pv) => pv.id);
                 setPantallas(nuevas);
@@ -1030,7 +1035,9 @@ export function AnalisisCredito({
                   return siguiente;
                 });
               }}
-              options={pantallasVisibles(app.configuracion).map((pv) => pv.label)}
+              options={pantallasVisibles(app.configuracion)
+                .filter((pv) => PANTALLAS_OBSERVABLES.includes(pv.id))
+                .map((pv) => pv.label)}
               error={
                 intentado && pantallas.length === 0
                   ? "Seleccioná al menos una pantalla a corregir."
