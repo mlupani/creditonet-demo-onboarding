@@ -46,7 +46,7 @@ const ACCIONES_PROXIMAS = [
   },
 ];
 
-type Grupo = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "FIRMA" | "CHEQUEO" | "RESUELTAS";
+type Grupo = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "FIRMA" | "CHEQUEO" | "PAGO" | "RESUELTAS";
 type ModalId = "nueva" | "anular" | "posicion" | "estado" | "motivo" | "comentario";
 
 // Secciones de la bandeja del canal de venta, en el orden en que se trabajan.
@@ -61,13 +61,18 @@ const GRUPOS: { id: Grupo; titulo: string; vacio: string }[] = [
   },
   { id: "CHEQUEO", titulo: "Chequeo telefónico", vacio: "No hay solicitudes en chequeo telefónico." },
   {
+    id: "PAGO",
+    titulo: "En proceso de pago",
+    vacio: "No hay solicitudes en liquidación ni activas.",
+  },
+  {
     id: "RESUELTAS",
     titulo: "Cancelados / Rechazados",
     vacio: "Todavía no hay solicitudes resueltas.",
   },
 ];
 
-const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo | null> = {
+const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
   BORRADOR: "TRAMITE",
   EN_TRAMITE: "TRAMITE",
   OBSERVADO: "OBSERVADAS",
@@ -77,8 +82,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo | null> = {
   EN_FIRMA: "FIRMA",
   FIRMADO: "FIRMA",
   CHEQUEO_TELEFONICO: "CHEQUEO",
-  // Activos (aprobadas, en liquidación): ya no le interesan al vendedor.
-  PARA_LIQUIDAR: null,
+  PARA_LIQUIDAR: "PAGO",
   RECHAZADO: "RESUELTAS",
   ANULADO: "RESUELTAS",
 };
@@ -105,6 +109,7 @@ export default function BandejaCanalVentaPage() {
     ANALISIS: true,
     FIRMA: true,
     CHEQUEO: true,
+    PAGO: true,
     RESUELTAS: true,
   });
   const [pagina, setPagina] = useState<Record<Grupo, number>>({
@@ -113,6 +118,7 @@ export default function BandejaCanalVentaPage() {
     ANALISIS: 1,
     FIRMA: 1,
     CHEQUEO: 1,
+    PAGO: 1,
     RESUELTAS: 1,
   });
   const POR_PAGINA = 5;
@@ -123,7 +129,7 @@ export default function BandejaCanalVentaPage() {
   const q = busqueda.trim();
 
   useEffect(() => {
-    setPagina({ TRAMITE: 1, OBSERVADAS: 1, ANALISIS: 1, FIRMA: 1, CHEQUEO: 1, RESUELTAS: 1 });
+    setPagina({ TRAMITE: 1, OBSERVADAS: 1, ANALISIS: 1, FIRMA: 1, CHEQUEO: 1, PAGO: 1, RESUELTAS: 1 });
   }, [q]);
 
   function toggleColapso(g: Grupo) {
@@ -402,7 +408,7 @@ export default function BandejaCanalVentaPage() {
                                     Tramitar observación
                                   </Button>
                                 )}
-                                {(g.id === "ANALISIS" || g.id === "FIRMA" || g.id === "CHEQUEO" || g.id === "RESUELTAS") && (
+                                {(g.id === "ANALISIS" || g.id === "FIRMA" || g.id === "CHEQUEO" || g.id === "PAGO" || g.id === "RESUELTAS") && (
                                   <Button size="sm" variant="outline" onClick={() => actuar(cred, "estado")}>
                                     Ver estado
                                   </Button>

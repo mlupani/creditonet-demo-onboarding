@@ -406,6 +406,21 @@ export interface OfertaAnalista {
   aceptada?: boolean;
 }
 
+// Cambio de oferta que el analista ya hizo sobre la solicitud. Sólo se permite uno: con
+// alguno registrado, un nuevo cambio se bloquea y se muestra este historial.
+export interface CambioOfertaRegistro {
+  tipo: "OFERTA" | "DATOS_FINANCIEROS";
+  fecha: string;
+  // Sin dato en los registros reconstruidos de la DB simulada.
+  montoAnterior: number | null;
+  plazoAnterior: Plazo | null;
+  montoNuevo: number;
+  plazoNuevo: Plazo;
+  nota: string;
+  autor: string;
+  refrendadoPor?: string;
+}
+
 // Comentario que el canal de venta agrega a una solicitud En análisis para el analista.
 export interface ComentarioSolicitud {
   id: string;
@@ -483,6 +498,8 @@ export interface CreditApplication {
     cambioOfertaPendiente: CambioOfertaPropuesto | null;
     // Oferta refrendada que el vendedor tiene que aceptar o reducir (o ausente).
     ofertaAnalista?: OfertaAnalista | null;
+    // Cambios de oferta ya hechos por el analista (ausente en créditos anteriores al campo).
+    historialCambiosOferta?: CambioOfertaRegistro[];
   };
   rechazo: Rechazo | null;
   // Historial de firmas (FEL/AFEL): vacío hasta que el analista aprueba el crédito.

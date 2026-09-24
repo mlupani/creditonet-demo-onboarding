@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import {
   RESULTADO_LABEL,
+  cambiosOfertaDe,
   evaluarPlan,
   importeTerceros,
   netoAAcreditar,
@@ -52,6 +53,7 @@ import {
   PosicionClienteModal,
 } from "@/components/bandeja/ModalesBandeja";
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
+import { CambioOfertaBloqueadoModal } from "./CambioOfertaBloqueadoModal";
 import { BuroMotorModal, CreditosRenovarModal, DatosCamposModal, ReglasMotorModal } from "./ModalesAnalisis";
 import { HistorialPagosModal } from "./HistorialPagosModal";
 import { DesarrolloPrestamoModal } from "./DesarrolloPrestamoModal";
@@ -164,6 +166,7 @@ export function AnalisisCredito({
     Partial<Record<PantallaPostOfertaId, string[]>>
   >({});
   const [cambioAbierto, setCambioAbierto] = useState(false);
+  const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
@@ -171,6 +174,8 @@ export function AnalisisCredito({
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
+  // Crédito cuya observación previa el analista ya comprobó (se pierde al cambiar de crédito).
+  const [observacionComprobada, setObservacionComprobada] = useState<string | null>(null);
   if (!app.cliente) return null;
 
   const o = app.oferta;
@@ -199,6 +204,12 @@ export function AnalisisCredito({
   const cambioPendiente = app.analista.cambioOfertaPendiente;
   // Sin tomar el caso no se opera: sólo se muestra el detalle y el botón Tomar análisis.
   const puedeOperar = app.analista.tomado;
+  // Una reenviada con correcciones no se decide hasta comprobar y confirmar la observación.
+  const observacionPendiente =
+    puedeOperar &&
+    app.analista.reenviada &&
+    app.analista.observacion !== null &&
+    observacionComprobada !== (app.numeroCredito ?? "sin-id");
   const cfgEfectiva = configEfectiva(app.configuracion);
   // Oferta: renovaciones de créditos al día vs. precancelaciones obligatorias de créditos en mora.
   const sumaCancelacion = (cs: typeof aRenovar) => cs.reduce((t, c) => t + c.montoCancelacion, 0);
@@ -245,6 +256,12 @@ export function AnalisisCredito({
     const cp = d.codigoPostal ? ` (CP ${d.codigoPostal})` : "";
     if (!base && !loc) return "—";
     return `${base}${piso}${depto}${loc ? ` · ${loc}` : ""}${cp}`.trim() || "—";
+  }
+
+  // Sólo se permite un cambio de oferta por solicitud: el segundo intento muestra el historial.
+  function intentarCambiarOferta() {
+    if (cambiosOfertaDe(app).length > 0) setCambioBloqueadoAbierto(true);
+    else setCambioAbierto(true);
   }
 
   function abrir(tipo: "observar" | "rechazar" | "anular") {
@@ -297,13 +314,32 @@ export function AnalisisCredito({
       </div>
 
       {app.analista.reenviada && app.analista.observacion && (
-        <Banner tone="info" title="Reenviada con correcciones">
+        <Banner
+          tone={observacionPendiente ? "warning" : "info"}
+          title={observacionPendiente ? "Observación por comprobar" : "Reenviada con correcciones"}
+        >
           Observación previa: {app.analista.observacion.motivo} — {app.analista.observacion.nota}
           {app.analista.observacion.pantallas.length > 0 &&
             ` Pantallas corregidas: ${pantallasVisibles(app.configuracion)
               .filter((pv) => app.analista.observacion!.pantallas.includes(pv.id))
               .map((pv) => pv.label)
               .join(", ")}.`}
+          {observacionPendiente && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs text-ink-600">
+                Revisá las correcciones del vendedor y confirmá que la observación quedó resuelta:
+                hasta entonces no se habilitan las acciones sobre la solicitud.
+              </p>
+              <Button
+                size="sm"
+                variant="success"
+                onClick={() => setObservacionComprobada(app.numeroCredito ?? "sin-id")}
+              >
+                <IconCheck width={14} height={14} />
+                Confirmar observación resuelta
+              </Button>
+            </div>
+          )}
         </Banner>
       )}
 
@@ -413,15 +449,15 @@ export function AnalisisCredito({
                     <IconEye width={14} height={14} />
                     Ver legajo virtual
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => abrir("observar")}>
+                  <Button size="sm" variant="outline" disabled={observacionPendiente} onClick={() => abrir("observar")}>
                     <IconAlertTriangle width={14} height={14} />
                     Observar
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={cambioPendiente !== null}
-                    onClick={() => setCambioAbierto(true)}
+                    disabled={cambioPendiente !== null || observacionPendiente}
+                    onClick={intentarCambiarOferta}
                   >
                     <IconRefresh width={14} height={14} />
                     Cambiar oferta
@@ -863,17 +899,17 @@ export function AnalisisCredito({
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 variant="outline"
-                disabled={cambioPendiente !== null}
-                onClick={() => setCambioAbierto(true)}
+                disabled={cambioPendiente !== null || observacionPendiente}
+                onClick={intentarCambiarOferta}
               >
                 <IconRefresh width={16} height={16} />
                 Cambiar oferta
               </Button>
-              <Button variant="outline" onClick={() => abrir("observar")}>
+              <Button variant="outline" disabled={observacionPendiente} onClick={() => abrir("observar")}>
                 <IconAlertTriangle width={16} height={16} />
                 Observar
               </Button>
-              <Button variant="outline" onClick={() => abrir("anular")}>
+              <Button variant="outline" disabled={observacionPendiente} onClick={() => abrir("anular")}>
                 <IconTrash width={16} height={16} />
                 Anular
               </Button>
@@ -891,11 +927,11 @@ export function AnalisisCredito({
               </Button>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button variant="danger" onClick={() => abrir("rechazar")}>
+              <Button variant="danger" disabled={observacionPendiente} onClick={() => abrir("rechazar")}>
                 <IconX width={16} height={16} />
                 Rechazar
               </Button>
-              <Button variant="success" disabled={cambioPendiente !== null} onClick={onAprobar}>
+              <Button variant="success" disabled={cambioPendiente !== null || observacionPendiente} onClick={onAprobar}>
                 <IconCheck width={16} height={16} />
                 Aprobar
               </Button>
@@ -944,6 +980,10 @@ export function AnalisisCredito({
         onCancel={() => setConsulta(null)}
       />
 
+      <CambioOfertaBloqueadoModal
+        open={cambioBloqueadoAbierto}
+        onClose={() => setCambioBloqueadoAbierto(false)}
+      />
       <CambiarOfertaModal
         open={cambioAbierto}
         onClose={() => setCambioAbierto(false)}

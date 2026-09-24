@@ -1,4 +1,5 @@
 import type {
+  CambioOfertaRegistro,
   CreditApplication,
   CreditoActivo,
   LimitanteOferta,
@@ -13,6 +14,7 @@ import type {
 import {
   GRILLA_BASE,
   PLANES_CUOTAS,
+  SESION_ANALISTA,
   configEfectiva,
   planesDelOrganismo,
   type FilaGrilla,
@@ -52,13 +54,44 @@ export function ofertaAnalistaDe(app: CreditApplication): OfertaAnalista | null 
   return { montoSolicitado: app.oferta.montoSolicitado, plazo: app.oferta.plazo, nota: obs.nota };
 }
 
-// Etiqueta con que la bandeja del vendedor muestra una solicitud Observada: "Cambio de
-// oferta" si la observación es un cambio de oferta del analista, si no el motivo de la
-// observación (datos, documentación, etc.).
+// Cambios de oferta que el analista ya hizo. Los créditos de la DB simulada anteriores al
+// registro se reconstruyen desde la observación / oferta que dejó el cambio.
+export function cambiosOfertaDe(app: CreditApplication): CambioOfertaRegistro[] {
+  const registrados = app.analista.historialCambiosOferta ?? [];
+  if (registrados.length > 0) return registrados;
+  const obs = app.analista.observacion;
+  const ofertaAnalista = app.analista.ofertaAnalista ?? null;
+  const tipo =
+    obs?.motivo === "Cambio de oferta del analista"
+      ? "OFERTA"
+      : obs?.motivo === "Cambio de datos financieros del analista"
+        ? "DATOS_FINANCIEROS"
+        : ofertaAnalista
+          ? "OFERTA"
+          : null;
+  if (tipo === null) return [];
+  return [
+    {
+      tipo,
+      fecha: obs?.fecha ?? "—",
+      montoAnterior: null,
+      plazoAnterior: null,
+      montoNuevo: ofertaAnalista?.montoSolicitado ?? app.oferta.montoSolicitado,
+      plazoNuevo: ofertaAnalista?.plazo ?? app.oferta.plazo,
+      nota: ofertaAnalista?.nota ?? obs?.nota ?? "",
+      autor: SESION_ANALISTA.nombre,
+    },
+  ];
+}
+
+// Estado con que la bandeja del vendedor muestra una solicitud devuelta por el analista: COFE
+// (cambio de oferta) si la observación es un cambio de oferta, si la solicitud está esperando su
+// confirmación o si el crédito ya tuvo uno y después recibió otra observación; si no, OBS. El
+// motivo de la observación no es un estado: se lee en el detalle de la fila.
 export function etiquetaObservado(app: CreditApplication): string | undefined {
+  if (app.estado === "CAMBIO_OFERTA") return "COFE";
   if (app.estado !== "OBSERVADO") return undefined;
-  if (ofertaAnalistaDe(app) !== null) return "Cambio de oferta";
-  return app.analista.observacion?.motivo;
+  return ofertaAnalistaDe(app) !== null || cambiosOfertaDe(app).length > 0 ? "COFE" : "OBS";
 }
 
 // Grilla de un plan (o la base, si no hay plan).

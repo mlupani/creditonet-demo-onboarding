@@ -45,7 +45,7 @@ export function StatusBadge({
   );
 }
 
-// `etiqueta`: reemplaza el texto de una solicitud Observada (cambio de oferta o el motivo de la observación).
+// `etiqueta`: reemplaza el texto de una solicitud devuelta por el analista (COFE u OBS en la bandeja del vendedor).
 export function EstadoBadge({
   estado,
   etiqueta,
@@ -54,7 +54,7 @@ export function EstadoBadge({
   etiqueta?: string;
 }) {
   const meta =
-    etiqueta && estado === "OBSERVADO"
+    etiqueta && (estado === "OBSERVADO" || estado === "CAMBIO_OFERTA")
       ? { label: etiqueta, tone: "warning" as const }
       : ESTADO_META[estado];
   return <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>;

@@ -49,6 +49,7 @@ import {
   CAPITAL_MAXIMO_CON_PRECANCELACION,
   calcularLimites,
   conMoraCancelada,
+  cambiosOfertaDe,
   ofertaAnalistaDe,
   recalcularOferta,
 } from "./credit";
@@ -91,7 +92,7 @@ function emisorMock(semilla: string): string {
   return BANCOS[hash % BANCOS.length];
 }
 
-const STORAGE_KEY = "creditonet.demo.v21";
+const STORAGE_KEY = "creditonet.demo.v22";
 
 // Cierra la firma en curso (la última del historial) con la decisión del analista.
 function cerrarIntentoActual(firmas: IntentoFirma[], resultado: ResultadoFirma): IntentoFirma[] {
@@ -719,6 +720,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
             plazo: cambio.plazo,
             nota: cambio.nota,
           },
+          historialCambiosOferta: [
+            ...cambiosOfertaDe(prev),
+            {
+              tipo: "OFERTA",
+              fecha: selloTiempo(),
+              montoAnterior: prev.oferta.montoSolicitado,
+              plazoAnterior: prev.oferta.plazo,
+              montoNuevo: cambio.montoSolicitado,
+              plazoNuevo: cambio.plazo,
+              nota: cambio.nota,
+              autor: cambio.solicitadoPor,
+              refrendadoPor: SESION_SUPERVISOR.nombre,
+            },
+          ],
           observacion: {
             motivo: "Cambio de oferta del analista",
             nota: `${cambio.nota} (refrendado por ${SESION_SUPERVISOR.nombre})`,
@@ -842,6 +857,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
             plazo: ofertaNueva.plazo,
             nota: cambio.nota,
           },
+          historialCambiosOferta: [
+            ...cambiosOfertaDe(prev),
+            {
+              tipo: "DATOS_FINANCIEROS",
+              fecha: selloTiempo(),
+              montoAnterior: prev.oferta.montoSolicitado,
+              plazoAnterior: prev.oferta.plazo,
+              montoNuevo: ofertaNueva.montoSolicitado,
+              plazoNuevo: ofertaNueva.plazo,
+              nota: cambio.nota,
+              autor: SESION_ANALISTA.nombre,
+            },
+          ],
           observacion: {
             motivo: "Cambio de datos financieros del analista",
             nota: cambio.nota,
