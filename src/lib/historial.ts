@@ -46,6 +46,7 @@ export function historialCredito(
   push(obs?.motivo === "Anulada" ? "Anulada" : "Observada", obs?.fecha, obs?.nota);
   const ex = app.analista.excepcionCambioOferta;
   push("Excepción de cambio de oferta autorizada", ex?.fecha, `Supervisor: ${ex?.autorizadoPor}`);
+  push("Observación confirmada por el analista", app.analista.observacionConfirmada?.fecha);
   push("Aprobada por el analista", app.fechaAprobacion);
 
   for (const f of app.firmas) {

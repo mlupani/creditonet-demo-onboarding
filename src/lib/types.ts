@@ -507,6 +507,9 @@ export interface CreditApplication {
     // Excepción del supervisor para superar el límite de cambios de oferta (creditonet-78): vale
     // sólo para el cambio siguiente al `n`-ésimo (n = cambios ya hechos al autorizarla).
     excepcionCambioOferta?: { n: number; autorizadoPor: string; fecha: string } | null;
+    // El analista leyó y confirmó la observación de una solicitud reenviada (creditonet-75). Hasta
+    // entonces no puede operar el crédito; se limpia al observar o al reenviar de nuevo.
+    observacionConfirmada?: { fecha: string } | null;
   };
   rechazo: Rechazo | null;
   // Historial de firmas (FEL/AFEL): vacío hasta que el analista aprueba el crédito.

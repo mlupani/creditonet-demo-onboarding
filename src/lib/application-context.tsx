@@ -279,6 +279,7 @@ interface ApplicationContextValue {
   finalizarCarga: () => void;
 
   tomarAnalisis: () => void;
+  confirmarObservacion: () => void;
   observarCredito: (
     motivo: string,
     nota: string,
@@ -1323,6 +1324,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev.analista,
           tomado: false,
           reenviada: prev.estado === "OBSERVADO",
+          observacionConfirmada: null,
           ofertaAnalista: tope,
         },
       };
@@ -1334,6 +1336,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...prev,
       estado: "ANALISIS_TOMADO",
       analista: { ...prev.analista, tomado: true },
+    }));
+  }, []);
+
+  // El analista leyó la observación de una solicitud reenviada: recién ahí puede operarla.
+  const confirmarObservacion = useCallback(() => {
+    setAppOperativo((prev) => ({
+      ...prev,
+      analista: { ...prev.analista, observacionConfirmada: { fecha: selloTiempo() } },
     }));
   }, []);
 
@@ -1356,6 +1366,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           pantallasCorregidas: [],
           cambioOfertaPendiente: null,
           ofertaAnalista: null,
+          observacionConfirmada: null,
           observacion: { motivo, nota, fecha: fechaHoy(), pantallas, campos },
         },
       }));
@@ -1648,6 +1659,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       visitarPantalla,
       finalizarCarga,
       tomarAnalisis,
+      confirmarObservacion,
       observarCredito,
       anularCredito,
       agregarComentario,
@@ -1718,6 +1730,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       visitarPantalla,
       finalizarCarga,
       tomarAnalisis,
+      confirmarObservacion,
       observarCredito,
       anularCredito,
       agregarComentario,
