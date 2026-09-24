@@ -355,10 +355,10 @@ export function EditorGestion({
 // --- Datos financieros: recálculo del sueldo neto ---
 
 const CONCEPTOS_NETO: { clave: keyof RecalculoNeto; label: string; detalle: string }[] = [
-  { clave: "disponible", label: "Disponible", detalle: "Saldo disponible del cliente." },
+  { clave: "disponible", label: "Disponible para extracción", detalle: "Saldo disponible para extracción del cliente." },
   {
     clave: "extraccionesTransferencias",
-    label: "Extracciones / transferencias",
+    label: "Día/saldo de acreditación y transferencia",
     detalle: "Movimientos que reducen el ingreso neto efectivo.",
   },
   {

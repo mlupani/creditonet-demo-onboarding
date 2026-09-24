@@ -190,22 +190,22 @@ export function PasoLaboralIngresos() {
               hint="Ingreso mensual de bolsillo. Base del cálculo de RCI."
             />
             <MoneyInput
+              id="disponible"
+              label="Disponible para extracción"
+              value={l.disponible}
+              onChange={(v) => patchLaboral({ disponible: v })}
+            />
+            <MoneyInput
               id="extracciones-saldo"
-              label="Saldo de acreditación"
+              label="Día/saldo de acreditación"
               value={l.extraccionesImporte}
               onChange={(v) => patchLaboral({ extraccionesImporte: v })}
             />
             <MoneyInput
               id="transferencias-saldo"
-              label="Extracciones / Transferencias - Saldo de acreditación"
+              label="Transferencia"
               value={l.transferenciasImporte}
               onChange={(v) => patchLaboral({ transferenciasImporte: v })}
-            />
-            <MoneyInput
-              id="disponible"
-              label="Disponible"
-              value={l.disponible}
-              onChange={(v) => patchLaboral({ disponible: v })}
             />
           </div>
         </div>
@@ -214,7 +214,7 @@ export function PasoLaboralIngresos() {
       <div className="space-y-3 border-t border-ink-100 px-5 py-4 sm:px-6">
         <p className="flex items-start gap-2 text-xs leading-relaxed text-ink-500">
           <IconLock width={14} height={14} className="mt-0.5 shrink-0 text-brand-500" />
-          Persistencia obligatoria: los ingresos y extracciones quedan guardados para auditoría y
+          Persistencia obligatoria: los datos financieros quedan guardados para auditoría y
           reevaluaciones futuras.
         </p>
         {completos ? (

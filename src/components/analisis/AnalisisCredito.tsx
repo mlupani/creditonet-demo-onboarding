@@ -382,9 +382,9 @@ export function AnalisisCredito({
           rows={[
             { label: "Ingreso bruto", value: formatARS(app.laboral.ingresoBruto) },
             { label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) },
-            { label: "Saldo día acreditación", value: formatARS(app.laboral.extraccionesImporte) },
-            { label: "Extracciones / transferencias", value: formatARS(app.laboral.transferenciasImporte) },
-            { label: "Disponible", value: formatARS(app.laboral.disponible) },
+            { label: "Disponible para extracción", value: formatARS(app.laboral.disponible) },
+            { label: "Día/saldo de acreditación", value: formatARS(app.laboral.extraccionesImporte) },
+            { label: "Transferencia", value: formatARS(app.laboral.transferenciasImporte) },
             { label: "Débitos no remunerativos", value: formatARS(app.laboral.debitosNoRemunerativos) },
             {
               label: "Sueldo neto recalculado",
