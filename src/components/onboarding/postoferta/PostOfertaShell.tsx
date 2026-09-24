@@ -123,10 +123,12 @@ export function PostOfertaShell() {
   const pendientes = useMemo(() => pendientesFinalizarCarga(app), [app]);
   const completadas = estados.filter((e) => e.completa).length;
   const observada = app.estado === "OBSERVADO";
-  // El vendedor ya aceptó la oferta que cambió el analista: se ve todo completo, sin poder
-  // editar nada, y sólo queda finalizar.
-  const soloLectura = observada && !!app.analista.ofertaAnalista?.aceptada;
   const obs = app.analista.observacion;
+  // El vendedor ya aceptó la oferta que cambió el analista: se ve todo completo, sin poder
+  // editar nada, y sólo queda finalizar. Si el cambio dejó pantallas para completar (datos
+  // financieros: el legajo virtual), sólo esas se editan.
+  const soloLectura =
+    observada && !!app.analista.ofertaAnalista?.aceptada && (obs?.pantallas.length ?? 0) === 0;
   // Corrección puntual: si el analista señaló pantallas, es lo único que se puede editar y
   // el resto de la carga queda bloqueada hasta reenviar.
   const observadas =

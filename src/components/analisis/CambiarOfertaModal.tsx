@@ -86,11 +86,19 @@ export function CambiarOfertaModal({
   const [ingresoBruto, setIngresoBruto] = useState(l.ingresoBruto);
   const [ingresoNeto, setIngresoNeto] = useState(l.ingresoNeto);
   const [disponible, setDisponible] = useState(l.disponible);
+  const [debitosNoRemunerativos, setDebitosNoRemunerativos] = useState(l.debitosNoRemunerativos);
+  const [extraccionesImporte, setExtraccionesImporte] = useState(l.extraccionesImporte);
+  const [transferenciasImporte, setTransferenciasImporte] = useState(l.transferenciasImporte);
   const [notaFin, setNotaFin] = useState("");
   const [intentadoFin, setIntentadoFin] = useState(false);
 
   const hayCambioFin =
-    ingresoBruto !== l.ingresoBruto || ingresoNeto !== l.ingresoNeto || disponible !== l.disponible;
+    ingresoBruto !== l.ingresoBruto ||
+    ingresoNeto !== l.ingresoNeto ||
+    disponible !== l.disponible ||
+    debitosNoRemunerativos !== l.debitosNoRemunerativos ||
+    extraccionesImporte !== l.extraccionesImporte ||
+    transferenciasImporte !== l.transferenciasImporte;
 
   // Recalcula reglas institucionales + Motor de Riesgo + línea + límites con los datos
   // financieros que el analista está editando, sin aplicarlos todavía (previsualización pura).
@@ -98,9 +106,26 @@ export function CambiarOfertaModal({
     () =>
       evaluarSolicitud({
         ...app,
-        laboral: { ...l, ingresoBruto, ingresoNeto, disponible },
+        laboral: {
+          ...l,
+          ingresoBruto,
+          ingresoNeto,
+          disponible,
+          debitosNoRemunerativos,
+          extraccionesImporte,
+          transferenciasImporte,
+        },
       }),
-    [app, l, ingresoBruto, ingresoNeto, disponible]
+    [
+      app,
+      l,
+      ingresoBruto,
+      ingresoNeto,
+      disponible,
+      debitosNoRemunerativos,
+      extraccionesImporte,
+      transferenciasImporte,
+    ]
   );
   const institucionalNoPasaFin = evFin.institucionales.some(
     (r) => r.bloqueante && r.resultado === "NO_PASA"
@@ -122,7 +147,15 @@ export function CambiarOfertaModal({
   function confirmarFin() {
     setIntentadoFin(true);
     if (!puedeConfirmarFin) return;
-    onConfirmarDatosFinancieros({ ingresoBruto, ingresoNeto, disponible, nota: notaFin.trim() });
+    onConfirmarDatosFinancieros({
+      ingresoBruto,
+      ingresoNeto,
+      disponible,
+      debitosNoRemunerativos,
+      extraccionesImporte,
+      transferenciasImporte,
+      nota: notaFin.trim(),
+    });
   }
 
   return (
@@ -317,9 +350,33 @@ export function CambiarOfertaModal({
                 label="Disponible para extracción"
                 value={disponible}
                 onChange={setDisponible}
-                className="sm:col-span-2"
+              />
+              <MoneyInput
+                id="cdf-debitos"
+                label="Débitos no remunerativos"
+                value={debitosNoRemunerativos}
+                onChange={setDebitosNoRemunerativos}
+              />
+              <MoneyInput
+                id="cdf-extracciones"
+                label="Día/saldo de acreditación"
+                value={extraccionesImporte}
+                onChange={setExtraccionesImporte}
+              />
+              <MoneyInput
+                id="cdf-transferencias"
+                label="Transferencia"
+                value={transferenciasImporte}
+                onChange={setTransferenciasImporte}
               />
             </div>
+            <p className="mt-1 text-xs text-ink-500">
+              Sueldo neto recalculado:{" "}
+              <strong className="tabular-nums text-ink-700">
+                {formatARS(ingresoNeto - debitosNoRemunerativos)}
+              </strong>{" "}
+              (neto menos débitos no remunerativos).
+            </p>
 
             {hayCambioFin && (
               <div className="mt-4">

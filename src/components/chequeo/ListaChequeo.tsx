@@ -189,7 +189,13 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                         <EstadoBadge estado={c.estado} />
                       </td>
                       <td className="px-3 py-3 text-ink-700">
-                        {resultado === "OK" ? "Correcto" : resultado === "NO_OK" ? "No correcto" : "—"}
+                        {resultado === "OK"
+                          ? "Correcto"
+                          : resultado === "NO_OK"
+                            ? "No correcto"
+                            : c.chequeoTelefonico?.observacion
+                              ? "Observado"
+                              : "—"}
                       </td>
                       <td className="px-3 py-3 text-right">
                         <Button size="sm" variant="outline" onClick={() => abrir(c)}>

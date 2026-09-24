@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import {
@@ -155,6 +156,7 @@ export function AnalisisCredito({
     soltarAnalisis,
     tomarAnalisis,
   } = useApplication();
+  const router = useRouter();
   const [modal, setModal] = useState<"observar" | "rechazar" | "anular" | null>(null);
   const [consulta, setConsulta] = useState<
     "posicion" | "buro" | "renovar" | "reglas" | "personales" | "laborales" | "comentario" | "soltar" | null
@@ -990,6 +992,8 @@ export function AnalisisCredito({
         onConfirmar={(cambio) => {
           setCambioAbierto(false);
           proponerCambioOferta(cambio);
+          // El cambio ya es del vendedor: se lo ve en su bandeja, no en la del analista.
+          router.push("/");
         }}
         onConfirmarDatosFinancieros={(cambio) => {
           setCambioAbierto(false);

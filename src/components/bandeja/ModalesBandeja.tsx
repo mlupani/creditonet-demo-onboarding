@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useApplication } from "@/lib/application-context";
 import { formatARS, formatDNI } from "@/lib/format";
+import { SESION_CHEQUEADOR } from "@/lib/config";
 import { historialCredito, textoChequeo } from "@/lib/historial";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -272,6 +273,44 @@ export function MotivoModal({ open, onClose }: ModalProps) {
         />
       ) : (
         <p className="text-sm text-ink-500">La solicitud no registra un motivo de rechazo.</p>
+      )}
+    </Modal>
+  );
+}
+
+// Observación que dejó el chequeador cuando no pudo completar el chequeo telefónico.
+export function ChequeoObservacionModal({ open, onClose }: ModalProps) {
+  const { app } = useApplication();
+  const obs = app.chequeoTelefonico?.observacion;
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Observación del chequeo telefónico"
+      footer={<CerrarFooter onClose={onClose} />}
+    >
+      {obs ? (
+        <>
+          <Filas
+            filas={[
+              { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
+              { label: "Chequeador", value: SESION_CHEQUEADOR.nombre },
+              { label: "Fecha", value: obs.fecha },
+            ]}
+          />
+          <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-ink-500">
+            Comentario del chequeador
+          </p>
+          <p className="mt-1.5 whitespace-pre-line rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-ink-800">
+            {obs.nota}
+          </p>
+          <p className="mt-3 text-xs text-ink-500">
+            El crédito sigue en chequeo telefónico: el chequeador va a volver a intentar.
+          </p>
+        </>
+      ) : (
+        <p className="text-sm text-ink-500">El chequeo no registra observaciones.</p>
       )}
     </Modal>
   );

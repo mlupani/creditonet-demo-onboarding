@@ -9,6 +9,8 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DocumentoPreviewModal } from "@/components/ui/DocumentoPreviewModal";
+import { Modal } from "@/components/ui/Modal";
+import { DocumentoLegajo } from "./PantallaImpresion";
 import {
   IconCheck,
   IconCheckCircle,
@@ -16,6 +18,7 @@ import {
   IconEye,
   IconFileText,
   IconPlus,
+  IconPrinter,
   IconTrash,
   IconUpload,
 } from "@/components/icons";
@@ -34,12 +37,14 @@ export function PantallaLegajo() {
     quitarReciboSueldo,
     adjuntarOtroDocumento,
     quitarOtroDocumento,
+    registrarLegajo,
   } = useApplication();
   const [subiendo, setSubiendo] = useState<string | null>(null);
   const [subiendoRecibo, setSubiendoRecibo] = useState<string | null>(null);
   const [subiendoOtro, setSubiendoOtro] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ archivo: ArchivoLegajo; tipo: string } | null>(null);
   const [legajoVista, setLegajoVista] = useState(false);
+  const [formularioAbierto, setFormularioAbierto] = useState(false);
   const docs = configEfectiva(app.configuracion).documentos;
   const archivos = app.postOferta.legajo;
   const obligatorios = docs.filter((d) => d.obligatorio);
@@ -52,6 +57,10 @@ export function PantallaLegajo() {
     Object.values(archivos).reduce((acc, arr) => acc + arr.length, 0) +
     garantes.reduce((acc, g) => acc + (g.reciboSueldo?.length ?? 0) + (g.otrosDocumentos?.length ?? 0), 0);
   const tieneArchivos = totalArchivos > 0;
+  // En una corrección puntual de este legajo (sin la pantalla de impresión habilitada) el
+  // formulario se imprime desde acá.
+  const pantallasObservadas = app.estado === "OBSERVADO" ? (app.analista.observacion?.pantallas ?? []) : [];
+  const imprimeAca = pantallasObservadas.includes("legajo") && !pantallasObservadas.includes("impresion");
 
   function adjuntar(tipoId: string) {
     setSubiendo(tipoId);
@@ -97,6 +106,19 @@ export function PantallaLegajo() {
                 <Button size="sm" variant="outline" onClick={() => setLegajoVista(true)}>
                   <IconEye width={14} height={14} />
                   Ver legajo
+                </Button>
+              )}
+              {imprimeAca && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setFormularioAbierto(true);
+                    registrarLegajo("IMPRESO");
+                  }}
+                >
+                  <IconPrinter width={14} height={14} />
+                  Imprimir formulario
                 </Button>
               )}
               <span
@@ -383,6 +405,22 @@ export function PantallaLegajo() {
           </Button>
         </div>
       )}
+
+      <Modal
+        open={formularioAbierto}
+        onClose={() => setFormularioAbierto(false)}
+        title={`Legajo ${app.numeroCredito ?? ""}`}
+        maxWidth="max-w-2xl"
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setFormularioAbierto(false)}>
+              Cerrar
+            </Button>
+          </div>
+        }
+      >
+        <DocumentoLegajo />
+      </Modal>
 
       <DocumentoPreviewModal
         open={!!preview}

@@ -12,7 +12,6 @@ import {
 } from "@/lib/campos-post-oferta";
 import { intentoActual } from "@/lib/firma";
 import { formatARS, formatDNI } from "@/lib/format";
-import type { ResultadoChequeo } from "@/lib/types";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -21,20 +20,29 @@ import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { DatosCamposModal } from "@/components/analisis/ModalesAnalisis";
 import { LegajoVirtualModal } from "@/components/analisis/LegajoVirtualModal";
 import { ComentarioModal, ListaComentarios } from "@/components/bandeja/ModalesBandeja";
-import { IconCheck, IconEye, IconFileText, IconPhone, IconUser, IconX } from "@/components/icons";
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconEye,
+  IconFileText,
+  IconPhone,
+  IconUser,
+} from "@/components/icons";
+
+type Resultado = "OK" | "OBSERVACION";
 
 const METODO_LABEL = { ELECTRONICA: "Electrónica", FISICA: "Manual" } as const;
 
-const OPCIONES: { valor: ResultadoChequeo; titulo: string; detalle: string }[] = [
+const OPCIONES: { valor: Resultado; titulo: string; detalle: string }[] = [
   {
     valor: "OK",
     titulo: "Chequeo correcto",
     detalle: "El crédito pasa automáticamente a liquidación.",
   },
   {
-    valor: "NO_OK",
-    titulo: "Chequeo no correcto",
-    detalle: "El crédito se rechaza. No vuelve a la bandeja del analista.",
+    valor: "OBSERVACION",
+    titulo: "Observación",
+    detalle: "No se pudo completar (ej.: no atendió). El crédito sigue en chequeo y el vendedor lo ve.",
   },
 ];
 
@@ -51,8 +59,8 @@ function Telefono({ etiqueta, valor }: { etiqueta: string; valor: string }) {
 }
 
 export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
-  const { app, tomarChequeo, soltarChequeo, finalizarChequeo } = useApplication();
-  const [resultado, setResultado] = useState<ResultadoChequeo | null>(null);
+  const { app, tomarChequeo, soltarChequeo, finalizarChequeo, observarChequeo } = useApplication();
+  const [resultado, setResultado] = useState<Resultado | null>(null);
   const [comentario, setComentario] = useState("");
   const [intentado, setIntentado] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
@@ -242,7 +250,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
                       activa
                         ? op.valor === "OK"
                           ? "border-success-500 bg-success-50"
-                          : "border-danger-500 bg-danger-50"
+                          : "border-warning-500 bg-warning-50"
                         : "border-ink-300 bg-white hover:border-ink-400"
                     }`}
                   >
@@ -264,7 +272,11 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
                 rows={3}
                 value={comentario}
                 onChange={(e) => setComentario(e.target.value)}
-                placeholder="Con quién hablaste y qué confirmó"
+                placeholder={
+                  resultado === "OBSERVACION"
+                    ? "Motivo que verá el vendedor (ej.: el cliente no atendió el teléfono)"
+                    : "Con quién hablaste y qué confirmó"
+                }
                 className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
               {intentado && !comentarioValido && (
@@ -283,13 +295,13 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
               >
                 Soltar chequeo
               </Button>
-              <Button variant={resultado === "NO_OK" ? "danger" : "success"} onClick={pedirConfirmacion}>
-                {resultado === "NO_OK" ? (
-                  <IconX width={16} height={16} />
+              <Button variant={resultado === "OBSERVACION" ? "warning" : "success"} onClick={pedirConfirmacion}>
+                {resultado === "OBSERVACION" ? (
+                  <IconAlertTriangle width={16} height={16} />
                 ) : (
                   <IconCheck width={16} height={16} />
                 )}
-                Finalizar chequeo
+                {resultado === "OBSERVACION" ? "Registrar observación" : "Finalizar chequeo"}
               </Button>
             </div>
           </Card>
@@ -324,22 +336,26 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
       <ConfirmationModal
         open={confirmar}
-        title="Finalizar chequeo telefónico"
+        title={resultado === "OBSERVACION" ? "Registrar observación del chequeo" : "Finalizar chequeo telefónico"}
         descripcion={
           resultado === "OK"
             ? "El crédito pasa automáticamente a liquidación."
-            : "El crédito se rechaza de forma definitiva."
+            : "El crédito sigue En chequeo telefónico, con esta observación a la vista del vendedor, y se libera para reintentar."
         }
         rows={[
           { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
-          { label: "Resultado", value: resultado === "OK" ? "Correcto" : "No correcto" },
+          { label: "Resultado", value: resultado === "OK" ? "Correcto" : "Observación" },
           { label: "Comentario", value: comentario.trim() },
         ]}
-        confirmLabel="Finalizar chequeo"
-        tone={resultado === "NO_OK" ? "danger" : "success"}
+        confirmLabel={resultado === "OBSERVACION" ? "Registrar observación" : "Finalizar chequeo"}
+        tone={resultado === "OBSERVACION" ? "primary" : "success"}
         onConfirm={() => {
           setConfirmar(false);
-          if (resultado) finalizarChequeo(resultado, comentario.trim());
+          if (resultado === "OK") finalizarChequeo("OK", comentario.trim());
+          else if (resultado === "OBSERVACION") {
+            observarChequeo(comentario.trim());
+            onSalir();
+          }
         }}
         onCancel={() => setConfirmar(false)}
       />

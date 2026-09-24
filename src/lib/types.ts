@@ -54,6 +54,9 @@ export interface ChequeoTelefonico {
   fechaInicio: string | null;
   // Fecha en que el chequeador finalizó el chequeo (null mientras está pendiente o en curso).
   fecha: string | null;
+  // Subestado de observación: el chequeo sigue abierto pero no se pudo completar (por ejemplo,
+  // el cliente no atendió). Lo ve el canal de venta.
+  observacion?: { nota: string; fecha: string } | null;
 }
 
 export const CHEQUEO_PENDIENTE: ChequeoTelefonico = {
@@ -62,6 +65,7 @@ export const CHEQUEO_PENDIENTE: ChequeoTelefonico = {
   comentario: "",
   fechaInicio: null,
   fecha: null,
+  observacion: null,
 };
 
 export type TipoCliente = "NUEVO" | "EXISTENTE";

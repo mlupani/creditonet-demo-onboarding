@@ -149,6 +149,9 @@ export interface CambioDatosFinancieros {
   ingresoBruto: number;
   ingresoNeto: number;
   disponible: number;
+  debitosNoRemunerativos: number;
+  extraccionesImporte: number;
+  transferenciasImporte: number;
   nota: string;
 }
 
@@ -298,6 +301,8 @@ interface ApplicationContextValue {
   tomarChequeo: () => void;
   soltarChequeo: () => void;
   finalizarChequeo: (resultado: ResultadoChequeo, comentario: string) => void;
+  // Deja el chequeo observado (no se pudo completar) y lo suelta: el canal de venta lo ve.
+  observarChequeo: (nota: string) => void;
 
   reiniciarDemo: () => void;
 }
@@ -767,6 +772,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ingresoBruto: cambio.ingresoBruto,
         ingresoNeto: cambio.ingresoNeto,
         disponible: cambio.disponible,
+        debitosNoRemunerativos: cambio.debitosNoRemunerativos,
+        extraccionesImporte: cambio.extraccionesImporte,
+        transferenciasImporte: cambio.transferenciasImporte,
       };
       const ev = evaluarSolicitud({ ...prev, laboral: nuevoLaboral });
 
@@ -874,7 +882,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             motivo: "Cambio de datos financieros del analista",
             nota: cambio.nota,
             fecha: fechaHoy(),
-            pantallas: [],
+            // Tras aceptar la nueva oferta, sólo queda habilitado el legajo virtual (subir más
+            // documentación, ver el legajo e imprimir el formulario).
+            pantallas: ["legajo"],
           },
         },
       });
@@ -1515,6 +1525,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // Observa el chequeo: sigue En chequeo telefónico, con la nota a la vista del canal de venta.
+  const observarChequeo = useCallback((nota: string) => {
+    setApp((prev) => {
+      if (prev.estado !== "CHEQUEO_TELEFONICO" || !prev.chequeoTelefonico?.tomado) return prev;
+      return {
+        ...prev,
+        chequeoTelefonico: {
+          ...prev.chequeoTelefonico,
+          tomado: false,
+          observacion: { nota, fecha: selloTiempo() },
+        },
+      };
+    });
+  }, []);
+
   // Finaliza el chequeo. OK: pasa solo a liquidación, sin volver al analista. NO_OK: rechazo.
   const finalizarChequeo = useCallback((resultado: ResultadoChequeo, comentario: string) => {
     setApp((prev) => {
@@ -1622,6 +1647,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tomarChequeo,
       soltarChequeo,
       finalizarChequeo,
+      observarChequeo,
       reiniciarDemo,
     }),
     [
@@ -1690,6 +1716,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tomarChequeo,
       soltarChequeo,
       finalizarChequeo,
+      observarChequeo,
       reiniciarDemo,
     ]
   );

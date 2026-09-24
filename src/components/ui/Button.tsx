@@ -3,7 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { IconLoader } from "@/components/icons";
 
-type Variant = "primary" | "success" | "danger" | "outline" | "ghost" | "subtle";
+type Variant = "primary" | "success" | "danger" | "warning" | "outline" | "ghost" | "subtle";
 type Size = "sm" | "md" | "lg";
 
 const variantClasses: Record<Variant, string> = {
@@ -13,6 +13,8 @@ const variantClasses: Record<Variant, string> = {
     "bg-success-600 text-white shadow-sm hover:bg-success-700 active:bg-success-700 disabled:bg-ink-200 disabled:text-ink-400",
   danger:
     "bg-danger-600 text-white shadow-sm hover:bg-danger-700 active:bg-danger-700 disabled:bg-ink-200 disabled:text-ink-400",
+  warning:
+    "bg-warning-500 text-white shadow-sm hover:bg-warning-600 active:bg-warning-600 disabled:bg-ink-200 disabled:text-ink-400",
   outline:
     "border border-ink-300 bg-white text-ink-700 shadow-xs hover:bg-ink-50 hover:border-ink-400 disabled:text-ink-400 disabled:hover:bg-white",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-800 disabled:text-ink-300",

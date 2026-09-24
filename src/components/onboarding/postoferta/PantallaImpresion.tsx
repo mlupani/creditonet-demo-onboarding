@@ -53,7 +53,7 @@ function Bloque({ titulo, children }: { titulo: string; children: ReactNode }) {
 }
 
 // PDF del legajo: contiene los datos cargados en las pantallas anteriores (Onboarding §10).
-function DocumentoLegajo() {
+export function DocumentoLegajo() {
   const { app } = useApplication();
   const cfg = configEfectiva(app.configuracion);
   const po = app.postOferta;

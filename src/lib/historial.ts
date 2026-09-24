@@ -17,6 +17,7 @@ export function textoChequeo(c: ChequeoTelefonico | null): string {
   if (!c) return "No aplica";
   if (c.resultado === "OK") return "Finalizado · correcto";
   if (c.resultado === "NO_OK") return "Finalizado · no correcto";
+  if (c.observacion) return `Observado · ${c.observacion.nota}`;
   return c.tomado ? "En curso · tomado por el chequeador" : "Pendiente de toma por el chequeador";
 }
 

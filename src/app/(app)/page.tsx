@@ -11,9 +11,10 @@ import { textoChequeo } from "@/lib/historial";
 import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { EstadoBadge } from "@/components/ui/StatusBadge";
+import { EstadoBadge, StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import {
+  ChequeoObservacionModal,
   ComentarioModal,
   EstadoSolicitudModal,
   MotivoModal,
@@ -47,7 +48,7 @@ const ACCIONES_PROXIMAS = [
 ];
 
 type Grupo = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "FIRMA" | "CHEQUEO" | "PAGO" | "RESUELTAS";
-type ModalId = "nueva" | "anular" | "posicion" | "estado" | "motivo" | "comentario";
+type ModalId = "nueva" | "anular" | "posicion" | "estado" | "motivo" | "comentario" | "chequeo";
 
 // Secciones de la bandeja del canal de venta, en el orden en que se trabajan.
 const GRUPOS: { id: Grupo; titulo: string; vacio: string }[] = [
@@ -87,6 +88,29 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
   ANULADO: "RESUELTAS",
 };
 
+// Subestados que el vendedor puede filtrar (en cualquier sección de la bandeja).
+const SUBESTADOS: { id: string; label: string }[] = [
+  { id: "BORRADOR", label: "Borrador" },
+  { id: "EN_TRAMITE", label: "En trámite" },
+  { id: "OBS", label: "OBS · Observada" },
+  { id: "COFE", label: "COFE · Cambio de oferta" },
+  { id: "PREAPROBADO", label: "Preaprobada" },
+  { id: "ANALISIS_TOMADO", label: "En análisis (tomada)" },
+  { id: "EN_FIRMA", label: "FEL · En firma" },
+  { id: "FIRMADO", label: "AFEL · Firma aprobada" },
+  { id: "CHEQUEO", label: "Chequeo pendiente" },
+  { id: "CHEQUEO_OBS", label: "Chequeo observado" },
+  { id: "PARA_LIQUIDAR", label: "Para liquidar" },
+  { id: "RECHAZADO", label: "Rechazada" },
+  { id: "ANULADO", label: "Anulada" },
+];
+
+function subestadoDe(c: CreditApplication): string {
+  if (c.estado === "OBSERVADO" || c.estado === "CAMBIO_OFERTA") return etiquetaObservado(c) ?? "OBS";
+  if (c.estado === "CHEQUEO_TELEFONICO") return c.chequeoTelefonico?.observacion ? "CHEQUEO_OBS" : "CHEQUEO";
+  return c.estado;
+}
+
 export default function BandejaCanalVentaPage() {
   const router = useRouter();
   const {
@@ -102,6 +126,7 @@ export default function BandejaCanalVentaPage() {
     setPantallaActual,
   } = useApplication();
   const [busqueda, setBusqueda] = useState("");
+  const [subestado, setSubestado] = useState("");
   const [modal, setModal] = useState<ModalId | null>(null);
   const [colapsados, setColapsados] = useState<Record<Grupo, boolean>>({
     TRAMITE: false,
@@ -130,7 +155,7 @@ export default function BandejaCanalVentaPage() {
 
   useEffect(() => {
     setPagina({ TRAMITE: 1, OBSERVADAS: 1, ANALISIS: 1, FIRMA: 1, CHEQUEO: 1, PAGO: 1, RESUELTAS: 1 });
-  }, [q]);
+  }, [q, subestado]);
 
   function toggleColapso(g: Grupo) {
     setColapsados((prev) => ({ ...prev, [g]: !prev[g] }));
@@ -180,7 +205,7 @@ export default function BandejaCanalVentaPage() {
   // cambio, sigue por `abrirCreditoDB`.
   function actuar(
     cred: (typeof creditosDB)[number],
-    modalId: Extract<ModalId, "anular" | "posicion" | "estado" | "motivo" | "comentario">
+    modalId: Extract<ModalId, "anular" | "posicion" | "estado" | "motivo" | "comentario" | "chequeo">
   ) {
     cargarCreditoDeDB(cred._id);
     setModal(modalId);
@@ -275,6 +300,19 @@ export default function BandejaCanalVentaPage() {
               className="h-10 w-full rounded-lg border border-ink-300 bg-white pl-9 pr-3 text-sm shadow-xs outline-none transition placeholder:text-ink-400 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             />
           </div>
+          <select
+            value={subestado}
+            onChange={(e) => setSubestado(e.target.value)}
+            aria-label="Filtro por subestado"
+            className="h-10 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-700 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          >
+            <option value="">Subestado: todos</option>
+            {SUBESTADOS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
           <Button onClick={() => (identificada ? setModal("nueva") : nuevaSolicitud())}>
             <IconPlus width={16} height={16} />
             Nueva solicitud
@@ -285,10 +323,14 @@ export default function BandejaCanalVentaPage() {
       <div className="mt-8 space-y-5">
         {GRUPOS.map((g) => {
           const dbFiltrados = creditosDB.filter(
-            (c) => GRUPO_POR_ESTADO[c.estado] === g.id && (!q || (c.cliente && coincideCliente(c.cliente, q)))
+            (c) =>
+              GRUPO_POR_ESTADO[c.estado] === g.id &&
+              (!q || (c.cliente && coincideCliente(c.cliente, q))) &&
+              (!subestado || subestadoDe(c as unknown as CreditApplication) === subestado)
           );
           const appGrupo = hidratado ? GRUPO_POR_ESTADO[app.estado] : null;
-          const appCoincide = hidratado && cliente && coincideCliente(cliente, busqueda);
+          const appCoincide =
+            hidratado && cliente && coincideCliente(cliente, busqueda) && (!subestado || subestadoDe(app) === subestado);
           const mostrarApp =
             appCoincide && appGrupo === g.id && !creditosDB.some((c) => c.numeroCredito && c.numeroCredito === app.numeroCredito);
           const totalFilas = dbFiltrados.length + (mostrarApp ? 1 : 0);
@@ -344,6 +386,9 @@ export default function BandejaCanalVentaPage() {
                               </div>
                               <div>
                                 <EstadoBadge estado={app.estado} etiqueta={etiquetaObservado(app)} />
+                                {app.estado === "CHEQUEO_TELEFONICO" && app.chequeoTelefonico?.observacion && (
+                                  <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
+                                )}
                               </div>
                               <div className="min-w-0">
                                 <p className="text-sm text-ink-700">{detallePara(app, paso)}</p>
@@ -386,6 +431,9 @@ export default function BandejaCanalVentaPage() {
                                     estado={cred.estado}
                                     etiqueta={etiquetaObservado(cred as unknown as CreditApplication)}
                                   />
+                                  {cred.estado === "CHEQUEO_TELEFONICO" && cred.chequeoTelefonico?.observacion && (
+                                    <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
+                                  )}
                                   {conOferta && <p className="mt-1 text-[11px] tabular-nums text-ink-500">TNA {cred.oferta.tna}% · {cred.oferta.primeraCuotaVencimiento}</p>}
                                   {cred._descripcion && <p className="mt-1 text-[10px] italic leading-tight text-ink-400 line-clamp-2">{cred._descripcion}</p>}
                                 </div>
@@ -411,6 +459,11 @@ export default function BandejaCanalVentaPage() {
                                 {(g.id === "ANALISIS" || g.id === "FIRMA" || g.id === "CHEQUEO" || g.id === "PAGO" || g.id === "RESUELTAS") && (
                                   <Button size="sm" variant="outline" onClick={() => actuar(cred, "estado")}>
                                     Ver estado
+                                  </Button>
+                                )}
+                                {g.id === "CHEQUEO" && cred.chequeoTelefonico?.observacion && (
+                                  <Button size="sm" variant="outline" onClick={() => actuar(cred, "chequeo")}>
+                                    Ver comentario del chequeo
                                   </Button>
                                 )}
                                 {g.id === "ANALISIS" && (
@@ -528,6 +581,7 @@ export default function BandejaCanalVentaPage() {
       <PosicionClienteModal open={modal === "posicion"} onClose={() => setModal(null)} />
       <EstadoSolicitudModal open={modal === "estado"} onClose={() => setModal(null)} />
       <MotivoModal open={modal === "motivo"} onClose={() => setModal(null)} />
+      <ChequeoObservacionModal open={modal === "chequeo"} onClose={() => setModal(null)} />
       <ComentarioModal open={modal === "comentario"} onClose={() => setModal(null)} />
     </div>
   );
