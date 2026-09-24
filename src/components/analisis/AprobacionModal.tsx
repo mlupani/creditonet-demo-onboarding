@@ -1,18 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { netoAAcreditar } from "@/lib/credit";
 import { metodoPorDefecto, modalidadFirma, requiereChequeoTelefonico } from "@/lib/firma";
 import { formatARS } from "@/lib/format";
 import type { MetodoFirma } from "@/lib/types";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { SelectField } from "@/components/ui/SelectField";
-
-const OPCIONES_METODO = [
-  { value: "ELECTRONICA", label: "Electrónica · el cliente firma en línea" },
-  { value: "FISICA", label: "Manual · el cliente firma en papel" },
-];
 
 export function AprobacionModal({
   open,
@@ -28,9 +21,8 @@ export function AprobacionModal({
   const { app } = useApplication();
   const o = app.oferta;
   const modalidad = modalidadFirma(app.configuracion);
-  // En "Ambas" el analista elige; en los demás casos lo dicta el producto.
-  const [eleccion, setEleccion] = useState<MetodoFirma>("ELECTRONICA");
-  const metodo = modalidad === "AMBAS" ? eleccion : metodoPorDefecto(modalidad);
+  // Pasa directo a FEL: el método lo dicta el producto (en "Ambas", electrónica).
+  const metodo = metodoPorDefecto(modalidad);
   const chequeo = requiereChequeoTelefonico(app.configuracion);
 
   return (
@@ -56,16 +48,6 @@ export function AprobacionModal({
       loading={loading}
       onConfirm={() => onConfirm(metodo)}
       onCancel={onCancel}
-    >
-      {modalidad === "AMBAS" && (
-        <SelectField
-          id="metodo-firma"
-          label="Método de firma"
-          value={eleccion}
-          onChange={(v) => setEleccion(v as MetodoFirma)}
-          options={OPCIONES_METODO}
-        />
-      )}
-    </ConfirmationModal>
+    />
   );
 }
