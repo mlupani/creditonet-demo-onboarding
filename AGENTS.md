@@ -87,6 +87,17 @@ ya está bien.
 - Acceso a YouTrack: si el harness tiene disponible el MCP de YouTrack,
   usarlo. Si no, usar la REST API directa con el token disponible en el
   entorno (`YOUTRACK_API_TOKEN` / `YOUTRACK_URL`).
+- Si durante la tarea se genera un archivo `.md` de spec o plan (por
+  ejemplo el que arma `superpowers:writing-plans` en
+  `docs/superpowers/plans/`), subirlo como adjunto al issue de YouTrack
+  antes de terminar. El MCP de YouTrack no tiene una tool para esto -
+  usar la REST API directa con `curl`, sin importar si el resto del
+  acceso a YouTrack se hace por MCP:
+  ```bash
+  curl -s -F "file=@<ruta al .md>" \
+    -H "Authorization: Bearer $YOUTRACK_API_TOKEN" \
+    -X POST "$YOUTRACK_URL/api/issues/<ID>/attachments?fields=id,name"
+  ```
 
 ## Cuándo parar y cuándo no
 
