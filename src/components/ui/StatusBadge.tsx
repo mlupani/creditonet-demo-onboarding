@@ -45,7 +45,7 @@ export function StatusBadge({
   );
 }
 
-// `etiqueta`: reemplaza el texto de una solicitud Observada (COFE o el motivo de la observación).
+// `etiqueta`: reemplaza el texto de una solicitud Observada (cambio de oferta o el motivo de la observación).
 export function EstadoBadge({
   estado,
   etiqueta,

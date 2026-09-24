@@ -52,12 +52,12 @@ export function ofertaAnalistaDe(app: CreditApplication): OfertaAnalista | null 
   return { montoSolicitado: app.oferta.montoSolicitado, plazo: app.oferta.plazo, nota: obs.nota };
 }
 
-// Etiqueta con que la bandeja del vendedor muestra una solicitud Observada: COFE si la
-// observación es un cambio de oferta del analista, si no el motivo de la observación
-// (datos, documentación, etc.).
+// Etiqueta con que la bandeja del vendedor muestra una solicitud Observada: "Cambio de
+// oferta" si la observación es un cambio de oferta del analista, si no el motivo de la
+// observación (datos, documentación, etc.).
 export function etiquetaObservado(app: CreditApplication): string | undefined {
   if (app.estado !== "OBSERVADO") return undefined;
-  if (ofertaAnalistaDe(app) !== null) return "COFE · Cambio de oferta";
+  if (ofertaAnalistaDe(app) !== null) return "Cambio de oferta";
   return app.analista.observacion?.motivo;
 }
 
