@@ -56,6 +56,7 @@ import {
   PosicionClienteModal,
 } from "@/components/bandeja/ModalesBandeja";
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
+import { HiloObservacion } from "./HiloObservacion";
 import { CambioOfertaBloqueadoModal } from "./CambioOfertaBloqueadoModal";
 import { BuroMotorModal, CreditosRenovarModal, DatosCamposModal, ReglasMotorModal } from "./ModalesAnalisis";
 import { HistorialPagosModal } from "./HistorialPagosModal";
@@ -988,6 +989,7 @@ export function AnalisisCredito({
         open={lecturaAbierta}
         onClose={() => setLecturaAbierta(false)}
         title="Observación previa de la solicitud"
+        maxWidth="max-w-2xl"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setLecturaAbierta(false)}>
@@ -1011,23 +1013,9 @@ export function AnalisisCredito({
           <div className="space-y-3 text-sm text-ink-700">
             <p>
               Esta solicitud volvió del canal de venta con correcciones. Para tomarla tenés que leer
-              la observación y confirmarla.
+              la conversación con el canal de venta y confirmarla.
             </p>
-            <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-wider text-warning-700">
-                {app.analista.observacion.motivo} · {app.analista.observacion.fecha}
-              </p>
-              <p className="mt-1 whitespace-pre-line text-ink-800">{app.analista.observacion.nota}</p>
-              {app.analista.observacion.pantallas.length > 0 && (
-                <p className="mt-2 text-xs text-ink-600">
-                  Pantallas observadas:{" "}
-                  {pantallasVisibles(app.configuracion)
-                    .filter((pv) => app.analista.observacion!.pantallas.includes(pv.id))
-                    .map((pv) => pv.label)
-                    .join(", ")}
-                </p>
-              )}
-            </div>
+            <HiloObservacion />
           </div>
         )}
       </Modal>

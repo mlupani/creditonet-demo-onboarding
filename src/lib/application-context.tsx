@@ -18,6 +18,7 @@ import type {
   ClienteDatos,
   CreditApplication,
   DatoFinancieroCorregido,
+  Observacion,
   DeudaTerceros,
   Domicilio,
   IntentoFirma,
@@ -52,6 +53,7 @@ import {
   calcularLimites,
   conMoraCancelada,
   cambiosOfertaDe,
+  observacionesDe,
   ofertaAnalistaDe,
   recalcularOferta,
 } from "./credit";
@@ -80,6 +82,11 @@ import { hidratarPlanes } from "./planes";
 import { hidratarOrganismos } from "./organismos";
 
 // Plazo de la oferta dentro de la grilla del plan; si el plan no lo tiene, el primero de la grilla.
+// Campos de `analista` que deja una observación nueva: la vigente y su lugar en el historial.
+function conObservacion(prev: CreditApplication, observacion: Observacion) {
+  return { observacion, historialObservaciones: [...observacionesDe(prev), observacion] };
+}
+
 function plazoValido(planId: string | null, plazo: Plazo): Plazo {
   const grilla = planId ? PLANES_CUOTAS[planId]?.grilla : undefined;
   return grilla && grilla.length > 0 && !grilla.some((f) => f.plazo === plazo)
@@ -748,12 +755,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
               refrendadoPor: SESION_SUPERVISOR.nombre,
             },
           ],
-          observacion: {
+          ...conObservacion(prev, {
             motivo: "Cambio de oferta del analista",
             nota: `${cambio.nota} (refrendado por ${SESION_SUPERVISOR.nombre})`,
             fecha: fechaHoy(),
             pantallas: [],
-          },
+          }),
         },
       };
     });
@@ -902,14 +909,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
               autor: SESION_ANALISTA.nombre,
             },
           ],
-          observacion: {
+          ...conObservacion(prev, {
             motivo: "Cambio de datos financieros del analista",
             nota: cambio.nota,
             fecha: fechaHoy(),
             // Tras aceptar la nueva oferta, sólo queda habilitado el legajo virtual (subir más
             // documentación, ver el legajo e imprimir el formulario).
             pantallas: ["legajo"],
-          },
+          }),
         },
       });
     });
@@ -1374,7 +1381,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           cambioOfertaPendiente: null,
           ofertaAnalista: null,
           observacionConfirmada: null,
-          observacion: { motivo, nota, fecha: fechaHoy(), pantallas, campos },
+          ...conObservacion(prev, { motivo, nota, fecha: fechaHoy(), pantallas, campos }),
         },
       }));
     },

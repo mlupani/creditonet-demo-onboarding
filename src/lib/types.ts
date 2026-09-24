@@ -524,6 +524,9 @@ export interface CreditApplication {
     // El analista leyó y confirmó la observación de una solicitud reenviada (creditonet-75). Hasta
     // entonces no puede operar el crédito; se limpia al observar o al reenviar de nuevo.
     observacionConfirmada?: { fecha: string } | null;
+    // Todas las observaciones que el analista le devolvió al canal de venta, en orden. Con los
+    // comentarios arma el hilo de conversación (creditonet-88); `observacion` es la vigente.
+    historialObservaciones?: Observacion[];
   };
   rechazo: Rechazo | null;
   // Historial de firmas (FEL/AFEL): vacío hasta que el analista aprueba el crédito.

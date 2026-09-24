@@ -6,6 +6,7 @@ import type {
   LimiteCapital,
   LimiteCuota,
   Oferta,
+  Observacion,
   OfertaAnalista,
   Plazo,
   ResultadoLimites,
@@ -91,6 +92,14 @@ export const MAX_CAMBIOS_OFERTA = 2;
 export function cambioOfertaPermitido(app: CreditApplication): boolean {
   const hechos = cambiosOfertaDe(app).length;
   return hechos < MAX_CAMBIOS_OFERTA || app.analista.excepcionCambioOferta?.n === hechos;
+}
+
+// Observaciones del analista, de la más vieja a la más nueva. Los créditos anteriores al
+// historial sólo tienen la vigente.
+export function observacionesDe(app: Pick<CreditApplication, "analista">): Observacion[] {
+  const historial = app.analista.historialObservaciones ?? [];
+  if (historial.length > 0) return historial;
+  return app.analista.observacion ? [app.analista.observacion] : [];
 }
 
 // Estado con que la bandeja del vendedor muestra una solicitud devuelta por el analista: COFE
