@@ -45,7 +45,17 @@ export function StatusBadge({
   );
 }
 
-export function EstadoBadge({ estado }: { estado: EstadoCredito }) {
-  const meta = ESTADO_META[estado];
+// `etiqueta`: reemplaza el texto de una solicitud Observada (COFE o el motivo de la observación).
+export function EstadoBadge({
+  estado,
+  etiqueta,
+}: {
+  estado: EstadoCredito;
+  etiqueta?: string;
+}) {
+  const meta =
+    etiqueta && estado === "OBSERVADO"
+      ? { label: etiqueta, tone: "warning" as const }
+      : ESTADO_META[estado];
   return <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>;
 }

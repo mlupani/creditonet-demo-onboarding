@@ -52,6 +52,15 @@ export function ofertaAnalistaDe(app: CreditApplication): OfertaAnalista | null 
   return { montoSolicitado: app.oferta.montoSolicitado, plazo: app.oferta.plazo, nota: obs.nota };
 }
 
+// Etiqueta con que la bandeja del vendedor muestra una solicitud Observada: COFE si la
+// observación es un cambio de oferta del analista, si no el motivo de la observación
+// (datos, documentación, etc.).
+export function etiquetaObservado(app: CreditApplication): string | undefined {
+  if (app.estado !== "OBSERVADO") return undefined;
+  if (ofertaAnalistaDe(app) !== null) return "COFE · Cambio de oferta";
+  return app.analista.observacion?.motivo;
+}
+
 // Grilla de un plan (o la base, si no hay plan).
 export function grillaDe(plan?: PlanCuotas | null): OfferTerm[] {
   return plan && plan.grilla.length > 0 ? plan.grilla : OFFER_TERMS;

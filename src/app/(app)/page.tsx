@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
+import { etiquetaObservado } from "@/lib/credit";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
 import { estadoPantallasPostOferta } from "@/lib/validation";
 import { coincideCliente, formatARS, formatDNI, sumarDias } from "@/lib/format";
@@ -325,7 +326,7 @@ export default function BandejaCanalVentaPage() {
                                 {app.oferta.planId && <p className="mt-1 text-xs font-semibold tabular-nums text-ink-700">{formatARS(app.oferta.montoSolicitado)} · {app.oferta.plazo} cuotas</p>}
                               </div>
                               <div>
-                                <EstadoBadge estado={app.estado} />
+                                <EstadoBadge estado={app.estado} etiqueta={etiquetaObservado(app)} />
                               </div>
                               <div className="min-w-0">
                                 <p className="text-sm text-ink-700">{detallePara(app, paso)}</p>
@@ -364,7 +365,10 @@ export default function BandejaCanalVentaPage() {
                                   )}
                                 </div>
                                 <div>
-                                  <EstadoBadge estado={cred.estado} />
+                                  <EstadoBadge
+                                    estado={cred.estado}
+                                    etiqueta={etiquetaObservado(cred as unknown as CreditApplication)}
+                                  />
                                   {conOferta && <p className="mt-1 text-[11px] tabular-nums text-ink-500">TNA {cred.oferta.tna}% · {cred.oferta.primeraCuotaVencimiento}</p>}
                                   {cred._descripcion && <p className="mt-1 text-[10px] italic leading-tight text-ink-400 line-clamp-2">{cred._descripcion}</p>}
                                 </div>
