@@ -8,7 +8,13 @@ import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
 import { formatARS, sumarDias } from "@/lib/format";
-import { cambiosOfertaDe, netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
+import {
+  SUBESTADO_OBSERVADO,
+  cambiosOfertaDe,
+  netoAAcreditar,
+  ofertaAnalistaDe,
+  subestadoObservado,
+} from "@/lib/credit";
 import { ESTADOS_FIRMA } from "@/lib/firma";
 import { textoChequeo } from "@/lib/historial";
 import { HistorialCredito } from "@/components/HistorialCredito";
@@ -37,7 +43,8 @@ export function SolicitudEnviada() {
           <div className="space-y-5 p-6">
             {obs && (
               <Banner tone="warning" title={obs.motivo}>
-                {obs.nota} Corregí antes del <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días)
+                <strong>{SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].etiqueta}</strong> ·{" "}
+                {SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].origen}. {obs.nota} Corregí antes del <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días)
                 para que no expire.
                 {ofertaAnalistaDe(app) &&
                   (cambiosOfertaDe(app).at(-1)?.tipo === "OFERTA"

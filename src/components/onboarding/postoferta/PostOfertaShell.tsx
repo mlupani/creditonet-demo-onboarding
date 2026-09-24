@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva, pantallasVisibles } from "@/lib/config";
 import { estadoPantallasPostOferta, pendientesFinalizarCarga } from "@/lib/validation";
+import { SUBESTADO_OBSERVADO, subestadoObservado } from "@/lib/credit";
 import { sumarDias } from "@/lib/format";
 import type { PantallaPostOfertaId } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
@@ -265,7 +266,8 @@ export function PostOfertaShell() {
       {observada && !soloLectura && obs && (
         <div className="mt-5">
           <Banner tone="warning" title={`Observada por el analista · ${obs.motivo}`}>
-            {obs.nota}{" "}
+            <strong>{SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].etiqueta}</strong> ·{" "}
+            {SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].origen}. {obs.nota}{" "}
             {puntual &&
               `Corregí sólo: ${labelObservadas.join(", ")}. Las demás pantallas están bloqueadas. `}
             Editá, guardá y enviá nuevamente antes del{" "}
