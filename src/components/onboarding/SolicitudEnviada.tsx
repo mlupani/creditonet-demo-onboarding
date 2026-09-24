@@ -62,8 +62,12 @@ export function SolicitudEnviada() {
   }
 
   // Firma y chequeo telefónico: el canal de venta sólo puede ver en qué etapa está el crédito.
-  if (ESTADOS_FIRMA.includes(app.estado)) {
+  if (app.estado === "APROBADO" || ESTADOS_FIRMA.includes(app.estado)) {
     const info = {
+      APROBADO: {
+        titulo: "aprobada, a la espera de pasar a firma",
+        quien: "el analista de riesgo",
+      },
       EN_FIRMA: {
         titulo: "esperando la firma del cliente (FEL)",
         quien: "el cliente",

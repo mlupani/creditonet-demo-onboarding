@@ -294,6 +294,8 @@ interface ApplicationContextValue {
   rechazarCredito: (codigo: string, motivo: string, observacion: string) => void;
   // Aprobar abre el tramo de firma (FEL/AFEL); con modalidad "Ambas" se elige el método.
   aprobarCredito: (metodo?: MetodoFirma) => void;
+  // Aprueba sin pasar todavía a firma (estado intermedio opcional, creditonet-87).
+  dejarAprobado: () => void;
   registrarFirmaCliente: () => void;
   verificarFirma: () => void;
   solicitarRefirma: () => void;
@@ -1452,6 +1454,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const dejarAprobado = useCallback(() => {
+    setAppOperativo((prev) =>
+      prev.estado === "ANALISIS_TOMADO"
+        ? {
+            ...prev,
+            estado: "APROBADO",
+            fechaAprobacion: selloTiempo(),
+          }
+        : prev
+    );
+  }, []);
+
   // Aprobar el crédito ya no liquida: abre el tramo de firma. Con cualquier método (manual o
   // electrónica) entra a FEL: el cliente tiene que firmar.
   const aprobarCredito = useCallback((metodo?: MetodoFirma) => {
@@ -1460,7 +1474,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         estado: "EN_FIRMA",
-        fechaAprobacion: selloTiempo(),
+        // Desde Aprobado se conserva la fecha en que el analista aprobó.
+        fechaAprobacion: prev.estado === "APROBADO" ? prev.fechaAprobacion : selloTiempo(),
         firmas: [{ n: 1, metodo: m, fechaFirma: null, resultado: "PENDIENTE", fechaResultado: null }],
         chequeoTelefonico: null,
       };
@@ -1641,6 +1656,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reabrirCorreccion,
       rechazarCredito,
       aprobarCredito,
+      dejarAprobado,
       registrarFirmaCliente,
       verificarFirma,
       solicitarRefirma,
@@ -1710,6 +1726,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reabrirCorreccion,
       rechazarCredito,
       aprobarCredito,
+      dejarAprobado,
       registrarFirmaCliente,
       verificarFirma,
       solicitarRefirma,

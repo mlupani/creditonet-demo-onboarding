@@ -155,6 +155,7 @@ export function AnalisisCredito({
     anularCredito,
     soltarAnalisis,
     tomarAnalisis,
+    dejarAprobado,
   } = useApplication();
   const router = useRouter();
   const [modal, setModal] = useState<"observar" | "rechazar" | "anular" | null>(null);
@@ -169,6 +170,7 @@ export function AnalisisCredito({
   >({});
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
+  const [dejarAprobadoAbierto, setDejarAprobadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
@@ -933,6 +935,14 @@ export function AnalisisCredito({
                 <IconX width={16} height={16} />
                 Rechazar
               </Button>
+              <Button
+                variant="outline"
+                disabled={cambioPendiente !== null || observacionPendiente}
+                onClick={() => setDejarAprobadoAbierto(true)}
+              >
+                <IconCheck width={16} height={16} />
+                Dejar en Aprobado
+              </Button>
               <Button variant="success" disabled={cambioPendiente !== null || observacionPendiente} onClick={onAprobar}>
                 <IconCheck width={16} height={16} />
                 Aprobar
@@ -941,6 +951,25 @@ export function AnalisisCredito({
           </>
         )}
       </Card>
+
+      <ConfirmationModal
+        open={dejarAprobadoAbierto}
+        title="Dejar en Aprobado"
+        descripcion="La solicitud queda aprobada y no pasa todavía a firma: la retomás desde la pestaña Aprobados cuando corresponda."
+        rows={[
+          { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
+          { label: "Cliente", value: `${app.cliente.nombre} ${app.cliente.apellido}` },
+          { label: "Capital", value: formatARS(o.montoSolicitado) },
+          { label: "Cuotas", value: `${o.plazo}` },
+        ]}
+        confirmLabel="Dejar en Aprobado"
+        tone="success"
+        onConfirm={() => {
+          setDejarAprobadoAbierto(false);
+          dejarAprobado();
+        }}
+        onCancel={() => setDejarAprobadoAbierto(false)}
+      />
 
       <PosicionClienteModal open={consulta === "posicion"} onClose={() => setConsulta(null)} />
       <BuroMotorModal open={consulta === "buro"} onClose={() => setConsulta(null)} />

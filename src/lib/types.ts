@@ -21,6 +21,9 @@ export type EstadoCredito =
   | "ANULADO"
   // FEL: esperando la firma del cliente. AFEL: firma recibida, la verifica el analista.
   // Después, si el producto lo pide, chequeo telefónico y recién ahí liquidación.
+  // Aprobado (creditonet-87): estado intermedio opcional. El analista puede aprobar directo a FEL
+  // o dejar el crédito acá y pasarlo a firma más tarde.
+  | "APROBADO"
   | "EN_FIRMA"
   | "FIRMADO"
   | "CHEQUEO_TELEFONICO"

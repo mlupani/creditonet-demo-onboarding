@@ -58,7 +58,7 @@ const GRUPOS: { id: Grupo; titulo: string; vacio: string }[] = [
   {
     id: "FIRMA",
     titulo: "En firma",
-    vacio: "No hay solicitudes en firma (FEL) ni con firma aprobada (AFEL).",
+    vacio: "No hay solicitudes aprobadas, en firma (FEL) ni con firma aprobada (AFEL).",
   },
   { id: "CHEQUEO", titulo: "Chequeo telefónico", vacio: "No hay solicitudes en chequeo telefónico." },
   {
@@ -80,6 +80,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
   CAMBIO_OFERTA: "OBSERVADAS",
   PREAPROBADO: "ANALISIS",
   ANALISIS_TOMADO: "ANALISIS",
+  APROBADO: "FIRMA",
   EN_FIRMA: "FIRMA",
   FIRMADO: "FIRMA",
   CHEQUEO_TELEFONICO: "CHEQUEO",
@@ -96,6 +97,7 @@ const SUBESTADOS: { id: string; label: string }[] = [
   { id: "COFE", label: "COFE · Cambio de oferta" },
   { id: "PREAPROBADO", label: "Preaprobada" },
   { id: "ANALISIS_TOMADO", label: "En análisis (tomada)" },
+  { id: "APROBADO", label: "APR · Aprobada" },
   { id: "EN_FIRMA", label: "FEL · En firma" },
   { id: "FIRMADO", label: "AFEL · Firma aprobada" },
   { id: "CHEQUEO", label: "Chequeo pendiente" },
@@ -246,6 +248,7 @@ export default function BandejaCanalVentaPage() {
           ? "Tomada por analista · en revisión"
           : "Preaprobada · pendiente de toma";
     }
+    if (c.estado === "APROBADO") return "Aprobada · pendiente de pasar a firma";
     if (c.estado === "EN_FIRMA") return "Aprobada · esperando la firma del cliente (FEL)";
     if (c.estado === "FIRMADO") return "Firmada · firma aprobada (AFEL)";
     if (c.estado === "CHEQUEO_TELEFONICO")
