@@ -44,6 +44,7 @@ export function historialCredito(
   push("Enviada a análisis", app.fechaEnvioAnalisis);
   const obs = app.analista.observacion;
   push(obs?.motivo === "Anulada" ? "Anulada" : "Observada", obs?.fecha, obs?.nota);
+  push("Observación confirmada por el analista", app.analista.observacionConfirmada?.fecha);
   push("Aprobada por el analista", app.fechaAprobacion);
 
   for (const f of app.firmas) {

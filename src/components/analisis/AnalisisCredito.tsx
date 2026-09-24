@@ -155,6 +155,7 @@ export function AnalisisCredito({
     anularCredito,
     soltarAnalisis,
     tomarAnalisis,
+    confirmarObservacion,
   } = useApplication();
   const router = useRouter();
   const [modal, setModal] = useState<"observar" | "rechazar" | "anular" | null>(null);
@@ -176,8 +177,8 @@ export function AnalisisCredito({
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
-  // Crédito cuya observación previa el analista ya comprobó (se pierde al cambiar de crédito).
-  const [observacionComprobada, setObservacionComprobada] = useState<string | null>(null);
+  // Modal obligatorio al tomar una solicitud reenviada: hay que leer la observación primero.
+  const [lecturaAbierta, setLecturaAbierta] = useState(false);
   if (!app.cliente) return null;
 
   const o = app.oferta;
@@ -206,12 +207,13 @@ export function AnalisisCredito({
   const cambioPendiente = app.analista.cambioOfertaPendiente;
   // Sin tomar el caso no se opera: sólo se muestra el detalle y el botón Tomar análisis.
   const puedeOperar = app.analista.tomado;
-  // Una reenviada con correcciones no se decide hasta comprobar y confirmar la observación.
-  const observacionPendiente =
-    puedeOperar &&
+  // Una reenviada con correcciones no se opera hasta leer y confirmar la observación
+  // (creditonet-75); la confirmación queda guardada en la solicitud y en el historial.
+  const requiereLectura =
     app.analista.reenviada &&
     app.analista.observacion !== null &&
-    observacionComprobada !== (app.numeroCredito ?? "sin-id");
+    !app.analista.observacionConfirmada;
+  const observacionPendiente = puedeOperar && requiereLectura;
   const cfgEfectiva = configEfectiva(app.configuracion);
   // Oferta: renovaciones de créditos al día vs. precancelaciones obligatorias de créditos en mora.
   const sumaCancelacion = (cs: typeof aRenovar) => cs.reduce((t, c) => t + c.montoCancelacion, 0);
@@ -335,7 +337,7 @@ export function AnalisisCredito({
               <Button
                 size="sm"
                 variant="success"
-                onClick={() => setObservacionComprobada(app.numeroCredito ?? "sin-id")}
+                onClick={confirmarObservacion}
               >
                 <IconCheck width={14} height={14} />
                 Confirmar observación resuelta
@@ -892,7 +894,10 @@ export function AnalisisCredito({
       <Card className="space-y-3 p-4 sm:p-5">
         {!puedeOperar ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button size="lg" onClick={tomarAnalisis}>
+            <Button
+              size="lg"
+              onClick={() => (requiereLectura ? setLecturaAbierta(true) : tomarAnalisis())}
+            >
               Tomar análisis
             </Button>
           </div>
@@ -941,6 +946,54 @@ export function AnalisisCredito({
           </>
         )}
       </Card>
+
+      <Modal
+        open={lecturaAbierta}
+        onClose={() => setLecturaAbierta(false)}
+        title="Observación previa de la solicitud"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setLecturaAbierta(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="success"
+              onClick={() => {
+                setLecturaAbierta(false);
+                tomarAnalisis();
+                confirmarObservacion();
+              }}
+            >
+              <IconCheck width={14} height={14} />
+              Leí la observación y tomo el análisis
+            </Button>
+          </div>
+        }
+      >
+        {app.analista.observacion && (
+          <div className="space-y-3 text-sm text-ink-700">
+            <p>
+              Esta solicitud volvió del canal de venta con correcciones. Para tomarla tenés que leer
+              la observación y confirmarla.
+            </p>
+            <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-warning-700">
+                {app.analista.observacion.motivo} · {app.analista.observacion.fecha}
+              </p>
+              <p className="mt-1 whitespace-pre-line text-ink-800">{app.analista.observacion.nota}</p>
+              {app.analista.observacion.pantallas.length > 0 && (
+                <p className="mt-2 text-xs text-ink-600">
+                  Pantallas observadas:{" "}
+                  {pantallasVisibles(app.configuracion)
+                    .filter((pv) => app.analista.observacion!.pantallas.includes(pv.id))
+                    .map((pv) => pv.label)
+                    .join(", ")}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <PosicionClienteModal open={consulta === "posicion"} onClose={() => setConsulta(null)} />
       <BuroMotorModal open={consulta === "buro"} onClose={() => setConsulta(null)} />
