@@ -8,10 +8,8 @@ import type { CreditApplication } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import {
-  IconBarChart,
   IconCalendar,
   IconChevronDown,
-  IconUser,
   IconWallet,
 } from "@/components/icons";
 
@@ -137,21 +135,11 @@ export function FilaCreditoCollapse({
 
       {abierta && (
         <div id={idPanel} className="animate-fade-up border-t border-ink-100">
-          <div className="grid gap-6 px-5 py-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0 lg:[&>*]:border-l lg:[&>*]:border-ink-100 lg:[&>*]:px-5 lg:[&>*:first-child]:border-l-0 lg:[&>*:first-child]:pl-0">
-            <Seccion icono={<IconUser width={18} height={18} />} titulo="Cliente">
-              <Dato label="Nombre" valor={`${cli.nombre} ${cli.apellido}`} />
-              <Dato label="DNI" valor={formatDNI(cli.dni)} />
-              <Dato label="ID Cliente" valor={credito.numeroCliente ?? "—"} />
-            </Seccion>
+          <div className="grid gap-6 px-5 py-5 sm:grid-cols-2 lg:grid-cols-2 lg:gap-0 lg:[&>*]:border-l lg:[&>*]:border-ink-100 lg:[&>*]:px-5 lg:[&>*:first-child]:border-l-0 lg:[&>*:first-child]:pl-0">
             <Seccion icono={<IconWallet width={18} height={18} />} titulo="Financiación">
               <Dato label="Monto" valor={formatARS(credito.oferta.montoSolicitado)} fuerte />
               <Dato label="Cuota" valor={formatARS(credito.oferta.valorCuota)} fuerte />
               <Dato label="Cuotas" valor={credito.oferta.plazo} />
-            </Seccion>
-            <Seccion icono={<IconBarChart width={18} height={18} />} titulo="Estado">
-              <div>
-                <EstadoBadge estado={estadoVisible} />
-              </div>
             </Seccion>
             <Seccion icono={<IconCalendar width={18} height={18} />} titulo="Gestión">
               <Dato label="Fecha" valor={fecha ?? "—"} />
