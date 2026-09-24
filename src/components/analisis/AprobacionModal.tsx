@@ -48,6 +48,7 @@ export function AprobacionModal({
         { label: "Valor de cuota", value: formatARS(o.valorCuota) },
         { label: "Acreditación neta", value: formatARS(netoAAcreditar(o)) },
         { label: "Chequeo telefónico", value: chequeo ? "Requerido por el producto" : "No requerido" },
+        { label: "Firma electrónica", value: metodo === "ELECTRONICA" ? "Requerido" : "No requerido" },
       ]}
       confirmLabel="Confirmar aprobación"
       cancelLabel="Cancelar"

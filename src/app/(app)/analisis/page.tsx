@@ -138,7 +138,8 @@ export default function AnalisisPage() {
   if (app.estado === "CAMBIO_OFERTA") {
     // Confirmar oferta: el vendedor aceptó la del analista o eligió una menor. Confirmar
     // es aprobar directo: se reutiliza el modal de método de firma y aprobarCredito.
-    const tope = ofertaAnalistaDe(app);
+    // ofertaAnalistaDe() sólo responde en OBSERVADO: acá se lee la oferta conservada al reenviar.
+    const inicial = app.analista.ofertaAnalista ?? null;
     const o = app.oferta;
     return (
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -162,20 +163,20 @@ export default function AnalisisPage() {
         <div className="mt-6 space-y-5">
           <Card className="p-4 sm:p-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-ink-200 p-4">
-                <p className="text-xs font-bold uppercase tracking-widest text-ink-400">
-                  Tope del analista
+              <div className="rounded-xl border border-warning-200 bg-warning-50/50 p-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-warning-700">
+                  Oferta inicial
                 </p>
                 <p className="mt-1 text-xl font-bold tabular-nums text-ink-900">
-                  {tope ? formatARS(tope.montoSolicitado) : "—"}
+                  {inicial ? formatARS(inicial.montoSolicitado) : "—"}
                 </p>
                 <p className="text-sm text-ink-500">
-                  {tope ? `${tope.plazo} cuotas` : ""} {tope?.nota ? `· ${tope.nota}` : ""}
+                  {inicial ? `${inicial.plazo} cuotas` : ""} {inicial?.nota ? `· ${inicial.nota}` : ""}
                 </p>
               </div>
               <div className="rounded-xl border border-success-200 bg-success-50/50 p-4">
                 <p className="text-xs font-bold uppercase tracking-widest text-success-700">
-                  Oferta final del vendedor
+                  Oferta final
                 </p>
                 <p className="mt-1 text-xl font-bold tabular-nums text-ink-900">
                   {formatARS(o.montoSolicitado)}
