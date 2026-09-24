@@ -148,6 +148,7 @@ export function AnalisisCredito({
     aplicarCambioDatosFinancieros,
     anularCredito,
     soltarAnalisis,
+    tomarAnalisis,
   } = useApplication();
   const [modal, setModal] = useState<"observar" | "rechazar" | "anular" | null>(null);
   const [consulta, setConsulta] = useState<
@@ -193,6 +194,8 @@ export function AnalisisCredito({
   const aRenovar = o.creditosActivos.filter(seCancela);
   // Cambio de oferta propuesto que espera la refrendación del supervisor.
   const cambioPendiente = app.analista.cambioOfertaPendiente;
+  // Sin tomar el caso no se opera: sólo se muestra el detalle y el botón Tomar análisis.
+  const puedeOperar = app.analista.tomado;
   const cfgEfectiva = configEfectiva(app.configuracion);
   // Oferta: renovaciones de créditos al día vs. precancelaciones obligatorias de créditos en mora.
   const sumaCancelacion = (cs: typeof aRenovar) => cs.reduce((t, c) => t + c.montoCancelacion, 0);
@@ -365,16 +368,18 @@ export function AnalisisCredito({
             },
           ]}
           footer={
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => setConsulta("personales")}>
-                <IconUser width={14} height={14} />
-                Ver datos personales
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setConsulta("laborales")}>
-                <IconBuilding width={14} height={14} />
-                Ver datos laborales
-              </Button>
-            </div>
+            puedeOperar ? (
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setConsulta("personales")}>
+                  <IconUser width={14} height={14} />
+                  Ver datos personales
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setConsulta("laborales")}>
+                  <IconBuilding width={14} height={14} />
+                  Ver datos laborales
+                </Button>
+              </div>
+            ) : undefined
           }
         />
         <SummaryCard
@@ -395,30 +400,32 @@ export function AnalisisCredito({
             },
           ]}
           footer={
-            <div className="space-y-2">
-              <p className="text-xs text-ink-500">
-                Contrastá los importes declarados con el recibo de sueldo del legajo.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => setLegajoAbierto(true)}>
-                  <IconEye width={14} height={14} />
-                  Ver legajo virtual
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => abrir("observar")}>
-                  <IconAlertTriangle width={14} height={14} />
-                  Observar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={cambioPendiente !== null}
-                  onClick={() => setCambioAbierto(true)}
-                >
-                  <IconRefresh width={14} height={14} />
-                  Cambiar oferta
-                </Button>
+            puedeOperar ? (
+              <div className="space-y-2">
+                <p className="text-xs text-ink-500">
+                  Contrastá los importes declarados con el recibo de sueldo del legajo.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setLegajoAbierto(true)}>
+                    <IconEye width={14} height={14} />
+                    Ver legajo virtual
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => abrir("observar")}>
+                    <IconAlertTriangle width={14} height={14} />
+                    Observar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={cambioPendiente !== null}
+                    onClick={() => setCambioAbierto(true)}
+                  >
+                    <IconRefresh width={14} height={14} />
+                    Cambiar oferta
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : undefined
           }
         />
         <SummaryCard
@@ -444,15 +451,17 @@ export function AnalisisCredito({
             { label: "Capital máximo otorgable", value: formatARS(plan.capitalMaximo) },
           ]}
           footer={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setDesarrolloAbierto(true)}
-              aria-label="Ver desarrollo del préstamo"
-            >
-              <IconWallet width={14} height={14} />
-              Ver desarrollo del préstamo
-            </Button>
+            puedeOperar ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setDesarrolloAbierto(true)}
+                aria-label="Ver desarrollo del préstamo"
+              >
+                <IconWallet width={14} height={14} />
+                Ver desarrollo del préstamo
+              </Button>
+            ) : undefined
           }
         />
         <SummaryCard
@@ -518,26 +527,28 @@ export function AnalisisCredito({
             },
           ]}
           footer={
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={o.creditosActivos.length > 0 ? "outline" : "ghost"}
-                onClick={() => setHistorialAbierto(true)}
-                aria-label="Ver historial de pagos"
-              >
-                <IconEye width={14} height={14} />
-                Ver historial de pagos
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                aria-expanded={logAbierto}
-                onClick={() => setLogAbierto((v) => !v)}
-              >
-                <IconCalendar width={14} height={14} />
-                {logAbierto ? "Ocultar log de estados" : "Ver log de estados"}
-              </Button>
-            </div>
+            puedeOperar ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={o.creditosActivos.length > 0 ? "outline" : "ghost"}
+                  onClick={() => setHistorialAbierto(true)}
+                  aria-label="Ver historial de pagos"
+                >
+                  <IconEye width={14} height={14} />
+                  Ver historial de pagos
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-expanded={logAbierto}
+                  onClick={() => setLogAbierto((v) => !v)}
+                >
+                  <IconCalendar width={14} height={14} />
+                  {logAbierto ? "Ocultar log de estados" : "Ver log de estados"}
+                </Button>
+              </div>
+            ) : undefined
           }
         >
           {logAbierto && (
@@ -608,16 +619,18 @@ export function AnalisisCredito({
             { label: "Evaluado", value: app.riesgo.fecha ?? "—" },
           ]}
           footer={
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => setConsulta("reglas")}>
-                <IconShieldCheck width={14} height={14} />
-                Visualizar reglas
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setConsulta("buro")}>
-                <IconLandmark width={14} height={14} />
-                Ver buró
-              </Button>
-            </div>
+            puedeOperar ? (
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setConsulta("reglas")}>
+                  <IconShieldCheck width={14} height={14} />
+                  Visualizar reglas
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setConsulta("buro")}>
+                  <IconLandmark width={14} height={14} />
+                  Ver buró
+                </Button>
+              </div>
+            ) : undefined
           }
         />
         {app.riesgo.limites && (
@@ -658,15 +671,17 @@ export function AnalisisCredito({
                 ]
           }
           footer={
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={aRenovar.length === 0}
-              onClick={() => setConsulta("renovar")}
-            >
-              <IconEye width={14} height={14} />
-              Ver desarrollo del crédito
-            </Button>
+            puedeOperar ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={aRenovar.length === 0}
+                onClick={() => setConsulta("renovar")}
+              >
+                <IconEye width={14} height={14} />
+                Ver desarrollo del crédito
+              </Button>
+            ) : undefined
           }
         />
         {rectificados.length > 0 && (
@@ -816,10 +831,12 @@ export function AnalisisCredito({
             </p>
           </div>
         </div>
-        <Button variant={totalLegajoArchivos > 0 ? "primary" : "outline"} onClick={() => setLegajoAbierto(true)}>
-          <IconEye width={16} height={16} />
-          Ver documentos del legajo
-        </Button>
+        {puedeOperar && (
+          <Button variant={totalLegajoArchivos > 0 ? "primary" : "outline"} onClick={() => setLegajoAbierto(true)}>
+            <IconEye width={16} height={16} />
+            Ver documentos del legajo
+          </Button>
+        )}
       </Card>
 
       <Banner tone="info">
@@ -832,46 +849,56 @@ export function AnalisisCredito({
       </Banner>
 
       <Card className="space-y-3 p-4 sm:p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Button
-            variant="outline"
-            disabled={cambioPendiente !== null}
-            onClick={() => setCambioAbierto(true)}
-          >
-            <IconRefresh width={16} height={16} />
-            Cambiar oferta
-          </Button>
-          <Button variant="outline" onClick={() => abrir("observar")}>
-            <IconAlertTriangle width={16} height={16} />
-            Observar
-          </Button>
-          <Button variant="outline" onClick={() => abrir("anular")}>
-            <IconTrash width={16} height={16} />
-            Anular
-          </Button>
-          <Button variant="outline" onClick={() => setConsulta("posicion")}>
-            <IconUser width={16} height={16} />
-            Posición cliente
-          </Button>
-          <Button variant="outline" onClick={() => setConsulta("comentario")}>
-            <IconFileText width={16} height={16} />
-            Agregar comentario
-          </Button>
-          <Button variant="outline" onClick={() => setConsulta("soltar")}>
-            <IconUsers width={16} height={16} />
-            Soltar análisis
-          </Button>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button variant="danger" onClick={() => abrir("rechazar")}>
-            <IconX width={16} height={16} />
-            Rechazar
-          </Button>
-          <Button variant="success" disabled={cambioPendiente !== null} onClick={onAprobar}>
-            <IconCheck width={16} height={16} />
-            Aprobar
-          </Button>
-        </div>
+        {!puedeOperar ? (
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button size="lg" onClick={tomarAnalisis}>
+              Tomar análisis
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button
+                variant="outline"
+                disabled={cambioPendiente !== null}
+                onClick={() => setCambioAbierto(true)}
+              >
+                <IconRefresh width={16} height={16} />
+                Cambiar oferta
+              </Button>
+              <Button variant="outline" onClick={() => abrir("observar")}>
+                <IconAlertTriangle width={16} height={16} />
+                Observar
+              </Button>
+              <Button variant="outline" onClick={() => abrir("anular")}>
+                <IconTrash width={16} height={16} />
+                Anular
+              </Button>
+              <Button variant="outline" onClick={() => setConsulta("posicion")}>
+                <IconUser width={16} height={16} />
+                Posición cliente
+              </Button>
+              <Button variant="outline" onClick={() => setConsulta("comentario")}>
+                <IconFileText width={16} height={16} />
+                Agregar comentario
+              </Button>
+              <Button variant="outline" onClick={() => setConsulta("soltar")}>
+                <IconUsers width={16} height={16} />
+                Soltar análisis
+              </Button>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="danger" onClick={() => abrir("rechazar")}>
+                <IconX width={16} height={16} />
+                Rechazar
+              </Button>
+              <Button variant="success" disabled={cambioPendiente !== null} onClick={onAprobar}>
+                <IconCheck width={16} height={16} />
+                Aprobar
+              </Button>
+            </div>
+          </>
+        )}
       </Card>
 
       <PosicionClienteModal open={consulta === "posicion"} onClose={() => setConsulta(null)} />

@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
-import { BandejaAnalista } from "@/components/analisis/BandejaAnalista";
 import { AnalisisCredito } from "@/components/analisis/AnalisisCredito";
 import { ListaAnalisis } from "@/components/analisis/ListaAnalisis";
 import { AprobacionModal } from "@/components/analisis/AprobacionModal";
@@ -37,7 +36,6 @@ export default function AnalisisPage() {
   const {
     app,
     hidratado,
-    tomarAnalisis,
     observarCredito,
     rechazarCredito,
     aprobarCredito,
@@ -379,11 +377,9 @@ export default function AnalisisPage() {
       </div>
 
       <div className="mt-6 space-y-5">
-        {app.estado === "PREAPROBADO" && <BandejaAnalista onTomar={tomarAnalisis} />}
-
         {ESTADOS_FIRMA.includes(app.estado) && <FirmaPanel onRechazar={rechazarCredito} />}
 
-        {app.estado === "ANALISIS_TOMADO" && (
+        {(app.estado === "ANALISIS_TOMADO" || app.estado === "PREAPROBADO") && (
           <AnalisisCredito
             onObservar={observarCredito}
             onRechazar={rechazarCredito}
