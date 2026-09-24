@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { etiquetaObservado } from "@/lib/credit";
+import { SUBESTADO_OBSERVADO, etiquetaObservado, subestadoObservado } from "@/lib/credit";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
 import { estadoPantallasPostOferta } from "@/lib/validation";
 import { coincideCliente, formatARS, formatDNI, sumarDias } from "@/lib/format";
@@ -94,6 +94,7 @@ const SUBESTADOS: { id: string; label: string }[] = [
   { id: "BORRADOR", label: "Borrador" },
   { id: "EN_TRAMITE", label: "En trámite" },
   { id: "OBS", label: "OBS · Observada" },
+  { id: "OBS_COFE", label: "OBS · COFE · Observada con cambio de oferta previo" },
   { id: "COFE", label: "COFE · Cambio de oferta" },
   { id: "PREAPROBADO", label: "Preaprobada" },
   { id: "ANALISIS_TOMADO", label: "En análisis (tomada)" },
@@ -108,7 +109,7 @@ const SUBESTADOS: { id: string; label: string }[] = [
 ];
 
 function subestadoDe(c: CreditApplication): string {
-  if (c.estado === "OBSERVADO" || c.estado === "CAMBIO_OFERTA") return etiquetaObservado(c) ?? "OBS";
+  if (c.estado === "OBSERVADO" || c.estado === "CAMBIO_OFERTA") return subestadoObservado(c) ?? "OBS";
   if (c.estado === "CHEQUEO_TELEFONICO") return c.chequeoTelefonico?.observacion ? "CHEQUEO_OBS" : "CHEQUEO";
   return c.estado;
 }
@@ -236,7 +237,8 @@ export default function BandejaCanalVentaPage() {
     }
     if (c.estado === "OBSERVADO") {
       const obs = c.analista.observacion;
-      return obs ? `${obs.motivo}: ${obs.nota}` : "Observada por el analista";
+      const origen = SUBESTADO_OBSERVADO[subestadoObservado(c) ?? "OBS"].origen;
+      return obs ? `${origen} · ${obs.motivo}: ${obs.nota}` : "Observada por el analista";
     }
     if (c.estado === "CAMBIO_OFERTA") {
       return "Oferta respondida · aguardando confirmación del analista";
