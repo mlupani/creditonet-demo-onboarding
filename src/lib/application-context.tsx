@@ -47,8 +47,8 @@ import {
   ofertaAnalistaDe,
   recalcularOferta,
 } from "./credit";
-import { reglaBloquea } from "./motores";
-import { institucionalesBloquean } from "./reglas-institucionales";
+import { evaluarReglas, reglaBloquea, resolverResultado, seleccionarMotor } from "./motores";
+import { evaluarInstitucionales, institucionalesBloquean } from "./reglas-institucionales";
 import {
   aplicarCambioCampo,
   aplicarCambioDomicilio,
@@ -58,7 +58,7 @@ import {
 import { fechaHoy, onlyDigits, selloTiempo } from "./format";
 import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
-import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_SUPERVISOR } from "./config";
+import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_SUPERVISOR, seleccionarLinea } from "./config";
 import { hidratarProductos } from "./productos";
 import { hidratarPlanes } from "./planes";
 import { hidratarOrganismos } from "./organismos";
@@ -121,6 +121,56 @@ export interface CambioOferta {
   nota: string;
 }
 
+// Cambio de datos financieros del analista (creditonet-69): a diferencia del cambio de
+// oferta, estos datos pueden modificar la capacidad de endeudamiento y por eso disparan de
+// nuevo el Motor de Riesgo en lugar de aplicarse tal cual.
+export interface CambioDatosFinancieros {
+  ingresoBruto: number;
+  ingresoNeto: number;
+  disponible: number;
+  nota: string;
+}
+
+/**
+ * Reglas institucionales → Motor de riesgo → línea → límites, con los datos actuales de
+ * `app` (creditonet-69). Es la misma secuencia que arma la primera evaluación
+ * (PasoEvaluacion), expuesta como función pura para poder previsualizar el resultado de un
+ * cambio de datos financieros antes de aplicarlo y para aplicarlo después.
+ */
+export function evaluarSolicitud(app: CreditApplication): ResultadoEvaluacion {
+  const institucionales = evaluarInstitucionales(app, "EVALUACION");
+  const rechazoInstitucional = institucionalesBloquean(institucionales);
+
+  const { motor } = seleccionarMotor(
+    app.configuracion,
+    app.laboral.condicionLaboral,
+    app.identificacion.tipoCliente
+  );
+  const reglas = rechazoInstitucional ? [] : evaluarReglas(app, motor, app.riesgo.escenario);
+  const resultado = rechazoInstitucional ? null : resolverResultado(reglas);
+
+  const linea =
+    resultado !== "PASA"
+      ? { plan: null, motivo: null }
+      : seleccionarLinea(app.configuracion.organismoId, {
+          condicionLaboral: app.laboral.condicionLaboral,
+          situacionBcra: app.situaciones?.bcra ?? 1,
+          perfilInterno: app.situaciones?.interna ?? 1,
+        });
+
+  const limites = linea.plan ? calcularLimites(app, { conCancelaciones: false, plan: linea.plan }) : null;
+
+  return {
+    institucionales,
+    motorId: rechazoInstitucional ? null : motor.id,
+    reglas,
+    resultado,
+    planId: linea.plan?.id ?? null,
+    sinLineaMotivo: linea.motivo,
+    limites,
+  };
+}
+
 interface ApplicationContextValue {
   app: CreditApplication;
   // DB simulada (src/data/creditos.json) en estado de React: se sincroniza con `app` mientras
@@ -154,6 +204,9 @@ interface ApplicationContextValue {
   proponerCambioOferta: (cambio: CambioOferta) => void;
   refrendarCambioOferta: () => void;
   rechazarCambioOferta: () => void;
+  // Cambio de datos financieros del analista: recalcula el Motor de Riesgo de inmediato
+  // (no requiere refrendación) y puede terminar en Observado (nueva oferta) o Rechazado.
+  aplicarCambioDatosFinancieros: (cambio: CambioDatosFinancieros) => void;
 
   patchOferta: (patch: Partial<Oferta>) => void;
   togglePrecancelar: (id: string) => void;
@@ -647,6 +700,122 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...prev,
       analista: { ...prev.analista, cambioOfertaPendiente: null },
     }));
+  }, []);
+
+  /**
+   * Cambio de datos financieros del analista (creditonet-69): a diferencia del cambio de
+   * oferta, estos datos pueden modificar la capacidad de endeudamiento, así que en vez de
+   * aplicarse tal cual disparan de nuevo la secuencia completa de evaluación
+   * (institucionales → Motor de Riesgo → línea → límites). Rige de inmediato, sin
+   * refrendación: si la nueva evaluación pasa, la solicitud queda Observada con la oferta
+   * que resulte de los nuevos límites; si no pasa, queda Rechazada.
+   */
+  const aplicarCambioDatosFinancieros = useCallback((cambio: CambioDatosFinancieros) => {
+    setApp((prev) => {
+      const nuevoLaboral = {
+        ...prev.laboral,
+        ingresoBruto: cambio.ingresoBruto,
+        ingresoNeto: cambio.ingresoNeto,
+        disponible: cambio.disponible,
+      };
+      const ev = evaluarSolicitud({ ...prev, laboral: nuevoLaboral });
+
+      const rechazoInstitucional = institucionalesBloquean(ev.institucionales);
+      const rechazadoPorMotor = !rechazoInstitucional && ev.resultado === "NO_PASA";
+      const sinLinea = !rechazoInstitucional && !rechazadoPorMotor && ev.planId === null;
+      const rechazado = rechazoInstitucional || rechazadoPorMotor || sinLinea;
+
+      const detalle = (reglas: { nombre: string; valorEvaluado: string }[]) =>
+        reglas.map((r) => `${r.nombre}: ${r.valorEvaluado}`).join(" · ");
+      const institucionalesNoPasan = ev.institucionales.filter(reglaBloquea);
+      const motorNoPasan = ev.reglas.filter(reglaBloquea);
+
+      const base: CreditApplication = {
+        ...prev,
+        laboral: nuevoLaboral,
+        riesgo: {
+          ...prev.riesgo,
+          estado: "COMPLETO",
+          motorId: ev.motorId,
+          reglas: ev.reglas,
+          institucionales: ev.institucionales,
+          resultado: ev.resultado,
+          planId: ev.planId,
+          limites: ev.limites,
+          evaluadoCon: {
+            ingresoNeto: nuevoLaboral.ingresoNeto,
+            fechaNacimiento: prev.cliente?.fechaNacimiento ?? "",
+            genero: prev.cliente?.genero ?? "",
+          },
+          fecha: selloTiempo(),
+        },
+      };
+
+      if (rechazado) {
+        return {
+          ...base,
+          estado: "RECHAZADO",
+          rechazo: {
+            origen: "ANALISTA",
+            codigos: rechazoInstitucional
+              ? institucionalesNoPasan.map((r) => r.codigo)
+              : rechazadoPorMotor
+                ? motorNoPasan.map((r) => r.codigo)
+                : ["LN-01"],
+            motivo: "Cambio de datos financieros: la nueva evaluación no pasa",
+            observacion: rechazoInstitucional
+              ? detalle(institucionalesNoPasan)
+              : rechazadoPorMotor
+                ? detalle(motorNoPasan)
+                : (ev.sinLineaMotivo ?? ""),
+            fecha: fechaHoy(),
+          },
+          analista: {
+            ...prev.analista,
+            observacion: {
+              motivo: "Cambio de datos financieros del analista",
+              nota: cambio.nota,
+              fecha: fechaHoy(),
+              pantallas: [],
+            },
+          },
+        };
+      }
+
+      const ofertaNueva = recalcularOferta({
+        ...prev.oferta,
+        planId: ev.planId,
+        plazo: plazoValido(ev.planId, prev.oferta.plazo),
+        capitalMaximoBase: ev.limites!.capitalConsiderado,
+        capitalMaximoRenovacion: ev.limites!.capitalConsiderado,
+        montoSolicitado: ev.limites!.capitalConsiderado,
+        aceptada: false,
+      });
+
+      return aplicarLimites({
+        ...base,
+        estado: "OBSERVADO",
+        oferta: ofertaNueva,
+        analista: {
+          ...prev.analista,
+          tomado: false,
+          reenviada: false,
+          pantallasCorregidas: [],
+          cambioOfertaPendiente: null,
+          ofertaAnalista: {
+            montoSolicitado: ofertaNueva.montoSolicitado,
+            plazo: ofertaNueva.plazo,
+            nota: cambio.nota,
+          },
+          observacion: {
+            motivo: "Cambio de datos financieros del analista",
+            nota: cambio.nota,
+            fecha: fechaHoy(),
+            pantallas: [],
+          },
+        },
+      });
+    });
   }, []);
 
   const patchOferta = useCallback((patch: Partial<Oferta>) => {
@@ -1248,6 +1417,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       proponerCambioOferta,
       refrendarCambioOferta,
       rechazarCambioOferta,
+      aplicarCambioDatosFinancieros,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
@@ -1309,6 +1479,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       proponerCambioOferta,
       refrendarCambioOferta,
       rechazarCambioOferta,
+      aplicarCambioDatosFinancieros,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
