@@ -3,9 +3,9 @@
     "version": "1.0.0",
     "descripcion": "DB simulada CreditoNet — 10 préstamos precargados con estados diversos",
     "generado": "2026-09-22",
-    "total": 45,
+    "total": 47,
     "bandejas": {
-      "vendedor": 20,
+      "vendedor": 22,
       "analista": 25
     }
   },
@@ -14381,6 +14381,918 @@
             "fechaTokenizacion": "Hoy 08:45",
             "token": "tok_demo_NN12AA",
             "numeroCompleto": "4509000000001234",
+            "cvv": "456"
+          }
+        ],
+        "referencias": [
+          {
+            "id": "referencia-1",
+            "vinculo": "Familiar directo",
+            "dni": "30.111.222",
+            "nombre": "Lucía",
+            "apellido": "Fernández",
+            "domicilio": {
+              "calle": "Obispo Trejo",
+              "numero": "520",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "lucia.fernandez@email.com",
+            "telefono": "351 6543210",
+            "autocompletado": true,
+            "condicionLaboral": "",
+            "ingresoBruto": 0,
+            "ingresoNeto": 0,
+            "reciboSueldo": [],
+            "otrosDocumentos": [],
+            "empleadorCalle": "",
+            "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
+            "empleadorTelefono": "",
+            "banco": "",
+            "cbu": ""
+          }
+        ],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.001.370",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3210",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543220",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-10-1",
+                "nombre": "recibo_garante_10_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0070199530000012345678"
+          }
+        ],
+        "legajo": {
+          "dni-frente": [
+            {
+              "id": "dni-frente-1",
+              "nombre": "dni_frente_1.jpg",
+              "detalle": "1.1 MB · Hoy 08:50"
+            }
+          ],
+          "dni-dorso": [
+            {
+              "id": "dni-dorso-1",
+              "nombre": "dni_dorso_1.jpg",
+              "detalle": "1.0 MB · Hoy 08:50"
+            }
+          ],
+          "recibo-sueldo": [
+            {
+              "id": "recibo-sueldo-1",
+              "nombre": "recibo_sueldo_1.jpg",
+              "detalle": "1.3 MB · Hoy 08:50"
+            }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.1 MB · Hoy 08:50"
+            }
+          ]
+        },
+        "impresion": {
+          "accion": "VISUALIZADO",
+          "fecha": "Hoy 09:15"
+        }
+      },
+      "pantallasVisitadas": [
+        "personales",
+        "laboral",
+        "tokenizacion",
+        "referencias",
+        "garantias",
+        "legajo",
+        "impresion"
+      ],
+      "analista": {
+        "tomado": false,
+        "observacion": null,
+        "reenviada": false,
+        "pantallasCorregidas": [],
+        "cambioOfertaPendiente": null
+      },
+      "rechazo": null,
+      "comentarios": [],
+      "fechaSolicitud": "24/09/2026",
+      "fechaPreaprobacion": null,
+      "fechaEnvioAnalisis": null,
+      "fechaAprobacion": null
+    },
+    {
+      "_bandeja": "vendedor",
+      "_descripcion": "EN_TRAMITE POST-OFERTA 7/7 · Cliente existente: renueva CR-000118 (crédito interno) y cancela deuda con Banco Santander (tercero), oferta 1250000 · 24 cuotas, listo para enviar a análisis",
+      "numeroCredito": "CR-000232",
+      "numeroCliente": "011232",
+      "estado": "EN_TRAMITE",
+      "etapa": "POST_OFERTA",
+      "tipoPersona": "FISICA",
+      "identificacion": {
+        "documento": "31200032",
+        "consultado": true,
+        "tipoCliente": "EXISTENTE",
+        "firmaRegistrada": {
+          "imagen": "data:image/png;base64,firma_mock",
+          "fecha": "Hoy 08:00"
+        }
+      },
+      "cliente": {
+        "apellido": "Acosta",
+        "nombre": "Sebastián",
+        "dni": "31200032",
+        "cuil": "20-31200032-7",
+        "genero": "Masculino",
+        "fechaNacimiento": "04/03/1990",
+        "calle": "Bv. San Juan",
+        "numero": "890",
+        "localidad": "Córdoba",
+        "provincia": "Córdoba",
+        "email": "sebastian.acosta@email.com",
+        "telefono": "351 6000032"
+      },
+      "situaciones": {
+        "bcra": 1,
+        "interna": 1
+      },
+      "origenCampos": {
+        "apellido": "API pública",
+        "nombre": "API pública",
+        "dni": "API pública",
+        "cuil": "API pública",
+        "genero": "API pública",
+        "fechaNacimiento": "API pública",
+        "calle": "API pública",
+        "numero": "API pública",
+        "localidad": "API pública",
+        "provincia": "API pública",
+        "email": "Base interna"
+      },
+      "identidadVerificada": true,
+      "configuracion": {
+        "productoId": "prestamo-personal",
+        "organismoId": "empleados-salud",
+        "canalId": "sucursal",
+        "vendedorId": "juan-perez"
+      },
+      "laboral": {
+        "condicionLaboral": "Empleado fijo",
+        "fechaInicioLaboral": "10/02/2023",
+        "empleadores": [
+          {
+            "banco": "Banco Nación",
+            "cuit": "30-70891234-5",
+            "razonSocial": "Banco Nación Servicios S.A."
+          }
+        ],
+        "ingresoBruto": 1150000,
+        "ingresoNeto": 950000,
+        "disponible": 0,
+        "debitosNoRemunerativos": 0,
+        "extraccionesImporte": 0,
+        "transferenciasImporte": 0
+      },
+      "riesgo": {
+        "estado": "COMPLETO",
+        "motorId": "motor-salud",
+        "escenario": "PASA",
+        "reglas": [
+          {
+            "id": "R01",
+            "codigo": "BCRA-01",
+            "nombre": "Situación BCRA",
+            "detalle": "Situación 1 habilitada",
+            "fuente": "BCRA",
+            "valorEvaluado": "1",
+            "condicion": "<= 2",
+            "bloqueante": true,
+            "resultado": "PASA"
+          }
+        ],
+        "institucionales": [
+          {
+            "id": "I01",
+            "codigo": "INST-01",
+            "nombre": "Edad mínima",
+            "detalle": "Mayor de 18",
+            "fuente": "Parámetros",
+            "valorEvaluado": "36 años",
+            "condicion": ">= 18",
+            "bloqueante": true,
+            "resultado": "PASA",
+            "momento": "IDENTIFICACION"
+          }
+        ],
+        "resultado": "PASA",
+        "planId": "linea-salud-2026",
+        "limites": {
+          "capitalSolicitado": 1250000,
+          "cuotasVigentes": 0,
+          "cuotasLiberadas": 92300,
+          "limites": [
+            {
+              "id": "universal",
+              "label": "Límite universal por cliente",
+              "detalle": "Exposición máxima",
+              "monto": 5000000
+            },
+            {
+              "id": "brutos",
+              "label": "Límite por sueldos brutos",
+              "detalle": "3 sueldos brutos de $1.150.000",
+              "monto": 3450000
+            },
+            {
+              "id": "producto",
+              "label": "Límite por producto",
+              "detalle": "Préstamo personal",
+              "monto": 4000000
+            },
+            {
+              "id": "plan",
+              "label": "Límite por plan de cuotas",
+              "detalle": "Línea Salud 2026 · tope ampliado por renovación",
+              "monto": 2850000
+            },
+            {
+              "id": "cuota",
+              "label": "Límite por cuota máxima",
+              "detalle": "Relación cuota-ingreso: $380.000 en 24 cuotas",
+              "monto": 5100000
+            }
+          ],
+          "limiteAplicadoId": "plan",
+          "capitalPorLimites": 2850000,
+          "limitantes": [
+            {
+              "id": "tipo-cliente",
+              "label": "Cliente existente",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            },
+            {
+              "id": "condicion-laboral",
+              "label": "Condición laboral: Empleado fijo",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            },
+            {
+              "id": "situacion-bcra",
+              "label": "Situación BCRA 1",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            }
+          ],
+          "recorteAplicadoPct": 0,
+          "capitalConsiderado": 2850000,
+          "limitesCuota": [
+            {
+              "id": "smvm",
+              "label": "SMVM de bolsillo",
+              "detalle": "Ingreso neto $950.000 menos mínimo $350.000",
+              "monto": 600000
+            },
+            {
+              "id": "rci",
+              "label": "Relación cuota-ingreso",
+              "detalle": "40 % del ingreso neto",
+              "monto": 380000
+            },
+            {
+              "id": "endeudamiento",
+              "label": "Nivel de endeudamiento",
+              "detalle": "50 % del bruto menos cuotas vigentes",
+              "monto": 575000
+            }
+          ],
+          "limiteCuotaAplicadoId": "rci",
+          "cuotaMaxima": 380000
+        },
+        "evaluadoCon": {
+          "ingresoNeto": 950000,
+          "fechaNacimiento": "04/03/1990",
+          "genero": "Masculino"
+        },
+        "fecha": "Hoy 08:30"
+      },
+      "oferta": {
+        "planId": "linea-salud-2026",
+        "capitalMaximoBase": 2500000,
+        "capitalMaximoRenovacion": 2850000,
+        "capitalMaximoActual": 2850000,
+        "montoSolicitado": 1250000,
+        "plazo": 24,
+        "tna": 67,
+        "valorCuota": 94800,
+        "totalAPagar": 2275200,
+        "primeraCuotaVencimiento": "10/11/2026",
+        "creditosActivos": [
+          {
+            "id": "CR-000118",
+            "capitalOriginal": 1200000,
+            "capitalResidual": 600000,
+            "montoCancelacion": 715000,
+            "desglose": {
+              "capitalResidual": 600000,
+              "interesesAVencer": 80000,
+              "iva": 20000,
+              "cargosCancelacion": 15000,
+              "punitorios": 0
+            },
+            "cuotasOriginales": 18,
+            "cuotasAbonadas": 10,
+            "valorCuota": 92300,
+            "precancelar": true
+          }
+        ],
+        "deudaTerceros": {
+          "habilitado": true,
+          "entidad": "Banco Santander",
+          "importe": 250000,
+          "cbu": "0720123488000034567890"
+        },
+        "aceptada": true
+      },
+      "postOferta": {
+        "precarga": {
+          "nombre": "Sebastián",
+          "apellido": "Acosta",
+          "dni": "31.200.032",
+          "cuit": "20-31200032-7",
+          "fechaNacimiento": "04/03/1990",
+          "genero": "Masculino",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "2233445",
+          "email": "sebastian.acosta@email.com",
+          "banco": "Banco Nación",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "890",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54"
+        },
+        "personales": {
+          "nacionalidad": "Argentina",
+          "estadoCivil": "Soltera/o",
+          "tipoVivienda": "Inquilino",
+          "personasACargo": "0",
+          "tieneConyuge": "No",
+          "dni": "31.200.032",
+          "cuit": "20-31200032-7",
+          "nombre": "Sebastián",
+          "apellido": "Acosta",
+          "fechaNacimiento": "04/03/1990",
+          "genero": "Masculino",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "890",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "2233445",
+          "email": "sebastian.acosta@email.com"
+        },
+        "laboral": {
+          "cuitEmpleador": "30-70891234-5",
+          "razonSocial": "Banco Nación Servicios S.A.",
+          "rubro": "Salud - Atención primaria",
+          "numeroLegajo": "BN-4422",
+          "cargo": "Administrativo",
+          "banco": "Banco Nación",
+          "cbu.Banco Nación": "0110599520000023456",
+          "domicilioLaboral.calle": "Bv. Los Andes",
+          "domicilioLaboral.numero": "1250",
+          "domicilioLaboral.barrio": "Cerro de las Rosas",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228005",
+          "telefonoLaboral.interno": "105",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
+        },
+        "tarjetas": [
+          {
+            "id": "tarjeta-1",
+            "via": "PRESENCIAL",
+            "estado": "TOKENIZADA",
+            "verificada": true,
+            "enviadoA": null,
+            "tipo": "DEBITO",
+            "marca": "Visa",
+            "nombreTitular": "SEBASTIÁN ACOSTA",
+            "primeros4": "4509",
+            "ultimos4": "5678",
+            "vencimiento": "09/30",
+            "emisor": "Banco Nación",
+            "fechaTokenizacion": "Hoy 08:45",
+            "token": "tok_demo_NN12AA",
+            "numeroCompleto": "4509000000005678",
+            "cvv": "456"
+          }
+        ],
+        "referencias": [
+          {
+            "id": "referencia-1",
+            "vinculo": "Familiar directo",
+            "dni": "30.111.222",
+            "nombre": "Lucía",
+            "apellido": "Fernández",
+            "domicilio": {
+              "calle": "Obispo Trejo",
+              "numero": "520",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "lucia.fernandez@email.com",
+            "telefono": "351 6543210",
+            "autocompletado": true,
+            "condicionLaboral": "",
+            "ingresoBruto": 0,
+            "ingresoNeto": 0,
+            "reciboSueldo": [],
+            "otrosDocumentos": [],
+            "empleadorCalle": "",
+            "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
+            "empleadorTelefono": "",
+            "banco": "",
+            "cbu": ""
+          }
+        ],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.001.370",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3210",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543220",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-10-1",
+                "nombre": "recibo_garante_10_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0070199530000012345678"
+          }
+        ],
+        "legajo": {
+          "dni-frente": [
+            {
+              "id": "dni-frente-1",
+              "nombre": "dni_frente_1.jpg",
+              "detalle": "1.1 MB · Hoy 08:50"
+            }
+          ],
+          "dni-dorso": [
+            {
+              "id": "dni-dorso-1",
+              "nombre": "dni_dorso_1.jpg",
+              "detalle": "1.0 MB · Hoy 08:50"
+            }
+          ],
+          "recibo-sueldo": [
+            {
+              "id": "recibo-sueldo-1",
+              "nombre": "recibo_sueldo_1.jpg",
+              "detalle": "1.3 MB · Hoy 08:50"
+            }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.1 MB · Hoy 08:50"
+            }
+          ]
+        },
+        "impresion": {
+          "accion": "VISUALIZADO",
+          "fecha": "Hoy 09:15"
+        }
+      },
+      "pantallasVisitadas": [
+        "personales",
+        "laboral",
+        "tokenizacion",
+        "referencias",
+        "garantias",
+        "legajo",
+        "impresion"
+      ],
+      "analista": {
+        "tomado": false,
+        "observacion": null,
+        "reenviada": false,
+        "pantallasCorregidas": [],
+        "cambioOfertaPendiente": null
+      },
+      "rechazo": null,
+      "comentarios": [],
+      "fechaSolicitud": "24/09/2026",
+      "fechaPreaprobacion": null,
+      "fechaEnvioAnalisis": null,
+      "fechaAprobacion": null
+    },
+    {
+      "_bandeja": "vendedor",
+      "_descripcion": "EN_TRAMITE POST-OFERTA 7/7 · Cliente existente con CR-000119 (crédito interno) en mora: se cancela obligatoriamente en la renovación, oferta 1250000 · 24 cuotas, listo para enviar a análisis",
+      "numeroCredito": "CR-000233",
+      "numeroCliente": "011233",
+      "estado": "EN_TRAMITE",
+      "etapa": "POST_OFERTA",
+      "tipoPersona": "FISICA",
+      "identificacion": {
+        "documento": "31200033",
+        "consultado": true,
+        "tipoCliente": "EXISTENTE",
+        "firmaRegistrada": {
+          "imagen": "data:image/png;base64,firma_mock",
+          "fecha": "Hoy 08:00"
+        }
+      },
+      "cliente": {
+        "apellido": "Ledesma",
+        "nombre": "Federico",
+        "dni": "31200033",
+        "cuil": "20-31200033-5",
+        "genero": "Masculino",
+        "fechaNacimiento": "11/11/1988",
+        "calle": "Bv. San Juan",
+        "numero": "890",
+        "localidad": "Córdoba",
+        "provincia": "Córdoba",
+        "email": "federico.ledesma@email.com",
+        "telefono": "351 6000033"
+      },
+      "situaciones": {
+        "bcra": 1,
+        "interna": 3
+      },
+      "origenCampos": {
+        "apellido": "API pública",
+        "nombre": "API pública",
+        "dni": "API pública",
+        "cuil": "API pública",
+        "genero": "API pública",
+        "fechaNacimiento": "API pública",
+        "calle": "API pública",
+        "numero": "API pública",
+        "localidad": "API pública",
+        "provincia": "API pública",
+        "email": "Base interna"
+      },
+      "identidadVerificada": true,
+      "configuracion": {
+        "productoId": "prestamo-personal",
+        "organismoId": "empleados-salud",
+        "canalId": "sucursal",
+        "vendedorId": "juan-perez"
+      },
+      "laboral": {
+        "condicionLaboral": "Empleado fijo",
+        "fechaInicioLaboral": "10/02/2023",
+        "empleadores": [
+          {
+            "banco": "Banco Nación",
+            "cuit": "30-70891234-5",
+            "razonSocial": "Banco Nación Servicios S.A."
+          }
+        ],
+        "ingresoBruto": 1150000,
+        "ingresoNeto": 950000,
+        "disponible": 0,
+        "debitosNoRemunerativos": 0,
+        "extraccionesImporte": 0,
+        "transferenciasImporte": 0
+      },
+      "riesgo": {
+        "estado": "COMPLETO",
+        "motorId": "motor-salud",
+        "escenario": "PASA",
+        "reglas": [
+          {
+            "id": "R01",
+            "codigo": "BCRA-01",
+            "nombre": "Situación BCRA",
+            "detalle": "Situación 1 habilitada",
+            "fuente": "BCRA",
+            "valorEvaluado": "1",
+            "condicion": "<= 2",
+            "bloqueante": true,
+            "resultado": "PASA"
+          },
+          {
+            "id": "R02",
+            "codigo": "MORA-01",
+            "nombre": "Mora en crédito propio",
+            "detalle": "CR-000119 en mora · se cancela con la renovación",
+            "fuente": "Base interna",
+            "valorEvaluado": "1 crédito en mora",
+            "condicion": "Cancelar en la renovación",
+            "bloqueante": false,
+            "resultado": "PASA"
+          }
+        ],
+        "institucionales": [
+          {
+            "id": "I01",
+            "codigo": "INST-01",
+            "nombre": "Edad mínima",
+            "detalle": "Mayor de 18",
+            "fuente": "Parámetros",
+            "valorEvaluado": "37 años",
+            "condicion": ">= 18",
+            "bloqueante": true,
+            "resultado": "PASA",
+            "momento": "IDENTIFICACION"
+          }
+        ],
+        "resultado": "PASA",
+        "planId": "linea-salud-2026",
+        "limites": {
+          "capitalSolicitado": 1250000,
+          "cuotasVigentes": 0,
+          "cuotasLiberadas": 78400,
+          "limites": [
+            {
+              "id": "universal",
+              "label": "Límite universal por cliente",
+              "detalle": "Exposición máxima",
+              "monto": 5000000
+            },
+            {
+              "id": "brutos",
+              "label": "Límite por sueldos brutos",
+              "detalle": "3 sueldos brutos de $1.150.000",
+              "monto": 3450000
+            },
+            {
+              "id": "producto",
+              "label": "Límite por producto",
+              "detalle": "Préstamo personal",
+              "monto": 4000000
+            },
+            {
+              "id": "plan",
+              "label": "Límite por plan de cuotas",
+              "detalle": "Línea Salud 2026 · tope ampliado por renovación",
+              "monto": 2850000
+            },
+            {
+              "id": "cuota",
+              "label": "Límite por cuota máxima",
+              "detalle": "Relación cuota-ingreso: $380.000 en 24 cuotas",
+              "monto": 5100000
+            }
+          ],
+          "limiteAplicadoId": "plan",
+          "capitalPorLimites": 2850000,
+          "limitantes": [
+            {
+              "id": "tipo-cliente",
+              "label": "Cliente existente",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            },
+            {
+              "id": "condicion-laboral",
+              "label": "Condición laboral: Empleado fijo",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            },
+            {
+              "id": "situacion-bcra",
+              "label": "Situación BCRA 1",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            }
+          ],
+          "recorteAplicadoPct": 0,
+          "capitalConsiderado": 2850000,
+          "limitesCuota": [
+            {
+              "id": "smvm",
+              "label": "SMVM de bolsillo",
+              "detalle": "Ingreso neto $950.000 menos mínimo $350.000",
+              "monto": 600000
+            },
+            {
+              "id": "rci",
+              "label": "Relación cuota-ingreso",
+              "detalle": "40 % del ingreso neto",
+              "monto": 380000
+            },
+            {
+              "id": "endeudamiento",
+              "label": "Nivel de endeudamiento",
+              "detalle": "50 % del bruto menos cuotas vigentes",
+              "monto": 575000
+            }
+          ],
+          "limiteCuotaAplicadoId": "rci",
+          "cuotaMaxima": 380000
+        },
+        "evaluadoCon": {
+          "ingresoNeto": 950000,
+          "fechaNacimiento": "11/11/1988",
+          "genero": "Masculino"
+        },
+        "fecha": "Hoy 08:30"
+      },
+      "oferta": {
+        "planId": "linea-salud-2026",
+        "capitalMaximoBase": 2500000,
+        "capitalMaximoRenovacion": 2850000,
+        "capitalMaximoActual": 2850000,
+        "montoSolicitado": 1250000,
+        "plazo": 24,
+        "tna": 67,
+        "valorCuota": 94800,
+        "totalAPagar": 2275200,
+        "primeraCuotaVencimiento": "10/11/2026",
+        "creditosActivos": [
+          {
+            "id": "CR-000119",
+            "capitalOriginal": 900000,
+            "capitalResidual": 480000,
+            "montoCancelacion": 560000,
+            "desglose": {
+              "capitalResidual": 480000,
+              "interesesAVencer": 45000,
+              "iva": 13500,
+              "cargosCancelacion": 12000,
+              "punitorios": 9500
+            },
+            "cuotasOriginales": 18,
+            "cuotasAbonadas": 7,
+            "valorCuota": 78400,
+            "precancelar": true,
+            "enMora": true
+          }
+        ],
+        "deudaTerceros": {
+          "habilitado": false,
+          "entidad": "",
+          "importe": 0,
+          "cbu": ""
+        },
+        "aceptada": true
+      },
+      "postOferta": {
+        "precarga": {
+          "nombre": "Federico",
+          "apellido": "Ledesma",
+          "dni": "31.200.033",
+          "cuit": "20-31200033-5",
+          "fechaNacimiento": "11/11/1988",
+          "genero": "Masculino",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "2233445",
+          "email": "federico.ledesma@email.com",
+          "banco": "Banco Nación",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "890",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54"
+        },
+        "personales": {
+          "nacionalidad": "Argentina",
+          "estadoCivil": "Soltera/o",
+          "tipoVivienda": "Inquilino",
+          "personasACargo": "0",
+          "tieneConyuge": "No",
+          "dni": "31.200.033",
+          "cuit": "20-31200033-5",
+          "nombre": "Federico",
+          "apellido": "Ledesma",
+          "fechaNacimiento": "11/11/1988",
+          "genero": "Masculino",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "890",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "2233445",
+          "email": "federico.ledesma@email.com"
+        },
+        "laboral": {
+          "cuitEmpleador": "30-70891234-5",
+          "razonSocial": "Banco Nación Servicios S.A.",
+          "rubro": "Salud - Atención primaria",
+          "numeroLegajo": "BN-4423",
+          "cargo": "Administrativo",
+          "banco": "Banco Nación",
+          "cbu.Banco Nación": "0110599520000023457",
+          "domicilioLaboral.calle": "Bv. Los Andes",
+          "domicilioLaboral.numero": "1250",
+          "domicilioLaboral.barrio": "Cerro de las Rosas",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228005",
+          "telefonoLaboral.interno": "105",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
+        },
+        "tarjetas": [
+          {
+            "id": "tarjeta-1",
+            "via": "PRESENCIAL",
+            "estado": "TOKENIZADA",
+            "verificada": true,
+            "enviadoA": null,
+            "tipo": "DEBITO",
+            "marca": "Visa",
+            "nombreTitular": "FEDERICO LEDESMA",
+            "primeros4": "4509",
+            "ultimos4": "9012",
+            "vencimiento": "09/30",
+            "emisor": "Banco Nación",
+            "fechaTokenizacion": "Hoy 08:45",
+            "token": "tok_demo_NN12AA",
+            "numeroCompleto": "4509000000009012",
             "cvv": "456"
           }
         ],
