@@ -1414,31 +1414,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // Aprobar el crédito ya no liquida: abre el tramo de firma. Electrónica → FEL (el cliente
-  // firma); física → AFEL directo, con la firma manual ya cargada.
+  // Aprobar el crédito ya no liquida: abre el tramo de firma. Con cualquier método (manual o
+  // electrónica) entra a FEL: el cliente tiene que firmar.
   const aprobarCredito = useCallback((metodo?: MetodoFirma) => {
     setAppOperativo((prev) => {
       const m = metodo ?? metodoPorDefecto(modalidadFirma(prev.configuracion));
-      const ahora = selloTiempo();
       return {
         ...prev,
-        estado: m === "FISICA" ? "FIRMADO" : "EN_FIRMA",
-        fechaAprobacion: ahora,
-        firmas: [
-          {
-            n: 1,
-            metodo: m,
-            fechaFirma: m === "FISICA" ? ahora : null,
-            resultado: "PENDIENTE",
-            fechaResultado: null,
-          },
-        ],
+        estado: "EN_FIRMA",
+        fechaAprobacion: selloTiempo(),
+        firmas: [{ n: 1, metodo: m, fechaFirma: null, resultado: "PENDIENTE", fechaResultado: null }],
         chequeoTelefonico: null,
       };
     });
   }, []);
 
-  // FEL → AFEL: el cliente firmó (en la demo se simula con un botón).
+  // FEL → AFEL: el cliente firmó, en papel o en línea (en la demo se simula con un botón).
   const registrarFirmaCliente = useCallback(() => {
     setAppOperativo((prev) => {
       const actual = intentoActual(prev.firmas);
@@ -1451,8 +1442,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // AFEL: el analista aprueba la firma. Sigue el chequeo telefónico si el producto lo exige;
-  // si no, queda para liquidar.
+  // AFEL: firma aprobada. Sigue el chequeo telefónico si el producto lo exige; si no, queda
+  // para liquidar.
   const verificarFirma = useCallback(() => {
     setAppOperativo((prev) => {
       if (prev.estado !== "FIRMADO") return prev;

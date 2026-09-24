@@ -25,8 +25,9 @@ const RESULTADO_LABEL: Record<ResultadoFirma, string> = {
 
 const METODO_LABEL = { ELECTRONICA: "Electrónica", FISICA: "Manual" } as const;
 
-// Tramo posterior a la aprobación: FEL (el cliente firma) → AFEL (el analista verifica la
-// firma) → chequeo telefónico, si el producto lo pide → para liquidar.
+// Tramo posterior a la aprobación: FEL (el cliente firma, en papel o en línea) → AFEL (firma
+// aprobada) → chequeo telefónico, si el producto lo pide → para liquidar. Desde AFEL se puede
+// volver a FEL por una firma inconsistente.
 export function FirmaPanel({
   onRechazar,
 }: {
@@ -73,9 +74,14 @@ export function FirmaPanel({
       {app.estado === "EN_FIRMA" && (
         <Card className="space-y-3 p-4 sm:p-5">
           <Banner tone="info" title={`En firma (FEL)${segunda ? " · refirma" : ""}`}>
-            Esperando que el cliente firme. Cuando firme, el crédito pasa a AFEL para que lo verifiques.
+            {actual?.metodo === "FISICA"
+              ? "Esperando que el cliente firme en papel. "
+              : "Esperando que el cliente firme en línea. "}
+            Cuando firme, el crédito pasa a AFEL (firma aprobada).
           </Banner>
-          <Button onClick={registrarFirmaCliente}>Simular firma del cliente</Button>
+          <Button onClick={registrarFirmaCliente}>
+            {actual?.metodo === "FISICA" ? "Registrar firma manual recibida" : "Simular firma del cliente"}
+          </Button>
         </Card>
       )}
 
@@ -83,10 +89,14 @@ export function FirmaPanel({
         <Card className="space-y-3 p-4 sm:p-5">
           <Banner
             tone={segunda ? "warning" : "info"}
-            title={`Verificar la firma (AFEL)${segunda ? " · segunda firma" : ""}`}
+            title={`Firma aprobada (AFEL)${segunda ? " · segunda firma" : ""}`}
           >
+            El cliente ya firmó.{" "}
+            {chequeo
+              ? "El producto requiere chequeo telefónico: al avanzar pasa al chequeador."
+              : "El producto no requiere chequeo telefónico: al avanzar queda para liquidar."}{" "}
             {refirmaDisponible
-              ? "Si detectás un problema podés solicitar una refirma: el crédito vuelve a FEL. Se permite una sola."
+              ? "Si la firma es inconsistente podés volver a FEL. Se permite una sola vez."
               : "Ya se usó la única refirma: si esta firma no es correcta, el crédito se rechaza."}
           </Banner>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
@@ -98,13 +108,13 @@ export function FirmaPanel({
               {refirmaDisponible && (
                 <Button variant="outline" onClick={() => setModal("refirma")}>
                   <IconRefresh width={16} height={16} />
-                  Refirmar
+                  Volver a FEL
                 </Button>
               )}
             </div>
             <Button variant="success" onClick={verificarFirma}>
               <IconCheck width={16} height={16} />
-              Aprobar firma
+              {chequeo ? "Enviar a chequeo telefónico" : "Pasar a liquidar"}
             </Button>
           </div>
         </Card>

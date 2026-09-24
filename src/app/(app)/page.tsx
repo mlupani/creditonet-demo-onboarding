@@ -46,7 +46,7 @@ const ACCIONES_PROXIMAS = [
   },
 ];
 
-type Grupo = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "RESUELTAS";
+type Grupo = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "FIRMA" | "RESUELTAS";
 type ModalId = "nueva" | "anular" | "posicion" | "estado" | "motivo" | "comentario";
 
 // Secciones de la bandeja del canal de venta, en el orden en que se trabajan.
@@ -54,6 +54,11 @@ const GRUPOS: { id: Grupo; titulo: string; vacio: string }[] = [
   { id: "TRAMITE", titulo: "En trámite", vacio: "No hay solicitudes con la carga pendiente." },
   { id: "OBSERVADAS", titulo: "Observadas", vacio: "No hay observaciones del analista por tramitar." },
   { id: "ANALISIS", titulo: "En análisis", vacio: "No hay solicitudes en la bandeja del analista." },
+  {
+    id: "FIRMA",
+    titulo: "En firma y chequeo",
+    vacio: "No hay solicitudes en firma (FEL), firma aprobada (AFEL) ni chequeo telefónico.",
+  },
   {
     id: "RESUELTAS",
     titulo: "Activos / Cancelados / Rechazados",
@@ -68,9 +73,9 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
   CAMBIO_OFERTA: "OBSERVADAS",
   PREAPROBADO: "ANALISIS",
   ANALISIS_TOMADO: "ANALISIS",
-  EN_FIRMA: "RESUELTAS",
-  FIRMADO: "RESUELTAS",
-  CHEQUEO_TELEFONICO: "RESUELTAS",
+  EN_FIRMA: "FIRMA",
+  FIRMADO: "FIRMA",
+  CHEQUEO_TELEFONICO: "FIRMA",
   PARA_LIQUIDAR: "RESUELTAS",
   RECHAZADO: "RESUELTAS",
   ANULADO: "RESUELTAS",
@@ -96,12 +101,14 @@ export default function BandejaCanalVentaPage() {
     TRAMITE: false,
     OBSERVADAS: true,
     ANALISIS: true,
+    FIRMA: true,
     RESUELTAS: true,
   });
   const [pagina, setPagina] = useState<Record<Grupo, number>>({
     TRAMITE: 1,
     OBSERVADAS: 1,
     ANALISIS: 1,
+    FIRMA: 1,
     RESUELTAS: 1,
   });
   const POR_PAGINA = 5;
@@ -112,7 +119,7 @@ export default function BandejaCanalVentaPage() {
   const q = busqueda.trim();
 
   useEffect(() => {
-    setPagina({ TRAMITE: 1, OBSERVADAS: 1, ANALISIS: 1, RESUELTAS: 1 });
+    setPagina({ TRAMITE: 1, OBSERVADAS: 1, ANALISIS: 1, FIRMA: 1, RESUELTAS: 1 });
   }, [q]);
 
   function toggleColapso(g: Grupo) {
@@ -205,7 +212,7 @@ export default function BandejaCanalVentaPage() {
           : "Preaprobada · pendiente de toma";
     }
     if (c.estado === "EN_FIRMA") return "Aprobada · esperando la firma del cliente (FEL)";
-    if (c.estado === "FIRMADO") return "Firmada · el analista verifica la firma (AFEL)";
+    if (c.estado === "FIRMADO") return "Firmada · firma aprobada (AFEL)";
     if (c.estado === "CHEQUEO_TELEFONICO")
       return `En chequeo telefónico · ${textoChequeo(c.chequeoTelefonico)} · sólo lectura`;
     if (c.estado === "PARA_LIQUIDAR") return "Aprobada · en Bandeja de Liquidación (Tesorería)";
@@ -391,7 +398,7 @@ export default function BandejaCanalVentaPage() {
                                     Tramitar observación
                                   </Button>
                                 )}
-                                {(g.id === "ANALISIS" || g.id === "RESUELTAS") && (
+                                {(g.id === "ANALISIS" || g.id === "FIRMA" || g.id === "RESUELTAS") && (
                                   <Button size="sm" variant="outline" onClick={() => actuar(cred, "estado")}>
                                     Ver estado
                                   </Button>

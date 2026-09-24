@@ -56,9 +56,9 @@ const PESTANAS_ESTADO: DefPestana[] = [
   },
   {
     id: "AFEL",
-    titulo: "Firma a verificar",
+    titulo: "Firma aprobada",
     estados: ["FIRMADO"],
-    vacio: "No hay firmas para verificar.",
+    vacio: "No hay firmas aprobadas.",
   },
   {
     id: "LIQ",

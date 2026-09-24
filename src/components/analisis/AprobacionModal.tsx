@@ -10,8 +10,8 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { SelectField } from "@/components/ui/SelectField";
 
 const OPCIONES_METODO = [
-  { value: "ELECTRONICA", label: "Electrónica (FEL) · el cliente firma en línea" },
-  { value: "FISICA", label: "Manual (AFEL) · firma física ya cargada" },
+  { value: "ELECTRONICA", label: "Electrónica · el cliente firma en línea" },
+  { value: "FISICA", label: "Manual · el cliente firma en papel" },
 ];
 
 export function AprobacionModal({
@@ -31,22 +31,21 @@ export function AprobacionModal({
   // En "Ambas" el analista elige; en los demás casos lo dicta el producto.
   const [eleccion, setEleccion] = useState<MetodoFirma>("ELECTRONICA");
   const metodo = modalidad === "AMBAS" ? eleccion : metodoPorDefecto(modalidad);
-  const siguiente = metodo === "FISICA" ? "Firma a verificar (AFEL)" : "En firma (FEL)";
   const chequeo = requiereChequeoTelefonico(app.configuracion);
 
   return (
     <ConfirmationModal
       open={open}
       title="Confirmar aprobación"
-      descripcion={`Al confirmar, la solicitud pasa de En análisis a ${siguiente}. ${
-        chequeo ? "Después de la firma, pasa por chequeo telefónico y" : "Una vez verificada la firma,"
+      descripcion={`Al confirmar, la solicitud pasa de En análisis a En firma (FEL), a la espera de la firma del cliente. ${
+        chequeo ? "Con la firma aprobada, pasa por chequeo telefónico y" : "Con la firma aprobada,"
       } queda para liquidar (Tesorería).`}
       rows={[
         { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
         { label: "Cliente", value: `${app.cliente?.nombre ?? ""} ${app.cliente?.apellido ?? ""}` },
         { label: "Capital", value: formatARS(o.montoSolicitado) },
         { label: "Cuotas", value: `${o.plazo}` },
-        { label: "Cuota", value: formatARS(o.valorCuota) },
+        { label: "Valor de cuota", value: formatARS(o.valorCuota) },
         { label: "Acreditación neta", value: formatARS(netoAAcreditar(o)) },
         { label: "Chequeo telefónico", value: chequeo ? "Requerido por el producto" : "No requerido" },
       ]}

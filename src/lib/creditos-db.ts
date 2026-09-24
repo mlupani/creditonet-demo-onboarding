@@ -82,7 +82,7 @@ export function getCreditoById(numeroCredito: string | null): CreditoDB | undefi
 }
 
 // --- Bandeja del canal de venta (page.tsx) agrupa por GRUPO_POR_ESTADO ---
-export type GrupoVendedor = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "RESUELTAS";
+export type GrupoVendedor = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "FIRMA" | "RESUELTAS";
 
 const GRUPO_POR_ESTADO: Record<EstadoCredito, GrupoVendedor> = {
   BORRADOR: "TRAMITE",
@@ -91,9 +91,9 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, GrupoVendedor> = {
   CAMBIO_OFERTA: "OBSERVADAS",
   PREAPROBADO: "ANALISIS",
   ANALISIS_TOMADO: "ANALISIS",
-  EN_FIRMA: "RESUELTAS",
-  FIRMADO: "RESUELTAS",
-  CHEQUEO_TELEFONICO: "RESUELTAS",
+  EN_FIRMA: "FIRMA",
+  FIRMADO: "FIRMA",
+  CHEQUEO_TELEFONICO: "FIRMA",
   PARA_LIQUIDAR: "RESUELTAS",
   RECHAZADO: "RESUELTAS",
   ANULADO: "RESUELTAS",

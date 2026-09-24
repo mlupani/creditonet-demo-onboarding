@@ -672,6 +672,8 @@ interface OrganismoSemilla extends OpcionCatalogo {
   condicionLaboral: string;
   productos: string[];
   overrides: OverridesOrganismo;
+  // Excepciones de extras (firma, chequeo, etc.) sólo para algunos productos del organismo.
+  extrasPorProducto?: Record<string, Partial<ExtrasProducto>>;
 }
 
 const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
@@ -692,6 +694,8 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
       "linea-consumo",
     ],
     overrides: {},
+    // Los préstamos personales del organismo pasan por chequeo telefónico antes de liquidarse.
+    extrasPorProducto: { "prestamo-personal": { requiereChequeoTelefonico: true } },
   },
   {
     id: "policia-provincial",
@@ -807,7 +811,7 @@ export const ORGANISMOS: OrganismoConfig[] = ORGANISMOS_SEMILLA.map((o) => ({
         overrides: structuredClone(o.overrides),
         motor: structuredClone(o.motor),
         canales: o.canales ? [...o.canales] : null,
-        extras: {},
+        extras: { ...o.extrasPorProducto?.[id] },
       } satisfies ExcepcionesOrganismo,
     ])
   ),

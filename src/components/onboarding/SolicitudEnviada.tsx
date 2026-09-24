@@ -67,7 +67,7 @@ export function SolicitudEnviada() {
         quien: "el cliente",
       },
       FIRMADO: {
-        titulo: "con la firma recibida: el analista la está verificando (AFEL)",
+        titulo: "con la firma aprobada (AFEL): el analista define el paso siguiente",
         quien: "el analista de riesgo",
       },
       CHEQUEO_TELEFONICO: {

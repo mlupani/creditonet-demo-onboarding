@@ -1,8 +1,9 @@
 // Lógica pura del tramo firma → chequeo telefónico → liquidación.
 //
-// Tras la aprobación del analista: FEL (esperando la firma del cliente) → AFEL (el analista
-// verifica la firma) → chequeo telefónico, si el producto lo pide → para liquidar. La firma
-// admite una única refirma: como máximo hay dos instancias en el historial.
+// Tras la aprobación del analista: FEL (esperando la firma del cliente, manual o electrónica)
+// → AFEL (firma aprobada) → chequeo telefónico, si el producto lo pide → para liquidar. Desde
+// AFEL se vuelve a FEL por una firma inconsistente; la firma admite una única refirma: como
+// máximo hay dos instancias en el historial.
 
 import {
   MAX_INTENTOS_FIRMA,
