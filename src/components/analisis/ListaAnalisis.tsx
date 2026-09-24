@@ -9,16 +9,17 @@ import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconChevronDown, IconFileStack, IconRefresh, IconRows, IconSearch, IconTable } from "@/components/icons";
+import { IconChevronDown, IconFileStack, IconRows, IconSearch, IconTable } from "@/components/icons";
 import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
 type Vista = "tabla" | "lista";
 
-type Pestana = "TODOS" | "PRE" | "COFE" | "RECH" | "FEL" | "AFEL" | "CHT" | "LIQ";
+type Pestana = "TODOS" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
 
 // Bandeja del analista — 7 estados (desde preaprobado en adelante) de creditonet-34.
-// Las observadas no figuran: se devuelven al vendedor y el analista no las ve hasta que las reenvía.
-type DefPestana = { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string };
+// Las observadas pendientes del vendedor no figuran (las ve él en su bandeja); OBS muestra
+// las que ya corrigió y reenvió: entran a OBS, no a PRE.
+type DefPestana = { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string; reenviadas?: boolean };
 
 const PESTANAS_ESTADO: DefPestana[] = [
   {
@@ -26,6 +27,14 @@ const PESTANAS_ESTADO: DefPestana[] = [
     titulo: "Preaprobados",
     estados: ["PREAPROBADO", "ANALISIS_TOMADO"],
     vacio: "No hay solicitudes preaprobadas para analizar.",
+    reenviadas: false,
+  },
+  {
+    id: "OBS",
+    titulo: "Observadas reenviadas",
+    estados: ["PREAPROBADO", "ANALISIS_TOMADO"],
+    vacio: "No hay observadas corregidas y reenviadas por el vendedor.",
+    reenviadas: true,
   },
   {
     id: "COFE",
@@ -50,13 +59,6 @@ const PESTANAS_ESTADO: DefPestana[] = [
     titulo: "Firma a verificar",
     estados: ["FIRMADO"],
     vacio: "No hay firmas para verificar.",
-  },
-  {
-    // Sólo lectura: lo gestiona el chequeador desde su bandeja.
-    id: "CHT",
-    titulo: "En chequeo telefónico",
-    estados: ["CHEQUEO_TELEFONICO"],
-    vacio: "No hay solicitudes en chequeo telefónico.",
   },
   {
     id: "LIQ",
@@ -102,11 +104,11 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const [pagina, setPagina] = useState<Record<Pestana, number>>({
     TODOS: 1,
     PRE: 1,
+    OBS: 1,
     COFE: 1,
     RECH: 1,
     FEL: 1,
     AFEL: 1,
-    CHT: 1,
     LIQ: 1,
   });
   const POR_PAGINA = 5;
@@ -119,8 +121,11 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   // DB simulada: créditos filtrados por pestaña, canal y búsqueda, ordenados por la misma
   // fecha que se muestra en la columna "Fecha" de esa pestaña (creditonet-67).
   function creditosDBEnPestana(p: Pestana) {
+    const def = PESTANAS.find((x) => x.id === p)!;
     const filtrados = creditosDB.filter((c) => {
-      if (!PESTANAS.find((x) => x.id === p)!.estados.includes(c.estado)) return false;
+      if (!def.estados.includes(c.estado)) return false;
+      // PRE = primeras (excluye reenviadas); OBS = sólo reenviadas.
+      if (def.reenviadas !== undefined && c.analista.reenviada !== def.reenviadas) return false;
       if (canal && c.configuracion.canalId !== canal) return false;
       if (busqueda.trim() && c.cliente && !coincideCliente(c.cliente, busqueda)) return false;
       if (busqueda.trim() && !c.cliente) return false;
@@ -321,6 +326,9 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                     {paginados.map((c) => {
                       const cli = c.cliente!;
                       const fecha = fechaVisibleAnalista(c);
+                      // Reenviada sin tomar: en esta bandeja se lee "Observado", no "Preaprobado".
+                      const estadoVisible =
+                        c.analista.reenviada && c.estado === "PREAPROBADO" ? "OBSERVADO" : c.estado;
                       return (
                         <tr
                           key={c.numeroCredito ?? cli.dni}
@@ -345,13 +353,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                           <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(c.oferta.valorCuota)}</td>
                           <td className="px-3 py-3 tabular-nums text-ink-700">{c.oferta.plazo}</td>
                           <td className="px-3 py-3">
-                            <EstadoBadge estado={c.estado} />
-                            {c.analista.reenviada && (
-                              <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
-                                <IconRefresh width={11} height={11} />
-                                Reenviada con correcciones
-                              </span>
-                            )}
+                            <EstadoBadge estado={estadoVisible} />
                           </td>
                           <td className="px-3 py-3 text-ink-700">{fecha ?? "—"}</td>
                           <td className="px-3 py-3 text-ink-700">
@@ -382,13 +384,13 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                         <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(app.oferta.valorCuota)}</td>
                         <td className="px-3 py-3 tabular-nums text-ink-700">{app.oferta.plazo}</td>
                         <td className="px-3 py-3">
-                          <EstadoBadge estado={app.estado} />
-                          {app.analista.reenviada && (
-                            <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
-                              <IconRefresh width={11} height={11} />
-                              Reenviada con correcciones
-                            </span>
-                          )}
+                          <EstadoBadge
+                            estado={
+                              app.analista.reenviada && app.estado === "PREAPROBADO"
+                                ? "OBSERVADO"
+                                : app.estado
+                            }
+                          />
                         </td>
                         <td className="px-3 py-3 text-ink-700">{fechaApp ?? "—"}</td>
                         <td className="px-3 py-3 text-ink-700">

@@ -68,6 +68,7 @@ import {
   IconShieldCheck,
   IconTrash,
   IconUser,
+  IconUsers,
   IconWallet,
   IconX,
 } from "@/components/icons";
@@ -607,10 +608,16 @@ export function AnalisisCredito({
             { label: "Evaluado", value: app.riesgo.fecha ?? "—" },
           ]}
           footer={
-            <Button size="sm" variant="outline" onClick={() => setConsulta("reglas")}>
-              <IconShieldCheck width={14} height={14} />
-              Visualizar reglas
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setConsulta("reglas")}>
+                <IconShieldCheck width={14} height={14} />
+                Visualizar reglas
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConsulta("buro")}>
+                <IconLandmark width={14} height={14} />
+                Ver buró
+              </Button>
+            </div>
           }
         />
         {app.riesgo.limites && (
@@ -849,6 +856,10 @@ export function AnalisisCredito({
           <Button variant="outline" onClick={() => setConsulta("comentario")}>
             <IconFileText width={16} height={16} />
             Agregar comentario
+          </Button>
+          <Button variant="outline" onClick={() => setConsulta("soltar")}>
+            <IconUsers width={16} height={16} />
+            Soltar análisis
           </Button>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">

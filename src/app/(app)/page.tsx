@@ -157,6 +157,17 @@ export default function BandejaCanalVentaPage() {
     router.push("/onboarding");
   }
 
+  // Acciones de la bandeja sobre una fila: la cargan como solicitud en curso y abren el
+  // modal (los modales y anular/comentar operan sobre `app`). Navegar al onboarding, en
+  // cambio, sigue por `abrirCreditoDB`.
+  function actuar(
+    cred: (typeof creditosDB)[number],
+    modalId: Extract<ModalId, "anular" | "posicion" | "estado" | "motivo" | "comentario">
+  ) {
+    cargarCreditoDeDB(cred._id);
+    setModal(modalId);
+  }
+
   function detallePara(c: CreditApplication, pasoActual: number) {
     const pasoMeta = STEPS_ORIGINACION[Math.min(Math.max(pasoActual, 1), STEPS_ORIGINACION.length) - 1];
     if (c.estado === "BORRADOR" || (c.estado === "EN_TRAMITE" && c.etapa === "ORIGINACION")) {
@@ -334,12 +345,6 @@ export default function BandejaCanalVentaPage() {
                           const det = detallePara(cred as unknown as CreditApplication, paso);
                           const venc = vencimientoPara(cred as unknown as CreditApplication, paso);
                           const conOferta = cred.oferta.planId !== null && cred.riesgo.estado === "COMPLETO";
-                          const esTramite = g.id === "TRAMITE";
-                          const esObservada = g.id === "OBSERVADAS";
-                          let accionPrincipal: { label: string; variant: "outline" | "primary" } = { label: "Ver datos", variant: "outline" };
-                          if (esTramite) accionPrincipal = { label: "Continuar carga", variant: "outline" };
-                          else if (esObservada) accionPrincipal = { label: "Tramitar observación", variant: "primary" };
-                          else if (g.id === "ANALISIS") accionPrincipal = { label: "Ver estado", variant: "outline" };
 
                           return (
                             <div key={cred.numeroCredito ?? cred.cliente?.dni ?? cred._descripcion} className="px-5 py-4 hover:bg-ink-25 transition">
@@ -372,8 +377,39 @@ export default function BandejaCanalVentaPage() {
                                 </div>
                               </div>
                               <div className="mt-3 flex flex-wrap gap-2 md:justify-end">
-                                <Button size="sm" variant={accionPrincipal.variant} onClick={() => abrirCreditoDB(cred)}>{accionPrincipal.label}</Button>
-                                <Button size="sm" variant="ghost" onClick={() => abrirCreditoDB(cred)}>Ver préstamo</Button>
+                                {g.id === "TRAMITE" && (
+                                  <Button size="sm" variant="outline" onClick={() => abrirCreditoDB(cred)}>
+                                    Continuar carga
+                                  </Button>
+                                )}
+                                {g.id === "OBSERVADAS" && (
+                                  <Button size="sm" variant="primary" onClick={() => abrirCreditoDB(cred)}>
+                                    Tramitar observación
+                                  </Button>
+                                )}
+                                {(g.id === "ANALISIS" || g.id === "RESUELTAS") && (
+                                  <Button size="sm" variant="outline" onClick={() => actuar(cred, "estado")}>
+                                    Ver estado
+                                  </Button>
+                                )}
+                                {g.id === "ANALISIS" && (
+                                  <Button size="sm" variant="outline" onClick={() => actuar(cred, "comentario")}>
+                                    Agregar comentario
+                                  </Button>
+                                )}
+                                {g.id === "RESUELTAS" && cred.estado === "RECHAZADO" && (
+                                  <Button size="sm" variant="outline" onClick={() => actuar(cred, "motivo")}>
+                                    Ver motivo
+                                  </Button>
+                                )}
+                                {(g.id === "TRAMITE" || g.id === "OBSERVADAS") && (
+                                  <Button size="sm" variant="ghost" onClick={() => actuar(cred, "anular")}>
+                                    Anular
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="ghost" onClick={() => actuar(cred, "posicion")}>
+                                  Posición del cliente
+                                </Button>
                               </div>
                             </div>
                           );

@@ -8,7 +8,7 @@ import { formatARS, formatDNI } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconCheckCircle, IconRefresh } from "@/components/icons";
+import { IconCheckCircle } from "@/components/icons";
 
 export function BandejaAnalista({ onTomar }: { onTomar: () => void }) {
   const { app } = useApplication();
@@ -43,12 +43,6 @@ export function BandejaAnalista({ onTomar }: { onTomar: () => void }) {
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-mono text-sm font-bold text-brand-700">{app.numeroCredito}</p>
               <EstadoBadge estado={app.estado} />
-              {app.analista.reenviada && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
-                  <IconRefresh width={11} height={11} />
-                  Reenviada con correcciones
-                </span>
-              )}
             </div>
             <p className="mt-0.5 text-base font-bold tracking-tight text-ink-900">
               {app.cliente.nombre} {app.cliente.apellido}

@@ -104,7 +104,7 @@ export function creditosPorGrupoVendedor(grupo: GrupoVendedor): CreditoDB[] {
 }
 
 // --- Bandeja del analista (ListaAnalisis.tsx) — 7 pestañas ---
-export type PestanaAnalista = "PRE" | "COFE" | "RECH" | "FEL" | "AFEL" | "CHT" | "LIQ";
+export type PestanaAnalista = "PRE" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
 
 export const PESTANA_ESTADOS: Record<PestanaAnalista, EstadoCredito[]> = {
   PRE: ["PREAPROBADO", "ANALISIS_TOMADO"],
@@ -112,8 +112,6 @@ export const PESTANA_ESTADOS: Record<PestanaAnalista, EstadoCredito[]> = {
   RECH: ["RECHAZADO"],
   FEL: ["EN_FIRMA"],
   AFEL: ["FIRMADO"],
-  // Sólo lectura para el analista: lo gestiona el chequeador.
-  CHT: ["CHEQUEO_TELEFONICO"],
   LIQ: ["PARA_LIQUIDAR"],
 };
 
