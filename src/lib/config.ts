@@ -1027,6 +1027,14 @@ export const SESION_SUPERVISOR = {
   organizacion: "CreditoNet · Supervisión",
 };
 
+// Quien llama al cliente para el chequeo telefónico posterior a la firma.
+export const SESION_CHEQUEADOR = {
+  nombre: "Rodrigo Bianchi",
+  iniciales: "RB",
+  rol: "Chequeador telefónico",
+  organizacion: "CreditoNet · Chequeo telefónico",
+};
+
 export const SESION_ANALISTA = {
   nombre: "Lucía Martínez",
   iniciales: "LM",

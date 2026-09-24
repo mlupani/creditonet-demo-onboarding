@@ -1670,23 +1670,60 @@
           "telefono.caracteristica": "351",
           "telefono.numero": "2233445",
           "email": "tomas.rossi@gmail.com",
-          "banco": "Banco Nación"
+          "banco": "Banco Nación",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "890",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54"
         },
         "personales": {
           "nacionalidad": "Argentina",
-          "estadoCivil": "Soltero/a",
-          "tipoVivienda": "Alquiler",
+          "estadoCivil": "Soltera/o",
+          "tipoVivienda": "Inquilino",
           "personasACargo": "0",
-          "tieneConyuge": "No"
+          "tieneConyuge": "No",
+          "dni": "40.999.999",
+          "cuit": "20-40999999-4",
+          "nombre": "Tomás Agustín",
+          "apellido": "Rossi",
+          "fechaNacimiento": "18/09/1997",
+          "genero": "Masculino",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "890",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "2233445",
+          "email": "tomas.rossi@gmail.com"
         },
         "laboral": {
           "cuitEmpleador": "30-70891234-5",
           "razonSocial": "Banco Nación Servicios S.A.",
-          "rubro": "Servicios financieros",
+          "rubro": "Salud - Atención primaria",
           "numeroLegajo": "BN-4421",
           "cargo": "Administrativo",
           "banco": "Banco Nación",
-          "cbu.Banco Nación": "0110599520000023456789"
+          "cbu.Banco Nación": "0110599520000023456789",
+          "domicilioLaboral.calle": "Bv. Los Andes",
+          "domicilioLaboral.numero": "1250",
+          "domicilioLaboral.barrio": "Cerro de las Rosas",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228005",
+          "telefonoLaboral.interno": "105",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -1734,12 +1771,50 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
           }
         ],
-        "garantes": [],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.001.370",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3210",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543220",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-10-1",
+                "nombre": "recibo_garante_10_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0070199530000012345678"
+          }
+        ],
         "legajo": {
           "dni-frente": [
             {
@@ -1780,6 +1855,7 @@
         "laboral",
         "tokenizacion",
         "referencias",
+        "garantias",
         "legajo",
         "impresion"
       ],
@@ -2077,7 +2153,18 @@
           "cuit": "27-20777777-6",
           "fechaNacimiento": "03/09/1980",
           "genero": "Femenino",
-          "banco": "Banco Macro"
+          "banco": "Banco Macro",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "1120",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Centro",
+          "companiaTelefonica": "Claro",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6777788",
+          "email": "patricia.herrera@email.com"
         },
         "personales": {
           "nacionalidad": "Argentina",
@@ -2085,16 +2172,45 @@
           "tipoVivienda": "Propietario",
           "personasACargo": "2",
           "tieneConyuge": "Sí",
-          "dniConyuge": "20.777.778"
+          "dniConyuge": "20.777.778",
+          "dni": "20.777.777",
+          "cuit": "27-20777777-6",
+          "nombre": "Patricia",
+          "apellido": "Herrera",
+          "fechaNacimiento": "03/09/1980",
+          "genero": "Femenino",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "1120",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Centro",
+          "companiaTelefonica": "Claro",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6777788",
+          "email": "patricia.herrera@email.com"
         },
         "laboral": {
           "cuitEmpleador": "30-71234567-1",
           "razonSocial": "Sanatorio Modelo S.A.",
-          "rubro": "Salud",
+          "rubro": "Salud - Atención primaria",
           "numeroLegajo": "SM-9012",
           "cargo": "Jefa de enfermería",
           "banco": "Banco Macro",
-          "cbu.Banco Macro": "0285599560000045678901"
+          "cbu.Banco Macro": "0285599560000045678901",
+          "domicilioLaboral.calle": "Av. Colón",
+          "domicilioLaboral.numero": "480",
+          "domicilioLaboral.barrio": "Nueva Córdoba",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228006",
+          "telefonoLaboral.interno": "106",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -2142,6 +2258,7 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
@@ -2179,6 +2296,7 @@
             "otrosDocumentos": [],
             "empleadorCalle": "Bv. San Juan 1100",
             "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
             "empleadorTelefono": "+54 351 4228890",
             "banco": "Banco Macro",
             "cbu": "0285599560000045678901"
@@ -2496,13 +2614,42 @@
           "cuit": "27-30444555-1",
           "fechaNacimiento": "12/03/1983",
           "genero": "Femenino",
-          "banco": "Banco de Córdoba"
+          "banco": "Banco de Córdoba",
+          "domicilio.calle": "Obispo Trejo",
+          "domicilio.numero": "520",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Villa Belgrano",
+          "companiaTelefonica": "Movistar",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6543210",
+          "email": "lucia.fernandez@email.com"
         },
         "personales": {
           "nacionalidad": "Argentina",
           "estadoCivil": "Soltera/o",
           "tipoVivienda": "Propietario",
-          "personasACargo": "0"
+          "personasACargo": "0",
+          "dni": "30.444.555",
+          "cuit": "27-30444555-1",
+          "nombre": "Lucía Belén",
+          "apellido": "Fernández",
+          "fechaNacimiento": "12/03/1983",
+          "genero": "Femenino",
+          "domicilio.calle": "Obispo Trejo",
+          "domicilio.numero": "520",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Villa Belgrano",
+          "companiaTelefonica": "Movistar",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6543210",
+          "email": "lucia.fernandez@email.com",
+          "tieneConyuge": "No"
         },
         "laboral": {
           "cuitEmpleador": "30-12345678-9",
@@ -2511,7 +2658,19 @@
           "numeroLegajo": "CSM-221",
           "cargo": "Docente",
           "banco": "Banco de Córdoba",
-          "cbu.Banco de Córdoba": "0200599540000034567890"
+          "cbu.Banco de Córdoba": "0200599540000034567890",
+          "domicilioLaboral.calle": "Rivadavia",
+          "domicilioLaboral.numero": "215",
+          "domicilioLaboral.barrio": "General Paz",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228007",
+          "telefonoLaboral.interno": "107",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -2559,12 +2718,50 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
           }
         ],
-        "garantes": [],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.001.644",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3212",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543222",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-12-1",
+                "nombre": "recibo_garante_12_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0170299940000052135212"
+          }
+        ],
         "legajo": {
           "dni-frente": [
             {
@@ -2605,6 +2802,7 @@
         "laboral",
         "tokenizacion",
         "referencias",
+        "garantias",
         "legajo",
         "impresion"
       ],
@@ -7253,7 +7451,7 @@
       "etapa": "ENVIADA",
       "tipoPersona": "FISICA",
       "identificacion": {
-        "documento": "312000000",
+        "documento": "31200000",
         "consultado": true,
         "tipoCliente": "EXISTENTE",
         "firmaRegistrada": null
@@ -7261,8 +7459,8 @@
       "cliente": {
         "apellido": "Rojas",
         "nombre": "Agustín",
-        "dni": "312000000",
-        "cuil": "20-312000000-0",
+        "dni": "31200000",
+        "cuil": "20-31200000-9",
         "genero": "Masculino",
         "fechaNacimiento": "15/04/1990",
         "calle": "Av. Colón",
@@ -7463,22 +7661,67 @@
         "precarga": {
           "nombre": "Agustín",
           "apellido": "Rojas",
-          "dni": "31.200.0000",
-          "banco": "Banco Santander"
+          "dni": "31.200.000",
+          "banco": "Banco Santander",
+          "cuit": "20-31200000-9",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Masculino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2000",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Centro",
+          "companiaTelefonica": "Claro",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000000",
+          "email": "agustín.rojas@email.com"
         },
         "personales": {
           "nacionalidad": "Argentina",
-          "estadoCivil": "Soltero/a",
+          "estadoCivil": "Soltera/o",
           "tipoVivienda": "Propietario",
           "personasACargo": "1",
-          "tieneConyuge": "No"
+          "tieneConyuge": "No",
+          "dni": "31.200.000",
+          "cuit": "20-31200000-9",
+          "nombre": "Agustín",
+          "apellido": "Rojas",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Masculino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2000",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Centro",
+          "companiaTelefonica": "Claro",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000000",
+          "email": "agustín.rojas@email.com"
         },
         "laboral": {
           "banco": "Banco Santander",
-          "cbu.Banco Santander": "07200057607871946079",
+          "cbu.Banco Santander": "0720005760787194607900",
           "cuitEmpleador": "30-70000000-9",
           "razonSocial": "Empresa Rojas S.A.",
-          "rubro": "Salud"
+          "rubro": "Salud - Atención primaria",
+          "numeroLegajo": "L-4030",
+          "cargo": "Administrativo",
+          "domicilioLaboral.calle": "Bv. Los Andes",
+          "domicilioLaboral.numero": "1250",
+          "domicilioLaboral.barrio": "Nueva Córdoba",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228030",
+          "telefonoLaboral.interno": "130",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -7526,12 +7769,50 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
           }
         ],
-        "garantes": [],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.004.795",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3235",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543245",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-35-1",
+                "nombre": "recibo_garante_35_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0200599540000034567890"
+          }
+        ],
         "legajo": {
           "dni-frente": [
             {
@@ -7553,6 +7834,13 @@
               "nombre": "recibo_sueldo_1.jpg",
               "detalle": "1.2 MB · Hoy 10:00"
             }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.2 MB · Hoy 08:50"
+            }
           ]
         },
         "impresion": {
@@ -7565,6 +7853,7 @@
         "laboral",
         "tokenizacion",
         "referencias",
+        "garantias",
         "legajo",
         "impresion"
       ],
@@ -7591,7 +7880,7 @@
       "etapa": "ENVIADA",
       "tipoPersona": "FISICA",
       "identificacion": {
-        "documento": "312018473",
+        "documento": "31201847",
         "consultado": true,
         "tipoCliente": "EXISTENTE",
         "firmaRegistrada": null
@@ -7599,8 +7888,8 @@
       "cliente": {
         "apellido": "Molina",
         "nombre": "Florencia",
-        "dni": "312018473",
-        "cuil": "20-312018473-1",
+        "dni": "31201847",
+        "cuil": "20-31201847-1",
         "genero": "Femenino",
         "fechaNacimiento": "15/04/1990",
         "calle": "Av. Colón",
@@ -7801,22 +8090,67 @@
         "precarga": {
           "nombre": "Florencia",
           "apellido": "Molina",
-          "dni": "31.201.8473",
-          "banco": "Banco Galicia"
+          "dni": "31.201.847",
+          "banco": "Banco Galicia",
+          "cuit": "20-31201847-1",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Femenino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2001",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Villa Belgrano",
+          "companiaTelefonica": "Movistar",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000001",
+          "email": "florencia.molina@email.com"
         },
         "personales": {
           "nacionalidad": "Argentina",
-          "estadoCivil": "Soltero/a",
+          "estadoCivil": "Soltera/o",
           "tipoVivienda": "Propietario",
           "personasACargo": "1",
-          "tieneConyuge": "No"
+          "tieneConyuge": "No",
+          "dni": "31.201.847",
+          "cuit": "20-31201847-1",
+          "nombre": "Florencia",
+          "apellido": "Molina",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Femenino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2001",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Villa Belgrano",
+          "companiaTelefonica": "Movistar",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000001",
+          "email": "florencia.molina@email.com"
         },
         "laboral": {
           "banco": "Banco Galicia",
-          "cbu.Banco Galicia": "00700055101963407713",
+          "cbu.Banco Galicia": "0070005510196340771300",
           "cuitEmpleador": "30-70011111-9",
           "razonSocial": "Empresa Molina S.A.",
-          "rubro": "Salud"
+          "rubro": "Seguridad",
+          "numeroLegajo": "L-4031",
+          "cargo": "Administrativo",
+          "domicilioLaboral.calle": "Av. Colón",
+          "domicilioLaboral.numero": "480",
+          "domicilioLaboral.barrio": "General Paz",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228031",
+          "telefonoLaboral.interno": "131",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -7864,12 +8198,50 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
           }
         ],
-        "garantes": [],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.004.932",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3236",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543246",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-36-1",
+                "nombre": "recibo_garante_36_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0170299940000052135212"
+          }
+        ],
         "legajo": {
           "dni-frente": [
             {
@@ -7891,6 +8263,13 @@
               "nombre": "recibo_sueldo_1.jpg",
               "detalle": "1.2 MB · Hoy 10:00"
             }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.2 MB · Hoy 08:50"
+            }
           ]
         },
         "impresion": {
@@ -7903,6 +8282,7 @@
         "laboral",
         "tokenizacion",
         "referencias",
+        "garantias",
         "legajo",
         "impresion"
       ],
@@ -7922,10 +8302,10 @@
     },
     {
       "_bandeja": "analista",
-      "_descripcion": "PARA_LIQUIDAR — Aprobado para liquidar 1060000",
+      "_descripcion": "CHEQUEO_TELEFONICO — Firma verificada, pendiente de chequeo telefónico",
       "numeroCredito": "CR-000213",
       "numeroCliente": "011213",
-      "estado": "PARA_LIQUIDAR",
+      "estado": "CHEQUEO_TELEFONICO",
       "etapa": "ENVIADA",
       "tipoPersona": "FISICA",
       "identificacion": {
@@ -9634,7 +10014,7 @@
       "etapa": "ENVIADA",
       "tipoPersona": "FISICA",
       "identificacion": {
-        "documento": "322129311",
+        "documento": "32212931",
         "consultado": true,
         "tipoCliente": "EXISTENTE",
         "firmaRegistrada": null
@@ -9642,8 +10022,8 @@
       "cliente": {
         "apellido": "Campos",
         "nombre": "Ximena",
-        "dni": "322129311",
-        "cuil": "20-322129311-7",
+        "dni": "32212931",
+        "cuil": "23-32212931-9",
         "genero": "Femenino",
         "fechaNacimiento": "15/04/1990",
         "calle": "Av. Colón",
@@ -9844,22 +10224,67 @@
         "precarga": {
           "nombre": "Ximena",
           "apellido": "Campos",
-          "dni": "32.212.9311",
-          "banco": "Banco Galicia"
+          "dni": "32.212.931",
+          "banco": "Banco Galicia",
+          "cuit": "23-32212931-9",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Femenino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2007",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Movistar",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000007",
+          "email": "ximena.campos@email.com"
         },
         "personales": {
           "nacionalidad": "Argentina",
-          "estadoCivil": "Soltero/a",
+          "estadoCivil": "Soltera/o",
           "tipoVivienda": "Propietario",
           "personasACargo": "1",
-          "tieneConyuge": "No"
+          "tieneConyuge": "No",
+          "dni": "32.212.931",
+          "cuit": "23-32212931-9",
+          "nombre": "Ximena",
+          "apellido": "Campos",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Femenino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2007",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Movistar",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000007",
+          "email": "ximena.campos@email.com"
         },
         "laboral": {
           "banco": "Banco Galicia",
-          "cbu.Banco Galicia": "00700079424209246849",
+          "cbu.Banco Galicia": "0070007942420924684900",
           "cuitEmpleador": "30-70077777-9",
           "razonSocial": "Empresa Campos S.A.",
-          "rubro": "Salud"
+          "rubro": "Administración pública",
+          "numeroLegajo": "L-4037",
+          "cargo": "Administrativo",
+          "domicilioLaboral.calle": "Rivadavia",
+          "domicilioLaboral.numero": "215",
+          "domicilioLaboral.barrio": "Cerro de las Rosas",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228037",
+          "telefonoLaboral.interno": "137",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -9907,12 +10332,50 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
           }
         ],
-        "garantes": [],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.005.754",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3242",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543252",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-42-1",
+                "nombre": "recibo_garante_42_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0070199530000012345678"
+          }
+        ],
         "legajo": {
           "dni-frente": [
             {
@@ -9934,6 +10397,13 @@
               "nombre": "recibo_sueldo_1.jpg",
               "detalle": "1.2 MB · Hoy 10:00"
             }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.2 MB · Hoy 08:50"
+            }
           ]
         },
         "impresion": {
@@ -9946,6 +10416,7 @@
         "laboral",
         "tokenizacion",
         "referencias",
+        "garantias",
         "legajo",
         "impresion"
       ],
@@ -9972,7 +10443,7 @@
       "etapa": "ENVIADA",
       "tipoPersona": "FISICA",
       "identificacion": {
-        "documento": "322147784",
+        "documento": "32214778",
         "consultado": true,
         "tipoCliente": "EXISTENTE",
         "firmaRegistrada": null
@@ -9980,8 +10451,8 @@
       "cliente": {
         "apellido": "Vega",
         "nombre": "Renzo",
-        "dni": "322147784",
-        "cuil": "20-322147784-8",
+        "dni": "32214778",
+        "cuil": "20-32214778-4",
         "genero": "Masculino",
         "fechaNacimiento": "15/04/1990",
         "calle": "Av. Colón",
@@ -10182,22 +10653,67 @@
         "precarga": {
           "nombre": "Renzo",
           "apellido": "Vega",
-          "dni": "32.214.7784",
-          "banco": "Banco Macro"
+          "dni": "32.214.778",
+          "banco": "Banco Macro",
+          "cuit": "20-32214778-4",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Masculino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2008",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Centro",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000008",
+          "email": "renzo.vega@email.com"
         },
         "personales": {
           "nacionalidad": "Argentina",
-          "estadoCivil": "Soltero/a",
+          "estadoCivil": "Soltera/o",
           "tipoVivienda": "Propietario",
           "personasACargo": "1",
-          "tieneConyuge": "No"
+          "tieneConyuge": "No",
+          "dni": "32.214.778",
+          "cuit": "20-32214778-4",
+          "nombre": "Renzo",
+          "apellido": "Vega",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Masculino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2008",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Centro",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000008",
+          "email": "renzo.vega@email.com"
         },
         "laboral": {
           "banco": "Banco Macro",
-          "cbu.Banco Macro": "28500059995624013844",
+          "cbu.Banco Macro": "2850005999562401384400",
           "cuitEmpleador": "30-70088888-9",
           "razonSocial": "Empresa Vega S.A.",
-          "rubro": "Salud"
+          "rubro": "Educación",
+          "numeroLegajo": "L-4038",
+          "cargo": "Administrativo",
+          "domicilioLaboral.calle": "Deán Funes",
+          "domicilioLaboral.numero": "1030",
+          "domicilioLaboral.barrio": "Nueva Córdoba",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228038",
+          "telefonoLaboral.interno": "138",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -10245,12 +10761,50 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
           }
         ],
-        "garantes": [],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.005.891",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3243",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543253",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-43-1",
+                "nombre": "recibo_garante_43_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0200599540000034567890"
+          }
+        ],
         "legajo": {
           "dni-frente": [
             {
@@ -10272,6 +10826,13 @@
               "nombre": "recibo_sueldo_1.jpg",
               "detalle": "1.2 MB · Hoy 10:00"
             }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.2 MB · Hoy 08:50"
+            }
           ]
         },
         "impresion": {
@@ -10284,6 +10845,7 @@
         "laboral",
         "tokenizacion",
         "referencias",
+        "garantias",
         "legajo",
         "impresion"
       ],
@@ -10303,10 +10865,10 @@
     },
     {
       "_bandeja": "analista",
-      "_descripcion": "PARA_LIQUIDAR — Aprobado para liquidar 1620000",
+      "_descripcion": "CHEQUEO_TELEFONICO — Firma verificada, pendiente de chequeo telefónico",
       "numeroCredito": "CR-000220",
       "numeroCliente": "011220",
-      "estado": "PARA_LIQUIDAR",
+      "estado": "CHEQUEO_TELEFONICO",
       "etapa": "ENVIADA",
       "tipoPersona": "FISICA",
       "identificacion": {
@@ -12015,7 +12577,7 @@
       "etapa": "ENVIADA",
       "tipoPersona": "FISICA",
       "identificacion": {
-        "documento": "332258622",
+        "documento": "33225862",
         "consultado": true,
         "tipoCliente": "EXISTENTE",
         "firmaRegistrada": null
@@ -12023,8 +12585,8 @@
       "cliente": {
         "apellido": "Moreno",
         "nombre": "Bautista",
-        "dni": "332258622",
-        "cuil": "20-332258622-4",
+        "dni": "33225862",
+        "cuil": "20-33225862-2",
         "genero": "Masculino",
         "fechaNacimiento": "15/04/1990",
         "calle": "Av. Colón",
@@ -12225,22 +12787,67 @@
         "precarga": {
           "nombre": "Bautista",
           "apellido": "Moreno",
-          "dni": "33.225.8622",
-          "banco": "Banco Macro"
+          "dni": "33.225.862",
+          "banco": "Banco Macro",
+          "cuit": "20-33225862-2",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Masculino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2014",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Güemes",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000014",
+          "email": "bautista.moreno@email.com"
         },
         "personales": {
           "nacionalidad": "Argentina",
-          "estadoCivil": "Soltero/a",
+          "estadoCivil": "Soltera/o",
           "tipoVivienda": "Propietario",
           "personasACargo": "1",
-          "tieneConyuge": "No"
+          "tieneConyuge": "No",
+          "dni": "33.225.862",
+          "cuit": "20-33225862-2",
+          "nombre": "Bautista",
+          "apellido": "Moreno",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Masculino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2014",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Güemes",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000014",
+          "email": "bautista.moreno@email.com"
         },
         "laboral": {
           "banco": "Banco Macro",
-          "cbu.Banco Macro": "28500031977687275660",
+          "cbu.Banco Macro": "2850003197768727566000",
           "cuitEmpleador": "30-70155554-9",
           "razonSocial": "Empresa Moreno S.A.",
-          "rubro": "Salud"
+          "rubro": "Administración pública",
+          "numeroLegajo": "L-4044",
+          "cargo": "Administrativo",
+          "domicilioLaboral.calle": "Av. Vélez Sarsfield",
+          "domicilioLaboral.numero": "1611",
+          "domicilioLaboral.barrio": "Villa Belgrano",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228044",
+          "telefonoLaboral.interno": "144",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -12288,12 +12895,50 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
           }
         ],
-        "garantes": [],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.006.713",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3249",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543259",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-49-1",
+                "nombre": "recibo_garante_49_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0110599520000023456789"
+          }
+        ],
         "legajo": {
           "dni-frente": [
             {
@@ -12315,6 +12960,20 @@
               "nombre": "recibo_sueldo_1.jpg",
               "detalle": "1.2 MB · Hoy 10:00"
             }
+          ],
+          "recibo-haberes": [
+            {
+              "id": "recibo-haberes-1",
+              "nombre": "recibo_haberes_1.jpg",
+              "detalle": "1.2 MB · Hoy 08:50"
+            }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.2 MB · Hoy 08:50"
+            }
           ]
         },
         "impresion": {
@@ -12327,6 +12986,7 @@
         "laboral",
         "tokenizacion",
         "referencias",
+        "garantias",
         "legajo",
         "impresion"
       ],
@@ -12353,7 +13013,7 @@
       "etapa": "ENVIADA",
       "tipoPersona": "FISICA",
       "identificacion": {
-        "documento": "332277095",
+        "documento": "33227709",
         "consultado": true,
         "tipoCliente": "EXISTENTE",
         "firmaRegistrada": null
@@ -12361,8 +13021,8 @@
       "cliente": {
         "apellido": "Peralta",
         "nombre": "Candela",
-        "dni": "332277095",
-        "cuil": "20-332277095-5",
+        "dni": "33227709",
+        "cuil": "20-33227709-0",
         "genero": "Femenino",
         "fechaNacimiento": "15/04/1990",
         "calle": "Av. Colón",
@@ -12563,22 +13223,67 @@
         "precarga": {
           "nombre": "Candela",
           "apellido": "Peralta",
-          "dni": "33.227.7095",
-          "banco": "Banco Nación"
+          "dni": "33.227.709",
+          "banco": "Banco Nación",
+          "cuit": "20-33227709-0",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Femenino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2015",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Claro",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000015",
+          "email": "candela.peralta@email.com"
         },
         "personales": {
           "nacionalidad": "Argentina",
-          "estadoCivil": "Soltero/a",
+          "estadoCivil": "Soltera/o",
           "tipoVivienda": "Propietario",
           "personasACargo": "1",
-          "tieneConyuge": "No"
+          "tieneConyuge": "No",
+          "dni": "33.227.709",
+          "cuit": "20-33227709-0",
+          "nombre": "Candela",
+          "apellido": "Peralta",
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Femenino",
+          "domicilio.calle": "Av. Colón",
+          "domicilio.numero": "2015",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Claro",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "6000015",
+          "email": "candela.peralta@email.com"
         },
         "laboral": {
           "banco": "Banco Nación",
-          "cbu.Banco Nación": "01100061352354170333",
+          "cbu.Banco Nación": "0110006135235417033300",
           "cuitEmpleador": "30-70166665-9",
           "razonSocial": "Empresa Peralta S.A.",
-          "rubro": "Salud"
+          "rubro": "Salud - Atención primaria",
+          "numeroLegajo": "L-4045",
+          "cargo": "Administrativo",
+          "domicilioLaboral.calle": "Bv. Los Andes",
+          "domicilioLaboral.numero": "1250",
+          "domicilioLaboral.barrio": "Cerro de las Rosas",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228045",
+          "telefonoLaboral.interno": "145",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
         },
         "tarjetas": [
           {
@@ -12626,12 +13331,50 @@
             "otrosDocumentos": [],
             "empleadorCalle": "",
             "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
             "empleadorTelefono": "",
             "banco": "",
             "cbu": ""
           }
         ],
-        "garantes": [],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.006.850",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3250",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543260",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-50-1",
+                "nombre": "recibo_garante_50_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0070199530000012345678"
+          }
+        ],
         "legajo": {
           "dni-frente": [
             {
@@ -12653,6 +13396,13 @@
               "nombre": "recibo_sueldo_1.jpg",
               "detalle": "1.2 MB · Hoy 10:00"
             }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.2 MB · Hoy 08:50"
+            }
           ]
         },
         "impresion": {
@@ -12665,6 +13415,7 @@
         "laboral",
         "tokenizacion",
         "referencias",
+        "garantias",
         "legajo",
         "impresion"
       ],

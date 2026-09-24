@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { CHEQUEO_PENDIENTE } from "./types";
 import type {
   AccionLegajo,
   ArchivoLegajo,
@@ -17,13 +18,17 @@ import type {
   CreditApplication,
   DeudaTerceros,
   Domicilio,
+  IntentoFirma,
   LaboralIngresos,
+  MetodoFirma,
   Oferta,
   PantallaPostOfertaId,
   PersonaVinculada,
   Plazo,
   PostOferta,
   ReglaInstitucional,
+  ResultadoChequeo,
+  ResultadoFirma,
   ResultadoLimites,
   RiskResultado,
   RiskRule,
@@ -60,6 +65,14 @@ import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
 import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_SUPERVISOR, seleccionarLinea } from "./config";
 import { hidratarProductos } from "./productos";
+import {
+  intentoActual,
+  metodoPorDefecto,
+  modalidadFirma,
+  puedeLiquidar,
+  puedeRefirmar,
+  requiereChequeoTelefonico,
+} from "./firma";
 import { hidratarPlanes } from "./planes";
 import { hidratarOrganismos } from "./organismos";
 
@@ -78,7 +91,14 @@ function emisorMock(semilla: string): string {
   return BANCOS[hash % BANCOS.length];
 }
 
-const STORAGE_KEY = "creditonet.demo.v19";
+const STORAGE_KEY = "creditonet.demo.v21";
+
+// Cierra la firma en curso (la última del historial) con la decisión del analista.
+function cerrarIntentoActual(firmas: IntentoFirma[], resultado: ResultadoFirma): IntentoFirma[] {
+  const actual = intentoActual(firmas);
+  if (!actual) return firmas;
+  return [...firmas.slice(0, -1), { ...actual, resultado, fechaResultado: selloTiempo() }];
+}
 
 // Referencias y garantes comparten estructura (Onboarding §7–§8).
 function conPersonas(
@@ -267,7 +287,15 @@ interface ApplicationContextValue {
   guardarCorreccion: (pantalla: PantallaPostOfertaId) => void;
   reabrirCorreccion: (pantalla: PantallaPostOfertaId) => void;
   rechazarCredito: (codigo: string, motivo: string, observacion: string) => void;
-  aprobarCredito: () => void;
+  // Aprobar abre el tramo de firma (FEL/AFEL); con modalidad "Ambas" se elige el método.
+  aprobarCredito: (metodo?: MetodoFirma) => void;
+  registrarFirmaCliente: () => void;
+  verificarFirma: () => void;
+  solicitarRefirma: () => void;
+  // Chequeo telefónico (bandeja del chequeador).
+  tomarChequeo: () => void;
+  soltarChequeo: () => void;
+  finalizarChequeo: (resultado: ResultadoChequeo, comentario: string) => void;
 
   reiniciarDemo: () => void;
 }
@@ -315,6 +343,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     creditosDBRef.current = creditosDB;
   }, [creditosDB]);
+
+  // Durante el chequeo telefónico el crédito lo gestiona sólo el chequeador: ni el analista ni
+  // el canal de venta pueden operarlo desde su bandeja (sólo verlo).
+  const setAppOperativo = useCallback((actualizar: (prev: CreditApplication) => CreditApplication) => {
+    setApp((prev) => (prev.estado === "CHEQUEO_TELEFONICO" ? prev : actualizar(prev)));
+  }, []);
 
   // Navegar hacia atrás sólo mueve el paso actual. El máximo alcanzado nunca baja, por eso
   // los pasos posteriores conservan su tilde y siguen siendo navegables.
@@ -645,7 +679,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    */
   // El cambio no rige al proponerlo: queda pendiente hasta que lo refrende el supervisor.
   const proponerCambioOferta = useCallback((cambio: CambioOferta) => {
-    setApp((prev) => ({
+    setAppOperativo((prev) => ({
       ...prev,
       analista: {
         ...prev.analista,
@@ -661,7 +695,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refrendarCambioOferta = useCallback(() => {
-    setApp((prev) => {
+    setAppOperativo((prev) => {
       const cambio = prev.analista.cambioOfertaPendiente;
       if (!cambio) return prev;
       return {
@@ -696,7 +730,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const rechazarCambioOferta = useCallback(() => {
-    setApp((prev) => ({
+    setAppOperativo((prev) => ({
       ...prev,
       analista: { ...prev.analista, cambioOfertaPendiente: null },
     }));
@@ -711,7 +745,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * que resulte de los nuevos límites; si no pasa, queda Rechazada.
    */
   const aplicarCambioDatosFinancieros = useCallback((cambio: CambioDatosFinancieros) => {
-    setApp((prev) => {
+    setAppOperativo((prev) => {
       const nuevoLaboral = {
         ...prev.laboral,
         ingresoBruto: cambio.ingresoBruto,
@@ -1236,7 +1270,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const tomarAnalisis = useCallback(() => {
-    setApp((prev) => ({
+    setAppOperativo((prev) => ({
       ...prev,
       estado: "ANALISIS_TOMADO",
       analista: { ...prev.analista, tomado: true },
@@ -1252,7 +1286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pantallas: PantallaPostOfertaId[],
       campos: Partial<Record<PantallaPostOfertaId, string[]>>
     ) => {
-      setApp((prev) => ({
+      setAppOperativo((prev) => ({
         ...prev,
         estado: "OBSERVADO",
         analista: {
@@ -1271,7 +1305,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Anular: el cliente desistió. No es un rechazo de riesgo (reunión 11/09, 01:19).
   const anularCredito = useCallback((nota: string) => {
-    setApp((prev) => ({
+    setAppOperativo((prev) => ({
       ...prev,
       estado: "ANULADO",
       analista: {
@@ -1301,7 +1335,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Soltar análisis: el analista devuelve la solicitud a la bandeja para que otro la tome.
   const soltarAnalisis = useCallback(() => {
-    setApp((prev) => ({
+    setAppOperativo((prev) => ({
       ...prev,
       estado: "PREAPROBADO",
       analista: { ...prev.analista, tomado: false, cambioOfertaPendiente: null },
@@ -1364,19 +1398,120 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const rechazarCredito = useCallback((codigo: string, motivo: string, observacion: string) => {
-    setApp((prev) => ({
+    setAppOperativo((prev) => ({
       ...prev,
       estado: "RECHAZADO",
+      // Rechazar desde AFEL deja constancia en la firma que se estaba verificando.
+      firmas:
+        prev.estado === "FIRMADO" ? cerrarIntentoActual(prev.firmas, "RECHAZADA") : prev.firmas,
       rechazo: { origen: "ANALISTA", codigos: [codigo], motivo, observacion, fecha: fechaHoy() },
     }));
   }, []);
 
-  const aprobarCredito = useCallback(() => {
-    setApp((prev) => ({
-      ...prev,
-      estado: "PARA_LIQUIDAR",
-      fechaAprobacion: selloTiempo(),
-    }));
+  // Aprobar el crédito ya no liquida: abre el tramo de firma. Electrónica → FEL (el cliente
+  // firma); física → AFEL directo, con la firma manual ya cargada.
+  const aprobarCredito = useCallback((metodo?: MetodoFirma) => {
+    setAppOperativo((prev) => {
+      const m = metodo ?? metodoPorDefecto(modalidadFirma(prev.configuracion));
+      const ahora = selloTiempo();
+      return {
+        ...prev,
+        estado: m === "FISICA" ? "FIRMADO" : "EN_FIRMA",
+        fechaAprobacion: ahora,
+        firmas: [
+          {
+            n: 1,
+            metodo: m,
+            fechaFirma: m === "FISICA" ? ahora : null,
+            resultado: "PENDIENTE",
+            fechaResultado: null,
+          },
+        ],
+        chequeoTelefonico: null,
+      };
+    });
+  }, []);
+
+  // FEL → AFEL: el cliente firmó (en la demo se simula con un botón).
+  const registrarFirmaCliente = useCallback(() => {
+    setAppOperativo((prev) => {
+      const actual = intentoActual(prev.firmas);
+      if (prev.estado !== "EN_FIRMA" || !actual) return prev;
+      return {
+        ...prev,
+        estado: "FIRMADO",
+        firmas: [...prev.firmas.slice(0, -1), { ...actual, fechaFirma: selloTiempo() }],
+      };
+    });
+  }, []);
+
+  // AFEL: el analista aprueba la firma. Sigue el chequeo telefónico si el producto lo exige;
+  // si no, queda para liquidar.
+  const verificarFirma = useCallback(() => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "FIRMADO") return prev;
+      const firmada = { ...prev, firmas: cerrarIntentoActual(prev.firmas, "APROBADA") };
+      if (!requiereChequeoTelefonico(prev.configuracion))
+        return puedeLiquidar(firmada) ? { ...firmada, estado: "PARA_LIQUIDAR" } : prev;
+      return { ...firmada, estado: "CHEQUEO_TELEFONICO", chequeoTelefonico: { ...CHEQUEO_PENDIENTE, fechaInicio: selloTiempo() } };
+    });
+  }, []);
+
+  // AFEL: refirma. Sólo una vez; con dos instancias en el historial no hace nada.
+  const solicitarRefirma = useCallback(() => {
+    setAppOperativo((prev) => {
+      const actual = intentoActual(prev.firmas);
+      if (prev.estado !== "FIRMADO" || !actual || !puedeRefirmar(prev.firmas)) return prev;
+      return {
+        ...prev,
+        estado: "EN_FIRMA",
+        firmas: [
+          ...cerrarIntentoActual(prev.firmas, "REFIRMA_SOLICITADA"),
+          { n: 2, metodo: actual.metodo, fechaFirma: null, resultado: "PENDIENTE", fechaResultado: null },
+        ],
+      };
+    });
+  }, []);
+
+  // El chequeador toma (o suelta) el crédito pendiente de chequeo telefónico.
+  const tomarChequeo = useCallback(() => {
+    setApp((prev) =>
+      prev.estado === "CHEQUEO_TELEFONICO" && prev.chequeoTelefonico
+        ? { ...prev, chequeoTelefonico: { ...prev.chequeoTelefonico, tomado: true } }
+        : prev
+    );
+  }, []);
+
+  const soltarChequeo = useCallback(() => {
+    setApp((prev) =>
+      prev.estado === "CHEQUEO_TELEFONICO" && prev.chequeoTelefonico
+        ? { ...prev, chequeoTelefonico: { ...prev.chequeoTelefonico, tomado: false } }
+        : prev
+    );
+  }, []);
+
+  // Finaliza el chequeo. OK: pasa solo a liquidación, sin volver al analista. NO_OK: rechazo.
+  const finalizarChequeo = useCallback((resultado: ResultadoChequeo, comentario: string) => {
+    setApp((prev) => {
+      if (prev.estado !== "CHEQUEO_TELEFONICO" || !prev.chequeoTelefonico?.tomado) return prev;
+      const chequeo = { ...prev.chequeoTelefonico, tomado: true, resultado, comentario, fecha: selloTiempo() };
+      if (resultado === "NO_OK") {
+        return {
+          ...prev,
+          estado: "RECHAZADO",
+          chequeoTelefonico: chequeo,
+          rechazo: {
+            origen: "CHEQUEADOR",
+            codigos: ["CT-01"],
+            motivo: "Chequeo telefónico no correcto",
+            observacion: comentario,
+            fecha: fechaHoy(),
+          },
+        };
+      }
+      const conChequeo = { ...prev, chequeoTelefonico: chequeo };
+      return puedeLiquidar(conChequeo) ? { ...conChequeo, estado: "PARA_LIQUIDAR" } : prev;
+    });
   }, []);
 
   const reiniciarDemo = useCallback(() => {
@@ -1454,6 +1589,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reabrirCorreccion,
       rechazarCredito,
       aprobarCredito,
+      registrarFirmaCliente,
+      verificarFirma,
+      solicitarRefirma,
+      tomarChequeo,
+      soltarChequeo,
+      finalizarChequeo,
       reiniciarDemo,
     }),
     [
@@ -1516,6 +1657,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reabrirCorreccion,
       rechazarCredito,
       aprobarCredito,
+      registrarFirmaCliente,
+      verificarFirma,
+      solicitarRefirma,
+      tomarChequeo,
+      soltarChequeo,
+      finalizarChequeo,
       reiniciarDemo,
     ]
   );

@@ -9,6 +9,9 @@ import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
 import { formatARS, sumarDias } from "@/lib/format";
 import { netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
+import { ESTADOS_FIRMA } from "@/lib/firma";
+import { textoChequeo } from "@/lib/historial";
+import { HistorialCredito } from "@/components/HistorialCredito";
 import { IconAlertTriangle, IconFileStack } from "@/components/icons";
 
 export function SolicitudEnviada() {
@@ -56,6 +59,50 @@ export function SolicitudEnviada() {
     );
   }
 
+  // Firma y chequeo telefónico: el canal de venta sólo puede ver en qué etapa está el crédito.
+  if (ESTADOS_FIRMA.includes(app.estado)) {
+    const info = {
+      EN_FIRMA: {
+        titulo: "esperando la firma del cliente (FEL)",
+        quien: "el cliente",
+      },
+      FIRMADO: {
+        titulo: "con la firma recibida: el analista la está verificando (AFEL)",
+        quien: "el analista de riesgo",
+      },
+      CHEQUEO_TELEFONICO: {
+        titulo: "en chequeo telefónico",
+        quien: "el chequeador telefónico",
+      },
+    } as const;
+    const etapa = info[app.estado as keyof typeof info];
+    return (
+      <div className="mx-auto max-w-2xl space-y-5 px-4 py-12 sm:px-6">
+        <Card className="animate-fade-up p-8 text-center">
+          <div className="flex justify-center">
+            <EstadoBadge estado={app.estado} />
+          </div>
+          <h1 className="mt-3 text-lg font-bold tracking-tight text-ink-900">
+            La solicitud {app.numeroCredito} está {etapa.titulo}
+          </h1>
+          <p className="mx-auto mt-2 max-w-md text-sm text-ink-500">
+            Sólo lectura: en esta etapa el crédito lo gestiona {etapa.quien}. El canal de venta no
+            puede operarlo hasta que avance.
+          </p>
+          {app.chequeoTelefonico && (
+            <p className="mt-3 text-sm text-ink-700">
+              Chequeo telefónico: <strong>{textoChequeo(app.chequeoTelefonico)}</strong>
+            </p>
+          )}
+          <div className="mt-6 flex justify-center">
+            <Button onClick={() => router.push("/")}>Volver a la bandeja</Button>
+          </div>
+        </Card>
+        <HistorialCredito className="text-left" />
+      </div>
+    );
+  }
+
   if (app.estado === "PARA_LIQUIDAR" || app.estado === "RECHAZADO") {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12 text-center sm:px-6">
@@ -70,6 +117,7 @@ export function SolicitudEnviada() {
           <p className="mx-auto mt-2 max-w-sm text-sm text-ink-500">
             Podés ver el detalle en la bandeja del analista o iniciar una nueva demo.
           </p>
+          <HistorialCredito className="mt-5 text-left" />
           <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
             <Button onClick={() => router.push("/analisis")}>Ver bandeja del analista</Button>
             <Button

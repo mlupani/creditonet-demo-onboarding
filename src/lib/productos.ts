@@ -14,6 +14,7 @@ import { useSyncExternalStore } from "react";
 import {
   ORGANISMOS,
   PRODUCTOS,
+  excepcionesDe,
   PRODUCTOS_CONFIG,
   VENDEDORES,
   type EstadoProducto,
@@ -126,6 +127,8 @@ export interface ExtrasProducto {
   // Opciones generales
   permiteCreditosParalelos: boolean;
   modalidadFirma: ModalidadFirma;
+  // Si es true, después de la firma el crédito pasa por chequeo telefónico antes de liquidarse.
+  requiereChequeoTelefonico: boolean;
   seContabiliza: boolean;
   centroCostos: string;
   visibleDashboard: boolean;
@@ -170,6 +173,7 @@ const EXTRAS_BASE: ExtrasProducto = {
   diasPlazoObservacion: 15,
   permiteCreditosParalelos: true,
   modalidadFirma: "AMBAS",
+  requiereChequeoTelefonico: false,
   seContabiliza: true,
   centroCostos: "CC-100 · Créditos personales",
   visibleDashboard: true,
@@ -247,7 +251,7 @@ function estadoInicial(): ProductoAbm[] {
 
 // --- Store ---
 
-const CLAVE = "creditonet.productos.v3";
+const CLAVE = "creditonet.productos.v4";
 const INICIAL = estadoInicial();
 let registros: ProductoAbm[] = INICIAL;
 const oyentes = new Set<() => void>();
@@ -317,6 +321,14 @@ export function asignarProductosAOrganismo(organismoId: string, productoIds: str
       };
     })
   );
+}
+
+// Extras del producto con las excepciones del organismo ya aplicadas (firma, chequeo, etc.).
+export function extrasEfectivos(productoId: string, organismoId: string): ExtrasProducto | null {
+  const base = registros.find((r) => r.config.id === productoId)?.extras;
+  if (!base) return null;
+  const exc = organismoId ? excepcionesDe(organismoId, productoId).extras : {};
+  return { ...base, ...exc };
 }
 
 export function useProductos(): ProductoAbm[] {

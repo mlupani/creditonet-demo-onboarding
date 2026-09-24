@@ -6,6 +6,7 @@ import { useApplication } from "@/lib/application-context";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
 import { estadoPantallasPostOferta } from "@/lib/validation";
 import { coincideCliente, formatARS, formatDNI, sumarDias } from "@/lib/format";
+import { textoChequeo } from "@/lib/historial";
 import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -68,6 +69,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
   ANALISIS_TOMADO: "ANALISIS",
   EN_FIRMA: "RESUELTAS",
   FIRMADO: "RESUELTAS",
+  CHEQUEO_TELEFONICO: "RESUELTAS",
   PARA_LIQUIDAR: "RESUELTAS",
   RECHAZADO: "RESUELTAS",
   ANULADO: "RESUELTAS",
@@ -187,6 +189,10 @@ export default function BandejaCanalVentaPage() {
           ? "Tomada por analista · en revisión"
           : "Preaprobada · pendiente de toma";
     }
+    if (c.estado === "EN_FIRMA") return "Aprobada · esperando la firma del cliente (FEL)";
+    if (c.estado === "FIRMADO") return "Firmada · el analista verifica la firma (AFEL)";
+    if (c.estado === "CHEQUEO_TELEFONICO")
+      return `En chequeo telefónico · ${textoChequeo(c.chequeoTelefonico)} · sólo lectura`;
     if (c.estado === "PARA_LIQUIDAR") return "Aprobada · en Bandeja de Liquidación (Tesorería)";
     if (c.estado === "RECHAZADO" && c.rechazo) {
       const { origen, codigos, motivo } = c.rechazo;
@@ -195,6 +201,7 @@ export default function BandejaCanalVentaPage() {
         MOTOR: `Rechazo motor · ${codigos.join(", ")}`,
         SIN_LINEA: `Sin línea · ${codigos.join(", ")}`,
         ANALISTA: `Rechazo analista · ${codigos.join(", ")} ${motivo}`,
+        CHEQUEADOR: `Rechazo en chequeo telefónico · ${codigos.join(", ")} ${motivo}`,
       };
       return map[origen];
     }

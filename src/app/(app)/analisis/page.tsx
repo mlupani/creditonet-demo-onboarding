@@ -6,6 +6,10 @@ import { useApplication } from "@/lib/application-context";
 import { importeTerceros, netoAAcreditar } from "@/lib/credit";
 import { formatARS, sumarDias } from "@/lib/format";
 import { bancosDe } from "@/lib/campos-post-oferta";
+import { ESTADOS_FIRMA } from "@/lib/firma";
+import type { MetodoFirma } from "@/lib/types";
+import { FirmaPanel } from "@/components/analisis/FirmaPanel";
+import { HistorialCredito } from "@/components/HistorialCredito";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -53,11 +57,15 @@ export default function AnalisisPage() {
   }
 
   // Un rechazo del motor nunca llega al analista (Guía §7.2).
-  const rechazoAnalista = app.estado === "RECHAZADO" && app.rechazo?.origen === "ANALISTA";
+  // El rechazo del chequeador también se puede ver (sólo lectura).
+  const rechazoAnalista =
+    app.estado === "RECHAZADO" &&
+    (app.rechazo?.origen === "ANALISTA" || app.rechazo?.origen === "CHEQUEADOR");
   const enBandeja =
     app.estado === "PREAPROBADO" ||
     app.estado === "ANALISIS_TOMADO" ||
     app.estado === "OBSERVADO" ||
+    ESTADOS_FIRMA.includes(app.estado) ||
     app.estado === "PARA_LIQUIDAR" ||
     rechazoAnalista;
 
@@ -95,11 +103,11 @@ export default function AnalisisPage() {
     );
   }
 
-  function aprobar() {
+  function aprobar(metodo: MetodoFirma) {
     setAprobarModal(false);
     setProcesando(true);
     window.setTimeout(() => {
-      aprobarCredito();
+      aprobarCredito(metodo);
       setProcesando(false);
     }, 1200);
   }
@@ -115,7 +123,7 @@ export default function AnalisisPage() {
             Procesando aprobación…
           </h1>
           <p className="mt-1.5 text-sm text-ink-500">
-            La solicitud se envía a la Bandeja de Liquidación (Tesorería).
+            La solicitud pasa al tramo de firma antes de liquidarse.
           </p>
         </Card>
       </div>
@@ -217,6 +225,7 @@ export default function AnalisisPage() {
               ))}
             </ul>
           </div>
+          <HistorialCredito className="mt-5" />
           <p className="mt-3 text-center text-xs text-ink-400">
             La operatoria de Tesorería queda fuera del alcance de esta demo.
           </p>
@@ -238,7 +247,10 @@ export default function AnalisisPage() {
               Solicitud rechazada
             </h1>
             <p className="mx-auto mt-2 flex max-w-md flex-wrap items-center justify-center gap-2 text-sm text-danger-600">
-              {app.numeroCredito} · rechazo manual del analista de riesgo
+              {app.numeroCredito} ·{" "}
+              {app.rechazo.origen === "CHEQUEADOR"
+                ? "rechazo en el chequeo telefónico"
+                : "rechazo manual del analista de riesgo"}
               <EstadoBadge estado="RECHAZADO" />
             </p>
           </div>
@@ -246,6 +258,7 @@ export default function AnalisisPage() {
             <Banner tone="error" title={`${app.rechazo.codigos.join(", ")} · ${app.rechazo.motivo}`}>
               {app.rechazo.observacion}
             </Banner>
+            <HistorialCredito className="mt-5 text-left" />
             <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
               <Button onClick={() => router.push("/")}>Ir a la bandeja del canal de venta</Button>
               <Button
@@ -317,6 +330,8 @@ export default function AnalisisPage() {
         )}
 
         {app.estado === "PREAPROBADO" && <BandejaAnalista onTomar={tomarAnalisis} />}
+
+        {ESTADOS_FIRMA.includes(app.estado) && <FirmaPanel onRechazar={rechazarCredito} />}
 
         {app.estado === "ANALISIS_TOMADO" && (
           <AnalisisCredito

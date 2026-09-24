@@ -1,8 +1,9 @@
 // DB simulada — helpers tipados para consumir src/data/creditos.json
 // Cada registro es un CreditApplication completo + metadatos de bandeja (_bandeja, _descripcion).
 
-import type { CreditApplication, EstadoCredito } from "./types";
+import { CHEQUEO_PENDIENTE, type CreditApplication, type EstadoCredito } from "./types";
 import { parseFecha } from "./format";
+import { firmasDeSemilla } from "./firma";
 import db from "@/data/creditos.json";
 
 export interface CreditoDB extends CreditApplication {
@@ -21,7 +22,9 @@ interface DBFile {
     total: number;
     bandejas: { vendedor: number; analista: number };
   };
-  creditos: Omit<CreditoDB, "_id">[];
+  // El JSON no trae el historial de firma ni el chequeo: se derivan del estado al cargar.
+  creditos: (Omit<CreditoDB, "_id" | "firmas" | "chequeoTelefonico"> &
+    Partial<Pick<CreditoDB, "firmas" | "chequeoTelefonico">>)[];
 }
 
 const data = db as unknown as DBFile;
@@ -42,6 +45,12 @@ export function ordenarPorFechaDesc<T extends Pick<CreditoDB, "fechaSolicitud">>
 export const CREDITOS_DB: CreditoDB[] = ordenarPorFechaDesc(
   data.creditos.map((c, i) => ({
     ...c,
+    firmas: c.firmas ?? firmasDeSemilla(c),
+    chequeoTelefonico:
+      c.chequeoTelefonico ??
+      (c.estado === "CHEQUEO_TELEFONICO"
+        ? { ...CHEQUEO_PENDIENTE, fechaInicio: c.fechaAprobacion ?? c.fechaEnvioAnalisis }
+        : null),
     _id: c.numeroCredito ?? `borrador-${i}`,
   }))
 );
@@ -84,6 +93,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, GrupoVendedor> = {
   ANALISIS_TOMADO: "ANALISIS",
   EN_FIRMA: "RESUELTAS",
   FIRMADO: "RESUELTAS",
+  CHEQUEO_TELEFONICO: "RESUELTAS",
   PARA_LIQUIDAR: "RESUELTAS",
   RECHAZADO: "RESUELTAS",
   ANULADO: "RESUELTAS",
@@ -94,7 +104,7 @@ export function creditosPorGrupoVendedor(grupo: GrupoVendedor): CreditoDB[] {
 }
 
 // --- Bandeja del analista (ListaAnalisis.tsx) — 7 pestañas ---
-export type PestanaAnalista = "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
+export type PestanaAnalista = "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "CHT" | "LIQ";
 
 export const PESTANA_ESTADOS: Record<PestanaAnalista, EstadoCredito[]> = {
   PRE: ["PREAPROBADO", "ANALISIS_TOMADO"],
@@ -103,6 +113,8 @@ export const PESTANA_ESTADOS: Record<PestanaAnalista, EstadoCredito[]> = {
   RECH: ["RECHAZADO"],
   FEL: ["EN_FIRMA"],
   AFEL: ["FIRMADO"],
+  // Sólo lectura para el analista: lo gestiona el chequeador.
+  CHT: ["CHEQUEO_TELEFONICO"],
   LIQ: ["PARA_LIQUIDAR"],
 };
 

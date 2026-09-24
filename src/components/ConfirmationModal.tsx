@@ -20,6 +20,7 @@ export function ConfirmationModal({
   onCancel,
   tone = "primary",
   loading = false,
+  children,
 }: {
   open: boolean;
   title: string;
@@ -31,6 +32,8 @@ export function ConfirmationModal({
   onCancel: () => void;
   tone?: "primary" | "danger" | "success";
   loading?: boolean;
+  // Contenido extra bajo el resumen (por ejemplo, un selector).
+  children?: ReactNode;
 }) {
   return (
     <Modal
@@ -65,6 +68,7 @@ export function ConfirmationModal({
           </div>
         ))}
       </dl>
+      {children && <div className="mt-4">{children}</div>}
     </Modal>
   );
 }
