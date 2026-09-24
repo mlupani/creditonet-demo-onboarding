@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { CHEQUEO_PENDIENTE } from "./types";
+import { intentosChequeo } from "./historial";
 import type {
   AccionLegajo,
   ArchivoLegajo,
@@ -1581,6 +1582,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev.chequeoTelefonico,
           tomado: false,
           observacion: { nota, fecha: selloTiempo() },
+          intentos: [
+            ...intentosChequeo(prev.chequeoTelefonico),
+            { nota, fecha: selloTiempo() },
+          ],
         },
       };
     });

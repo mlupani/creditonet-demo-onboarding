@@ -60,6 +60,9 @@ export interface ChequeoTelefonico {
   // Subestado de observación: el chequeo sigue abierto pero no se pudo completar (por ejemplo,
   // el cliente no atendió). Lo ve el canal de venta.
   observacion?: { nota: string; fecha: string } | null;
+  // Registro de cada intento que no se pudo completar (creditonet-82). El chequeador no rechaza:
+  // deja el intento asentado y el crédito sigue en su bandeja; el rechazo lo decide el analista.
+  intentos?: { nota: string; fecha: string }[];
 }
 
 export const CHEQUEO_PENDIENTE: ChequeoTelefonico = {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { intentoActual, puedeRefirmar, requiereChequeoTelefonico } from "@/lib/firma";
-import { textoChequeo } from "@/lib/historial";
+import { intentosChequeo, textoChequeo } from "@/lib/historial";
 import { HistorialCredito } from "@/components/HistorialCredito";
 import { MOTIVOS_RECHAZO } from "@/lib/validation";
 import { MAX_INTENTOS_FIRMA, type ResultadoFirma } from "@/lib/types";
@@ -122,14 +122,27 @@ export function FirmaPanel({
 
       {app.estado === "CHEQUEO_TELEFONICO" && (
         <Card className="space-y-3 p-4 sm:p-5">
-          <Banner tone="info" title="En chequeo telefónico · sólo lectura">
-            La firma está verificada y el crédito lo gestiona el chequeador desde su bandeja. Desde
-            acá no se puede operar hasta que finalice el chequeo: si es correcto pasa solo a
-            liquidación y no vuelve a esta bandeja.
+          <Banner tone="info" title="En chequeo telefónico">
+            La firma está verificada y el crédito lo gestiona el chequeador desde su bandeja: si el
+            chequeo es correcto pasa solo a liquidación y no vuelve a esta bandeja. El chequeador
+            no puede rechazar; si no logra completarlo deja el intento registrado y el rechazo lo
+            decide el analista desde acá.
           </Banner>
           <p className="text-sm text-ink-600">
             Estado del chequeo: <strong>{textoChequeo(app.chequeoTelefonico)}</strong>
           </p>
+          {intentosChequeo(app.chequeoTelefonico).length > 0 ? (
+            <div className="flex justify-end">
+              <Button variant="danger" onClick={abrirRechazo}>
+                <IconX width={16} height={16} />
+                Rechazar
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-ink-500">
+              Se puede rechazar una vez que el chequeador registre un intento sin completar.
+            </p>
+          )}
         </Card>
       )}
 
