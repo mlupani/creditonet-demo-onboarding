@@ -84,6 +84,15 @@ export function cambiosOfertaDe(app: CreditApplication): CambioOfertaRegistro[] 
   ];
 }
 
+// Cambios de oferta que el analista puede hacer por solicitud sin excepción. El siguiente
+// requiere que lo autorice el supervisor (creditonet-78).
+export const MAX_CAMBIOS_OFERTA = 2;
+
+export function cambioOfertaPermitido(app: CreditApplication): boolean {
+  const hechos = cambiosOfertaDe(app).length;
+  return hechos < MAX_CAMBIOS_OFERTA || app.analista.excepcionCambioOferta?.n === hechos;
+}
+
 // Estado con que la bandeja del vendedor muestra una solicitud devuelta por el analista: COFE
 // (cambio de oferta) si la observación es un cambio de oferta, si la solicitud está esperando su
 // confirmación o si el crédito ya tuvo uno y después recibió otra observación; si no, OBS. El

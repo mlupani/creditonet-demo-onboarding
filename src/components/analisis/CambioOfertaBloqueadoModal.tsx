@@ -1,7 +1,8 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { cambiosOfertaDe } from "@/lib/credit";
+import { MAX_CAMBIOS_OFERTA, cambiosOfertaDe } from "@/lib/credit";
+import { SESION_SUPERVISOR } from "@/lib/config";
 import { formatARS } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -10,10 +11,19 @@ import { Modal } from "@/components/ui/Modal";
 const TIPO = { OFERTA: "Cambio de oferta", DATOS_FINANCIEROS: "Cambio de datos financieros" } as const;
 
 /**
- * Se muestra cuando el analista quiere cambiar la oferta por segunda vez: sólo se permite un
- * cambio por solicitud, así que se le explica y se le deja ver el historial de los ya hechos.
+ * Se muestra cuando el analista alcanzó el máximo de cambios de oferta por solicitud: se le
+ * explica, se le deja ver el historial y puede pedir la excepción del supervisor.
  */
-export function CambioOfertaBloqueadoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CambioOfertaBloqueadoModal({
+  open,
+  onClose,
+  onExcepcion,
+}: {
+  open: boolean;
+  onClose: () => void;
+  // El supervisor autoriza un cambio más (se simula con un botón, como la refrendación).
+  onExcepcion: () => void;
+}) {
   const { app } = useApplication();
   const cambios = cambiosOfertaDe(app);
 
@@ -21,19 +31,23 @@ export function CambioOfertaBloqueadoModal({ open, onClose }: { open: boolean; o
     <Modal
       open={open}
       onClose={onClose}
-      title="Ya hubo un cambio de oferta"
+      title="Límite de cambios de oferta alcanzado"
       maxWidth="max-w-lg"
       footer={
-        <div className="flex justify-end">
-          <Button variant="primary" onClick={onClose}>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>
             Entendido
+          </Button>
+          <Button variant="success" onClick={onExcepcion}>
+            Autorizar excepción como supervisor
           </Button>
         </div>
       }
     >
       <Banner tone="warning">
-        Esta solicitud ya tuvo un cambio de oferta. El analista no puede hacer un segundo cambio:
-        podés aprobarla, observarla o rechazarla con la oferta vigente.
+        Esta solicitud ya tuvo {cambios.length} cambios de oferta (máximo {MAX_CAMBIOS_OFERTA}). Un
+        cambio más requiere la excepción de {SESION_SUPERVISOR.nombre}; sin ella podés aprobarla,
+        observarla o rechazarla con la oferta vigente.
       </Banner>
 
       <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-ink-500">
