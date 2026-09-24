@@ -504,6 +504,9 @@ export interface CreditApplication {
     ofertaAnalista?: OfertaAnalista | null;
     // Cambios de oferta ya hechos por el analista (ausente en créditos anteriores al campo).
     historialCambiosOferta?: CambioOfertaRegistro[];
+    // El analista leyó y confirmó la observación de una solicitud reenviada (creditonet-75). Hasta
+    // entonces no puede operar el crédito; se limpia al observar o al reenviar de nuevo.
+    observacionConfirmada?: { fecha: string } | null;
   };
   rechazo: Rechazo | null;
   // Historial de firmas (FEL/AFEL): vacío hasta que el analista aprueba el crédito.

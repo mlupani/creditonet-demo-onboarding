@@ -2688,7 +2688,14 @@
       ],
       "analista": {
         "tomado": false,
-        "observacion": null,
+        "observacion": {
+          "motivo": "Datos inconsistentes",
+          "nota": "Falta recibo de sueldo legible. Corregir legajo.",
+          "fecha": "20/09/2026",
+          "pantallas": [
+            "legajo"
+          ]
+        },
         "reenviada": true,
         "pantallasCorregidas": [
           "legajo"
