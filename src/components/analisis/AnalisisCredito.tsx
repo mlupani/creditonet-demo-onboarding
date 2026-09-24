@@ -144,6 +144,7 @@ export function AnalisisCredito({
     proponerCambioOferta,
     refrendarCambioOferta,
     rechazarCambioOferta,
+    aplicarCambioDatosFinancieros,
     anularCredito,
     soltarAnalisis,
   } = useApplication();
@@ -916,6 +917,10 @@ export function AnalisisCredito({
         onConfirmar={(cambio) => {
           setCambioAbierto(false);
           proponerCambioOferta(cambio);
+        }}
+        onConfirmarDatosFinancieros={(cambio) => {
+          setCambioAbierto(false);
+          aplicarCambioDatosFinancieros(cambio);
         }}
       />
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
