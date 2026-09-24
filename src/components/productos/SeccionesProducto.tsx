@@ -245,6 +245,12 @@ function Opciones({ p, set }: SeccionProps) {
         className="sm:max-w-xs"
       />
       <Checkbox
+        checked={p.extras.requiereChequeoTelefonico}
+        onChange={(v) => ex({ requiereChequeoTelefonico: v })}
+        label="Requiere chequeo telefónico"
+        description="Después de la firma, el crédito pasa por chequeo telefónico antes de liquidarse."
+      />
+      <Checkbox
         checked={p.extras.seContabiliza}
         onChange={(v) => ex({ seContabiliza: v })}
         label="Se contabiliza"

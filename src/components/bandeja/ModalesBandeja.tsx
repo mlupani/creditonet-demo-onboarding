@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useApplication } from "@/lib/application-context";
 import { formatARS, formatDNI } from "@/lib/format";
+import { historialCredito, textoChequeo } from "@/lib/historial";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
@@ -133,8 +134,12 @@ export function PosicionClienteModal({ open, onClose }: ModalProps) {
 export function EstadoSolicitudModal({ open, onClose }: ModalProps) {
   const { app } = useApplication();
   const enAnalisis = app.estado === "PREAPROBADO" || app.estado === "ANALISIS_TOMADO";
+  const historial = historialCredito(app);
   const resolucion =
-    app.estado === "PARA_LIQUIDAR"
+    app.estado === "PARA_LIQUIDAR" ||
+    app.estado === "EN_FIRMA" ||
+    app.estado === "FIRMADO" ||
+    app.estado === "CHEQUEO_TELEFONICO"
       ? { label: "Aprobada", fecha: app.fechaAprobacion }
       : app.estado === "RECHAZADO"
         ? { label: "Rechazada", fecha: app.rechazo?.fecha }
@@ -182,8 +187,24 @@ export function EstadoSolicitudModal({ open, onClose }: ModalProps) {
               ]
             : []),
           ...(resolucion?.fecha ? [{ label: resolucion.label, value: resolucion.fecha }] : []),
+          ...(app.chequeoTelefonico
+            ? [{ label: "Chequeo telefónico", value: textoChequeo(app.chequeoTelefonico) }]
+            : []),
         ]}
       />
+
+      {historial.length > 0 && (
+        <Seccion titulo="Historial">
+          <ul className="space-y-1.5">
+            {historial.map((e, i) => (
+              <li key={`${e.etiqueta}-${i}`} className="flex items-baseline justify-between gap-4 text-sm">
+                <span className="text-ink-600">{e.etiqueta}</span>
+                <span className="font-semibold tabular-nums text-ink-900">{e.fecha}</span>
+              </li>
+            ))}
+          </ul>
+        </Seccion>
+      )}
 
       {app.comentarios.length > 0 && <ListaComentarios titulo="Comentarios" />}
     </Modal>
@@ -213,6 +234,7 @@ const ORIGEN_RECHAZO = {
   MOTOR: "Motor de riesgo",
   SIN_LINEA: "Sin línea disponible",
   ANALISTA: "Analista de riesgo",
+  CHEQUEADOR: "Chequeo telefónico",
 } as const;
 
 // Motivo de un cierre negativo: rechazo (riesgo) o anulación (el cliente desistió).

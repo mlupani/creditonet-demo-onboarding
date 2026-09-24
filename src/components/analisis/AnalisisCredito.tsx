@@ -33,9 +33,9 @@ import {
   formatDNI,
   formatPct,
   nombreApellido,
-  parseFecha,
 } from "@/lib/format";
 import { textoUltimoPago, vectorPago } from "@/lib/historial-pagos";
+import { historialCredito } from "@/lib/historial";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -201,15 +201,7 @@ export function AnalisisCredito({
   const sueldoNetoRecalculado = app.laboral.ingresoNeto - app.laboral.debitosNoRemunerativos;
   const vector = vectorPago(o.creditosActivos);
   const creditoConPagos = o.creditosActivos.find((c) => c.cuotasAbonadas > 0);
-  const logEstados = [
-    { estado: "Solicitada", fecha: app.fechaSolicitud },
-    { estado: "Preaprobada", fecha: app.fechaPreaprobacion },
-    { estado: "Enviada a análisis", fecha: app.fechaEnvioAnalisis },
-    { estado: "Observada", fecha: app.analista.observacion?.fecha ?? null },
-    { estado: "Aprobada", fecha: app.fechaAprobacion },
-  ]
-    .filter((e): e is { estado: string; fecha: string } => Boolean(e.fecha))
-    .sort((a, b) => (parseFecha(a.fecha)?.getTime() ?? 0) - (parseFecha(b.fecha)?.getTime() ?? 0));
+  const logEstados = historialCredito(app).map((e) => ({ estado: e.etiqueta, fecha: e.fecha }));
   // Campos post-oferta visibles para el analista (respeta excepciones por organismo).
   const personalesVisibles = camposDe("personales", undefined, po.personales).filter((c) =>
     campoVisible(app, c)
@@ -828,8 +820,8 @@ export function AnalisisCredito({
         decide: <strong>Cambiar oferta</strong> baja el capital o las cuotas desde la grilla y la
         devuelve al canal de venta; <strong>Observar</strong> la devuelve para corregir
         documentación; <strong>Anular</strong> la cierra cuando el cliente desiste;{" "}
-        <strong>Rechazar</strong> es definitivo y <strong>Aprobar</strong> la envía a la Bandeja
-        de Liquidación.
+        <strong>Rechazar</strong> es definitivo y <strong>Aprobar</strong> la pasa a firma (FEL/AFEL)
+        y, si el producto lo pide, a chequeo telefónico antes de liquidar.
       </Banner>
 
       <Card className="space-y-3 p-4 sm:p-5">

@@ -15,6 +15,7 @@ import {
   IconGitBranch,
   IconHome,
   IconLandmark,
+  IconPhone,
   IconSettings,
   IconShieldCheck,
   IconUsers,
@@ -28,11 +29,13 @@ interface NavItem {
   disponible?: boolean;
 }
 
-// Bandejas operativas de la Guía §7: canal de venta → analista de riesgo → liquidación.
+// Bandejas operativas de la Guía §7: canal de venta → analista de riesgo → chequeo telefónico
+// (si el producto lo pide) → liquidación.
 const NAV: NavItem[] = [
   { label: "Bandeja canal de venta", href: "/", icon: IconHome, disponible: true },
   { label: "Solicitar crédito", href: "/onboarding", icon: IconClipboardPlus, disponible: true },
   { label: "Bandeja de análisis", href: "/analisis", icon: IconFileStack, disponible: true },
+  { label: "Bandeja de chequeo", href: "/chequeo", icon: IconPhone, disponible: true },
   { label: "Diagrama de flujo", href: "/graph", icon: IconGitBranch, disponible: true },
   { label: "Productos", href: "/productos", icon: IconBriefcase, disponible: true },
   { label: "Organismos", href: "/organismos", icon: IconBuilding, disponible: true },

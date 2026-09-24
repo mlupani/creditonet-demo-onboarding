@@ -19,9 +19,50 @@ export type EstadoCredito =
   // Anulado: el cliente desistió. Lo puede anular el vendedor o el analista, y es distinto
   // de rechazado, que es una decisión de riesgo (reunión 11/09, 01:19).
   | "ANULADO"
+  // FEL: esperando la firma del cliente. AFEL: firma recibida, la verifica el analista.
+  // Después, si el producto lo pide, chequeo telefónico y recién ahí liquidación.
   | "EN_FIRMA"
   | "FIRMADO"
+  | "CHEQUEO_TELEFONICO"
   | "PARA_LIQUIDAR";
+
+export type MetodoFirma = "ELECTRONICA" | "FISICA";
+export type ResultadoFirma = "PENDIENTE" | "APROBADA" | "REFIRMA_SOLICITADA" | "RECHAZADA";
+
+// Una instancia de firma. Se permiten como máximo dos: la original y una única refirma.
+export interface IntentoFirma {
+  n: 1 | 2;
+  metodo: MetodoFirma;
+  // null mientras el cliente todavía no firmó (FEL).
+  fechaFirma: string | null;
+  resultado: ResultadoFirma;
+  // Decisión del analista sobre esta firma (null mientras está pendiente).
+  fechaResultado: string | null;
+}
+
+export const MAX_INTENTOS_FIRMA = 2;
+
+export type ResultadoChequeo = "OK" | "NO_OK";
+
+// Lo lleva el chequeador: toma el crédito, llama al cliente y registra el resultado. Con OK el
+// crédito pasa solo a liquidación; con NO_OK se rechaza.
+export interface ChequeoTelefonico {
+  tomado: boolean;
+  resultado: ResultadoChequeo | null;
+  comentario: string;
+  // Cuándo el crédito entró a chequeo (firma verificada).
+  fechaInicio: string | null;
+  // Fecha en que el chequeador finalizó el chequeo (null mientras está pendiente o en curso).
+  fecha: string | null;
+}
+
+export const CHEQUEO_PENDIENTE: ChequeoTelefonico = {
+  tomado: false,
+  resultado: null,
+  comentario: "",
+  fechaInicio: null,
+  fecha: null,
+};
 
 export type TipoCliente = "NUEVO" | "EXISTENTE";
 
@@ -337,7 +378,8 @@ export interface Rechazo {
   // SIN_LINEA: no hay plan de cuotas que admita la condición laboral. No es un rechazo del
   // motor y no llega al analista (02:28).
   // INSTITUCIONAL: una regla institucional bloqueante no pasó; el motor no llega a ejecutarse.
-  origen: "INSTITUCIONAL" | "MOTOR" | "SIN_LINEA" | "ANALISTA";
+  // CHEQUEADOR: el chequeo telefónico posterior a la firma no fue correcto.
+  origen: "INSTITUCIONAL" | "MOTOR" | "SIN_LINEA" | "ANALISTA" | "CHEQUEADOR";
   codigos: string[];
   motivo: string;
   observacion: string;
@@ -443,6 +485,10 @@ export interface CreditApplication {
     ofertaAnalista?: OfertaAnalista | null;
   };
   rechazo: Rechazo | null;
+  // Historial de firmas (FEL/AFEL): vacío hasta que el analista aprueba el crédito.
+  firmas: IntentoFirma[];
+  // Chequeo telefónico (sólo si el producto lo requiere): nace al verificarse la firma.
+  chequeoTelefonico: ChequeoTelefonico | null;
   comentarios: ComentarioSolicitud[];
 
   fechaSolicitud: string | null;

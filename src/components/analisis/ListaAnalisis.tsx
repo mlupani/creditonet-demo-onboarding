@@ -14,9 +14,9 @@ import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
 type Vista = "tabla" | "lista";
 
-type Pestana = "TODOS" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
+type Pestana = "TODOS" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "CHT" | "LIQ";
 
-// Bandeja del analista — 7 estados (desde preaprobado en adelante) de creditonet-34.
+// Bandeja del analista — 8 estados (desde preaprobado en adelante) de creditonet-34.
 type DefPestana = { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string };
 
 const PESTANAS_ESTADO: DefPestana[] = [
@@ -52,9 +52,16 @@ const PESTANAS_ESTADO: DefPestana[] = [
   },
   {
     id: "AFEL",
-    titulo: "Firmados",
+    titulo: "Firma a verificar",
     estados: ["FIRMADO"],
-    vacio: "No hay solicitudes firmadas.",
+    vacio: "No hay firmas para verificar.",
+  },
+  {
+    // Sólo lectura: lo gestiona el chequeador desde su bandeja.
+    id: "CHT",
+    titulo: "En chequeo telefónico",
+    estados: ["CHEQUEO_TELEFONICO"],
+    vacio: "No hay solicitudes en chequeo telefónico.",
   },
   {
     id: "LIQ",
@@ -105,6 +112,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
     RECH: 1,
     FEL: 1,
     AFEL: 1,
+    CHT: 1,
     LIQ: 1,
   });
   const POR_PAGINA = 5;

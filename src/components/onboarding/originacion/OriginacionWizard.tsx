@@ -39,6 +39,7 @@ const RAZON_RECHAZO: Record<Rechazo["origen"], string> = {
   MOTOR: "El motor de riesgo no pasó. No se puede construir una oferta.",
   SIN_LINEA: "No hay línea disponible para este cliente. No se puede construir una oferta.",
   ANALISTA: "La solicitud fue rechazada.",
+  CHEQUEADOR: "La solicitud fue rechazada en el chequeo telefónico.",
 };
 
 function gate(paso: number, app: App): { ok: boolean; razon: string | null } {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import { NOTIFICACIONES } from "@/lib/mocks";
-import { SESION, SESION_ANALISTA, SESION_PARAMETROS } from "@/lib/config";
+import { SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_PARAMETROS } from "@/lib/config";
 import {
   IconAlertTriangle,
   IconBell,
@@ -17,6 +17,7 @@ function tituloRuta(pathname: string) {
   if (pathname === "/") return "Bandeja del canal de venta";
   if (pathname.startsWith("/onboarding")) return "Solicitar crédito";
   if (pathname.startsWith("/analisis")) return "Bandeja del analista de riesgo";
+  if (pathname.startsWith("/chequeo")) return "Bandeja de chequeo telefónico";
   if (pathname.startsWith("/graph")) return "Diagrama de flujo · Onboarding";
   if (pathname.startsWith("/productos")) return "Parámetros · Productos";
   if (pathname.startsWith("/organismos")) return "Parámetros · Organismos";
@@ -103,7 +104,9 @@ export function Header() {
   // El usuario mostrado cambia según la bandeja (roles de la Guía §1).
   const usuario = pathname.startsWith("/analisis")
     ? SESION_ANALISTA
-    : pathname.startsWith("/productos") ||
+    : pathname.startsWith("/chequeo")
+      ? SESION_CHEQUEADOR
+      : pathname.startsWith("/productos") ||
         pathname.startsWith("/organismos") ||
         pathname.startsWith("/planes")
       ? SESION_PARAMETROS
