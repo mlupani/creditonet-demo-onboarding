@@ -13,12 +13,13 @@ import {
 } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
 import { PLANES_CUOTAS } from "@/lib/config";
-import type { Plazo } from "@/lib/types";
+import type { DatoFinancieroCorregido, Plazo } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { RequiredBadge } from "@/components/ui/RequiredBadge";
 import { Banner } from "@/components/ui/Banner";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { GrillaCuotas } from "@/components/onboarding/oferta/GrillaCuotas";
 import { IconExpand } from "@/components/icons";
 
@@ -91,14 +92,41 @@ export function CambiarOfertaModal({
   const [transferenciasImporte, setTransferenciasImporte] = useState(l.transferenciasImporte);
   const [notaFin, setNotaFin] = useState("");
   const [intentadoFin, setIntentadoFin] = useState(false);
+  // Cada dato sensible está bloqueado hasta pulsar "Corregir" (creditonet-80), y aplicar el
+  // cambio pide una confirmación explícita con el valor anterior y el nuevo.
+  const [editando, setEditando] = useState<Record<string, boolean>>({});
+  const [confirmarFinAbierto, setConfirmarFinAbierto] = useState(false);
 
-  const hayCambioFin =
-    ingresoBruto !== l.ingresoBruto ||
-    ingresoNeto !== l.ingresoNeto ||
-    disponible !== l.disponible ||
-    debitosNoRemunerativos !== l.debitosNoRemunerativos ||
-    extraccionesImporte !== l.extraccionesImporte ||
-    transferenciasImporte !== l.transferenciasImporte;
+  const camposFin = [
+    { id: "ingresoBruto", label: "Ingreso bruto", valor: ingresoBruto, set: setIngresoBruto, original: l.ingresoBruto },
+    { id: "ingresoNeto", label: "Ingreso neto", valor: ingresoNeto, set: setIngresoNeto, original: l.ingresoNeto },
+    { id: "disponible", label: "Disponible para extracción", valor: disponible, set: setDisponible, original: l.disponible },
+    {
+      id: "debitosNoRemunerativos",
+      label: "Débitos no remunerativos",
+      valor: debitosNoRemunerativos,
+      set: setDebitosNoRemunerativos,
+      original: l.debitosNoRemunerativos,
+    },
+    {
+      id: "extraccionesImporte",
+      label: "Día/saldo de acreditación",
+      valor: extraccionesImporte,
+      set: setExtraccionesImporte,
+      original: l.extraccionesImporte,
+    },
+    {
+      id: "transferenciasImporte",
+      label: "Transferencia",
+      valor: transferenciasImporte,
+      set: setTransferenciasImporte,
+      original: l.transferenciasImporte,
+    },
+  ];
+  const datosCorregidos: DatoFinancieroCorregido[] = camposFin
+    .filter((c) => c.valor !== c.original)
+    .map((c) => ({ campo: c.label, antes: c.original, despues: c.valor }));
+  const hayCambioFin = datosCorregidos.length > 0;
 
   // Recalcula reglas institucionales + Motor de Riesgo + línea + límites con los datos
   // financieros que el analista está editando, sin aplicarlos todavía (previsualización pura).
@@ -147,7 +175,13 @@ export function CambiarOfertaModal({
   function confirmarFin() {
     setIntentadoFin(true);
     if (!puedeConfirmarFin) return;
+    setConfirmarFinAbierto(true);
+  }
+
+  function aplicarFin() {
+    setConfirmarFinAbierto(false);
     onConfirmarDatosFinancieros({
+      datos: datosCorregidos,
       ingresoBruto,
       ingresoNeto,
       disponible,
@@ -162,7 +196,7 @@ export function CambiarOfertaModal({
     <>
       <Modal
         open={open}
-        onClose={grillaAbierta ? () => {} : onClose}
+        onClose={grillaAbierta || confirmarFinAbierto ? () => {} : onClose}
         title={tab === "oferta" ? "Cambiar la oferta" : "Cambio de datos financieros"}
         maxWidth="max-w-lg"
         footer={
@@ -332,43 +366,43 @@ export function CambiarOfertaModal({
               <strong>Rechazada</strong>.
             </p>
 
-            <div className="mt-4 grid gap-x-4 gap-y-1 sm:grid-cols-2">
-              <MoneyInput
-                id="cdf-ingreso-bruto"
-                label="Ingreso bruto"
-                value={ingresoBruto}
-                onChange={setIngresoBruto}
-              />
-              <MoneyInput
-                id="cdf-ingreso-neto"
-                label="Ingreso neto"
-                value={ingresoNeto}
-                onChange={setIngresoNeto}
-              />
-              <MoneyInput
-                id="cdf-disponible"
-                label="Disponible para extracción"
-                value={disponible}
-                onChange={setDisponible}
-              />
-              <MoneyInput
-                id="cdf-debitos"
-                label="Débitos no remunerativos"
-                value={debitosNoRemunerativos}
-                onChange={setDebitosNoRemunerativos}
-              />
-              <MoneyInput
-                id="cdf-extracciones"
-                label="Día/saldo de acreditación"
-                value={extraccionesImporte}
-                onChange={setExtraccionesImporte}
-              />
-              <MoneyInput
-                id="cdf-transferencias"
-                label="Transferencia"
-                value={transferenciasImporte}
-                onChange={setTransferenciasImporte}
-              />
+            <div className="mt-4 grid gap-x-4 gap-y-3 sm:grid-cols-2">
+              {camposFin.map((c) => (
+                <div key={c.id}>
+                  <MoneyInput
+                    id={`cdf-${c.id}`}
+                    label={c.label}
+                    value={c.valor}
+                    onChange={c.set}
+                    disabled={!editando[c.id]}
+                  />
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                    {editando[c.id] ? (
+                      <>
+                        <span className="text-ink-500">Original: {formatARS(c.original)}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            c.set(c.original);
+                            setEditando((e) => ({ ...e, [c.id]: false }));
+                          }}
+                          className="font-semibold text-ink-600 hover:underline"
+                        >
+                          Descartar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditando((e) => ({ ...e, [c.id]: true }))}
+                        className="font-semibold text-brand-700 hover:underline"
+                      >
+                        Corregir
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
             <p className="mt-1 text-xs text-ink-500">
               Sueldo neto recalculado:{" "}
@@ -430,6 +464,23 @@ export function CambiarOfertaModal({
           </>
         )}
       </Modal>
+
+      <ConfirmationModal
+        open={open && confirmarFinAbierto}
+        title="Confirmar cambio de datos financieros"
+        descripcion="Al aplicar, se recalculan reglas institucionales, Motor de Riesgo, línea y límites. Rige de inmediato y la solicitud queda Observada o Rechazada según el resultado."
+        rows={[
+          ...datosCorregidos.map((d) => ({
+            label: d.campo,
+            value: `${formatARS(d.antes)} → ${formatARS(d.despues)}`,
+          })),
+          { label: "Nota", value: notaFin.trim() },
+        ]}
+        confirmLabel="Aplicar y recalcular"
+        tone="danger"
+        onConfirm={aplicarFin}
+        onCancel={() => setConfirmarFinAbierto(false)}
+      />
 
       <Modal
         open={open && grillaAbierta}

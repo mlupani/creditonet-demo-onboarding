@@ -68,6 +68,11 @@ export function CambioOfertaBloqueadoModal({
                 {formatARS(c.montoNuevo)} en {c.plazoNuevo} cuotas
               </strong>
             </p>
+            {c.datos?.map((d) => (
+              <p key={d.campo} className="mt-1 text-xs tabular-nums text-ink-600">
+                {d.campo}: {formatARS(d.antes)} → <strong>{formatARS(d.despues)}</strong>
+              </p>
+            ))}
             {c.nota && <p className="mt-1 text-xs text-ink-500">Nota: {c.nota}</p>}
             <p className="mt-1 text-[11px] text-ink-400">
               Por {c.autor}

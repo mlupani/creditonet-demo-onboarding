@@ -1,7 +1,7 @@
 // Historial general del crédito: lo que ven el canal de venta y el analista, incluida la etapa
 // de firma y de chequeo telefónico (que gestiona el chequeador).
 
-import { parseFecha } from "./format";
+import { formatARS, parseFecha } from "./format";
 import type { ChequeoTelefonico, CreditApplication } from "./types";
 
 export interface EventoHistorial {
@@ -47,6 +47,14 @@ export function historialCredito(
   const ex = app.analista.excepcionCambioOferta;
   push("Excepción de cambio de oferta autorizada", ex?.fecha, `Supervisor: ${ex?.autorizadoPor}`);
   push("Observación confirmada por el analista", app.analista.observacionConfirmada?.fecha);
+  for (const c of app.analista.historialCambiosOferta ?? []) {
+    if (c.tipo !== "DATOS_FINANCIEROS" || !c.datos?.length) continue;
+    push(
+      "Datos financieros corregidos por el analista",
+      c.fecha,
+      c.datos.map((d) => `${d.campo}: ${formatARS(d.antes)} → ${formatARS(d.despues)}`).join(" · ")
+    );
+  }
   push("Aprobada por el analista", app.fechaAprobacion);
 
   for (const f of app.firmas) {
