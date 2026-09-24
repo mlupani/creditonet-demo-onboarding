@@ -93,11 +93,10 @@ export function creditosPorGrupoVendedor(grupo: GrupoVendedor): CreditoDB[] {
   return CREDITOS_DB.filter((c) => GRUPO_POR_ESTADO[c.estado] === grupo);
 }
 
-// --- Bandeja del analista (ListaAnalisis.tsx) — 8 pestañas ---
-export type PestanaAnalista = "PEND" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
+// --- Bandeja del analista (ListaAnalisis.tsx) — 7 pestañas ---
+export type PestanaAnalista = "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
 
 export const PESTANA_ESTADOS: Record<PestanaAnalista, EstadoCredito[]> = {
-  PEND: ["BORRADOR", "EN_TRAMITE"],
   PRE: ["PREAPROBADO", "ANALISIS_TOMADO"],
   OBS: ["OBSERVADO"],
   COFE: ["CAMBIO_OFERTA"],
@@ -123,9 +122,15 @@ export function fechaVisibleAnalista(c: CreditoConFechasAnalista): string | null
   return c.fechaEnvioAnalisis ?? c.fechaSolicitud;
 }
 
+// Lo que se acaba de enviar al analista ("Hoy HH:MM", sellado al preaprobar) tiene que quedar
+// primero. Los datos de ejemplo con una fecha o una hora futura no pueden ganarle: se
+// acotan al inicio del día, y todo sello real es de hoy o posterior.
 function timestampFechaVisibleAnalista(c: CreditoConFechasAnalista): number {
   const fecha = fechaVisibleAnalista(c);
-  return fecha ? parseFecha(fecha)?.getTime() ?? 0 : 0;
+  const ts = fecha ? parseFecha(fecha)?.getTime() ?? 0 : 0;
+  const ahora = new Date();
+  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
+  return ts > ahora.getTime() ? inicioHoy : ts;
 }
 
 export function ordenarPorFechaVisibleAnalista<T extends CreditoConFechasAnalista>(creditos: T[]): T[] {

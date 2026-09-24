@@ -73,8 +73,8 @@ export function ConfirmarOfertaModal({
     { label: "Ingreso bruto", value: formatARS(l.ingresoBruto) },
     { label: "Ingreso neto", value: formatARS(l.ingresoNeto) },
     { label: "Disponible", value: formatARS(l.disponible) },
-    { label: "Saldo - Fecha de acreditacion", value: l.extraccionesFecha || "—" },
-    { label: "Extracciones / Transferencias - Fecha de acreditación", value: l.transferenciasFecha || "—" },
+    { label: "Saldo de acreditación", value: formatARS(l.extraccionesImporte) },
+    { label: "Extracciones / Transferencias - Saldo de acreditación", value: formatARS(l.transferenciasImporte) },
   ];
 
   return (

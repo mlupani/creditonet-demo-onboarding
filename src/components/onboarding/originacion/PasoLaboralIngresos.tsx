@@ -189,19 +189,17 @@ export function PasoLaboralIngresos() {
               error={errores.ingresoNeto}
               hint="Ingreso mensual de bolsillo. Base del cálculo de RCI."
             />
-            <FormField
-              id="extracciones-fecha"
-              label="Saldo - Fecha de acreditacion"
-              type="date"
-              value={fechaAIso(l.extraccionesFecha)}
-              onChange={(v) => patchLaboral({ extraccionesFecha: isoAFecha(v) })}
+            <MoneyInput
+              id="extracciones-saldo"
+              label="Saldo de acreditación"
+              value={l.extraccionesImporte}
+              onChange={(v) => patchLaboral({ extraccionesImporte: v })}
             />
-            <FormField
-              id="transferencias-fecha"
-              label="Extracciones / Transferencias - Fecha de acreditación"
-              type="date"
-              value={fechaAIso(l.transferenciasFecha)}
-              onChange={(v) => patchLaboral({ transferenciasFecha: isoAFecha(v) })}
+            <MoneyInput
+              id="transferencias-saldo"
+              label="Extracciones / Transferencias - Saldo de acreditación"
+              value={l.transferenciasImporte}
+              onChange={(v) => patchLaboral({ transferenciasImporte: v })}
             />
             <MoneyInput
               id="disponible"

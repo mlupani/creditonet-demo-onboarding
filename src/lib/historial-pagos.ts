@@ -153,3 +153,14 @@ export function textoUltimoPago(credito: CreditoActivo): string {
   if (ultima.estado === "Pagada con atraso") return `hace 25 días · con ${ultima.diasAtraso} días de atraso`;
   return "hace 25 días";
 }
+
+// Vector de pago: días de atraso de las últimas cuotas vencidas del primer crédito con pagos
+// (0 = pagada a término). Ej.: "0 · 0 · 5 · 0 · 0 · 0".
+export function vectorPago(creditos: CreditoActivo[], ultimas = 6): string | null {
+  const credito = creditos.find((c) => c.cuotasAbonadas > 0);
+  if (!credito) return null;
+  const vencidas = generarHistorialPagos(credito).filter(
+    (c) => c.estado === "Pagada" || c.estado === "Pagada con atraso" || c.estado === "En mora"
+  );
+  return vencidas.slice(-ultimas).map((c) => c.diasAtraso ?? 0).join(" · ");
+}

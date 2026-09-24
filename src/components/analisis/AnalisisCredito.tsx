@@ -12,14 +12,9 @@ import {
 } from "@/lib/credit";
 import { getMotor, reglaMarcada } from "@/lib/motores";
 import {
-  CANALES,
-  ORGANISMOS,
-  PRODUCTOS,
   SESION_ANALISTA,
   SESION_SUPERVISOR,
-  VENDEDORES,
   configEfectiva,
-  nombreOpcion,
   pantallasVisibles,
 } from "@/lib/config";
 import {
@@ -32,14 +27,15 @@ import {
   type PantallaConCampos,
 } from "@/lib/campos-post-oferta";
 import type { PantallaPostOfertaId } from "@/lib/types";
-import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO, tarjetaValida } from "@/lib/validation";
+import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO } from "@/lib/validation";
 import {
-  calcularEdad,
   formatARS,
   formatDNI,
   formatPct,
   nombreApellido,
+  parseFecha,
 } from "@/lib/format";
+import { textoUltimoPago, vectorPago } from "@/lib/historial-pagos";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -56,7 +52,7 @@ import {
   PosicionClienteModal,
 } from "@/components/bandeja/ModalesBandeja";
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
-import { BuroMotorModal, CreditosRenovarModal } from "./ModalesAnalisis";
+import { BuroMotorModal, CreditosRenovarModal, DatosCamposModal, ReglasMotorModal } from "./ModalesAnalisis";
 import { HistorialPagosModal } from "./HistorialPagosModal";
 import { DesarrolloPrestamoModal } from "./DesarrolloPrestamoModal";
 import { LegajoVirtualModal } from "./LegajoVirtualModal";
@@ -65,7 +61,6 @@ import {
   IconBuilding,
   IconCalendar,
   IconCheck,
-  IconCreditCard,
   IconEye,
   IconFileText,
   IconLandmark,
@@ -154,7 +149,7 @@ export function AnalisisCredito({
   } = useApplication();
   const [modal, setModal] = useState<"observar" | "rechazar" | "anular" | null>(null);
   const [consulta, setConsulta] = useState<
-    "posicion" | "buro" | "renovar" | "comentario" | "soltar" | null
+    "posicion" | "buro" | "renovar" | "reglas" | "personales" | "laborales" | "comentario" | "soltar" | null
   >(null);
   const [pantallas, setPantallas] = useState<PantallaPostOfertaId[]>([]);
   // Corrección puntual por campo (creditonet-61): campos con problema por pantalla, sólo para
@@ -166,6 +161,7 @@ export function AnalisisCredito({
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
+  const [logAbierto, setLogAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
@@ -186,7 +182,6 @@ export function AnalisisCredito({
       (acc, g) => acc + (g.reciboSueldo?.length ?? 0) + (g.otrosDocumentos?.length ?? 0),
       0
     );
-  const tokenizadas = po.tarjetas.filter(tarjetaValida);
   // Precargados que el vendedor corrigió en la carga post-oferta (Onboarding §3).
   const rectificados = camposRectificados(app);
   const plan = evaluarPlan(app);
@@ -197,7 +192,23 @@ export function AnalisisCredito({
   // Cambio de oferta propuesto que espera la refrendación del supervisor.
   const cambioPendiente = app.analista.cambioOfertaPendiente;
   const cfgEfectiva = configEfectiva(app.configuracion);
-  const edad = app.cliente ? calcularEdad(app.cliente.fechaNacimiento) : null;
+  // Oferta: renovaciones de créditos al día vs. precancelaciones obligatorias de créditos en mora.
+  const sumaCancelacion = (cs: typeof aRenovar) => cs.reduce((t, c) => t + c.montoCancelacion, 0);
+  const totalRenovaciones = sumaCancelacion(aRenovar.filter((c) => !c.enMora));
+  const totalPrecancelacionesMora = sumaCancelacion(aRenovar.filter((c) => c.enMora));
+  // Sueldo neto recalculado: neto declarado menos los débitos no remunerativos.
+  const sueldoNetoRecalculado = app.laboral.ingresoNeto - app.laboral.debitosNoRemunerativos;
+  const vector = vectorPago(o.creditosActivos);
+  const creditoConPagos = o.creditosActivos.find((c) => c.cuotasAbonadas > 0);
+  const logEstados = [
+    { estado: "Solicitada", fecha: app.fechaSolicitud },
+    { estado: "Preaprobada", fecha: app.fechaPreaprobacion },
+    { estado: "Enviada a análisis", fecha: app.fechaEnvioAnalisis },
+    { estado: "Observada", fecha: app.analista.observacion?.fecha ?? null },
+    { estado: "Aprobada", fecha: app.fechaAprobacion },
+  ]
+    .filter((e): e is { estado: string; fecha: string } => Boolean(e.fecha))
+    .sort((a, b) => (parseFecha(a.fecha)?.getTime() ?? 0) - (parseFecha(b.fecha)?.getTime() ?? 0));
   // Campos post-oferta visibles para el analista (respeta excepciones por organismo).
   const personalesVisibles = camposDe("personales", undefined, po.personales).filter((c) =>
     campoVisible(app, c)
@@ -209,6 +220,13 @@ export function AnalisisCredito({
   function valorOPresentacion(v: string): string {
     const t = v?.trim();
     return t ? t : "—";
+  }
+
+  function filasCampos(campos: typeof personalesVisibles) {
+    return campos.map((c) => ({
+      label: c.label,
+      value: valorOPresentacion(valorCampoDisplay(app, c) || valorCampo(app, c)),
+    }));
   }
 
   function domicilioCompleto(d: {
@@ -343,16 +361,6 @@ export function AnalisisCredito({
             { label: "ID de Cliente", value: app.numeroCliente ?? "—" },
             { label: "DNI / CUIL", value: `${formatDNI(app.cliente.dni)} · ${app.cliente.cuil}` },
             {
-              label: "Género / Nacimiento",
-              value: `${valorOPresentacion(app.cliente.genero)} · ${valorOPresentacion(app.cliente.fechaNacimiento)}${edad !== null ? ` (${edad} años)` : ""}`,
-            },
-            { label: "Email", value: valorOPresentacion(app.cliente.email) },
-            { label: "Teléfono", value: valorOPresentacion(app.cliente.telefono) },
-            {
-              label: "Domicilio",
-              value: `${app.cliente.calle} ${app.cliente.numero} · ${valorOPresentacion(app.cliente.localidad)}, ${valorOPresentacion(app.cliente.provincia)}`,
-            },
-            {
               label: "Tipo persona / Cliente",
               value: `${app.tipoPersona === "JURIDICA" ? "Jurídica" : "Física"} · ${app.identificacion.tipoCliente === "NUEVO" ? "Nuevo" : app.identificacion.tipoCliente === "EXISTENTE" ? "Existente" : "—"}`,
             },
@@ -361,76 +369,198 @@ export function AnalisisCredito({
               value: app.identidadVerificada ? "✓ Verificada" : "No verificada",
               tone: app.identidadVerificada ? "success" : "warning",
             },
-            { label: "Ingreso neto (pre-oferta)", value: formatARS(app.laboral.ingresoNeto) },
-            { label: "Ingreso bruto (pre-oferta)", value: formatARS(app.laboral.ingresoBruto) },
           ]}
+          footer={
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setConsulta("personales")}>
+                <IconUser width={14} height={14} />
+                Ver datos personales
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConsulta("laborales")}>
+                <IconBuilding width={14} height={14} />
+                Ver datos laborales
+              </Button>
+            </div>
+          }
         />
         <SummaryCard
-          title="Producto y organismo"
-          icon={<IconBuilding width={16} height={16} />}
-          rows={[
-            { label: "Producto", value: nombreOpcion(PRODUCTOS, app.configuracion.productoId) },
-            { label: "Organismo", value: nombreOpcion(ORGANISMOS, app.configuracion.organismoId) },
-            { label: "Canal", value: nombreOpcion(CANALES, app.configuracion.canalId) },
-            { label: "Vendedor", value: nombreOpcion(VENDEDORES, app.configuracion.vendedorId) },
-            { label: "Crédito", value: app.numeroCredito ?? "Sin ID" },
-            { label: "Estado / Etapa", value: `${app.estado} · ${app.etapa}` },
-          ]}
-        />
-        <SummaryCard
-          title="Datos laborales (pre-oferta)"
+          title="Datos financieros"
           icon={<IconWallet width={16} height={16} />}
           rows={[
-            { label: "Condición laboral", value: valorOPresentacion(app.laboral.condicionLaboral) },
-            { label: "Fecha inicio laboral", value: valorOPresentacion(app.laboral.fechaInicioLaboral) },
-            { label: "Bancos de cobro", value: app.laboral.empleadores.map((e) => e.banco).join(", ") || "—" },
-            {
-              label: "CUITs empleador",
-              value: app.laboral.empleadores.map((e) => e.cuit).join(", ") || "—",
-            },
-            {
-              label: "Razón social",
-              value: app.laboral.empleadores.map((e) => e.razonSocial).join(", ") || "—",
-            },
-            { label: "Ingreso bruto / neto", value: `${formatARS(app.laboral.ingresoBruto)} / ${formatARS(app.laboral.ingresoNeto)}` },
+            { label: "Ingreso bruto", value: formatARS(app.laboral.ingresoBruto) },
+            { label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) },
+            { label: "Saldo día acreditación", value: formatARS(app.laboral.extraccionesImporte) },
+            { label: "Extracciones / transferencias", value: formatARS(app.laboral.transferenciasImporte) },
             { label: "Disponible", value: formatARS(app.laboral.disponible) },
-            { label: "Débitos no remun.", value: formatARS(app.laboral.debitosNoRemunerativos) },
+            { label: "Débitos no remunerativos", value: formatARS(app.laboral.debitosNoRemunerativos) },
             {
-              label: "Extracciones",
-              value:
-                app.laboral.extraccionesFecha || app.laboral.extraccionesImporte
-                  ? `${valorOPresentacion(app.laboral.extraccionesFecha)} · ${formatARS(app.laboral.extraccionesImporte)}`
-                  : "—",
-            },
-            {
-              label: "Transferencias",
-              value:
-                app.laboral.transferenciasFecha || app.laboral.transferenciasImporte
-                  ? `${valorOPresentacion(app.laboral.transferenciasFecha)} · ${formatARS(app.laboral.transferenciasImporte)}`
-                  : "—",
+              label: "Sueldo neto recalculado",
+              value: formatARS(sueldoNetoRecalculado),
+              strong: true,
+              tone: "brand",
             },
           ]}
+          footer={
+            <div className="space-y-2">
+              <p className="text-xs text-ink-500">
+                Contrastá los importes declarados con el recibo de sueldo del legajo.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setLegajoAbierto(true)}>
+                  <IconEye width={14} height={14} />
+                  Ver legajo virtual
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => abrir("observar")}>
+                  <IconAlertTriangle width={14} height={14} />
+                  Observar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={cambioPendiente !== null}
+                  onClick={() => setCambioAbierto(true)}
+                >
+                  <IconRefresh width={14} height={14} />
+                  Cambiar oferta
+                </Button>
+              </div>
+            </div>
+          }
         />
         <SummaryCard
-          title="Situaciones y validación"
+          title="Plan de cuotas"
+          icon={<IconCalendar width={16} height={16} />}
+          rows={[
+            { label: "Línea", value: plan.plan.nombre },
+            {
+              label: `RCI (tope ${plan.plan.rciMaxPct} %)`,
+              value: formatPct(plan.rciPct),
+              tone: plan.cumpleRci ? "success" : "danger",
+            },
+            {
+              label: `Endeudamiento (máx. ${plan.plan.endeudamientoMaxPct} %)`,
+              value: formatPct(plan.endeudamientoPct),
+              tone: plan.cumpleEndeudamiento ? "success" : "danger",
+            },
+            {
+              label: "SMVM de bolsillo",
+              value: formatARS(plan.ingresoBolsillo),
+              tone: plan.cumpleSmvm ? "success" : "danger",
+            },
+            { label: "Capital máximo otorgable", value: formatARS(plan.capitalMaximo) },
+          ]}
+          footer={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setDesarrolloAbierto(true)}
+              aria-label="Ver desarrollo del préstamo"
+            >
+              <IconWallet width={14} height={14} />
+              Ver desarrollo del préstamo
+            </Button>
+          }
+        />
+        <SummaryCard
+          title="Oferta"
+          icon={<IconWallet width={16} height={16} />}
+          rows={[
+            { label: "Capital solicitado", value: formatARS(o.montoSolicitado), strong: true },
+            {
+              label: "− Renovaciones",
+              value: totalRenovaciones > 0 ? `−${formatARS(totalRenovaciones)}` : "—",
+              tone: totalRenovaciones > 0 ? "danger" : "muted",
+            },
+            {
+              label: "− Precancelaciones de crédito en mora",
+              value:
+                totalPrecancelacionesMora > 0 ? `−${formatARS(totalPrecancelacionesMora)}` : "—",
+              tone: totalPrecancelacionesMora > 0 ? "danger" : "muted",
+            },
+            {
+              label: "− Transferencia a terceros",
+              value:
+                terceros > 0
+                  ? `−${formatARS(terceros)} · ${valorOPresentacion(o.deudaTerceros.entidad)} · CBU ${valorOPresentacion(o.deudaTerceros.cbu)}`
+                  : "—",
+              tone: terceros > 0 ? "danger" : "muted",
+            },
+            {
+              label: "Acreditación neta",
+              value: formatARS(netoAAcreditar(o)),
+              tone: "success",
+              big: true,
+            },
+          ]}
+        >
+          <dl className="mt-4 space-y-2.5 border-t border-ink-100 pt-4">
+            {[
+              ["Plazo", `${o.plazo} cuotas`],
+              ["Tasa", `${o.tna} % TNA`],
+              ["Valor de cuota", formatARS(o.valorCuota)],
+              ["Total a pagar por el cliente", formatARS(o.totalAPagar)],
+              ["Primer vencimiento", valorOPresentacion(o.primeraCuotaVencimiento)],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-4">
+                <dt className="text-sm text-ink-500">{label}</dt>
+                <dd className="text-right text-sm font-semibold tabular-nums text-ink-900">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </SummaryCard>
+        <SummaryCard
+          title="Situación y comportamiento de pago"
           icon={<IconShieldCheck width={16} height={16} />}
           rows={[
             { label: "Situación BCRA", value: app.situaciones ? `Situación ${app.situaciones.bcra}` : "—" },
-            { label: "Situación interna", value: app.situaciones ? `${app.situaciones.interna}` : "—" },
-            { label: "Solicitada", value: app.fechaSolicitud ?? "—" },
-            { label: "Preaprobada", value: app.fechaPreaprobacion ?? "—" },
-            { label: "Enviada a análisis", value: app.fechaEnvioAnalisis ?? "—" },
-            { label: "Aprobada", value: app.fechaAprobacion ?? "—" },
-            ...(app.riesgo.evaluadoCon
-              ? [
-                  {
-                    label: "Evaluado con ingreso",
-                    value: formatARS(app.riesgo.evaluadoCon.ingresoNeto),
-                  },
-                ]
-              : []),
+            {
+              label: "Situación Buró interno",
+              value: app.situaciones ? `${app.situaciones.interna}` : "—",
+            },
+            { label: "Vector de pago", value: vector ?? "Sin historial" },
+            {
+              label: "Último pago",
+              value: creditoConPagos ? textoUltimoPago(creditoConPagos) : "Sin pagos registrados",
+            },
           ]}
-        />
+          footer={
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={o.creditosActivos.length > 0 ? "outline" : "ghost"}
+                onClick={() => setHistorialAbierto(true)}
+                aria-label="Ver historial de pagos"
+              >
+                <IconEye width={14} height={14} />
+                Ver historial de pagos
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-expanded={logAbierto}
+                onClick={() => setLogAbierto((v) => !v)}
+              >
+                <IconCalendar width={14} height={14} />
+                {logAbierto ? "Ocultar log de estados" : "Ver log de estados"}
+              </Button>
+            </div>
+          }
+        >
+          {logAbierto && (
+            <ul className="mt-3 space-y-1.5 border-t border-ink-100 pt-3">
+              {logEstados.length === 0 ? (
+                <li className="text-sm text-ink-500">Sin movimientos registrados.</li>
+              ) : (
+                logEstados.map((e) => (
+                  <li key={e.estado} className="flex items-baseline justify-between gap-4 text-sm">
+                    <span className="text-ink-500">{e.estado}</span>
+                    <span className="font-semibold tabular-nums text-ink-900">{e.fecha}</span>
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
+        </SummaryCard>
         <SummaryCard
           title="Reglas institucionales"
           icon={<IconLandmark width={16} height={16} />}
@@ -483,6 +613,12 @@ export function AnalisisCredito({
             },
             { label: "Evaluado", value: app.riesgo.fecha ?? "—" },
           ]}
+          footer={
+            <Button size="sm" variant="outline" onClick={() => setConsulta("reglas")}>
+              <IconShieldCheck width={14} height={14} />
+              Visualizar reglas
+            </Button>
+          }
         />
         {app.riesgo.limites && (
           <SummaryCard
@@ -507,198 +643,6 @@ export function AnalisisCredito({
           />
         )}
         <SummaryCard
-          title="Plan de cuotas"
-          icon={<IconCalendar width={16} height={16} />}
-          rows={[
-            { label: "Línea", value: plan.plan.nombre },
-            {
-              label: `RCI (tope ${plan.plan.rciMaxPct} %)`,
-              value: formatPct(plan.rciPct),
-              tone: plan.cumpleRci ? "success" : "danger",
-            },
-            {
-              label: `Endeudamiento (máx. ${plan.plan.endeudamientoMaxPct} %)`,
-              value: formatPct(plan.endeudamientoPct),
-              tone: plan.cumpleEndeudamiento ? "success" : "danger",
-            },
-            {
-              label: "SMVM de bolsillo",
-              value: formatARS(plan.ingresoBolsillo),
-              tone: plan.cumpleSmvm ? "success" : "danger",
-            },
-            { label: "Capital máximo otorgable", value: formatARS(plan.capitalMaximo) },
-          ]}
-          footer={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setDesarrolloAbierto(true)}
-              aria-label="Ver desarrollo del préstamo"
-            >
-              <IconWallet width={14} height={14} />
-              Ver desarrollo del préstamo
-            </Button>
-          }
-        />
-        <SummaryCard
-          title="Oferta"
-          icon={<IconWallet width={16} height={16} />}
-          rows={[
-            { label: "Plan aplicado", value: o.planId ?? "Sin plan (pre-evaluación)" },
-            { label: "Capital solicitado", value: formatARS(o.montoSolicitado), strong: true },
-            { label: "Capital máximo actual", value: formatARS(o.capitalMaximoActual) },
-            { label: "Capital máximo base", value: formatARS(o.capitalMaximoBase) },
-            { label: "Capital máximo renovación", value: formatARS(o.capitalMaximoRenovacion) },
-            { label: "Plazo", value: `${o.plazo} cuotas` },
-            { label: "TNA", value: `${o.tna} %` },
-            { label: "Valor cuota", value: formatARS(o.valorCuota) },
-            { label: "Total a pagar", value: formatARS(o.totalAPagar) },
-            { label: "1ª cuota vence", value: valorOPresentacion(o.primeraCuotaVencimiento) },
-            { label: "Aceptada por cliente", value: o.aceptada ? "Sí" : "No" },
-            ...(precancel > 0
-              ? [
-                  {
-                    label: "Renovación créditos propios",
-                    value: `−${formatARS(precancel)}`,
-                    tone: "danger" as const,
-                  },
-                ]
-              : []),
-            ...(terceros > 0
-              ? [
-                  {
-                    label: `Terceros · ${o.deudaTerceros.entidad}`,
-                    value: `−${formatARS(terceros)} · CBU ${valorOPresentacion(o.deudaTerceros.cbu)}`,
-                    tone: "danger" as const,
-                  },
-                ]
-              : [
-                  {
-                    label: "Deuda terceros",
-                    value: o.deudaTerceros.habilitado
-                      ? `${valorOPresentacion(o.deudaTerceros.entidad)} · ${formatARS(o.deudaTerceros.importe)}`
-                      : "Sin deuda declarada",
-                  },
-                ]),
-            {
-              label: "Acreditación neta",
-              value: formatARS(netoAAcreditar(o)),
-              tone: "success",
-              big: true,
-            },
-          ]}
-        />
-        <SummaryCard
-          title="Buró / historial"
-          icon={<IconCreditCard width={16} height={16} />}
-          rows={[
-            { label: "Crédito propio", value: o.creditosActivos[0]?.id ?? "—" },
-            {
-              label: "Cuotas abonadas",
-              value: o.creditosActivos[0]
-                ? `${o.creditosActivos[0].cuotasAbonadas} de ${o.creditosActivos[0].cuotasOriginales}`
-                : "—",
-            },
-            { label: "Vector de mora interna", value: "0 días de atraso" },
-            {
-              label: "Situación BCRA",
-              value: app.situaciones ? `Situación ${app.situaciones.bcra}` : "—",
-            },
-            { label: "Situación interna", value: app.situaciones ? `${app.situaciones.interna}` : "—" },
-            { label: "Último pago", value: "hace 25 días" },
-          ]}
-          footer={
-            <Button
-              size="sm"
-              variant={o.creditosActivos.length > 0 ? "outline" : "ghost"}
-              onClick={() => setHistorialAbierto(true)}
-              aria-label="Ver historial de pagos"
-            >
-              <IconEye width={14} height={14} />
-              Ver historial de pagos
-              {o.creditosActivos.length > 0 && ` · ${o.creditosActivos.length} crédito${o.creditosActivos.length === 1 ? "" : "s"}`}
-            </Button>
-          }
-        />
-        <SummaryCard
-          title="Datos personales (post-oferta)"
-          icon={<IconUser width={16} height={16} />}
-          rows={personalesVisibles.map((c) => ({
-            label: c.label,
-            value: valorOPresentacion(valorCampoDisplay(app, c) || valorCampo(app, c)),
-          }))}
-        />
-        <SummaryCard
-          title="Datos laborales (post-oferta)"
-          icon={<IconBuilding width={16} height={16} />}
-          rows={laboralVisibles.map((c) => ({
-            label: c.label,
-            value: valorOPresentacion(valorCampoDisplay(app, c) || valorCampo(app, c)),
-          }))}
-        />
-        <SummaryCard
-          title="Documentación"
-          icon={<IconFileText width={16} height={16} />}
-          rows={[
-            {
-              label: "Legajo virtual",
-              value: `${docsCargados} de ${docsObligatorios.length} obligatorios`,
-            },
-            ...(app.identificacion.tipoCliente === "NUEVO"
-              ? [
-                  {
-                    label: "Registro de firma",
-                    value: app.identificacion.firmaRegistrada ? (
-                      <span className="inline-flex items-center gap-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element -- dibujo del cliente, sólo en memoria del navegador */}
-                        <img
-                          src={app.identificacion.firmaRegistrada.imagen}
-                          alt="Firma registrada del cliente"
-                          className="h-8 w-16 rounded border border-ink-200 bg-white object-contain"
-                        />
-                        Referencia para el legajo
-                      </span>
-                    ) : (
-                      "No registrada"
-                    ),
-                  },
-                ]
-              : []),
-            {
-              label: "Tarjetas tokenizadas",
-              value:
-                tokenizadas.length > 0
-                  ? tokenizadas.map((t) => `${t.marca} •••• ${t.ultimos4}`).join(" · ")
-                  : "Sin tarjetas",
-            },
-            {
-              label: "Referencias",
-              value: `${po.referencias.length} cargada${po.referencias.length === 1 ? "" : "s"}`,
-            },
-            {
-              label: "Garantes",
-              value: po.garantes.map(nombreApellido).filter(Boolean).join(", ") || "—",
-            },
-            {
-              label: "Legajo",
-              value: po.impresion
-                ? `${po.impresion.accion === "IMPRESO" ? "Impreso" : "Visualizado"} · ${po.impresion.fecha}`
-                : "Sin imprimir",
-            },
-          ]}
-          footer={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setLegajoAbierto(true)}
-              aria-label="Ver legajo virtual"
-            >
-              <IconEye width={14} height={14} />
-              Ver legajo virtual
-            </Button>
-          }
-        />
-        <SummaryCard
           title="Renovaciones"
           icon={<IconRefresh width={16} height={16} />}
           rows={
@@ -713,62 +657,15 @@ export function AnalisisCredito({
                   { label: "Total a cancelar", value: formatARS(precancel), strong: true },
                 ]
           }
-        />
-        <SummaryCard
-          title="Tarjetas tokenizadas (post-oferta)"
-          icon={<IconCreditCard width={16} height={16} />}
-          rows={
-            po.tarjetas.length === 0
-              ? [{ label: "Tarjetas", value: "Sin tarjetas cargadas", tone: "muted" as const }]
-              : po.tarjetas.flatMap((t, idx) => [
-                  {
-                    label: `Tarjeta ${idx + 1} · Vía`,
-                    value: `${t.via}${t.verificada === false ? " (no verificada)" : t.verificada ? " (verificada)" : ""} · ${t.estado}`,
-                  },
-                  {
-                    label: `Tarjeta ${idx + 1} · Detalle`,
-                    value:
-                      t.estado === "TOKENIZADA"
-                        ? `${valorOPresentacion(t.tipo ?? "")} · ${valorOPresentacion(t.marca ?? "")} · ${valorOPresentacion(t.nombreTitular ?? "")} · •••• ${valorOPresentacion(t.ultimos4 ?? "")} · ${valorOPresentacion(t.vencimiento ?? "")} · ${valorOPresentacion(t.emisor ?? "")}`
-                        : `Enviada a ${valorOPresentacion(t.enviadoA ?? "—")} · esperando cliente`,
-                  },
-                  {
-                    label: `Tarjeta ${idx + 1} · Token`,
-                    value: valorOPresentacion(t.token ?? "—"),
-                  },
-                ])
-          }
-        />
-        <SummaryCard
-          title="Legajo virtual (post-oferta)"
-          icon={<IconFileText width={16} height={16} />}
-          rows={[
-            {
-              label: "Obligatorios",
-              value: `${docsCargados} de ${docsObligatorios.length} obligatorios`,
-            },
-            ...cfgEfectiva.documentos.map((d) => ({
-              label: d.tipoId,
-              value: (po.legajo[d.tipoId]?.length ?? 0) > 0
-                ? po.legajo[d.tipoId]!.map((a) => `${a.nombre} (${a.detalle})`).join(" · ")
-                : d.obligatorio ? "Falta · obligatorio" : "—",
-              tone: (po.legajo[d.tipoId]?.length ?? 0) === 0 && d.obligatorio ? ("danger" as const) : undefined,
-            })),
-            {
-              label: "Impresión",
-              value: po.impresion
-                ? `${po.impresion.accion === "IMPRESO" ? "Impreso" : "Visualizado"} · ${po.impresion.fecha}`
-                : "Sin imprimir",
-            },
-          ]}
           footer={
             <Button
               size="sm"
-              variant={totalLegajoArchivos > 0 ? "outline" : "ghost"}
-              onClick={() => setLegajoAbierto(true)}
+              variant="outline"
+              disabled={aRenovar.length === 0}
+              onClick={() => setConsulta("renovar")}
             >
               <IconEye width={14} height={14} />
-              {totalLegajoArchivos > 0 ? `Ver documentos del legajo (${totalLegajoArchivos})` : "Ver legajo virtual"}
+              Ver desarrollo del crédito
             </Button>
           }
         />
@@ -976,6 +873,19 @@ export function AnalisisCredito({
       <PosicionClienteModal open={consulta === "posicion"} onClose={() => setConsulta(null)} />
       <BuroMotorModal open={consulta === "buro"} onClose={() => setConsulta(null)} />
       <CreditosRenovarModal open={consulta === "renovar"} onClose={() => setConsulta(null)} />
+      <ReglasMotorModal open={consulta === "reglas"} onClose={() => setConsulta(null)} />
+      <DatosCamposModal
+        open={consulta === "personales"}
+        onClose={() => setConsulta(null)}
+        titulo="Datos personales"
+        filas={filasCampos(personalesVisibles)}
+      />
+      <DatosCamposModal
+        open={consulta === "laborales"}
+        onClose={() => setConsulta(null)}
+        titulo="Datos laborales"
+        filas={filasCampos(laboralVisibles)}
+      />
       <ComentarioModal
         open={consulta === "comentario"}
         onClose={() => setConsulta(null)}

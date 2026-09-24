@@ -155,9 +155,7 @@ export interface LaboralIngresos {
   // Información adicional: no bloquea continuar (Onboarding §4.4).
   disponible: number;
   debitosNoRemunerativos: number;
-  extraccionesFecha: string;
   extraccionesImporte: number;
-  transferenciasFecha: string;
   transferenciasImporte: number;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { nombreProveedor } from "@/lib/parametros";
@@ -19,8 +19,6 @@ import {
   IconCheck,
   IconClock,
   IconCreditCard,
-  IconEye,
-  IconEyeOff,
   IconKey,
   IconLandmark,
   IconSend,
@@ -46,41 +44,7 @@ export function PantallaTokenizacion() {
   const [form, setForm] = useState(FORM_VACIO);
   const [procesando, setProcesando] = useState<string | null>(null);
   const [verReverso, setVerReverso] = useState(false);
-  const [reveladas, setReveladas] = useState<Set<string>>(new Set());
   const [tarjetaAQuitar, setTarjetaAQuitar] = useState<string | null>(null);
-  const timeoutsRef = useRef<Map<string, number>>(new Map());
-
-  useEffect(() => {
-    return () => {
-      timeoutsRef.current.forEach((id) => window.clearTimeout(id));
-    };
-  }, []);
-
-  function toggleRevelar(id: string) {
-    setReveladas((prev) => {
-      const next = new Set(prev);
-      const existing = timeoutsRef.current.get(id);
-      if (existing) {
-        window.clearTimeout(existing);
-        timeoutsRef.current.delete(id);
-      }
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-        const tid = window.setTimeout(() => {
-          setReveladas((c) => {
-            const n = new Set(c);
-            n.delete(id);
-            return n;
-          });
-          timeoutsRef.current.delete(id);
-        }, 20000);
-        timeoutsRef.current.set(id, tid);
-      }
-      return next;
-    });
-  }
 
   const cfg = configEfectiva(app.configuracion);
   const obligatoria = cfg.pantallas.find((p) => p.id === "tokenizacion")?.obligatoria ?? false;
@@ -100,16 +64,6 @@ export function PantallaTokenizacion() {
     form.cvv.length >= 3;
 
   function ejecutarQuitar(id: string) {
-    const tid = timeoutsRef.current.get(id);
-    if (tid) {
-      window.clearTimeout(tid);
-      timeoutsRef.current.delete(id);
-    }
-    setReveladas((c) => {
-      const n = new Set(c);
-      n.delete(id);
-      return n;
-    });
     quitarTarjeta(id);
   }
 
@@ -182,7 +136,6 @@ export function PantallaTokenizacion() {
                 const tokenizada = t.estado === "TOKENIZADA";
                 const porComprobar = tokenizada && t.via === "BASE_INTERNA" && t.verificada === false;
                 const valida = tarjetaValida(t);
-                const revelada = reveladas.has(t.id);
                 return (
                   <li
                     key={t.id}
@@ -202,7 +155,6 @@ export function PantallaTokenizacion() {
                             vencimiento={t.vencimiento}
                             numeroCompleto={t.numeroCompleto}
                             cvv={t.cvv}
-                            revelado={revelada}
                           />
                         </div>
                         <div className="mt-3 space-y-1.5 border-t border-ink-100 pt-3">
@@ -278,22 +230,6 @@ export function PantallaTokenizacion() {
                           className="flex-1 sm:flex-none"
                         >
                           Simular completado
-                        </Button>
-                      )}
-                      {tokenizada && (
-                        <Button
-                          size="sm"
-                          variant={revelada ? "outline" : "ghost"}
-                          onClick={() => toggleRevelar(t.id)}
-                          disabled={procesando !== null}
-                          className="flex-1 sm:flex-none"
-                        >
-                          {revelada ? (
-                            <IconEyeOff width={14} height={14} />
-                          ) : (
-                            <IconEye width={14} height={14} />
-                          )}
-                          {revelada ? "Ocultar" : "Ver datos"}
                         </Button>
                       )}
                       {porComprobar && (

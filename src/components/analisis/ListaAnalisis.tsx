@@ -14,16 +14,12 @@ import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
 type Vista = "tabla" | "lista";
 
-type Pestana = "PEND" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
+type Pestana = "TODOS" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "LIQ";
 
-// Bandeja del analista — 8 estados de creditonet-34.
-const PESTANAS: { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string }[] = [
-  {
-    id: "PEND",
-    titulo: "En trámite",
-    estados: ["BORRADOR", "EN_TRAMITE"],
-    vacio: "No hay solicitudes en trámite.",
-  },
+// Bandeja del analista — 7 estados (desde preaprobado en adelante) de creditonet-34.
+type DefPestana = { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string };
+
+const PESTANAS_ESTADO: DefPestana[] = [
   {
     id: "PRE",
     titulo: "Preaprobados",
@@ -68,6 +64,17 @@ const PESTANAS: { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: 
   },
 ];
 
+// "Todos": une los estados de las demás pestañas.
+const PESTANAS: DefPestana[] = [
+  {
+    id: "TODOS",
+    titulo: "Todos",
+    estados: PESTANAS_ESTADO.flatMap((p) => p.estados),
+    vacio: "No hay solicitudes para analizar.",
+  },
+  ...PESTANAS_ESTADO,
+];
+
 const COLUMNAS = [
   "Cliente",
   "DNI",
@@ -91,7 +98,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const [colapsado, setColapsado] = useState(false);
   const [vista, setVista] = useState<Vista>("tabla");
   const [pagina, setPagina] = useState<Record<Pestana, number>>({
-    PEND: 1,
+    TODOS: 1,
     PRE: 1,
     OBS: 1,
     COFE: 1,
@@ -103,7 +110,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const POR_PAGINA = 5;
 
   const cliente = app.cliente;
-  const propia = PESTANAS.find((p) => p.estados.includes(app.estado));
+  const propia = PESTANAS_ESTADO.find((p) => p.estados.includes(app.estado));
   // Sin elección explícita se muestra la pestaña donde está la solicitud; si no hay solicitud, default PRE.
   const activa = PESTANAS.find((p) => p.id === (eleccion ?? propia?.id ?? "PRE")) ?? PESTANAS[0];
 
@@ -120,6 +127,9 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
     return ordenarPorFechaVisibleAnalista(filtrados);
   }
 
+  // La solicitud en curso también aparece en "Todos".
+  const propiaEn = (p: Pestana) => propia !== undefined && (p === "TODOS" || propia.id === p);
+
   const visible =
     cliente !== null &&
     app.numeroCredito !== null &&
@@ -130,7 +140,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   // Filas = DB + solicitud en curso (si coincide y no está ya en DB)
   const filas = (p: Pestana) => {
     const dbCount = creditosDBEnPestana(p).length;
-    const extra = visible && propia?.id === p && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) ? 1 : 0;
+    const extra = visible && propiaEn(p) && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) ? 1 : 0;
     return dbCount + extra;
   };
 
@@ -272,7 +282,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
           {filas(activa.id) === 0 ? (
             <p className="flex items-center justify-center gap-2 px-5 py-8 text-center text-sm text-ink-400">
               <IconFileStack width={15} height={15} />
-              {propia && (busqueda.trim() || canal) && propia.id === activa.id
+              {propiaEn(activa.id) && (busqueda.trim() || canal)
                 ? "Ninguna solicitud coincide con la búsqueda o el filtro."
                 : activa.vacio}
             </p>
@@ -288,7 +298,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                       onAbrir={() => cargarCreditoDB(c)}
                     />
                   ))}
-                  {visible && propia?.id === activa.id && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) && paginaActual === 1 && (
+                  {visible && propiaEn(activa.id) && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) && paginaActual === 1 && (
                     <FilaCreditoCollapse key={`${activa.id}-en-curso`} credito={app} onAbrir={onAbrir} enCurso />
                   )}
                 </div>
@@ -347,7 +357,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                         </tr>
                       );
                     })}
-                    {visible && propia?.id === activa.id && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) && cliente && paginaActual === 1 && (
+                    {visible && propiaEn(activa.id) && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) && cliente && paginaActual === 1 && (
                       <tr className="cursor-pointer align-middle bg-brand-50/50 transition hover:bg-ink-25" onClick={onAbrir}>
                         <td className="px-3 py-3">
                           <p className="font-semibold text-ink-900">
