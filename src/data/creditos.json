@@ -3,133 +3,13 @@
     "version": "1.0.0",
     "descripcion": "DB simulada CreditoNet — 10 préstamos precargados con estados diversos",
     "generado": "2026-09-22",
-    "total": 50,
+    "total": 45,
     "bandejas": {
-      "vendedor": 25,
+      "vendedor": 20,
       "analista": 25
     }
   },
   "creditos": [
-    {
-      "_bandeja": "vendedor",
-      "_descripcion": "BORRADOR — Recién identificado, aún no solicitó. Aparece en 'En trámite' del vendedor.",
-      "numeroCredito": null,
-      "numeroCliente": "000412",
-      "estado": "BORRADOR",
-      "etapa": "ORIGINACION",
-      "tipoPersona": "FISICA",
-      "identificacion": {
-        "documento": "20111111",
-        "consultado": true,
-        "tipoCliente": "EXISTENTE",
-        "firmaRegistrada": null
-      },
-      "cliente": {
-        "apellido": "Gómez",
-        "nombre": "Juan Ignacio",
-        "dni": "20111111",
-        "cuil": "20-20111111-3",
-        "genero": "Masculino",
-        "fechaNacimiento": "15/04/1988",
-        "calle": "Av. Colón",
-        "numero": "2450",
-        "localidad": "Córdoba",
-        "provincia": "Córdoba",
-        "email": "juanignacio.gomez@gmail.com",
-        "telefono": "351 5432100"
-      },
-      "situaciones": {
-        "bcra": 1,
-        "interna": 1
-      },
-      "origenCampos": {
-        "apellido": "API pública",
-        "nombre": "API pública",
-        "dni": "API pública",
-        "cuil": "API pública",
-        "genero": "API pública",
-        "fechaNacimiento": "API pública",
-        "calle": "API pública",
-        "numero": "API pública",
-        "localidad": "API pública",
-        "provincia": "API pública",
-        "email": "Base interna"
-      },
-      "identidadVerificada": false,
-      "configuracion": {
-        "productoId": "prestamo-personal",
-        "organismoId": "empleados-salud",
-        "canalId": "sucursal",
-        "vendedorId": "juan-perez"
-      },
-      "laboral": {
-        "condicionLaboral": "",
-        "fechaInicioLaboral": "",
-        "empleadores": [],
-        "ingresoBruto": 0,
-        "ingresoNeto": 0,
-        "disponible": 0,
-        "debitosNoRemunerativos": 0,
-        "extraccionesImporte": 0,
-        "transferenciasImporte": 0
-      },
-      "riesgo": {
-        "estado": "PENDIENTE",
-        "motorId": null,
-        "escenario": "PASA",
-        "reglas": [],
-        "institucionales": [],
-        "resultado": null,
-        "planId": null,
-        "limites": null,
-        "evaluadoCon": null,
-        "fecha": null
-      },
-      "oferta": {
-        "planId": null,
-        "capitalMaximoBase": 2500000,
-        "capitalMaximoRenovacion": 2850000,
-        "capitalMaximoActual": 2500000,
-        "montoSolicitado": 2500000,
-        "plazo": 12,
-        "tna": 58,
-        "valorCuota": 0,
-        "totalAPagar": 0,
-        "primeraCuotaVencimiento": "10/10/2026",
-        "creditosActivos": [],
-        "deudaTerceros": {
-          "habilitado": false,
-          "entidad": "",
-          "importe": 0,
-          "cbu": ""
-        },
-        "aceptada": false
-      },
-      "postOferta": {
-        "precarga": {},
-        "personales": {},
-        "laboral": {},
-        "tarjetas": [],
-        "referencias": [],
-        "garantes": [],
-        "legajo": {},
-        "impresion": null
-      },
-      "pantallasVisitadas": [],
-      "analista": {
-        "tomado": false,
-        "observacion": null,
-        "reenviada": false,
-        "pantallasCorregidas": [],
-        "cambioOfertaPendiente": null
-      },
-      "rechazo": null,
-      "comentarios": [],
-      "fechaSolicitud": null,
-      "fechaPreaprobacion": null,
-      "fechaEnvioAnalisis": null,
-      "fechaAprobacion": null
-    },
     {
       "_bandeja": "vendedor",
       "_descripcion": "EN_TRAMITE — Originación paso 4, datos laborales incompletos. Vendedor debe completar.",
@@ -3576,606 +3456,6 @@
       "fechaSolicitud": "11/09/2026",
       "fechaPreaprobacion": "17/09/2026",
       "fechaEnvioAnalisis": "17/09/2026",
-      "fechaAprobacion": null
-    },
-    {
-      "_bandeja": "vendedor",
-      "_descripcion": "BORRADOR — Sin solicitar, falta completar originación",
-      "numeroCredito": null,
-      "numeroCliente": "001191",
-      "estado": "BORRADOR",
-      "etapa": "ORIGINACION",
-      "tipoPersona": "FISICA",
-      "identificacion": {
-        "documento": "01000000",
-        "consultado": true,
-        "tipoCliente": "EXISTENTE",
-        "firmaRegistrada": null
-      },
-      "cliente": {
-        "apellido": "Martínez",
-        "nombre": "Sofía",
-        "dni": "01000000",
-        "cuil": "20-01000000-0",
-        "genero": "Masculino",
-        "fechaNacimiento": "15/04/1990",
-        "calle": "Av. Colón",
-        "numero": "1000",
-        "localidad": "Córdoba",
-        "provincia": "Córdoba",
-        "email": "sofía.martínez@email.com",
-        "telefono": "351 5000000"
-      },
-      "situaciones": {
-        "bcra": 1,
-        "interna": 1
-      },
-      "origenCampos": {
-        "apellido": "API pública",
-        "nombre": "API pública",
-        "dni": "API pública",
-        "cuil": "API pública",
-        "genero": "API pública",
-        "fechaNacimiento": "API pública",
-        "calle": "API pública",
-        "numero": "API pública",
-        "localidad": "API pública",
-        "provincia": "API pública",
-        "email": "Base interna"
-      },
-      "identidadVerificada": false,
-      "configuracion": {
-        "productoId": "prestamo-personal",
-        "organismoId": "empleados-salud",
-        "canalId": "sucursal",
-        "vendedorId": "juan-perez"
-      },
-      "laboral": {
-        "condicionLaboral": "",
-        "fechaInicioLaboral": "",
-        "empleadores": [],
-        "ingresoBruto": 0,
-        "ingresoNeto": 0,
-        "disponible": 0,
-        "debitosNoRemunerativos": 0,
-        "extraccionesImporte": 0,
-        "transferenciasImporte": 0
-      },
-      "riesgo": {
-        "estado": "PENDIENTE",
-        "motorId": null,
-        "escenario": "PASA",
-        "reglas": [],
-        "institucionales": [],
-        "resultado": null,
-        "planId": null,
-        "limites": null,
-        "evaluadoCon": null,
-        "fecha": null
-      },
-      "oferta": {
-        "planId": null,
-        "capitalMaximoBase": 2500000,
-        "capitalMaximoRenovacion": 2850000,
-        "capitalMaximoActual": 2500000,
-        "montoSolicitado": 2500000,
-        "plazo": 12,
-        "tna": 58,
-        "valorCuota": 0,
-        "totalAPagar": 0,
-        "primeraCuotaVencimiento": "10/10/2026",
-        "creditosActivos": [],
-        "deudaTerceros": {
-          "habilitado": false,
-          "entidad": "",
-          "importe": 0,
-          "cbu": ""
-        },
-        "aceptada": false
-      },
-      "postOferta": {
-        "precarga": {},
-        "personales": {},
-        "laboral": {},
-        "tarjetas": [],
-        "referencias": [],
-        "garantes": [],
-        "legajo": {},
-        "impresion": null
-      },
-      "pantallasVisitadas": [],
-      "analista": {
-        "tomado": false,
-        "observacion": null,
-        "reenviada": false,
-        "pantallasCorregidas": [],
-        "cambioOfertaPendiente": null
-      },
-      "rechazo": null,
-      "comentarios": [],
-      "fechaSolicitud": null,
-      "fechaPreaprobacion": null,
-      "fechaEnvioAnalisis": null,
-      "fechaAprobacion": null
-    },
-    {
-      "_bandeja": "vendedor",
-      "_descripcion": "BORRADOR — Sin solicitar, falta completar originación",
-      "numeroCredito": null,
-      "numeroCliente": "001192",
-      "estado": "BORRADOR",
-      "etapa": "ORIGINACION",
-      "tipoPersona": "FISICA",
-      "identificacion": {
-        "documento": "01012347",
-        "consultado": true,
-        "tipoCliente": "EXISTENTE",
-        "firmaRegistrada": null
-      },
-      "cliente": {
-        "apellido": "López",
-        "nombre": "Joaquín",
-        "dni": "01012347",
-        "cuil": "20-01012347-1",
-        "genero": "Femenino",
-        "fechaNacimiento": "15/04/1990",
-        "calle": "Av. Colón",
-        "numero": "1001",
-        "localidad": "Córdoba",
-        "provincia": "Córdoba",
-        "email": "joaquín.lópez@email.com",
-        "telefono": "351 5000001"
-      },
-      "situaciones": {
-        "bcra": 1,
-        "interna": 1
-      },
-      "origenCampos": {
-        "apellido": "API pública",
-        "nombre": "API pública",
-        "dni": "API pública",
-        "cuil": "API pública",
-        "genero": "API pública",
-        "fechaNacimiento": "API pública",
-        "calle": "API pública",
-        "numero": "API pública",
-        "localidad": "API pública",
-        "provincia": "API pública",
-        "email": "Base interna"
-      },
-      "identidadVerificada": false,
-      "configuracion": {
-        "productoId": "credito-judicial",
-        "organismoId": "policia-provincial",
-        "canalId": "digital",
-        "vendedorId": "ana-torres"
-      },
-      "laboral": {
-        "condicionLaboral": "",
-        "fechaInicioLaboral": "",
-        "empleadores": [],
-        "ingresoBruto": 0,
-        "ingresoNeto": 0,
-        "disponible": 0,
-        "debitosNoRemunerativos": 0,
-        "extraccionesImporte": 0,
-        "transferenciasImporte": 0
-      },
-      "riesgo": {
-        "estado": "PENDIENTE",
-        "motorId": null,
-        "escenario": "PASA",
-        "reglas": [],
-        "institucionales": [],
-        "resultado": null,
-        "planId": null,
-        "limites": null,
-        "evaluadoCon": null,
-        "fecha": null
-      },
-      "oferta": {
-        "planId": null,
-        "capitalMaximoBase": 2500000,
-        "capitalMaximoRenovacion": 2850000,
-        "capitalMaximoActual": 2500000,
-        "montoSolicitado": 2500000,
-        "plazo": 12,
-        "tna": 58,
-        "valorCuota": 0,
-        "totalAPagar": 0,
-        "primeraCuotaVencimiento": "10/10/2026",
-        "creditosActivos": [],
-        "deudaTerceros": {
-          "habilitado": false,
-          "entidad": "",
-          "importe": 0,
-          "cbu": ""
-        },
-        "aceptada": false
-      },
-      "postOferta": {
-        "precarga": {},
-        "personales": {},
-        "laboral": {},
-        "tarjetas": [],
-        "referencias": [],
-        "garantes": [],
-        "legajo": {},
-        "impresion": null
-      },
-      "pantallasVisitadas": [],
-      "analista": {
-        "tomado": false,
-        "observacion": null,
-        "reenviada": false,
-        "pantallasCorregidas": [],
-        "cambioOfertaPendiente": null
-      },
-      "rechazo": null,
-      "comentarios": [],
-      "fechaSolicitud": null,
-      "fechaPreaprobacion": null,
-      "fechaEnvioAnalisis": null,
-      "fechaAprobacion": null
-    },
-    {
-      "_bandeja": "vendedor",
-      "_descripcion": "BORRADOR — Sin solicitar, falta completar originación",
-      "numeroCredito": null,
-      "numeroCliente": "001193",
-      "estado": "BORRADOR",
-      "etapa": "ORIGINACION",
-      "tipoPersona": "FISICA",
-      "identificacion": {
-        "documento": "01024694",
-        "consultado": true,
-        "tipoCliente": "EXISTENTE",
-        "firmaRegistrada": null
-      },
-      "cliente": {
-        "apellido": "Rodríguez",
-        "nombre": "Valentina",
-        "dni": "01024694",
-        "cuil": "20-01024694-2",
-        "genero": "Masculino",
-        "fechaNacimiento": "15/04/1990",
-        "calle": "Av. Colón",
-        "numero": "1002",
-        "localidad": "Córdoba",
-        "provincia": "Córdoba",
-        "email": "valentina.rodríguez@email.com",
-        "telefono": "351 5000002"
-      },
-      "situaciones": {
-        "bcra": 1,
-        "interna": 1
-      },
-      "origenCampos": {
-        "apellido": "API pública",
-        "nombre": "API pública",
-        "dni": "API pública",
-        "cuil": "API pública",
-        "genero": "API pública",
-        "fechaNacimiento": "API pública",
-        "calle": "API pública",
-        "numero": "API pública",
-        "localidad": "API pública",
-        "provincia": "API pública",
-        "email": "Base interna"
-      },
-      "identidadVerificada": false,
-      "configuracion": {
-        "productoId": "prestamo-prendario",
-        "organismoId": "municipales",
-        "canalId": "sucursal",
-        "vendedorId": "carlos-ruiz"
-      },
-      "laboral": {
-        "condicionLaboral": "",
-        "fechaInicioLaboral": "",
-        "empleadores": [],
-        "ingresoBruto": 0,
-        "ingresoNeto": 0,
-        "disponible": 0,
-        "debitosNoRemunerativos": 0,
-        "extraccionesImporte": 0,
-        "transferenciasImporte": 0
-      },
-      "riesgo": {
-        "estado": "PENDIENTE",
-        "motorId": null,
-        "escenario": "PASA",
-        "reglas": [],
-        "institucionales": [],
-        "resultado": null,
-        "planId": null,
-        "limites": null,
-        "evaluadoCon": null,
-        "fecha": null
-      },
-      "oferta": {
-        "planId": null,
-        "capitalMaximoBase": 2500000,
-        "capitalMaximoRenovacion": 2850000,
-        "capitalMaximoActual": 2500000,
-        "montoSolicitado": 2500000,
-        "plazo": 12,
-        "tna": 58,
-        "valorCuota": 0,
-        "totalAPagar": 0,
-        "primeraCuotaVencimiento": "10/10/2026",
-        "creditosActivos": [],
-        "deudaTerceros": {
-          "habilitado": false,
-          "entidad": "",
-          "importe": 0,
-          "cbu": ""
-        },
-        "aceptada": false
-      },
-      "postOferta": {
-        "precarga": {},
-        "personales": {},
-        "laboral": {},
-        "tarjetas": [],
-        "referencias": [],
-        "garantes": [],
-        "legajo": {},
-        "impresion": null
-      },
-      "pantallasVisitadas": [],
-      "analista": {
-        "tomado": false,
-        "observacion": null,
-        "reenviada": false,
-        "pantallasCorregidas": [],
-        "cambioOfertaPendiente": null
-      },
-      "rechazo": null,
-      "comentarios": [],
-      "fechaSolicitud": null,
-      "fechaPreaprobacion": null,
-      "fechaEnvioAnalisis": null,
-      "fechaAprobacion": null
-    },
-    {
-      "_bandeja": "vendedor",
-      "_descripcion": "BORRADOR — Sin solicitar, falta completar originación",
-      "numeroCredito": null,
-      "numeroCliente": "001194",
-      "estado": "BORRADOR",
-      "etapa": "ORIGINACION",
-      "tipoPersona": "FISICA",
-      "identificacion": {
-        "documento": "01037041",
-        "consultado": true,
-        "tipoCliente": "EXISTENTE",
-        "firmaRegistrada": null
-      },
-      "cliente": {
-        "apellido": "García",
-        "nombre": "Santiago",
-        "dni": "01037041",
-        "cuil": "20-01037041-3",
-        "genero": "Femenino",
-        "fechaNacimiento": "15/04/1990",
-        "calle": "Av. Colón",
-        "numero": "1003",
-        "localidad": "Córdoba",
-        "provincia": "Córdoba",
-        "email": "santiago.garcía@email.com",
-        "telefono": "351 5000003"
-      },
-      "situaciones": {
-        "bcra": 1,
-        "interna": 1
-      },
-      "origenCampos": {
-        "apellido": "API pública",
-        "nombre": "API pública",
-        "dni": "API pública",
-        "cuil": "API pública",
-        "genero": "API pública",
-        "fechaNacimiento": "API pública",
-        "calle": "API pública",
-        "numero": "API pública",
-        "localidad": "API pública",
-        "provincia": "API pública",
-        "email": "Base interna"
-      },
-      "identidadVerificada": false,
-      "configuracion": {
-        "productoId": "adelanto-sueldo",
-        "organismoId": "docentes-provincial",
-        "canalId": "digital",
-        "vendedorId": "juan-perez"
-      },
-      "laboral": {
-        "condicionLaboral": "",
-        "fechaInicioLaboral": "",
-        "empleadores": [],
-        "ingresoBruto": 0,
-        "ingresoNeto": 0,
-        "disponible": 0,
-        "debitosNoRemunerativos": 0,
-        "extraccionesImporte": 0,
-        "transferenciasImporte": 0
-      },
-      "riesgo": {
-        "estado": "PENDIENTE",
-        "motorId": null,
-        "escenario": "PASA",
-        "reglas": [],
-        "institucionales": [],
-        "resultado": null,
-        "planId": null,
-        "limites": null,
-        "evaluadoCon": null,
-        "fecha": null
-      },
-      "oferta": {
-        "planId": null,
-        "capitalMaximoBase": 2500000,
-        "capitalMaximoRenovacion": 2850000,
-        "capitalMaximoActual": 2500000,
-        "montoSolicitado": 2500000,
-        "plazo": 12,
-        "tna": 58,
-        "valorCuota": 0,
-        "totalAPagar": 0,
-        "primeraCuotaVencimiento": "10/10/2026",
-        "creditosActivos": [],
-        "deudaTerceros": {
-          "habilitado": false,
-          "entidad": "",
-          "importe": 0,
-          "cbu": ""
-        },
-        "aceptada": false
-      },
-      "postOferta": {
-        "precarga": {},
-        "personales": {},
-        "laboral": {},
-        "tarjetas": [],
-        "referencias": [],
-        "garantes": [],
-        "legajo": {},
-        "impresion": null
-      },
-      "pantallasVisitadas": [],
-      "analista": {
-        "tomado": false,
-        "observacion": null,
-        "reenviada": false,
-        "pantallasCorregidas": [],
-        "cambioOfertaPendiente": null
-      },
-      "rechazo": null,
-      "comentarios": [],
-      "fechaSolicitud": null,
-      "fechaPreaprobacion": null,
-      "fechaEnvioAnalisis": null,
-      "fechaAprobacion": null
-    },
-    {
-      "_bandeja": "vendedor",
-      "_descripcion": "BORRADOR — Sin solicitar, falta completar originación",
-      "numeroCredito": null,
-      "numeroCliente": "001195",
-      "estado": "BORRADOR",
-      "etapa": "ORIGINACION",
-      "tipoPersona": "FISICA",
-      "identificacion": {
-        "documento": "01049388",
-        "consultado": true,
-        "tipoCliente": "EXISTENTE",
-        "firmaRegistrada": null
-      },
-      "cliente": {
-        "apellido": "Fernández",
-        "nombre": "Camila",
-        "dni": "01049388",
-        "cuil": "20-01049388-4",
-        "genero": "Masculino",
-        "fechaNacimiento": "15/04/1990",
-        "calle": "Av. Colón",
-        "numero": "1004",
-        "localidad": "Córdoba",
-        "provincia": "Córdoba",
-        "email": "camila.fernández@email.com",
-        "telefono": "351 5000004"
-      },
-      "situaciones": {
-        "bcra": 1,
-        "interna": 1
-      },
-      "origenCampos": {
-        "apellido": "API pública",
-        "nombre": "API pública",
-        "dni": "API pública",
-        "cuil": "API pública",
-        "genero": "API pública",
-        "fechaNacimiento": "API pública",
-        "calle": "API pública",
-        "numero": "API pública",
-        "localidad": "API pública",
-        "provincia": "API pública",
-        "email": "Base interna"
-      },
-      "identidadVerificada": false,
-      "configuracion": {
-        "productoId": "prestamo-personal",
-        "organismoId": "empleados-salud",
-        "canalId": "sucursal",
-        "vendedorId": "ana-torres"
-      },
-      "laboral": {
-        "condicionLaboral": "",
-        "fechaInicioLaboral": "",
-        "empleadores": [],
-        "ingresoBruto": 0,
-        "ingresoNeto": 0,
-        "disponible": 0,
-        "debitosNoRemunerativos": 0,
-        "extraccionesImporte": 0,
-        "transferenciasImporte": 0
-      },
-      "riesgo": {
-        "estado": "PENDIENTE",
-        "motorId": null,
-        "escenario": "PASA",
-        "reglas": [],
-        "institucionales": [],
-        "resultado": null,
-        "planId": null,
-        "limites": null,
-        "evaluadoCon": null,
-        "fecha": null
-      },
-      "oferta": {
-        "planId": null,
-        "capitalMaximoBase": 2500000,
-        "capitalMaximoRenovacion": 2850000,
-        "capitalMaximoActual": 2500000,
-        "montoSolicitado": 2500000,
-        "plazo": 12,
-        "tna": 58,
-        "valorCuota": 0,
-        "totalAPagar": 0,
-        "primeraCuotaVencimiento": "10/10/2026",
-        "creditosActivos": [],
-        "deudaTerceros": {
-          "habilitado": false,
-          "entidad": "",
-          "importe": 0,
-          "cbu": ""
-        },
-        "aceptada": false
-      },
-      "postOferta": {
-        "precarga": {},
-        "personales": {},
-        "laboral": {},
-        "tarjetas": [],
-        "referencias": [],
-        "garantes": [],
-        "legajo": {},
-        "impresion": null
-      },
-      "pantallasVisitadas": [],
-      "analista": {
-        "tomado": false,
-        "observacion": null,
-        "reenviada": false,
-        "pantallasCorregidas": [],
-        "cambioOfertaPendiente": null
-      },
-      "rechazo": null,
-      "comentarios": [],
-      "fechaSolicitud": null,
-      "fechaPreaprobacion": null,
-      "fechaEnvioAnalisis": null,
       "fechaAprobacion": null
     },
     {
@@ -14799,6 +14079,438 @@
       "fechaPreaprobacion": "24/09/2026",
       "fechaEnvioAnalisis": "24/09/2026",
       "fechaAprobacion": "24/09/2026"
+    },
+    {
+      "_bandeja": "vendedor",
+      "_descripcion": "EN_TRAMITE POST-OFERTA 7/7 — Oferta aceptada 1250000 · 24 cuotas, listo para enviar a análisis",
+      "numeroCredito": "CR-000231",
+      "numeroCliente": "011231",
+      "estado": "EN_TRAMITE",
+      "etapa": "POST_OFERTA",
+      "tipoPersona": "FISICA",
+      "identificacion": {
+        "documento": "31200031",
+        "consultado": true,
+        "tipoCliente": "NUEVO",
+        "firmaRegistrada": {
+          "imagen": "data:image/png;base64,firma_mock",
+          "fecha": "Hoy 08:00"
+        }
+      },
+      "cliente": {
+        "apellido": "Ferrer",
+        "nombre": "Martín",
+        "dni": "31200031",
+        "cuil": "20-31200031-5",
+        "genero": "Masculino",
+        "fechaNacimiento": "18/09/1997",
+        "calle": "Bv. San Juan",
+        "numero": "890",
+        "localidad": "Córdoba",
+        "provincia": "Córdoba",
+        "email": "martin.ferrer@email.com",
+        "telefono": "351 6000031"
+      },
+      "situaciones": {
+        "bcra": 1,
+        "interna": 1
+      },
+      "origenCampos": {
+        "apellido": "API pública",
+        "nombre": "API pública",
+        "dni": "API pública",
+        "cuil": "API pública",
+        "genero": "API pública",
+        "fechaNacimiento": "API pública",
+        "calle": "API pública",
+        "numero": "API pública",
+        "localidad": "API pública",
+        "provincia": "API pública",
+        "email": "Manual"
+      },
+      "identidadVerificada": true,
+      "configuracion": {
+        "productoId": "prestamo-personal",
+        "organismoId": "empleados-salud",
+        "canalId": "sucursal",
+        "vendedorId": "juan-perez"
+      },
+      "laboral": {
+        "condicionLaboral": "Empleado fijo",
+        "fechaInicioLaboral": "10/02/2023",
+        "empleadores": [
+          {
+            "banco": "Banco Nación",
+            "cuit": "30-70891234-5",
+            "razonSocial": "Banco Nación Servicios S.A."
+          }
+        ],
+        "ingresoBruto": 1150000,
+        "ingresoNeto": 950000,
+        "disponible": 0,
+        "debitosNoRemunerativos": 0,
+        "extraccionesImporte": 0,
+        "transferenciasImporte": 0
+      },
+      "riesgo": {
+        "estado": "COMPLETO",
+        "motorId": "motor-salud",
+        "escenario": "PASA",
+        "reglas": [
+          {
+            "id": "R01",
+            "codigo": "BCRA-01",
+            "nombre": "Situación BCRA",
+            "detalle": "Situación 1 habilitada",
+            "fuente": "BCRA",
+            "valorEvaluado": "1",
+            "condicion": "<= 2",
+            "bloqueante": true,
+            "resultado": "PASA"
+          }
+        ],
+        "institucionales": [
+          {
+            "id": "I01",
+            "codigo": "INST-01",
+            "nombre": "Edad mínima",
+            "detalle": "Mayor de 18",
+            "fuente": "Parámetros",
+            "valorEvaluado": "28 años",
+            "condicion": ">= 18",
+            "bloqueante": true,
+            "resultado": "PASA",
+            "momento": "IDENTIFICACION"
+          }
+        ],
+        "resultado": "PASA",
+        "planId": "linea-salud-2026",
+        "limites": {
+          "capitalSolicitado": 1250000,
+          "cuotasVigentes": 0,
+          "cuotasLiberadas": 0,
+          "limites": [
+            {
+              "id": "universal",
+              "label": "Límite universal por cliente",
+              "detalle": "Exposición máxima",
+              "monto": 5000000
+            },
+            {
+              "id": "brutos",
+              "label": "Límite por sueldos brutos",
+              "detalle": "3 sueldos brutos de $1.150.000",
+              "monto": 3450000
+            },
+            {
+              "id": "producto",
+              "label": "Límite por producto",
+              "detalle": "Préstamo personal",
+              "monto": 4000000
+            },
+            {
+              "id": "plan",
+              "label": "Límite por plan de cuotas",
+              "detalle": "Línea Salud 2026",
+              "monto": 2500000
+            },
+            {
+              "id": "cuota",
+              "label": "Límite por cuota máxima",
+              "detalle": "Relación cuota-ingreso: $380.000 en 24 cuotas",
+              "monto": 5100000
+            }
+          ],
+          "limiteAplicadoId": "plan",
+          "capitalPorLimites": 2500000,
+          "limitantes": [
+            {
+              "id": "tipo-cliente",
+              "label": "Cliente nuevo",
+              "detalle": "Primera operación — recorte 50%",
+              "recortePct": 50,
+              "aplica": true
+            },
+            {
+              "id": "condicion-laboral",
+              "label": "Condición laboral: Empleado fijo",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            },
+            {
+              "id": "situacion-bcra",
+              "label": "Situación BCRA 1",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            }
+          ],
+          "recorteAplicadoPct": 50,
+          "capitalConsiderado": 1250000,
+          "limitesCuota": [
+            {
+              "id": "smvm",
+              "label": "SMVM de bolsillo",
+              "detalle": "Ingreso neto $950.000 menos mínimo $350.000",
+              "monto": 600000
+            },
+            {
+              "id": "rci",
+              "label": "Relación cuota-ingreso",
+              "detalle": "40 % del ingreso neto",
+              "monto": 380000
+            },
+            {
+              "id": "endeudamiento",
+              "label": "Nivel de endeudamiento",
+              "detalle": "50 % del bruto menos cuotas vigentes",
+              "monto": 575000
+            }
+          ],
+          "limiteCuotaAplicadoId": "rci",
+          "cuotaMaxima": 380000
+        },
+        "evaluadoCon": {
+          "ingresoNeto": 950000,
+          "fechaNacimiento": "18/09/1997",
+          "genero": "Masculino"
+        },
+        "fecha": "Hoy 08:30"
+      },
+      "oferta": {
+        "planId": "linea-salud-2026",
+        "capitalMaximoBase": 1250000,
+        "capitalMaximoRenovacion": 1250000,
+        "capitalMaximoActual": 1250000,
+        "montoSolicitado": 1250000,
+        "plazo": 24,
+        "tna": 67,
+        "valorCuota": 94800,
+        "totalAPagar": 2275200,
+        "primeraCuotaVencimiento": "10/11/2026",
+        "creditosActivos": [],
+        "deudaTerceros": {
+          "habilitado": false,
+          "entidad": "",
+          "importe": 0,
+          "cbu": ""
+        },
+        "aceptada": true
+      },
+      "postOferta": {
+        "precarga": {
+          "nombre": "Martín",
+          "apellido": "Ferrer",
+          "dni": "31.200.031",
+          "cuit": "20-31200031-5",
+          "fechaNacimiento": "18/09/1997",
+          "genero": "Masculino",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "2233445",
+          "email": "martin.ferrer@email.com",
+          "banco": "Banco Nación",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "890",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54"
+        },
+        "personales": {
+          "nacionalidad": "Argentina",
+          "estadoCivil": "Soltera/o",
+          "tipoVivienda": "Inquilino",
+          "personasACargo": "0",
+          "tieneConyuge": "No",
+          "dni": "31.200.031",
+          "cuit": "20-31200031-5",
+          "nombre": "Martín",
+          "apellido": "Ferrer",
+          "fechaNacimiento": "18/09/1997",
+          "genero": "Masculino",
+          "domicilio.calle": "Bv. San Juan",
+          "domicilio.numero": "890",
+          "domicilio.provincia": "Córdoba",
+          "domicilio.localidad": "Córdoba",
+          "domicilio.codigoPostal": "5000",
+          "domicilio.barrio": "Alberdi",
+          "companiaTelefonica": "Personal",
+          "telefono.pais": "+54",
+          "telefono.caracteristica": "351",
+          "telefono.numero": "2233445",
+          "email": "martin.ferrer@email.com"
+        },
+        "laboral": {
+          "cuitEmpleador": "30-70891234-5",
+          "razonSocial": "Banco Nación Servicios S.A.",
+          "rubro": "Salud - Atención primaria",
+          "numeroLegajo": "BN-4421",
+          "cargo": "Administrativo",
+          "banco": "Banco Nación",
+          "cbu.Banco Nación": "0110599520000023456789",
+          "domicilioLaboral.calle": "Bv. Los Andes",
+          "domicilioLaboral.numero": "1250",
+          "domicilioLaboral.barrio": "Cerro de las Rosas",
+          "domicilioLaboral.provincia": "Córdoba",
+          "domicilioLaboral.localidad": "Córdoba",
+          "domicilioLaboral.codigoPostal": "5000",
+          "telefonoLaboral.pais": "+54",
+          "telefonoLaboral.caracteristica": "351",
+          "telefonoLaboral.numero": "4228005",
+          "telefonoLaboral.interno": "105",
+          "telefonoLaboral.horario": "Lunes a viernes de 8 a 16 h",
+          "reparticion": "Dirección de Recursos Humanos"
+        },
+        "tarjetas": [
+          {
+            "id": "tarjeta-1",
+            "via": "PRESENCIAL",
+            "estado": "TOKENIZADA",
+            "verificada": true,
+            "enviadoA": null,
+            "tipo": "DEBITO",
+            "marca": "Visa",
+            "nombreTitular": "MARTÍN FERRER",
+            "primeros4": "4509",
+            "ultimos4": "1234",
+            "vencimiento": "09/30",
+            "emisor": "Banco Nación",
+            "fechaTokenizacion": "Hoy 08:45",
+            "token": "tok_demo_NN12AA",
+            "numeroCompleto": "4509000000001234",
+            "cvv": "456"
+          }
+        ],
+        "referencias": [
+          {
+            "id": "referencia-1",
+            "vinculo": "Familiar directo",
+            "dni": "30.111.222",
+            "nombre": "Lucía",
+            "apellido": "Fernández",
+            "domicilio": {
+              "calle": "Obispo Trejo",
+              "numero": "520",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "lucia.fernandez@email.com",
+            "telefono": "351 6543210",
+            "autocompletado": true,
+            "condicionLaboral": "",
+            "ingresoBruto": 0,
+            "ingresoNeto": 0,
+            "reciboSueldo": [],
+            "otrosDocumentos": [],
+            "empleadorCalle": "",
+            "empleadorLocalidad": "",
+            "empleadorCompaniaTelefonica": "",
+            "empleadorTelefono": "",
+            "banco": "",
+            "cbu": ""
+          }
+        ],
+        "garantes": [
+          {
+            "id": "garante-1",
+            "vinculo": "Cónyuge",
+            "dni": "27.001.370",
+            "nombre": "Roberto",
+            "apellido": "González",
+            "domicilio": {
+              "calle": "Av. Rafael Núñez",
+              "numero": "3210",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "roberto.gonzalez@email.com",
+            "telefono": "351 6543220",
+            "autocompletado": true,
+            "condicionLaboral": "Empleado fijo",
+            "ingresoBruto": 1050000,
+            "ingresoNeto": 840000,
+            "reciboSueldo": [
+              {
+                "id": "recibo-garante-10-1",
+                "nombre": "recibo_garante_10_1.jpg",
+                "detalle": "1.2 MB · Hoy 08:50"
+              }
+            ],
+            "otrosDocumentos": [],
+            "empleadorCalle": "Bv. Los Andes 1250",
+            "empleadorLocalidad": "Córdoba",
+            "empleadorCompaniaTelefonica": "Personal",
+            "empleadorTelefono": "351 4228890",
+            "banco": "Banco Galicia",
+            "cbu": "0070199530000012345678"
+          }
+        ],
+        "legajo": {
+          "dni-frente": [
+            {
+              "id": "dni-frente-1",
+              "nombre": "dni_frente_1.jpg",
+              "detalle": "1.1 MB · Hoy 08:50"
+            }
+          ],
+          "dni-dorso": [
+            {
+              "id": "dni-dorso-1",
+              "nombre": "dni_dorso_1.jpg",
+              "detalle": "1.0 MB · Hoy 08:50"
+            }
+          ],
+          "recibo-sueldo": [
+            {
+              "id": "recibo-sueldo-1",
+              "nombre": "recibo_sueldo_1.jpg",
+              "detalle": "1.3 MB · Hoy 08:50"
+            }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.1 MB · Hoy 08:50"
+            }
+          ]
+        },
+        "impresion": {
+          "accion": "VISUALIZADO",
+          "fecha": "Hoy 09:15"
+        }
+      },
+      "pantallasVisitadas": [
+        "personales",
+        "laboral",
+        "tokenizacion",
+        "referencias",
+        "garantias",
+        "legajo",
+        "impresion"
+      ],
+      "analista": {
+        "tomado": false,
+        "observacion": null,
+        "reenviada": false,
+        "pantallasCorregidas": [],
+        "cambioOfertaPendiente": null
+      },
+      "rechazo": null,
+      "comentarios": [],
+      "fechaSolicitud": "24/09/2026",
+      "fechaPreaprobacion": null,
+      "fechaEnvioAnalisis": null,
+      "fechaAprobacion": null
     }
   ]
 }

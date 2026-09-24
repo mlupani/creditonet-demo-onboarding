@@ -11,6 +11,7 @@ import {
   IconBarChart,
   IconCalendar,
   IconChevronDown,
+  IconRefresh,
   IconUser,
   IconWallet,
 } from "@/components/icons";
@@ -110,8 +111,14 @@ export function FilaCreditoCollapse({
           <p className="mt-1 text-xs text-ink-400">Organismo</p>
           <p className="truncate text-sm font-semibold text-ink-800" title={organismo}>{organismo}</p>
         </div>
-        <div className="flex w-40 shrink-0 justify-center">
+        <div className="flex w-40 shrink-0 flex-col items-center gap-1.5">
           <EstadoBadge estado={credito.estado} />
+          {credito.analista.reenviada && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
+              <IconRefresh width={11} height={11} />
+              Reenviada con correcciones
+            </span>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <Button
@@ -149,6 +156,12 @@ export function FilaCreditoCollapse({
               <div>
                 <EstadoBadge estado={credito.estado} />
               </div>
+              {credito.analista.reenviada && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
+                  <IconRefresh width={11} height={11} />
+                  Reenviada con correcciones
+                </span>
+              )}
             </Seccion>
             <Seccion icono={<IconCalendar width={18} height={18} />} titulo="Gestión">
               <Dato label="Fecha" valor={fecha ?? "—"} />

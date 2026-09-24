@@ -110,10 +110,13 @@ export function PostOfertaShell() {
     setPantallaActual,
     visitarPantalla,
     finalizarCarga,
+    agregarComentario,
     guardarCorreccion,
     reabrirCorreccion,
   } = useApplication();
   const [confirmar, setConfirmar] = useState(false);
+  // Comentario opcional al reenviar una observada: qué se vio y qué se corrigió.
+  const [comentario, setComentario] = useState("");
 
   const visibles = useMemo(() => pantallasVisibles(app.configuracion), [app.configuracion]);
   const estados = useMemo(() => estadoPantallasPostOferta(app), [app]);
@@ -340,6 +343,10 @@ export function PostOfertaShell() {
               autoFocus
               onClick={() => {
                 setConfirmar(false);
+                if (observada && comentario.trim()) {
+                  agregarComentario(comentario.trim());
+                  setComentario("");
+                }
                 finalizarCarga();
               }}
             >
@@ -360,6 +367,25 @@ export function PostOfertaShell() {
               : "El crédito ha sido debidamente cargado y pasa a análisis de riesgo. La solicitud pasa de En trámite a En análisis."}
           </p>
         </div>
+        {observada && (
+          <div className="mt-4">
+            <label
+              htmlFor="comentario-reenvio"
+              className="mb-1.5 block text-sm font-medium text-ink-700"
+            >
+              Comentario para el analista{" "}
+              <span className="font-normal text-ink-400">(opcional)</span>
+            </label>
+            <textarea
+              id="comentario-reenvio"
+              rows={3}
+              value={comentario}
+              onChange={(e) => setComentario(e.target.value)}
+              placeholder="Contale qué viste y qué corregiste…"
+              className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+        )}
       </Modal>
     </div>
   );

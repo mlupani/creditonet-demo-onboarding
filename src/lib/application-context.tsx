@@ -1516,8 +1516,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reiniciarDemo = useCallback(() => {
-    // Confirma el crédito que se estaba editando antes de soltarlo (ver cargarCreditoDeDB).
-    setCreditosDBBase(creditosDBRef.current);
+    // Reinicio total: la bandeja vuelve al JSON base (se descartan los cambios de la
+    // sesión) y la solicitud en curso se suelta. Como el estado se persiste en
+    // sessionStorage, el reset queda firme ante recargas.
+    setCreditosDBBase(creditosSeed());
     setApp(crearAplicacionInicial());
     setPasoState(1);
     setPasoMaximo(1);

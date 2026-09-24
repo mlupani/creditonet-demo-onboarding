@@ -9,7 +9,7 @@ import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconChevronDown, IconFileStack, IconRows, IconSearch, IconTable } from "@/components/icons";
+import { IconChevronDown, IconFileStack, IconRefresh, IconRows, IconSearch, IconTable } from "@/components/icons";
 import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
 type Vista = "tabla" | "lista";
@@ -346,6 +346,12 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                           <td className="px-3 py-3 tabular-nums text-ink-700">{c.oferta.plazo}</td>
                           <td className="px-3 py-3">
                             <EstadoBadge estado={c.estado} />
+                            {c.analista.reenviada && (
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
+                                <IconRefresh width={11} height={11} />
+                                Reenviada con correcciones
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-3 text-ink-700">{fecha ?? "—"}</td>
                           <td className="px-3 py-3 text-ink-700">
@@ -377,6 +383,12 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                         <td className="px-3 py-3 tabular-nums text-ink-700">{app.oferta.plazo}</td>
                         <td className="px-3 py-3">
                           <EstadoBadge estado={app.estado} />
+                          {app.analista.reenviada && (
+                            <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
+                              <IconRefresh width={11} height={11} />
+                              Reenviada con correcciones
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-3 text-ink-700">{fechaApp ?? "—"}</td>
                         <td className="px-3 py-3 text-ink-700">

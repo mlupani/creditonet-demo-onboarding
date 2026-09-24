@@ -84,13 +84,15 @@ export function formatDNI(value: string): string {
   return d ? formatNumber(Number(d)) : "";
 }
 
-// Sello de tiempo para la demo ("Hoy HH:MM").
+// Sello de tiempo para la demo ("Hoy HH:MM", 24 h).
+// Formato propio estable: no usa toLocaleTimeString porque según el locale/ICU del
+// navegador puede devolver "11:29 a. m." y parseFecha dejaría de reconocerlo — el
+// crédito mostraba "Hoy ..." en Fecha pero ordenaba último (timestamp 0).
 export function selloTiempo(): string {
-  const hora = new Date().toLocaleTimeString("es-AR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `Hoy ${hora}`;
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `Hoy ${hh}:${mm}`;
 }
 
 // --- Fechas dd/mm/aaaa ---
@@ -105,10 +107,16 @@ export function parseFecha(value: string): Date | null {
   const texto = value.trim();
   // Sello de tiempo de la demo (selloTiempo): "Hoy HH:MM" — se usa en fechaEnvioAnalisis y
   // fechaAprobacion cuando el analista actúa en vivo, y debe ordenar como "ahora".
-  const hoy = /^Hoy\s+(\d{1,2}):(\d{2})$/.exec(texto);
+  // También tolera el sufijo 12 h ("a. m."/"p. m.") que algunos navegadores/ICU agregan,
+  // para sellos ya guardados con ese formato (quedaban en timestamp 0 = últimos).
+  const hoy = /^Hoy\s+(\d{1,2}):(\d{2})(?:\s*([ap])\.?\s*m\.?)?\s*$/i.exec(texto);
   if (hoy) {
+    let h = Number(hoy[1]);
+    const sufijo = hoy[3]?.toLowerCase();
+    if (sufijo === "p" && h < 12) h += 12;
+    if (sufijo === "a" && h === 12) h = 0;
     const d = new Date();
-    d.setHours(Number(hoy[1]), Number(hoy[2]), 0, 0);
+    d.setHours(h, Number(hoy[2]), 0, 0);
     return d;
   }
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto);
