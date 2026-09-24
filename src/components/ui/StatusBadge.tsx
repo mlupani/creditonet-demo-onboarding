@@ -24,6 +24,7 @@ export const ESTADO_META: Record<EstadoCredito, { label: string; tone: Tone }> =
   APROBADO: { label: "Aprobado", tone: "success" },
   EN_FIRMA: { label: "En firma", tone: "info" },
   FIRMADO: { label: "Firma aprobada", tone: "success" },
+  SUPERIOR: { label: "Aprobación superior", tone: "info" },
   CHEQUEO_TELEFONICO: { label: "Chequeo telefónico", tone: "info" },
   PARA_LIQUIDAR: { label: "Para liquidar", tone: "success" },
 };
@@ -52,6 +53,7 @@ const CODIGO_ESTADO: Partial<Record<EstadoCredito, string>> = {
   APROBADO: "APR",
   EN_FIRMA: "FEL",
   FIRMADO: "AFEL",
+  SUPERIOR: "SUP",
   CHEQUEO_TELEFONICO: "CHEQ",
   PARA_LIQUIDAR: "LIQ",
 };

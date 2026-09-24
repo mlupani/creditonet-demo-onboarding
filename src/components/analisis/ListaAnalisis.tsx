@@ -14,7 +14,7 @@ import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
 type Vista = "tabla" | "lista";
 
-type Pestana = "TODOS" | "PRE" | "ANA" | "OBS" | "COFE" | "RECH" | "APR" | "FEL" | "AFEL" | "CHEQ" | "LIQ";
+type Pestana = "TODOS" | "PRE" | "ANA" | "OBS" | "COFE" | "RECH" | "APR" | "FEL" | "AFEL" | "SUP" | "CHEQ" | "LIQ";
 
 // Bandeja del analista — 7 estados (desde preaprobado en adelante) de creditonet-34.
 // Las observadas pendientes del vendedor no figuran (las ve él en su bandeja); OBS muestra
@@ -72,6 +72,12 @@ const PESTANAS_ESTADO: DefPestana[] = [
     titulo: "Firma aprobada",
     estados: ["FIRMADO"],
     vacio: "No hay firmas aprobadas.",
+  },
+  {
+    id: "SUP",
+    titulo: "Aprobación superior",
+    estados: ["SUPERIOR"],
+    vacio: "No hay solicitudes pendientes de aprobación de un superior.",
   },
   {
     id: "CHEQ",
@@ -141,6 +147,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
     APR: 1,
     FEL: 1,
     AFEL: 1,
+    SUP: 1,
     CHEQ: 1,
     LIQ: 1,
   });

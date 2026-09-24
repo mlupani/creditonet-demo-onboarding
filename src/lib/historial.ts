@@ -41,6 +41,7 @@ export function historialCredito(
     | "analista"
     | "firmas"
     | "chequeoTelefonico"
+    | "aprobacionSuperior"
     | "rechazo"
   >
 ): EventoHistorial[] {
@@ -72,6 +73,12 @@ export function historialCredito(
     if (f.resultado === "APROBADA") push("Firma verificada por el analista (AFEL)", f.fechaResultado);
     if (f.resultado === "REFIRMA_SOLICITADA") push("Refirma solicitada por el analista", f.fechaResultado);
     if (f.resultado === "RECHAZADA") push("Firma rechazada por el analista", f.fechaResultado);
+  }
+
+  const sup = app.aprobacionSuperior;
+  if (sup) {
+    push("Enviada a aprobación superior (SUP)", sup.fechaEnvio, `Pedida por ${sup.enviadaPor}`);
+    push("Aprobada por el superior (SUP)", sup.fechaAprobacion, sup.aprobadaPor ? `Superior: ${sup.aprobadaPor}` : undefined);
   }
 
   const ch = app.chequeoTelefonico;
