@@ -913,8 +913,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             motivo: "Cambio de datos financieros del analista",
             nota: cambio.nota,
             fecha: fechaHoy(),
-            // Tras aceptar la nueva oferta, sólo queda habilitado el legajo virtual (subir más
-            // documentación, ver el legajo e imprimir el formulario).
+            // Tras aceptar la nueva oferta, quedan habilitados el legajo virtual (subir más
+            // documentación, ver el legajo e imprimir el formulario) y, aparte, la pantalla de
+            // impresión del legajo (ver PostOfertaShell).
             pantallas: ["legajo"],
           }),
         },

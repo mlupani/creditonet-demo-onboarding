@@ -137,6 +137,17 @@ export function PostOfertaShell() {
   const puntual = observadas.length > 0;
   const corregidas = app.analista.pantallasCorregidas;
   const todasCorregidas = observadas.every((id) => corregidas.includes(id));
+  // Con la oferta del analista aceptada el contrato cambió (creditonet-89): además de las
+  // pantallas a corregir, se puede entrar a la impresión del legajo para imprimir o ver el
+  // legajo actualizado. Es sólo impresión: no hay que guardarla como corrección.
+  const impresionHabilitada =
+    puntual &&
+    !!app.analista.ofertaAnalista?.aceptada &&
+    !observadas.includes("impresion") &&
+    visibles.some((p) => p.id === "impresion");
+  const habilitadas: PantallaPostOfertaId[] = impresionHabilitada
+    ? [...observadas, "impresion"]
+    : observadas;
 
   // Normaliza la pantalla actual si no está en las visibles.
   useEffect(() => {
@@ -152,8 +163,8 @@ export function PostOfertaShell() {
   // Con corrección puntual sólo se puede estar en una pantalla observada: al retomar se abre
   // la primera y no se puede salir a las bloqueadas.
   useEffect(() => {
-    if (puntual && !observadas.includes(pantallaActual)) setPantallaActual(observadas[0]);
-  }, [puntual, observadas, pantallaActual, setPantallaActual]);
+    if (puntual && !habilitadas.includes(pantallaActual)) setPantallaActual(observadas[0]);
+  }, [puntual, observadas, habilitadas, pantallaActual, setPantallaActual]);
 
   // Navegación secuencial (configurada en el producto o excepcionada por el organismo): no se
   // avanza más allá de la primera pantalla obligatoria que todavía no está completa.
@@ -175,7 +186,7 @@ export function PostOfertaShell() {
     obligatoria: e.obligatoria,
     estado: e.estadoVisual,
     observada: observadas.includes(e.id),
-    bloqueada: puntual ? !observadas.includes(e.id) : limiteSecuencial !== -1 && i > limiteSecuencial,
+    bloqueada: puntual ? !habilitadas.includes(e.id) : limiteSecuencial !== -1 && i > limiteSecuencial,
   }));
 
   const PantallaActiva = PANTALLAS[pantallaActual];
@@ -219,7 +230,9 @@ export function PostOfertaShell() {
               : puntual
               ? `Corrección puntual: sólo se puede editar ${
                   labelObservadas.length === 1 ? "la pantalla observada" : "las pantallas observadas"
-                }. El resto de la carga está bloqueada.`
+                }. El resto de la carga está bloqueada${
+                  impresionHabilitada ? ", salvo la impresión del legajo" : ""
+                }.`
               : `${completadas} de ${estados.length} pantallas completas. ${
                   secuencial
                     ? "Se navega en orden: completá las obligatorias para avanzar."
@@ -269,7 +282,9 @@ export function PostOfertaShell() {
             <strong>{SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].etiqueta}</strong> ·{" "}
             {SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].origen}. {obs.nota}{" "}
             {puntual &&
-              `Corregí sólo: ${labelObservadas.join(", ")}. Las demás pantallas están bloqueadas. `}
+              `Corregí sólo: ${labelObservadas.join(", ")}. Las demás pantallas están bloqueadas${
+                impresionHabilitada ? ", salvo la impresión del legajo, que podés abrir para imprimir el legajo actualizado" : ""
+              }. `}
             Editá, guardá y enviá nuevamente antes del{" "}
             <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días) para que no expire.
           </Banner>
@@ -288,7 +303,7 @@ export function PostOfertaShell() {
       </div>
 
       <div key={pantallaActual} className="mt-6 animate-fade-up">
-        {puntual ? (
+        {puntual && observadas.includes(pantallaActual) ? (
           <PantallaObservada
             id={pantallaActual}
             label={estadoActual?.label ?? ""}
@@ -298,7 +313,7 @@ export function PostOfertaShell() {
             onGuardar={() => guardarCorreccion(pantallaActual)}
           />
         ) : (
-          <fieldset disabled={soloLectura} className="min-w-0">
+          <fieldset disabled={soloLectura && pantallaActual !== "impresion"} className="min-w-0">
             <PantallaActiva />
           </fieldset>
         )}

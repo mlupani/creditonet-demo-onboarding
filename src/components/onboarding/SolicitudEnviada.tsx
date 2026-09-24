@@ -49,7 +49,7 @@ export function SolicitudEnviada() {
                 {ofertaAnalistaDe(app) &&
                   (cambiosOfertaDe(app).at(-1)?.tipo === "OFERTA"
                     ? " Tenés que aceptar la nueva oferta o declinarla: el resto de la carga queda bloqueada."
-                    : " Podés aceptar la nueva oferta o elegir otra menor en la grilla. Después sólo queda habilitado el legajo virtual: ver el legajo, imprimir el formulario y subir más documentación.")}
+                    : " Podés aceptar la nueva oferta o elegir otra menor en la grilla. Después sólo quedan habilitados el legajo virtual (ver el legajo, imprimir el formulario y subir más documentación) y la pantalla de impresión del legajo.")}
                 {obs.pantallas.length > 0 && !ofertaAnalistaDe(app) &&
                   " Es una corrección puntual: sólo se puede editar lo observado y el resto de la carga queda bloqueada."}
               </Banner>
