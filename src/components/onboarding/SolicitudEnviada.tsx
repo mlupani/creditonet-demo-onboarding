@@ -83,6 +83,10 @@ export function SolicitudEnviada() {
         titulo: "con la firma aprobada (AFEL): el analista define el paso siguiente",
         quien: "el analista de riesgo",
       },
+      SUPERIOR: {
+        titulo: "esperando la aprobación de un superior (SUP)",
+        quien: "el superior de riesgo",
+      },
       CHEQUEO_TELEFONICO: {
         titulo: "en chequeo telefónico",
         quien: "el chequeador telefónico",

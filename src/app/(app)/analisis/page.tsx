@@ -65,7 +65,9 @@ export default function AnalisisPage() {
   // El rechazo del chequeador también se puede ver (sólo lectura).
   const rechazoAnalista =
     app.estado === "RECHAZADO" &&
-    (app.rechazo?.origen === "ANALISTA" || app.rechazo?.origen === "CHEQUEADOR");
+    (app.rechazo?.origen === "ANALISTA" ||
+      app.rechazo?.origen === "CHEQUEADOR" ||
+      app.rechazo?.origen === "SUPERIOR");
   const enBandeja =
     app.estado === "PREAPROBADO" ||
     app.estado === "ANALISIS_TOMADO" ||
@@ -373,7 +375,9 @@ export default function AnalisisPage() {
               {app.numeroCredito} ·{" "}
               {app.rechazo.origen === "CHEQUEADOR"
                 ? "rechazo en el chequeo telefónico"
-                : "rechazo manual del analista de riesgo"}
+                : app.rechazo.origen === "SUPERIOR"
+                  ? "rechazo del superior de riesgo"
+                  : "rechazo manual del analista de riesgo"}
               <EstadoBadge estado="RECHAZADO" />
             </p>
           </div>
