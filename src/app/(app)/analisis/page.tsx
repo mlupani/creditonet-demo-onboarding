@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { importeTerceros, netoAAcreditar } from "@/lib/credit";
-import { formatARS, sumarDias } from "@/lib/format";
+import { formatARS } from "@/lib/format";
 import { bancosDe } from "@/lib/campos-post-oferta";
 import { ESTADOS_FIRMA } from "@/lib/firma";
 import type { MetodoFirma } from "@/lib/types";
@@ -20,7 +20,6 @@ import { AnalisisCredito } from "@/components/analisis/AnalisisCredito";
 import { ListaAnalisis } from "@/components/analisis/ListaAnalisis";
 import { AprobacionModal } from "@/components/analisis/AprobacionModal";
 import {
-  IconAlertTriangle,
   IconArrowLeft,
   IconClock,
   IconLandmark,
@@ -64,7 +63,6 @@ export default function AnalisisPage() {
   const enBandeja =
     app.estado === "PREAPROBADO" ||
     app.estado === "ANALISIS_TOMADO" ||
-    app.estado === "OBSERVADO" ||
     ESTADOS_FIRMA.includes(app.estado) ||
     app.estado === "PARA_LIQUIDAR" ||
     rechazoAnalista;
@@ -298,37 +296,6 @@ export default function AnalisisPage() {
       </div>
 
       <div className="mt-6 space-y-5">
-        {app.estado === "OBSERVADO" && (
-          <Card className="animate-fade-up p-6">
-            <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning-50 text-warning-600">
-                <IconAlertTriangle width={20} height={20} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-2 text-sm font-bold text-ink-900">
-                  {app.numeroCredito} devuelta al canal de venta
-                  <EstadoBadge estado="OBSERVADO" />
-                </p>
-                {app.analista.observacion && (
-                  <p className="mt-1 text-sm text-ink-600">
-                    <strong>{app.analista.observacion.motivo}:</strong>{" "}
-                    {app.analista.observacion.nota}
-                  </p>
-                )}
-                <p className="mt-2 text-xs text-ink-500">
-                  Volverá a esta bandeja cuando el vendedor reenvíe las correcciones
-                  {app.analista.observacion &&
-                    ` (plazo: ${sumarDias(app.analista.observacion.fecha, 15)})`}
-                  .
-                </p>
-                <Button className="mt-4" size="sm" variant="outline" onClick={() => router.push("/")}>
-                  Ver en la bandeja del canal de venta
-                </Button>
-              </div>
-            </div>
-          </Card>
-        )}
-
         {app.estado === "PREAPROBADO" && <BandejaAnalista onTomar={tomarAnalisis} />}
 
         {ESTADOS_FIRMA.includes(app.estado) && <FirmaPanel onRechazar={rechazarCredito} />}

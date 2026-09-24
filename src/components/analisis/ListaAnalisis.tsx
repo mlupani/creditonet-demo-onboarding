@@ -14,9 +14,10 @@ import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
 type Vista = "tabla" | "lista";
 
-type Pestana = "TODOS" | "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "CHT" | "LIQ";
+type Pestana = "TODOS" | "PRE" | "COFE" | "RECH" | "FEL" | "AFEL" | "CHT" | "LIQ";
 
-// Bandeja del analista — 8 estados (desde preaprobado en adelante) de creditonet-34.
+// Bandeja del analista — 7 estados (desde preaprobado en adelante) de creditonet-34.
+// Las observadas no figuran: se devuelven al vendedor y el analista no las ve hasta que las reenvía.
 type DefPestana = { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string };
 
 const PESTANAS_ESTADO: DefPestana[] = [
@@ -25,12 +26,6 @@ const PESTANAS_ESTADO: DefPestana[] = [
     titulo: "Preaprobados",
     estados: ["PREAPROBADO", "ANALISIS_TOMADO"],
     vacio: "No hay solicitudes preaprobadas para analizar.",
-  },
-  {
-    id: "OBS",
-    titulo: "Observados",
-    estados: ["OBSERVADO"],
-    vacio: "No hay solicitudes observadas esperando correcciones.",
   },
   {
     id: "COFE",
@@ -107,7 +102,6 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const [pagina, setPagina] = useState<Record<Pestana, number>>({
     TODOS: 1,
     PRE: 1,
-    OBS: 1,
     COFE: 1,
     RECH: 1,
     FEL: 1,

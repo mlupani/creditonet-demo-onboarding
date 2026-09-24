@@ -104,11 +104,10 @@ export function creditosPorGrupoVendedor(grupo: GrupoVendedor): CreditoDB[] {
 }
 
 // --- Bandeja del analista (ListaAnalisis.tsx) — 7 pestañas ---
-export type PestanaAnalista = "PRE" | "OBS" | "COFE" | "RECH" | "FEL" | "AFEL" | "CHT" | "LIQ";
+export type PestanaAnalista = "PRE" | "COFE" | "RECH" | "FEL" | "AFEL" | "CHT" | "LIQ";
 
 export const PESTANA_ESTADOS: Record<PestanaAnalista, EstadoCredito[]> = {
   PRE: ["PREAPROBADO", "ANALISIS_TOMADO"],
-  OBS: ["OBSERVADO"],
   COFE: ["CAMBIO_OFERTA"],
   RECH: ["RECHAZADO"],
   FEL: ["EN_FIRMA"],

@@ -1,5 +1,5 @@
 Proyecto: creditonet
-Tarea: creditonet-72 - Cambiar animación de pulso post-oferta a azul eléctrico
-Estado: Por hacer (issue nuevo creado)
-PR: —
+Tarea: creditonet-72 - Cambiar animación de pulso post-oferta
+Estado: ✅ Hecho
+PR: https://github.com/mlupani/creditonet-demo-onboarding/pull/37
 Link de tarea: https://miguel.youtrack.cloud/issue/creditonet-72
