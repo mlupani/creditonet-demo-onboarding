@@ -245,17 +245,17 @@ export default function BandejaCanalVentaPage() {
     }
     if (c.estado === "PREAPROBADO" || c.estado === "ANALISIS_TOMADO") {
       return c.analista.reenviada
-        ? "Reenviada con correcciones · en bandeja del analista"
+        ? "Reenviada con correcciones · esperando al analista"
         : c.estado === "ANALISIS_TOMADO"
-          ? "Tomada por analista · en revisión"
-          : "Preaprobada · pendiente de toma";
+          ? "Un analista la está revisando"
+          : "Esperando que un analista la tome";
     }
-    if (c.estado === "APROBADO") return "Aprobada · pendiente de pasar a firma";
-    if (c.estado === "EN_FIRMA") return "Aprobada · esperando la firma del cliente (FEL)";
-    if (c.estado === "FIRMADO") return "Firmada · firma aprobada (AFEL)";
+    if (c.estado === "APROBADO") return "Pendiente de pasar a firma";
+    if (c.estado === "EN_FIRMA") return "Esperando la firma del cliente";
+    if (c.estado === "FIRMADO") return "Firma del cliente verificada por el analista";
     if (c.estado === "CHEQUEO_TELEFONICO")
-      return `En chequeo telefónico · ${textoChequeo(c.chequeoTelefonico)} · sólo lectura`;
-    if (c.estado === "PARA_LIQUIDAR") return "Aprobada · en Bandeja de Liquidación (Tesorería)";
+      return `${textoChequeo(c.chequeoTelefonico)} · sólo lectura`;
+    if (c.estado === "PARA_LIQUIDAR") return "En Bandeja de Liquidación (Tesorería)";
     if (c.estado === "RECHAZADO" && c.rechazo) {
       const { origen, codigos, motivo } = c.rechazo;
       const map: Record<typeof origen, string> = {
@@ -390,7 +390,7 @@ export default function BandejaCanalVentaPage() {
                                 {app.oferta.planId && <p className="mt-1 text-xs font-semibold tabular-nums text-ink-700">{formatARS(app.oferta.montoSolicitado)} · {app.oferta.plazo} cuotas</p>}
                               </div>
                               <div>
-                                <EstadoBadge estado={app.estado} etiqueta={etiquetaObservado(app)} />
+                                <EstadoBadge estado={app.estado} etiqueta={etiquetaObservado(app)} conCodigo />
                                 {app.estado === "CHEQUEO_TELEFONICO" && app.chequeoTelefonico?.observacion && (
                                   <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
                                 )}
@@ -402,7 +402,7 @@ export default function BandejaCanalVentaPage() {
                             </div>
                             <div className="mt-3 flex flex-wrap gap-2 md:justify-end">
                               <Button size="sm" variant={app.estado === "OBSERVADO" ? "primary" : "outline"} onClick={irASolicitud}>
-                                {app.estado === "OBSERVADO" ? "Tramitar observación" : "Continuar carga"}
+                                {app.estado === "OBSERVADO" ? "Tratar observación" : "Continuar carga"}
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => setModal("posicion")}>Posición cliente</Button>
                             </div>
@@ -435,6 +435,7 @@ export default function BandejaCanalVentaPage() {
                                   <EstadoBadge
                                     estado={cred.estado}
                                     etiqueta={etiquetaObservado(cred as unknown as CreditApplication)}
+                                    conCodigo
                                   />
                                   {cred.estado === "CHEQUEO_TELEFONICO" && cred.chequeoTelefonico?.observacion && (
                                     <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
@@ -458,7 +459,7 @@ export default function BandejaCanalVentaPage() {
                                 )}
                                 {g.id === "OBSERVADAS" && (
                                   <Button size="sm" variant="primary" onClick={() => abrirCreditoDB(cred)}>
-                                    Tramitar observación
+                                    Tratar observación
                                   </Button>
                                 )}
                                 {(g.id === "ANALISIS" || g.id === "FIRMA" || g.id === "CHEQUEO" || g.id === "PAGO" || g.id === "RESUELTAS") && (

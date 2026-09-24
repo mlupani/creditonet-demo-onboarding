@@ -189,7 +189,7 @@ export function PostOfertaShell() {
     : puntual
       ? "Enviar nuevamente"
       : observada
-        ? "Reenviar correcciones"
+        ? "Corregir y reenviar"
         : "Finalizar carga";
   const labelObservadas = visibles.filter((p) => observadas.includes(p.id)).map((p) => p.label);
   const estadoActual = estados.find((e) => e.id === pantallaActual);
