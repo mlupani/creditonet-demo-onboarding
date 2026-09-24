@@ -5,6 +5,7 @@ import { CAMPOS_POST_OFERTA, obligatorioEfectivo } from "@/lib/campos-post-ofert
 import { PROVEEDORES_TOKENIZACION } from "@/lib/parametros";
 import {
   CATEGORIAS_PRODUCTO,
+  CONDICIONES_RENOVACION,
   MODALIDADES_COBRO,
   MODALIDADES_FIRMA,
   MOVIMIENTOS_MES,
@@ -603,6 +604,37 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
             className="sm:max-w-xs"
           />
         )}
+        {p.extras.permiteRenovacion && (
+          <Grilla>
+            <SelectField
+              id="p-cond-renov"
+              label="Condición mínima para renovar"
+              value={p.extras.condicionRenovacion}
+              onChange={(v) => ex({ condicionRenovacion: v as ExtrasProducto["condicionRenovacion"] })}
+              options={CONDICIONES_RENOVACION}
+            />
+            {p.extras.condicionRenovacion === "CUOTAS" ? (
+              <CampoNumero
+                id="p-renov-min-cuotas"
+                label="Cuotas pagadas mínimas"
+                min={1}
+                value={p.extras.renovacionMinCuotasPagas}
+                onChange={(v) => ex({ renovacionMinCuotasPagas: v })}
+                error={ver ? errores.renovacionMinCuotasPagas : undefined}
+              />
+            ) : (
+              <CampoNumero
+                id="p-renov-min-pct"
+                label="Porcentaje mínimo pagado"
+                sufijo="%"
+                min={0}
+                value={p.extras.renovacionMinPctPagado}
+                onChange={(v) => ex({ renovacionMinPctPagado: v })}
+                error={ver ? errores.renovacionMinPctPagado : undefined}
+              />
+            )}
+          </Grilla>
+        )}
         <Checkbox
           checked={p.extras.permiteCancelacionAnticipada}
           onChange={(v) => ex({ permiteCancelacionAnticipada: v })}
@@ -728,4 +760,6 @@ export const SECCION_DE_ERROR: Record<string, string> = {
   referencias: "onboarding",
   garantes: "onboarding",
   tokenizacion: "onboarding",
+  renovacionMinCuotasPagas: "onboarding",
+  renovacionMinPctPagado: "onboarding",
 };

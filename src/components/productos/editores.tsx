@@ -3,6 +3,7 @@
 import type { AsignacionMotor, DocumentoConfig } from "@/lib/config";
 import { CONDICIONES_LABORALES, MOTORES } from "@/lib/motores";
 import { TIPOS_DOCUMENTO } from "@/lib/parametros";
+import { PERFILES_INTERNOS, ROTULO_BCRA, ROTULO_PERFIL, SITUACIONES_BCRA } from "@/lib/planes";
 import {
   CANALES_NOTIFICACION,
   ESTADOS_NOTIFICACION_ONBOARDING,
@@ -395,7 +396,7 @@ export function EditorRecalculoNeto({
   );
 }
 
-// --- Motor de riesgo: asignación por tipo de cliente y condición laboral ---
+// --- Motor de riesgo: asignación por tipo de cliente, condición laboral, situación BCRA y buró interno ---
 
 const OPCIONES_MOTOR = MOTORES.map((m) => ({ value: m.id, label: m.nombre }));
 
@@ -417,6 +418,15 @@ export function EditorMotor({
       ...valor,
       porCondicionLaboral: motorId ? { ...resto, [condicion]: motorId } : resto,
     });
+  };
+  const asignarSituacion = (
+    campo: "porSituacionBcra" | "porSituacionInterna",
+    situacion: number,
+    motorId: string
+  ) => {
+    const { [situacion]: _quitada, ...resto } = valor[campo] ?? {};
+    void _quitada;
+    onChange({ ...valor, [campo]: motorId ? { ...resto, [situacion]: motorId } : resto });
   };
   return (
     <div className="space-y-4">
@@ -476,6 +486,42 @@ export function EditorMotor({
               label={c}
               value={valor.porCondicionLaboral[c] ?? ""}
               onChange={(v) => asignarCondicion(c, v)}
+              placeholder="Usa el motor general"
+              options={OPCIONES_MOTOR}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+          Grupo de reglas por situación BCRA
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SITUACIONES_BCRA.map((n) => (
+            <SelectField
+              key={n}
+              id={`${idBase}-bcra-${n}`}
+              label={ROTULO_BCRA[n]}
+              value={valor.porSituacionBcra?.[n] ?? ""}
+              onChange={(v) => asignarSituacion("porSituacionBcra", n, v)}
+              placeholder="Usa el motor general"
+              options={OPCIONES_MOTOR}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+          Grupo de reglas por situación en buró interno
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {PERFILES_INTERNOS.map((n) => (
+            <SelectField
+              key={n}
+              id={`${idBase}-interna-${n}`}
+              label={ROTULO_PERFIL[n]}
+              value={valor.porSituacionInterna?.[n] ?? ""}
+              onChange={(v) => asignarSituacion("porSituacionInterna", n, v)}
               placeholder="Usa el motor general"
               options={OPCIONES_MOTOR}
             />

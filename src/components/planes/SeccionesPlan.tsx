@@ -9,7 +9,13 @@ import {
 } from "@/lib/config";
 import { calcularCuota } from "@/lib/credit";
 import { CONDICIONES_LABORALES } from "@/lib/motores";
-import { PERFILES_INTERNOS, SITUACIONES_BCRA, type PlanAbm } from "@/lib/planes";
+import {
+  PERFILES_INTERNOS,
+  ROTULO_BCRA,
+  ROTULO_PERFIL,
+  SITUACIONES_BCRA,
+  type PlanAbm,
+} from "@/lib/planes";
 import { formatARS } from "@/lib/format";
 import type { Plazo } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
@@ -47,22 +53,6 @@ function Grilla({ children, cols = 2 }: { children: React.ReactNode; cols?: 2 | 
     <div className={`grid gap-4 ${cols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>{children}</div>
   );
 }
-
-const ROTULO_BCRA: Record<number, string> = {
-  1: "Situación 1 · Normal",
-  2: "Situación 2 · Riesgo bajo / seguimiento especial",
-  3: "Situación 3 · Con problemas",
-  4: "Situación 4 · Alto riesgo de insolvencia",
-  5: "Situación 5 · Irrecuperable",
-};
-
-const ROTULO_PERFIL: Record<number, string> = {
-  1: "Perfil 1 · Al día, sin atrasos",
-  2: "Perfil 2 · Atrasos menores",
-  3: "Perfil 3 · Con mora",
-  4: "Perfil 4 · Mora prolongada",
-  5: "Perfil 5 · Incobrable",
-};
 
 const PLAZOS: Plazo[] = [12, 18, 24, 36, 48, 60, 72, 84, 96, 120];
 
@@ -399,15 +389,6 @@ function CapitalMaximo({ p, set, errores, ver }: SeccionPlanProps) {
           hint="Tope ampliado cuando la operación renueva un crédito propio."
         />
       </Grilla>
-      <CampoNumero
-        id="pl-renov-min"
-        label="Cuotas pagas mínimas para renovar"
-        sufijo="%"
-        value={p.config.renovacionMinCuotasPct}
-        onChange={(v) => cf({ renovacionMinCuotasPct: v })}
-        hint="Un crédito propio sólo se puede renovar si ya pagó al menos este porcentaje de las cuotas."
-        className="sm:max-w-xs"
-      />
     </Panel>
   );
 }

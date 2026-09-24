@@ -86,7 +86,6 @@ interface PlanSemilla {
   rciMaxPct: number;
   endeudamientoMaxPct: number;
   smvmBolsillo: number;
-  renovacionMinCuotasPct: number;
   // Condición laboral que habilita la línea (reunión 11/09, 02:20 y 02:35). Si ninguna línea
   // del organismo la acepta, la solicitud se rechaza sin motor. La situación BCRA/buró interno
   // no bloquea la línea: sólo recorta el capital (situacionBcraDistintaDeUnoPct).
@@ -117,7 +116,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     rciMaxPct: 40,
     endeudamientoMaxPct: 50,
     smvmBolsillo: 350_000,
-    renovacionMinCuotasPct: 50,
     condicionesLaborales: ["Empleado fijo", "Contratado"],
     limitantes: {
       clienteNuevoPct: 50,
@@ -140,7 +138,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     rciMaxPct: 35,
     endeudamientoMaxPct: 45,
     smvmBolsillo: 400_000,
-    renovacionMinCuotasPct: 50,
     condicionesLaborales: ["Empleado fijo", "Contratado"],
     limitantes: {
       clienteNuevoPct: 40,
@@ -163,7 +160,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     rciMaxPct: 30,
     endeudamientoMaxPct: 40,
     smvmBolsillo: 300_000,
-    renovacionMinCuotasPct: 60,
     condicionesLaborales: ["Jubilado / Pensionado"],
     limitantes: {
       clienteNuevoPct: 50,
@@ -186,7 +182,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     rciMaxPct: 40,
     endeudamientoMaxPct: 50,
     smvmBolsillo: 350_000,
-    renovacionMinCuotasPct: 50,
     condicionesLaborales: ["Empleado fijo", "Contratado"],
     limitantes: {
       clienteNuevoPct: 50,
@@ -209,7 +204,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     rciMaxPct: 35,
     endeudamientoMaxPct: 45,
     smvmBolsillo: 320_000,
-    renovacionMinCuotasPct: 55,
     condicionesLaborales: ["Empleado fijo", "Contratado"],
     limitantes: {
       clienteNuevoPct: 45,
@@ -306,7 +300,6 @@ export interface PlanCuotas {
   // Capital máximo, y el tope ampliado cuando la operación renueva un crédito propio.
   montoMaximo: number;
   montoMaximoRenovacion: number;
-  renovacionMinCuotasPct: number;
   // Cuota máxima: compiten estas tres reglas y gana la menor.
   rciMaxPct: number;
   endeudamientoMaxPct: number;
@@ -345,7 +338,6 @@ function semillaAPlan(p: PlanSemilla, i: number): PlanCuotas {
     perfilesInternos: [1, 2, 3, 4, 5],
     montoMaximo: p.montoMaximo,
     montoMaximoRenovacion: p.montoMaximoRenovacion,
-    renovacionMinCuotasPct: p.renovacionMinCuotasPct,
     rciMaxPct: p.rciMaxPct,
     endeudamientoMaxPct: p.endeudamientoMaxPct,
     smvmBolsillo: p.smvmBolsillo,
@@ -494,12 +486,15 @@ function pantallas(cambios: CambiosPantalla = {}): PantallaPostOfertaConfig[] {
 export type EstadoProducto = "ACTIVO" | "SUSPENDIDO" | "ELIMINADO";
 
 // Motor §9: qué motor (grupo de reglas) corresponde según el cliente. Prioridad: tipo de cliente
-// (si se lo distingue) → condición laboral → motor general.
+// (si se lo distingue) → condición laboral → situación BCRA → situación en buró interno →
+// motor general. Las claves de las situaciones son "1".."5".
 export interface AsignacionMotor {
   motorId: string | null;
   distingueTipoCliente: boolean;
   porTipoCliente: Record<TipoCliente, string | null>;
   porCondicionLaboral: Record<string, string>;
+  porSituacionBcra: Record<string, string>;
+  porSituacionInterna: Record<string, string>;
 }
 
 export function asignacionMotorVacia(motorId: string | null = null): AsignacionMotor {
@@ -508,17 +503,25 @@ export function asignacionMotorVacia(motorId: string | null = null): AsignacionM
     distingueTipoCliente: false,
     porTipoCliente: { NUEVO: null, EXISTENTE: null },
     porCondicionLaboral: {},
+    porSituacionBcra: {},
+    porSituacionInterna: {},
   };
 }
 
 export function motorAsignado(
   a: AsignacionMotor,
   condicionLaboral: string,
-  tipoCliente: TipoCliente | null
+  tipoCliente: TipoCliente | null,
+  situaciones: { bcra: number; interna: number } | null = null
 ): string | null {
   if (a.distingueTipoCliente && tipoCliente && a.porTipoCliente[tipoCliente])
     return a.porTipoCliente[tipoCliente];
-  return a.porCondicionLaboral[condicionLaboral] ?? a.motorId;
+  return (
+    a.porCondicionLaboral[condicionLaboral] ??
+    (situaciones ? a.porSituacionBcra?.[situaciones.bcra] : undefined) ??
+    (situaciones ? a.porSituacionInterna?.[situaciones.interna] : undefined) ??
+    a.motorId
+  );
 }
 
 export interface ProductoConfig {

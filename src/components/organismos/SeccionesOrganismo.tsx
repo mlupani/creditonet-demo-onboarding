@@ -12,6 +12,7 @@ import { getMotor } from "@/lib/motores";
 import { PROVEEDORES_TOKENIZACION, RUBROS, getTipoDocumento } from "@/lib/parametros";
 import {
   MODALIDADES_COBRO,
+  CONDICIONES_RENOVACION,
   MODALIDADES_FIRMA,
   MOVIMIENTOS_MES,
   TIPOS_VENCIMIENTO,
@@ -322,6 +323,9 @@ const CAMPOS_PERMISOS: CampoExtra[] = [
   { clave: "gestionPrestamos", etiqueta: "Gestión de préstamos", tipo: "gestion" },
   { clave: "permiteRenovacion", etiqueta: "Renovación", tipo: "bool" },
   { clave: "cargoRenovacionPct", etiqueta: "Cargos de renovación", tipo: "num", sufijo: "%", step: 0.1 },
+  { clave: "condicionRenovacion", etiqueta: "Condición mínima para renovar", tipo: "select", opciones: CONDICIONES_RENOVACION },
+  { clave: "renovacionMinPctPagado", etiqueta: "Porcentaje mínimo pagado para renovar", tipo: "num", sufijo: "%" },
+  { clave: "renovacionMinCuotasPagas", etiqueta: "Cuotas pagadas mínimas para renovar", tipo: "num" },
   { clave: "permiteCancelacionAnticipada", etiqueta: "Cancelación anticipada", tipo: "bool" },
   { clave: "cargoCancelacionPct", etiqueta: "Cargos de cancelación anticipada", tipo: "num", sufijo: "%", step: 0.1 },
   { clave: "permiteCambioPrimerVencimiento", etiqueta: "Cambio del primer vencimiento", tipo: "bool" },
@@ -400,6 +404,12 @@ function describirAsignacion(a: AsignacionMotor | null): string {
   const cond = Object.entries(a.porCondicionLaboral);
   if (cond.length > 0)
     partes.push(cond.map(([c, id]) => `${c}: ${getMotor(id).nombre}`).join(" · "));
+  const bcra = Object.entries(a.porSituacionBcra ?? {});
+  if (bcra.length > 0)
+    partes.push(bcra.map(([n, id]) => `BCRA ${n}: ${getMotor(id).nombre}`).join(" · "));
+  const interna = Object.entries(a.porSituacionInterna ?? {});
+  if (interna.length > 0)
+    partes.push(interna.map(([n, id]) => `Buró interno ${n}: ${getMotor(id).nombre}`).join(" · "));
   return partes.join(" · ");
 }
 
@@ -425,7 +435,7 @@ function Motor({ o, p, productos, set }: SeccionOrgProps) {
     >
       <FilaHerencia
         etiqueta="Asignación de motor"
-        ayuda="Por tipo de cliente y condición laboral."
+        ayuda="Por tipo de cliente, condición laboral, situación BCRA y situación en buró interno."
         productoNombre={p.config.nombre}
         heredado={describirAsignacion(p.config.motor)}
         editor={

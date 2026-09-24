@@ -1,7 +1,8 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { cuotasAbonadasPct, hayPrecancelacion, planDeSolicitud, seCancela } from "@/lib/credit";
+import { cuotasAbonadasPct, hayPrecancelacion, requisitoRenovacion, seCancela } from "@/lib/credit";
+import { extrasEfectivos } from "@/lib/productos";
 import { formatARS } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -25,7 +26,7 @@ export function CreditosActivos({
 }) {
   const { app } = useApplication();
   const o = app.oferta;
-  const minPct = planDeSolicitud(app).renovacionMinCuotasPct;
+  const extras = extrasEfectivos(app.configuracion.productoId, app.configuracion.organismoId);
   const precancelaActiva = hayPrecancelacion(o);
   const cuotasLiberadas = o.creditosActivos
     .filter(seCancela)
@@ -67,7 +68,8 @@ export function CreditosActivos({
             const pct = cuotasAbonadasPct(c);
           // En mora la cancelación es obligatoria: se habilita para marcar sin importar
           // el mínimo de cuotas abonadas que aplica a una renovación voluntaria.
-          const elegible = pct >= minPct || c.enMora === true;
+          const req = requisitoRenovacion(c, extras);
+          const elegible = req.cumple || c.enMora === true;
           const reevaluando = reevaluandoId === c.id;
           return (
             <div
@@ -103,7 +105,7 @@ export function CreditosActivos({
                     </strong>{" "}
                     cuotas abonadas ({pct} %)
                   </span>
-                  <span className="text-ink-400">Mínimo para renovar: {minPct} %</span>
+                  <span className="text-ink-400">Mínimo para renovar: {req.texto}</span>
                 </div>
                 <div className="relative mt-1.5 h-2 w-full rounded-full bg-ink-100">
                   <div
@@ -113,7 +115,7 @@ export function CreditosActivos({
                   <span
                     aria-hidden
                     className="absolute -top-1 h-4 w-0.5 rounded-full bg-ink-500"
-                    style={{ left: `${minPct}%` }}
+                    style={{ left: `${req.minimoPct}%` }}
                   />
                 </div>
               </div>

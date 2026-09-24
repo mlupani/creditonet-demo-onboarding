@@ -29,6 +29,22 @@ export interface PlanAbm {
 export const SITUACIONES_BCRA = [1, 2, 3, 4, 5];
 export const PERFILES_INTERNOS = [1, 2, 3, 4, 5];
 
+export const ROTULO_BCRA: Record<number, string> = {
+  1: "Situación 1 · Normal",
+  2: "Situación 2 · Riesgo bajo / seguimiento especial",
+  3: "Situación 3 · Con problemas",
+  4: "Situación 4 · Alto riesgo de insolvencia",
+  5: "Situación 5 · Irrecuperable",
+};
+
+export const ROTULO_PERFIL: Record<number, string> = {
+  1: "Perfil 1 · Al día, sin atrasos",
+  2: "Perfil 2 · Atrasos menores",
+  3: "Perfil 3 · Con mora",
+  4: "Perfil 4 · Mora prolongada",
+  5: "Perfil 5 · Incobrable",
+};
+
 function estadoInicial(): PlanAbm[] {
   return Object.values(PLANES_CUOTAS).map((p, i) => ({
     codigo: String(i + 1).padStart(3, "0"),

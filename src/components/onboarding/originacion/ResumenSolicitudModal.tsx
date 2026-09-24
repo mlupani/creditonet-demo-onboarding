@@ -27,7 +27,8 @@ export function ResumenSolicitudModal({
   const { motor } = seleccionarMotor(
       app.configuracion,
       app.laboral.condicionLaboral,
-      app.identificacion.tipoCliente
+      app.identificacion.tipoCliente,
+      app.situaciones
     );
 
   const l = app.laboral;

@@ -117,14 +117,15 @@ export interface SeleccionMotor {
 
 /**
  * Motor §2 y resumen del Producto: el producto asigna el motor (grupo de reglas) según el tipo
- * de cliente (nuevo / existente) y la condición laboral, y el organismo puede pisar esa
- * asignación. Si el organismo define la suya y ésta aplica al cliente, manda; si no, la del
+ * de cliente (nuevo / existente), la condición laboral, la situación BCRA y la situación en buró
+ * interno, y el organismo puede pisar esa asignación. Si el organismo define la suya y ésta aplica al cliente, manda; si no, la del
  * producto; si tampoco, el motor general.
  */
 export function seleccionarMotor(
   configuracion: { productoId: string; organismoId: string },
   condicionLaboral = "",
-  tipoCliente: TipoCliente | null = null
+  tipoCliente: TipoCliente | null = null,
+  situaciones: { bcra: number; interna: number } | null = null
 ): SeleccionMotor {
   const producto = getProductoConfig(configuracion.productoId);
   const organismo = getOrganismo(configuracion.organismoId);
@@ -135,8 +136,10 @@ export function seleccionarMotor(
   let criterio = `Sin configuración específica para ${nombreProducto} · ${organismo.nombre}`;
 
   const motorOrganismo = excepcionesDe(configuracion.organismoId, configuracion.productoId).motor;
-  const delOrganismo = motorOrganismo ? motorAsignado(motorOrganismo, condicion, tipoCliente) : null;
-  const delProducto = motorAsignado(producto.motor, condicion, tipoCliente);
+  const delOrganismo = motorOrganismo
+    ? motorAsignado(motorOrganismo, condicion, tipoCliente, situaciones)
+    : null;
+  const delProducto = motorAsignado(producto.motor, condicion, tipoCliente, situaciones);
   if (delOrganismo) {
     motorId = delOrganismo;
     criterio = `Excepción del organismo ${organismo.nombre} sobre ${nombreProducto}`;

@@ -8,7 +8,8 @@
 //
 // Las secciones que la documentación del repo todavía no detalla (vencimiento, cobro,
 // renovación, cancelación, notificaciones, etc.) se guardan como valores de ejemplo en
-// `extras`: no alteran ningún cálculo.
+// `extras`: no alteran ningún cálculo, salvo la condición mínima de renovación
+// (`condicionRenovacion`), que decide qué créditos propios se pueden renovar.
 
 import { useSyncExternalStore } from "react";
 import {
@@ -34,6 +35,11 @@ export const MODALIDADES_COBRO = [
 ];
 export const CANALES_NOTIFICACION = ["WhatsApp", "Email", "SMS"];
 export const MAX_TRAMOS_PUNITORIOS = 5;
+
+export const CONDICIONES_RENOVACION = [
+  { value: "PORCENTAJE", label: "Porcentaje mínimo del crédito pagado" },
+  { value: "CUOTAS", label: "Cantidad mínima de cuotas pagadas" },
+];
 
 export const MODALIDADES_FIRMA = [
   { value: "ELECTRONICA", label: "Electrónica" },
@@ -64,6 +70,7 @@ export const ESTADOS_NOTIFICACION_ONBOARDING = [
 export type ModalidadFirma = "ELECTRONICA" | "FISICA" | "AMBAS";
 export type TipoVencimiento = "FIJO" | "A_30_DIAS";
 export type MovimientoMes = "MISMO_DIA" | "HABIL_SIGUIENTE" | "HABIL_ANTERIOR";
+export type CondicionRenovacion = "PORCENTAJE" | "CUOTAS";
 export type EstadoNotificacionOnboarding = (typeof ESTADOS_NOTIFICACION_ONBOARDING)[number]["id"];
 
 // Habilitar todos o seleccionar determinados (canales y vendedores).
@@ -146,6 +153,11 @@ export interface ExtrasProducto {
   // Permisos de operación (Onboarding)
   permiteRenovacion: boolean;
   cargoRenovacionPct: number;
+  // Condición mínima para habilitar una renovación voluntaria: o un porcentaje mínimo del
+  // crédito pagado (A) o una cantidad mínima de cuotas pagadas (B). Sólo rige la elegida.
+  condicionRenovacion: CondicionRenovacion;
+  renovacionMinPctPagado: number;
+  renovacionMinCuotasPagas: number;
   permiteCancelacionAnticipada: boolean;
   cargoCancelacionPct: number;
   permiteCambioPrimerVencimiento: boolean;
@@ -197,6 +209,9 @@ const EXTRAS_BASE: ExtrasProducto = {
   modificarCarteraActiva: false,
   permiteRenovacion: true,
   cargoRenovacionPct: 2,
+  condicionRenovacion: "PORCENTAJE",
+  renovacionMinPctPagado: 50,
+  renovacionMinCuotasPagas: 6,
   permiteCancelacionAnticipada: true,
   cargoCancelacionPct: 2,
   permiteCambioPrimerVencimiento: true,
@@ -251,7 +266,7 @@ function estadoInicial(): ProductoAbm[] {
 
 // --- Store ---
 
-const CLAVE = "creditonet.productos.v4";
+const CLAVE = "creditonet.productos.v6";
 const INICIAL = estadoInicial();
 let registros: ProductoAbm[] = INICIAL;
 const oyentes = new Set<() => void>();
@@ -451,6 +466,13 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
   if (!dia(x.diaCorte)) e.diaCorte = "El día de corte va de 1 a 31.";
   if (x.tipoVencimiento === "FIJO" && !dia(x.diaVencimientoFijo))
     e.diaVencimientoFijo = "El día de vencimiento va de 1 a 31.";
+  if (x.permiteRenovacion) {
+    if (x.condicionRenovacion === "CUOTAS") {
+      if (!Number.isInteger(x.renovacionMinCuotasPagas) || x.renovacionMinCuotasPagas < 1)
+        e.renovacionMinCuotasPagas = "Ingresá una cantidad de cuotas entera, de 1 en adelante.";
+    } else if (x.renovacionMinPctPagado < 0 || x.renovacionMinPctPagado > 100)
+      e.renovacionMinPctPagado = "El porcentaje mínimo va de 0 a 100.";
+  }
   if (x.gestionPrestamos.activa) {
     if (!x.gestionPrestamos.razonSocial.trim()) e.gestionRazonSocial = "Ingresá la razón social.";
     if (x.gestionPrestamos.cuit.replace(/\D/g, "").length !== 11)

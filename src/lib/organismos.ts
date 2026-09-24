@@ -76,6 +76,9 @@ export const EXTRAS_POR_SECCION = {
     "gestionPrestamos",
     "permiteRenovacion",
     "cargoRenovacionPct",
+    "condicionRenovacion",
+    "renovacionMinPctPagado",
+    "renovacionMinCuotasPagas",
     "permiteCancelacionAnticipada",
     "cargoCancelacionPct",
     "permiteCambioPrimerVencimiento",
@@ -187,7 +190,7 @@ function productosDe(organismoId: string): string[] {
 }
 
 const store = crearStoreAbm<OrganismoAbm>({
-  clave: "creditonet.organismos.v4",
+  clave: "creditonet.organismos.v5",
   inicial: estadoInicial(),
   valido: (r) => !!r?.config?.id && !!r.config.excepciones && !!r.extras,
   aplicar: (lista) => {

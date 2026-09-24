@@ -164,7 +164,8 @@ export function evaluarSolicitud(app: CreditApplication): ResultadoEvaluacion {
   const { motor } = seleccionarMotor(
     app.configuracion,
     app.laboral.condicionLaboral,
-    app.identificacion.tipoCliente
+    app.identificacion.tipoCliente,
+    app.situaciones
   );
   const reglas = rechazoInstitucional ? [] : evaluarReglas(app, motor, app.riesgo.escenario);
   const resultado = rechazoInstitucional ? null : resolverResultado(reglas);

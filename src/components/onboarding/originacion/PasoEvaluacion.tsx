@@ -83,7 +83,8 @@ export function PasoEvaluacion() {
     const { motor } = seleccionarMotor(
       app.configuracion,
       app.laboral.condicionLaboral,
-      app.identificacion.tipoCliente
+      app.identificacion.tipoCliente,
+      app.situaciones
     );
     const nuevas = descartada ? [] : evaluarReglas(app, motor, app.riesgo.escenario);
     const resultado = descartada ? null : resolverResultado(nuevas);

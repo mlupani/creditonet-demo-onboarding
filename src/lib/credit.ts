@@ -20,6 +20,7 @@ import {
   type SistemaAmortizacion,
 } from "./config";
 import { formatARS } from "./format";
+import type { CondicionRenovacion, ExtrasProducto } from "./productos";
 
 // --- Parámetros de la oferta (Configuración DEMO / Regla simulada) ---
 
@@ -158,6 +159,39 @@ export function ofertaExcedeMaximo(oferta: Oferta): boolean {
 
 export function cuotasAbonadasPct(c: CreditoActivo): number {
   return Math.round((c.cuotasAbonadas / c.cuotasOriginales) * 100);
+}
+
+// Condición mínima de renovación del producto (con las excepciones del organismo): la opción A
+// exige un porcentaje del crédito pagado; la B, una cantidad de cuotas pagadas.
+export interface RequisitoRenovacion {
+  tipo: CondicionRenovacion;
+  cumple: boolean;
+  // Mínimo expresado en la unidad de la condición ("50 %" / "6 cuotas") y como % del crédito,
+  // para ubicarlo sobre la barra de avance.
+  texto: string;
+  minimoPct: number;
+}
+
+export function requisitoRenovacion(
+  c: CreditoActivo,
+  extras: ExtrasProducto | null
+): RequisitoRenovacion {
+  if (extras?.condicionRenovacion === "CUOTAS") {
+    const min = extras.renovacionMinCuotasPagas;
+    return {
+      tipo: "CUOTAS",
+      cumple: c.cuotasAbonadas >= min,
+      texto: `${min} ${min === 1 ? "cuota" : "cuotas"}`,
+      minimoPct: Math.min(100, Math.round((min / c.cuotasOriginales) * 100)),
+    };
+  }
+  const min = extras?.renovacionMinPctPagado ?? 50;
+  return {
+    tipo: "PORCENTAJE",
+    cumple: cuotasAbonadasPct(c) >= min,
+    texto: `${min} %`,
+    minimoPct: min,
+  };
 }
 
 // Recalcula todos los derivados de la oferta a partir de sus entradas.
