@@ -426,6 +426,14 @@ export interface CambioOfertaRegistro {
   nota: string;
   autor: string;
   refrendadoPor?: string;
+  // Cambio de datos financieros (creditonet-80): cada dato corregido, con el valor anterior y el nuevo.
+  datos?: DatoFinancieroCorregido[];
+}
+
+export interface DatoFinancieroCorregido {
+  campo: string;
+  antes: number;
+  despues: number;
 }
 
 // Comentario que el canal de venta agrega a una solicitud En análisis para el analista.

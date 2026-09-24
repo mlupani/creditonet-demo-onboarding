@@ -16,6 +16,7 @@ import type {
   ArchivoLegajo,
   ClienteDatos,
   CreditApplication,
+  DatoFinancieroCorregido,
   DeudaTerceros,
   Domicilio,
   IntentoFirma,
@@ -152,6 +153,8 @@ export interface CambioDatosFinancieros {
   debitosNoRemunerativos: number;
   extraccionesImporte: number;
   transferenciasImporte: number;
+  // Datos que el analista corrigió, con el valor anterior y el nuevo (para el historial).
+  datos: DatoFinancieroCorregido[];
   nota: string;
 }
 
@@ -888,6 +891,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...cambiosOfertaDe(prev),
             {
               tipo: "DATOS_FINANCIEROS",
+              datos: cambio.datos,
               fecha: selloTiempo(),
               montoAnterior: prev.oferta.montoSolicitado,
               plazoAnterior: prev.oferta.plazo,
