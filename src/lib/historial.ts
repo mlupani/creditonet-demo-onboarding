@@ -12,12 +12,21 @@ export interface EventoHistorial {
 
 const METODO = { ELECTRONICA: "electrónica", FISICA: "manual" } as const;
 
+// Intentos de chequeo que no se pudieron completar. Los créditos anteriores al registro sólo
+// tienen la última observación.
+export function intentosChequeo(c: ChequeoTelefonico | null): { nota: string; fecha: string }[] {
+  if (!c) return [];
+  return c.intentos ?? (c.observacion ? [c.observacion] : []);
+}
+
 // Dónde está el chequeo, en una línea (para bandejas y avisos).
 export function textoChequeo(c: ChequeoTelefonico | null): string {
   if (!c) return "No aplica";
   if (c.resultado === "OK") return "Finalizado · correcto";
   if (c.resultado === "NO_OK") return "Finalizado · no correcto";
-  if (c.observacion) return `Observado · ${c.observacion.nota}`;
+  const intentos = intentosChequeo(c);
+  if (c.observacion)
+    return `Observado · ${intentos.length} ${intentos.length === 1 ? "intento" : "intentos"} · ${c.observacion.nota}`;
   return c.tomado ? "En curso · tomado por el chequeador" : "Pendiente de toma por el chequeador";
 }
 
@@ -60,6 +69,9 @@ export function historialCredito(
   const ch = app.chequeoTelefonico;
   if (ch) {
     push("En chequeo telefónico", ch.fechaInicio, "Gestionado por el chequeador");
+    intentosChequeo(ch).forEach((it, i) =>
+      push(`Chequeo telefónico · intento ${i + 1} sin completar`, it.fecha, it.nota)
+    );
     if (ch.resultado)
       push(
         ch.resultado === "OK" ? "Chequeo telefónico correcto" : "Chequeo telefónico no correcto",
