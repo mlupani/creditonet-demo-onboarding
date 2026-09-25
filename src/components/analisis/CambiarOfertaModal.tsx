@@ -1,8 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApplication, evaluarSolicitud } from "@/lib/application-context";
-import type { CambioDatosFinancieros, CambioOferta } from "@/lib/application-context";
+import type {
+  CambioDatosFinancieros,
+  CambioOferta,
+  ResultadoEvaluacion,
+} from "@/lib/application-context";
 import {
   calcularCuota,
   getTerm,
@@ -12,19 +16,36 @@ import {
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
+import { reglaBloquea } from "@/lib/motores";
 import { TERMINOS } from "@/lib/terminologia";
-import { PLANES_CUOTAS } from "@/lib/config";
+import { PLANES_CUOTAS, SESION_SUPERVISOR } from "@/lib/config";
 import type { DatoFinancieroCorregido, Plazo } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { RequiredBadge } from "@/components/ui/RequiredBadge";
 import { Banner } from "@/components/ui/Banner";
 import { MoneyInput } from "@/components/ui/MoneyInput";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { GrillaCuotas } from "@/components/onboarding/oferta/GrillaCuotas";
-import { IconExpand } from "@/components/icons";
+import { IconExpand, IconLoader, IconRefresh } from "@/components/icons";
 
 type Solapa = "oferta" | "financieros";
+
+// Datos financieros que el analista puede corregir: son los que entran al recálculo.
+const CAMPOS_RECALCULO = [
+  "ingresoBruto",
+  "ingresoNeto",
+  "disponible",
+  "debitosNoRemunerativos",
+  "extraccionesImporte",
+  "transferenciasImporte",
+] as const;
+
+type ValoresFinancieros = Record<(typeof CAMPOS_RECALCULO)[number], number>;
+
+// El resultado vale sólo para los valores con los que se ejecutó el motor.
+function mismosValores(a: ValoresFinancieros, b: ValoresFinancieros): boolean {
+  return CAMPOS_RECALCULO.every((k) => a[k] === b[k]);
+}
 
 /**
  * Cambio de oferta del analista (reunión 11/09, 01:14–01:35).
@@ -37,17 +58,26 @@ type Solapa = "oferta" | "financieros";
  *
  * El cambio de oferta rige de inmediato: al confirmar el crédito vuelve al canal de venta en
  * estado Observado con el nuevo importe. El vendedor sólo puede aceptarlo o elegir otra oferta menor.
+ *
+ * La segunda solapa corrige datos financieros y necesita recalcular el motor. El recálculo no es
+ * automático (creditonet-97): lo dispara el botón "Recalcular motor" y el resultado se muestra en
+ * la misma pantalla, sin modal intermedio. La justificación se habilita sólo con un recálculo
+ * vigente, y si el resultado no pasa el analista puede derivar la decisión al supervisor en lugar
+ * de rechazar la solicitud él mismo.
  */
 export function CambiarOfertaModal({
   open,
   onClose,
   onConfirmar,
   onConfirmarDatosFinancieros,
+  onDerivarDatosFinancieros,
 }: {
   open: boolean;
   onClose: () => void;
   onConfirmar: (cambio: CambioOferta) => void;
   onConfirmarDatosFinancieros: (cambio: CambioDatosFinancieros) => void;
+  // El recálculo no pasa y el analista deriva la decisión al supervisor (creditonet-97).
+  onDerivarDatosFinancieros: (cambio: CambioDatosFinancieros, motivo: string) => void;
 }) {
   const { app } = useApplication();
   const o = app.oferta;
@@ -92,10 +122,23 @@ export function CambiarOfertaModal({
   const [transferenciasImporte, setTransferenciasImporte] = useState(l.transferenciasImporte);
   const [notaFin, setNotaFin] = useState("");
   const [intentadoFin, setIntentadoFin] = useState(false);
-  // Cada dato sensible está bloqueado hasta pulsar "Corregir" (creditonet-80), y aplicar el
-  // cambio pide una confirmación explícita con el valor anterior y el nuevo.
+  // Cada dato sensible está bloqueado hasta pulsar "Corregir" (creditonet-80).
   const [editando, setEditando] = useState<Record<string, boolean>>({});
-  const [confirmarFinAbierto, setConfirmarFinAbierto] = useState(false);
+  // El motor no se dispara solo: lo corre el botón "Recalcular" y el resultado queda acá, con
+  // los valores con los que se ejecutó, para poder mostrarlo en la misma pantalla
+  // (creditonet-97: sin modal intermedio).
+  const [recalculo, setRecalculo] = useState<{
+    valores: ValoresFinancieros;
+    ev: ResultadoEvaluacion;
+  } | null>(null);
+  const [recalculando, setRecalculando] = useState(false);
+  const timerRecalculo = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (timerRecalculo.current !== null) window.clearTimeout(timerRecalculo.current);
+    },
+    []
+  );
 
   const camposFin = [
     { id: "ingresoBruto", label: "Ingreso bruto", valor: ingresoBruto, set: setIngresoBruto, original: l.ingresoBruto },
@@ -128,75 +171,85 @@ export function CambiarOfertaModal({
     .map((c) => ({ campo: c.label, antes: c.original, despues: c.valor }));
   const hayCambioFin = datosCorregidos.length > 0;
 
-  // Recalcula reglas institucionales + Motor de Riesgo + línea + límites con los datos
-  // financieros que el analista está editando, sin aplicarlos todavía (previsualización pura).
-  const evFin = useMemo(
-    () =>
-      evaluarSolicitud({
-        ...app,
-        laboral: {
-          ...l,
-          ingresoBruto,
-          ingresoNeto,
-          disponible,
-          debitosNoRemunerativos,
-          extraccionesImporte,
-          transferenciasImporte,
-        },
-      }),
-    [
-      app,
-      l,
-      ingresoBruto,
-      ingresoNeto,
-      disponible,
-      debitosNoRemunerativos,
-      extraccionesImporte,
-      transferenciasImporte,
-    ]
-  );
-  const institucionalNoPasaFin = evFin.institucionales.some(
-    (r) => r.bloqueante && r.resultado === "NO_PASA"
-  );
-  const motorNoPasaFin = !institucionalNoPasaFin && evFin.resultado === "NO_PASA";
-  const sinLineaFin = !institucionalNoPasaFin && !motorNoPasaFin && evFin.planId === null;
-  const pasaFin = !institucionalNoPasaFin && !motorNoPasaFin && !sinLineaFin && evFin.limites !== null;
+  const valoresFin: ValoresFinancieros = {
+    ingresoBruto,
+    ingresoNeto,
+    disponible,
+    debitosNoRemunerativos,
+    extraccionesImporte,
+    transferenciasImporte,
+  };
+
+  // Resultado vigente: si el analista tocó un dato después de recalcular, el resultado anterior
+  // ya no describe lo que va a aplicar, así que se descarta y hay que volver a recalcular.
+  const evFin = recalculo !== null && mismosValores(recalculo.valores, valoresFin) ? recalculo.ev : null;
+  const desactualizadoFin = recalculo !== null && evFin === null;
+
+  const institucionalNoPasaFin = evFin !== null && evFin.institucionales.some(reglaBloquea);
+  const motorNoPasaFin = evFin !== null && !institucionalNoPasaFin && evFin.resultado === "NO_PASA";
+  const sinLineaFin =
+    evFin !== null && !institucionalNoPasaFin && !motorNoPasaFin && evFin.planId === null;
+  const pasaFin =
+    evFin !== null &&
+    !institucionalNoPasaFin &&
+    !motorNoPasaFin &&
+    !sinLineaFin &&
+    evFin.limites !== null;
   const motivoNoPasaFin = institucionalNoPasaFin
     ? "Una regla institucional bloqueante no pasa con estos datos."
     : motorNoPasaFin
       ? "Una regla bloqueante del Motor de Riesgo no pasa con estos datos."
       : sinLineaFin
-        ? (evFin.sinLineaMotivo ?? "No hay una línea de cuotas disponible con estos datos.")
+        ? (evFin!.sinLineaMotivo ?? "No hay una línea de cuotas disponible con estos datos.")
         : null;
+  // Reglas bloqueantes que no pasaron, para mostrar el detalle junto al resultado.
+  const reglasNoPasanFin =
+    evFin === null
+      ? []
+      : (institucionalNoPasaFin ? evFin.institucionales : evFin.reglas).filter(reglaBloquea);
 
   const notaFinValida = notaFin.trim().length >= 5;
-  const puedeConfirmarFin = hayCambioFin && notaFinValida;
+  // La justificación se habilita recién con un recálculo vigente: hasta entonces no hay nada
+  // concreto que justificar (creditonet-97).
+  const notaFinHabilitada = evFin !== null;
+  const puedeConfirmarFin = hayCambioFin && evFin !== null && notaFinValida;
 
-  function confirmarFin() {
+  function recalcularFin() {
     setIntentadoFin(true);
-    if (!puedeConfirmarFin) return;
-    setConfirmarFinAbierto(true);
+    if (!hayCambioFin || recalculando) return;
+    const valores = valoresFin;
+    setRecalculando(true);
+    // El motor de la demo es sincrónico: el retardo sólo hace visible que se está ejecutando.
+    timerRecalculo.current = window.setTimeout(() => {
+      setRecalculo({
+        valores,
+        ev: evaluarSolicitud({ ...app, laboral: { ...l, ...valores } }),
+      });
+      setRecalculando(false);
+    }, 600);
+  }
+
+  function cambioFin(): CambioDatosFinancieros {
+    return { datos: datosCorregidos, ...valoresFin, nota: notaFin.trim() };
   }
 
   function aplicarFin() {
-    setConfirmarFinAbierto(false);
-    onConfirmarDatosFinancieros({
-      datos: datosCorregidos,
-      ingresoBruto,
-      ingresoNeto,
-      disponible,
-      debitosNoRemunerativos,
-      extraccionesImporte,
-      transferenciasImporte,
-      nota: notaFin.trim(),
-    });
+    setIntentadoFin(true);
+    if (!puedeConfirmarFin) return;
+    onConfirmarDatosFinancieros(cambioFin());
+  }
+
+  function derivarFin() {
+    setIntentadoFin(true);
+    if (!puedeConfirmarFin || pasaFin) return;
+    onDerivarDatosFinancieros(cambioFin(), motivoNoPasaFin ?? "");
   }
 
   return (
     <>
       <Modal
         open={open}
-        onClose={grillaAbierta || confirmarFinAbierto ? () => {} : onClose}
+        onClose={grillaAbierta ? () => {} : onClose}
         title={tab === "oferta" ? "Cambiar la oferta" : "Cambio de datos financieros"}
         maxWidth="max-w-lg"
         footer={
@@ -214,9 +267,25 @@ export function CambiarOfertaModal({
               <Button variant="outline" onClick={onClose}>
                 Cancelar
               </Button>
-              <Button variant="primary" onClick={confirmarFin}>
-                Aplicar y recalcular
-              </Button>
+              {evFin === null ? (
+                <Button variant="primary" onClick={recalcularFin} loading={recalculando}>
+                  {!recalculando && <IconRefresh width={15} height={15} />}
+                  {desactualizadoFin ? "Volver a recalcular" : "Recalcular motor"}
+                </Button>
+              ) : pasaFin ? (
+                <Button variant="primary" onClick={aplicarFin}>
+                  Aplicar el cambio
+                </Button>
+              ) : (
+                <>
+                  <Button variant="warning" onClick={derivarFin}>
+                    Derivar a supervisor
+                  </Button>
+                  <Button variant="danger" onClick={aplicarFin}>
+                    Aplicar y rechazar
+                  </Button>
+                </>
+              )}
             </div>
           )
         }
@@ -358,11 +427,12 @@ export function CambiarOfertaModal({
         ) : (
           <>
             <p className="text-sm text-ink-600">
-              Estos datos pueden cambiar la capacidad de endeudamiento: el cambio dispara de
-              nuevo el <strong>Motor de Riesgo</strong>, con reglas institucionales, línea y
-              límites. Rige de inmediato, <strong>sin refrendación</strong>: según el resultado la
-              solicitud queda <strong>Observada</strong> con la nueva oferta o{" "}
-              <strong>Rechazada</strong>.
+              Estos datos pueden cambiar la capacidad de endeudamiento. Corregilos y pulsá{" "}
+              <strong>Recalcular motor</strong>: se ejecutan de nuevo las reglas institucionales,
+              el <strong>Motor de Riesgo</strong>, la línea y los límites, y el resultado se
+              muestra acá mismo. El cambio rige de inmediato, <strong>sin refrendación</strong>:
+              si el motor pasa, la solicitud queda <strong>Observada</strong> con la nueva oferta;
+              si no pasa, podés rechazarla o derivar la decisión al supervisor.
             </p>
 
             <div className="mt-4 grid gap-x-4 gap-y-3 sm:grid-cols-2">
@@ -411,33 +481,79 @@ export function CambiarOfertaModal({
               (neto menos {TERMINOS.conceptosNoRemunerativos.toLowerCase()}).
             </p>
 
-            {hayCambioFin && (
-              <div className="mt-4">
-                {pasaFin ? (
-                  <Banner tone="success" title="El motor pasa con estos datos">
-                    Nuevo capital máximo{" "}
-                    <strong className="tabular-nums">{formatARS(evFin.limites!.capitalConsiderado)}</strong>
-                    {evFin.planId && PLANES_CUOTAS[evFin.planId] && (
-                      <> · línea {PLANES_CUOTAS[evFin.planId].nombre}</>
-                    )}
-                    .
-                  </Banner>
-                ) : (
-                  <Banner tone="error" title="El motor no pasa con estos datos">
-                    {motivoNoPasaFin} La solicitud pasaría a <strong>Rechazado</strong>.
-                  </Banner>
-                )}
-              </div>
-            )}
             {intentadoFin && !hayCambioFin && (
               <p className="mt-1.5 text-xs font-medium text-danger-600">
                 Cambiá al menos un dato financiero respecto del valor actual.
               </p>
             )}
 
+            {recalculando && (
+              <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-brand-700">
+                <IconLoader width={16} height={16} />
+                Ejecutando reglas institucionales, Motor de Riesgo, línea y límites…
+              </p>
+            )}
+
+            {!recalculando && evFin === null && hayCambioFin && (
+              <p className="mt-4 rounded-xl border border-dashed border-ink-300 bg-ink-25 px-4 py-3 text-xs text-ink-600">
+                {desactualizadoFin
+                  ? "Los datos cambiaron desde el último recálculo: el resultado anterior ya no vale. Volvé a recalcular para ver cómo queda el motor."
+                  : "Todavía no se recalculó el motor: pulsá Recalcular motor para ver el resultado con estos datos."}
+              </p>
+            )}
+
+            {!recalculando && evFin !== null && (
+              <div className="mt-4 space-y-3">
+                {pasaFin ? (
+                  <Banner tone="success" title="El motor pasa con estos datos">
+                    Nuevo capital máximo{" "}
+                    <strong className="tabular-nums">
+                      {formatARS(evFin.limites!.capitalConsiderado)}
+                    </strong>
+                    {evFin.planId && PLANES_CUOTAS[evFin.planId] && (
+                      <> · línea {PLANES_CUOTAS[evFin.planId].nombre}</>
+                    )}
+                    . Al aplicar, la solicitud vuelve al canal de venta en estado{" "}
+                    <strong>Observado</strong> con la oferta nueva.
+                  </Banner>
+                ) : (
+                  <Banner tone="error" title="El motor no pasa con estos datos">
+                    {motivoNoPasaFin} Si lo aplicás, la solicitud pasa a{" "}
+                    <strong>Rechazado</strong>; con <strong>Derivar a supervisor</strong> nada rige
+                    todavía y decide {SESION_SUPERVISOR.nombre}.
+                  </Banner>
+                )}
+
+                {reglasNoPasanFin.length > 0 && (
+                  <ul className="space-y-1 rounded-xl border border-danger-200 bg-danger-50 px-4 py-3 text-xs text-danger-700">
+                    {reglasNoPasanFin.map((r) => (
+                      <li key={r.id}>
+                        <span className="font-mono font-bold">{r.codigo}</span> {r.nombre}:{" "}
+                        {r.valorEvaluado}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <dl className="divide-y divide-ink-100 rounded-xl border border-ink-200 bg-ink-25">
+                  {datosCorregidos.map((d) => (
+                    <div
+                      key={d.campo}
+                      className="flex items-center justify-between gap-4 px-4 py-2"
+                    >
+                      <dt className="text-xs text-ink-500">{d.campo}</dt>
+                      <dd className="text-xs font-semibold tabular-nums text-ink-900">
+                        {formatARS(d.antes)} → {formatARS(d.despues)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+
             <div className="mt-4">
               <label htmlFor="cdf-nota" className="mb-1.5 block text-sm font-medium text-ink-700">
-                Nota
+                Nota / justificación
               </label>
               <div className="relative">
                 <textarea
@@ -445,41 +561,38 @@ export function CambiarOfertaModal({
                   rows={3}
                   value={notaFin}
                   onChange={(e) => setNotaFin(e.target.value)}
-                  placeholder="Ej.: El recibo informa $1.450.000 de bruto, no $1.100.000. Se recalcula con el dato correcto."
-                  className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 ${
-                    intentadoFin && !notaFinValida
+                  disabled={!notaFinHabilitada}
+                  placeholder={
+                    notaFinHabilitada
+                      ? "Ej.: El recibo informa $1.450.000 de bruto, no $1.100.000. Se recalcula con el dato correcto."
+                      : "Se habilita después de recalcular el motor."
+                  }
+                  className={`w-full rounded-lg border px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400 ${
+                    notaFinHabilitada ? "bg-white" : "bg-ink-50"
+                  } ${
+                    intentadoFin && notaFinHabilitada && !notaFinValida
                       ? "border-danger-400 focus:border-danger-500 focus:ring-2 focus:ring-danger-100"
                       : "border-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   }`}
                 />
                 <RequiredBadge />
               </div>
-              {intentadoFin && !notaFinValida && (
-                <p className="mt-1.5 text-xs font-medium text-danger-600">
-                  Explicá el motivo del cambio en al menos 5 caracteres.
+              {!notaFinHabilitada ? (
+                <p className="mt-1.5 text-xs text-ink-500">
+                  La justificación se escribe sobre un resultado concreto: primero recalculá el
+                  motor.
                 </p>
+              ) : (
+                intentadoFin && !notaFinValida && (
+                  <p className="mt-1.5 text-xs font-medium text-danger-600">
+                    Explicá el motivo del cambio en al menos 5 caracteres.
+                  </p>
+                )
               )}
             </div>
           </>
         )}
       </Modal>
-
-      <ConfirmationModal
-        open={open && confirmarFinAbierto}
-        title="Confirmar cambio de datos financieros"
-        descripcion="Al aplicar, se recalculan reglas institucionales, Motor de Riesgo, línea y límites. Rige de inmediato y la solicitud queda Observada o Rechazada según el resultado."
-        rows={[
-          ...datosCorregidos.map((d) => ({
-            label: d.campo,
-            value: `${formatARS(d.antes)} → ${formatARS(d.despues)}`,
-          })),
-          { label: "Nota", value: notaFin.trim() },
-        ]}
-        confirmLabel="Aplicar y recalcular"
-        tone="danger"
-        onConfirm={aplicarFin}
-        onCancel={() => setConfirmarFinAbierto(false)}
-      />
 
       <Modal
         open={open && grillaAbierta}

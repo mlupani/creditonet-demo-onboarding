@@ -443,6 +443,25 @@ export interface DatoFinancieroCorregido {
   despues: number;
 }
 
+// Cambio de datos financieros cuyo recálculo del motor no pasó y que el analista derivó al
+// supervisor en lugar de rechazar la solicitud él mismo (creditonet-97). Guarda los valores
+// recalculados para poder aplicarlos tal cual si el supervisor confirma el rechazo; hasta que
+// decida, nada rige y la solicitud sigue En análisis.
+export interface DerivacionCambioFinanciero {
+  ingresoBruto: number;
+  ingresoNeto: number;
+  disponible: number;
+  debitosNoRemunerativos: number;
+  extraccionesImporte: number;
+  transferenciasImporte: number;
+  datos: DatoFinancieroCorregido[];
+  nota: string;
+  // Por qué no pasó el recálculo, tal como se le mostró al analista.
+  motivo: string;
+  fecha: string;
+  derivadoPor: string;
+}
+
 // Comentario que el canal de venta agrega a una solicitud En análisis para el analista.
 export interface ComentarioSolicitud {
   id: string;
@@ -533,6 +552,9 @@ export interface CreditApplication {
     // Excepción del supervisor para superar el límite de cambios de oferta (creditonet-78): vale
     // sólo para el cambio siguiente al `n`-ésimo (n = cambios ya hechos al autorizarla).
     excepcionCambioOferta?: { n: number; autorizadoPor: string; fecha: string } | null;
+    // Cambio de datos financieros que el analista derivó al supervisor porque el recálculo del
+    // motor no pasa (creditonet-97), o null/ausente si no hay ninguno pendiente.
+    derivacionCambioFinanciero?: DerivacionCambioFinanciero | null;
     // El analista leyó y confirmó la observación de una solicitud reenviada (creditonet-75). Hasta
     // entonces no puede operar el crédito; se limpia al observar o al reenviar de nuevo.
     observacionConfirmada?: { fecha: string } | null;

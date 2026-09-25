@@ -57,6 +57,13 @@ export function historialCredito(
   const ex = app.analista.excepcionCambioOferta;
   push("Excepción de cambio de oferta autorizada", ex?.fecha, `Supervisor: ${ex?.autorizadoPor}`);
   push("Observación confirmada por el analista", app.analista.observacionConfirmada?.fecha);
+  // Derivación pendiente: mientras el supervisor no decida, es el último estado del cambio.
+  const der = app.analista.derivacionCambioFinanciero;
+  push(
+    "Cambio de datos financieros derivado al supervisor",
+    der?.fecha,
+    der ? `${der.motivo} Derivado por ${der.derivadoPor}` : undefined
+  );
   for (const c of app.analista.historialCambiosOferta ?? []) {
     if (c.tipo !== "DATOS_FINANCIEROS" || !c.datos?.length) continue;
     push(
