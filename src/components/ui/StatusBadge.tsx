@@ -24,6 +24,7 @@ export const ESTADO_META: Record<EstadoCredito, { label: string; tone: Tone }> =
   APROBADO: { label: "Aprobado", tone: "success" },
   EN_FIRMA: { label: "En firma", tone: "info" },
   FIRMADO: { label: "Firma aprobada", tone: "success" },
+  SUPERIOR: { label: "Aprobación superior", tone: "info" },
   CHEQUEO_TELEFONICO: { label: "Chequeo telefónico", tone: "info" },
   PARA_LIQUIDAR: { label: "Para liquidar", tone: "success" },
 };
@@ -46,17 +47,31 @@ export function StatusBadge({
   );
 }
 
+// Código corto con que las bandejas nombran cada tramo (pestañas del analista). Con `conCodigo`
+// el badge lo agrega al nombre del estado: "En firma · FEL".
+const CODIGO_ESTADO: Partial<Record<EstadoCredito, string>> = {
+  APROBADO: "APR",
+  EN_FIRMA: "FEL",
+  FIRMADO: "AFEL",
+  SUPERIOR: "SUP",
+  CHEQUEO_TELEFONICO: "CHEQ",
+  PARA_LIQUIDAR: "LIQ",
+};
+
 // `etiqueta`: reemplaza el texto de una solicitud devuelta por el analista (COFE u OBS en la bandeja del vendedor).
 export function EstadoBadge({
   estado,
   etiqueta,
+  conCodigo = false,
 }: {
   estado: EstadoCredito;
   etiqueta?: string;
+  conCodigo?: boolean;
 }) {
   const meta =
     etiqueta && (estado === "OBSERVADO" || estado === "CAMBIO_OFERTA")
       ? { label: etiqueta, tone: "warning" as const }
       : ESTADO_META[estado];
-  return <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>;
+  const codigo = conCodigo ? CODIGO_ESTADO[estado] : undefined;
+  return <StatusBadge tone={meta.tone}>{codigo ? `${meta.label} · ${codigo}` : meta.label}</StatusBadge>;
 }

@@ -14,19 +14,26 @@ import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
 type Vista = "tabla" | "lista";
 
-type Pestana = "TODOS" | "PRE" | "OBS" | "COFE" | "RECH" | "APR" | "FEL" | "AFEL" | "LIQ";
+type Pestana = "TODOS" | "PRE" | "ANA" | "OBS" | "COFE" | "RECH" | "APR" | "FEL" | "AFEL" | "SUP" | "CHEQ" | "LIQ";
 
 // Bandeja del analista — 7 estados (desde preaprobado en adelante) de creditonet-34.
 // Las observadas pendientes del vendedor no figuran (las ve él en su bandeja); OBS muestra
-// las que ya corrigió y reenvió: entran a OBS, no a PRE.
+// las que ya corrigió y reenvió: entran a OBS, no a PRE ni ANA. PRE = para tomar; ANA = ya tomadas por un analista.
 type DefPestana = { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string; reenviadas?: boolean };
 
 const PESTANAS_ESTADO: DefPestana[] = [
   {
     id: "PRE",
     titulo: "Preaprobados",
-    estados: ["PREAPROBADO", "ANALISIS_TOMADO"],
-    vacio: "No hay solicitudes preaprobadas para analizar.",
+    estados: ["PREAPROBADO"],
+    vacio: "No hay solicitudes preaprobadas para tomar.",
+    reenviadas: false,
+  },
+  {
+    id: "ANA",
+    titulo: "En análisis",
+    estados: ["ANALISIS_TOMADO"],
+    vacio: "No hay solicitudes en análisis: tomá una desde Preaprobados.",
     reenviadas: false,
   },
   {
@@ -67,6 +74,18 @@ const PESTANAS_ESTADO: DefPestana[] = [
     vacio: "No hay firmas aprobadas.",
   },
   {
+    id: "SUP",
+    titulo: "Aprobación superior",
+    estados: ["SUPERIOR"],
+    vacio: "No hay solicitudes pendientes de aprobación de un superior.",
+  },
+  {
+    id: "CHEQ",
+    titulo: "Chequeo telefónico",
+    estados: ["CHEQUEO_TELEFONICO"],
+    vacio: "No hay solicitudes en chequeo telefónico.",
+  },
+  {
     id: "LIQ",
     titulo: "Para liquidar",
     estados: ["PARA_LIQUIDAR"],
@@ -84,6 +103,16 @@ const PESTANAS: DefPestana[] = [
   },
   ...PESTANAS_ESTADO,
 ];
+
+// Filtro de perfil: qué créditos ve el analista. Un crédito está asignado a quien lo tomó; las
+// observadas y las que nadie tomó figuran "Sin asignar" (misma regla que la columna Analista).
+type PerfilAnalista = "" | "MIOS" | "SIN_ASIGNAR";
+const asignadoAlAnalista = (c: { estado: EstadoCredito; analista: { tomado: boolean } }) =>
+  c.estado !== "OBSERVADO" && c.analista.tomado;
+const coincidePerfil = (
+  perfil: PerfilAnalista,
+  c: { estado: EstadoCredito; analista: { tomado: boolean } }
+) => !perfil || (perfil === "MIOS") === asignadoAlAnalista(c);
 
 const COLUMNAS = [
   "Cliente",
@@ -105,17 +134,21 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const [eleccion, setEleccion] = useState<Pestana | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [canal, setCanal] = useState("");
+  const [perfil, setPerfil] = useState<PerfilAnalista>("");
   const [colapsado, setColapsado] = useState(false);
   const [vista, setVista] = useState<Vista>("tabla");
   const [pagina, setPagina] = useState<Record<Pestana, number>>({
     TODOS: 1,
     PRE: 1,
+    ANA: 1,
     OBS: 1,
     COFE: 1,
     RECH: 1,
     APR: 1,
     FEL: 1,
     AFEL: 1,
+    SUP: 1,
+    CHEQ: 1,
     LIQ: 1,
   });
   const POR_PAGINA = 5;
@@ -134,6 +167,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
       // PRE = primeras (excluye reenviadas); OBS = sólo reenviadas.
       if (def.reenviadas !== undefined && c.analista.reenviada !== def.reenviadas) return false;
       if (canal && c.configuracion.canalId !== canal) return false;
+      if (!coincidePerfil(perfil, c)) return false;
       if (busqueda.trim() && c.cliente && !coincideCliente(c.cliente, busqueda)) return false;
       if (busqueda.trim() && !c.cliente) return false;
       return true;
@@ -149,6 +183,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
     app.numeroCredito !== null &&
     propia !== undefined &&
     (!canal || app.configuracion.canalId === canal) &&
+    coincidePerfil(perfil, app) &&
     coincideCliente(cliente, busqueda);
 
   // Filas = DB + solicitud en curso (si coincide y no está ya en DB)
@@ -172,7 +207,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   useEffect(() => {
     setPagina((prev) => ({ ...prev, [activa.id]: 1 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busqueda, canal, activa.id]);
+  }, [busqueda, canal, perfil, activa.id]);
 
   useEffect(() => {
     setColapsado(false);
@@ -213,6 +248,16 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
               {c.nombre}
             </option>
           ))}
+        </select>
+        <select
+          value={perfil}
+          onChange={(e) => setPerfil(e.target.value as PerfilAnalista)}
+          aria-label="Filtro perfil"
+          className="h-10 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-700 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+        >
+          <option value="">Perfil: todos</option>
+          <option value="MIOS">Mis créditos</option>
+          <option value="SIN_ASIGNAR">Sin asignar</option>
         </select>
         <div role="group" aria-label="Vista" className="ml-auto inline-flex rounded-lg border border-ink-300 bg-white p-0.5 shadow-xs">
           {(
@@ -296,7 +341,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
           {filas(activa.id) === 0 ? (
             <p className="flex items-center justify-center gap-2 px-5 py-8 text-center text-sm text-ink-400">
               <IconFileStack width={15} height={15} />
-              {propiaEn(activa.id) && (busqueda.trim() || canal)
+              {propiaEn(activa.id) && (busqueda.trim() || canal || perfil)
                 ? "Ninguna solicitud coincide con la búsqueda o el filtro."
                 : activa.vacio}
             </p>
@@ -360,7 +405,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                           <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(c.oferta.valorCuota)}</td>
                           <td className="px-3 py-3 tabular-nums text-ink-700">{c.oferta.plazo}</td>
                           <td className="px-3 py-3">
-                            <EstadoBadge estado={estadoVisible} />
+                            <EstadoBadge estado={estadoVisible} conCodigo />
                           </td>
                           <td className="px-3 py-3 text-ink-700">{fecha ?? "—"}</td>
                           <td className="px-3 py-3 text-ink-700">
@@ -397,6 +442,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                                 ? "OBSERVADO"
                                 : app.estado
                             }
+                            conCodigo
                           />
                         </td>
                         <td className="px-3 py-3 text-ink-700">{fechaApp ?? "—"}</td>

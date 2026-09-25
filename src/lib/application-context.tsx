@@ -11,11 +11,14 @@ import {
   type ReactNode,
 } from "react";
 import { CHEQUEO_PENDIENTE } from "./types";
+import { intentosChequeo } from "./historial";
 import type {
   AccionLegajo,
   ArchivoLegajo,
   ClienteDatos,
   CreditApplication,
+  DatoFinancieroCorregido,
+  Observacion,
   DeudaTerceros,
   Domicilio,
   IntentoFirma,
@@ -50,6 +53,7 @@ import {
   calcularLimites,
   conMoraCancelada,
   cambiosOfertaDe,
+  observacionesDe,
   ofertaAnalistaDe,
   recalcularOferta,
 } from "./credit";
@@ -78,6 +82,19 @@ import { hidratarPlanes } from "./planes";
 import { hidratarOrganismos } from "./organismos";
 
 // Plazo de la oferta dentro de la grilla del plan; si el plan no lo tiene, el primero de la grilla.
+// Campos de `analista` que deja una observación nueva: la vigente y su lugar en el historial.
+function conObservacion(prev: CreditApplication, observacion: Observacion) {
+  return { observacion, historialObservaciones: [...observacionesDe(prev), observacion] };
+}
+
+// Firma aprobada (y, si se pidió, visto bueno del superior): sigue el chequeo telefónico si el
+// producto lo exige; si no, queda para liquidar.
+function pasoTrasFirma(firmada: CreditApplication, anterior: CreditApplication): CreditApplication {
+  if (!requiereChequeoTelefonico(firmada.configuracion))
+    return puedeLiquidar(firmada) ? { ...firmada, estado: "PARA_LIQUIDAR" } : anterior;
+  return { ...firmada, estado: "CHEQUEO_TELEFONICO", chequeoTelefonico: { ...CHEQUEO_PENDIENTE, fechaInicio: selloTiempo() } };
+}
+
 function plazoValido(planId: string | null, plazo: Plazo): Plazo {
   const grilla = planId ? PLANES_CUOTAS[planId]?.grilla : undefined;
   return grilla && grilla.length > 0 && !grilla.some((f) => f.plazo === plazo)
@@ -92,7 +109,22 @@ function emisorMock(semilla: string): string {
   return BANCOS[hash % BANCOS.length];
 }
 
+// Estado por pestaña (sessionStorage): la solicitud abierta, el paso y la pantalla.
 const STORAGE_KEY = "creditonet.demo.v22";
+// Base de créditos compartida entre pestañas (localStorage, creditonet-92): permite simular al
+// vendedor y al analista en pestañas distintas. El evento `storage` la sincroniza en vivo.
+const DB_KEY = "creditonet.demo.db.v1";
+// Aviso de "Reiniciar demo" a las demás pestañas.
+const RESET_KEY = "creditonet.demo.reset.v1";
+
+// Un registro de la DB sin los metadatos de bandeja: es lo que se abre en `app`.
+function sinMeta(registro: CreditoDB): CreditApplication {
+  const { _bandeja: _b, _descripcion: _d, _id: _i, ...rest } = registro;
+  void _b;
+  void _d;
+  void _i;
+  return rest as CreditApplication;
+}
 
 // Cierra la firma en curso (la última del historial) con la decisión del analista.
 function cerrarIntentoActual(firmas: IntentoFirma[], resultado: ResultadoFirma): IntentoFirma[] {
@@ -117,7 +149,8 @@ interface EstadoPersistido {
   paso: number;
   pasoMaximo: number;
   pantallaActual: PantallaPostOfertaId;
-  creditosDB: CreditoDB[];
+  // Sólo en sesiones anteriores a la base compartida (migración); ahora vive en DB_KEY.
+  creditosDB?: CreditoDB[];
   appDbId: string | null;
 }
 
@@ -152,6 +185,8 @@ export interface CambioDatosFinancieros {
   debitosNoRemunerativos: number;
   extraccionesImporte: number;
   transferenciasImporte: number;
+  // Datos que el analista corrigió, con el valor anterior y el nuevo (para el historial).
+  datos: DatoFinancieroCorregido[];
   nota: string;
 }
 
@@ -303,6 +338,9 @@ interface ApplicationContextValue {
   // AFEL: el analista revisó la firma con "Ver firma" y la confirma o la rechaza (creditonet-93).
   confirmarChequeoFirma: () => void;
   verificarFirma: () => void;
+  // AFEL → SUP: pide la aprobación de un superior; `aprobarSuperior` la da y sigue el flujo.
+  enviarASuperior: () => void;
+  aprobarSuperior: () => void;
   solicitarRefirma: () => void;
   // Chequeo telefónico (bandeja del chequeador).
   tomarChequeo: () => void;
@@ -358,6 +396,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     creditosDBRef.current = creditosDB;
   }, [creditosDB]);
 
+  const reinicioLocal = useCallback(() => {
+    // Reinicio total: la bandeja vuelve al JSON base (se descartan los cambios de la
+    // sesión) y la solicitud en curso se suelta. Como el estado se persiste en
+    // sessionStorage, el reset queda firme ante recargas.
+    setCreditosDBBase(creditosSeed());
+    setApp(crearAplicacionInicial());
+    setPasoState(1);
+    setPasoMaximo(1);
+    setPantallaActual("personales");
+    setMenuAbierto(false);
+    // La demo nueva no está ligada a ningún registro de la DB simulada.
+    setAppDbId(null);
+  }, []);
+
+  // Sincronización entre pestañas (creditonet-92). `ultimoDB` es la última base escrita o leída
+  // del storage: evita reescribir lo mismo y que dos pestañas se rebotan cambios sin fin.
+  const appRef = useRef(app);
+  const appDbIdRef = useRef(appDbId);
+  const ultimoDB = useRef<string | null>(null);
+  useEffect(() => {
+    appRef.current = app;
+    appDbIdRef.current = appDbId;
+  }, [app, appDbId]);
+
+  // Otra pestaña cambió la base: se toma tal cual y, si esta pestaña tiene abierto uno de esos
+  // créditos, se abre su versión nueva (si no, el próximo cambio local pisaría el ajeno).
+  const aplicarDBExterna = useCallback((lista: CreditoDB[]) => {
+    setCreditosDBBase(lista);
+    const id = appDbIdRef.current ?? appRef.current.numeroCredito;
+    const registro = id === null ? undefined : lista.find((c) => c._id === id);
+    if (!registro) return;
+    const nueva = sinMeta(registro);
+    setApp((prev) => (JSON.stringify(prev) === JSON.stringify(nueva) ? prev : nueva));
+  }, []);
+
   // Durante el chequeo telefónico el crédito lo gestiona sólo el chequeador: ni el analista ni
   // el canal de venta pueden operarlo desde su bandeja (sólo verlo).
   const setAppOperativo = useCallback((actualizar: (prev: CreditApplication) => CreditApplication) => {
@@ -379,6 +452,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hidratarPlanes();
       hidratarOrganismos();
       try {
+        // La base compartida manda sobre la de la sesión: la otra pestaña pudo haberla cambiado.
+        let dbCompartida: CreditoDB[] | null = null;
+        const rawDb = localStorage.getItem(DB_KEY);
+        if (rawDb) {
+          const lista = JSON.parse(rawDb);
+          if (Array.isArray(lista)) {
+            dbCompartida = lista as CreditoDB[];
+            ultimoDB.current = rawDb;
+          }
+        }
         const raw = sessionStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<EstadoPersistido> & { app: any };
@@ -406,14 +489,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 razonSocial: e.razonSocial ?? "",
               }));
             }
-            setApp(appPersistida as CreditApplication);
+            const idActivo = parsed.appDbId ?? appPersistida.numeroCredito;
+            const enDB = idActivo === null ? undefined : dbCompartida?.find((c) => c._id === idActivo);
+            setApp(enDB ? sinMeta(enDB) : (appPersistida as CreditApplication));
           }
           if (typeof parsed.paso === "number") setPasoState(parsed.paso);
           if (typeof parsed.pasoMaximo === "number") setPasoMaximo(parsed.pasoMaximo);
           if (parsed.pantallaActual) setPantallaActual(parsed.pantallaActual);
-          if (Array.isArray(parsed.creditosDB)) setCreditosDBBase(parsed.creditosDB);
+          if (!dbCompartida && Array.isArray(parsed.creditosDB)) setCreditosDBBase(parsed.creditosDB);
           if (parsed.appDbId !== undefined) setAppDbId(parsed.appDbId);
         }
+        if (dbCompartida) setCreditosDBBase(dbCompartida);
       } catch {
         /* demo sin persistencia si el storage no está disponible */
       } finally {
@@ -433,14 +519,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
           paso,
           pasoMaximo,
           pantallaActual,
-          creditosDB,
           appDbId,
         } satisfies EstadoPersistido)
       );
     } catch {
       /* noop */
     }
-  }, [app, paso, pasoMaximo, pantallaActual, creditosDB, appDbId, hidratado]);
+  }, [app, paso, pasoMaximo, pantallaActual, appDbId, hidratado]);
+
+  // La base de créditos se comparte con las demás pestañas.
+  useEffect(() => {
+    if (!hidratado) return;
+    try {
+      const texto = JSON.stringify(creditosDB);
+      if (texto === ultimoDB.current) return;
+      ultimoDB.current = texto;
+      localStorage.setItem(DB_KEY, texto);
+    } catch {
+      /* noop */
+    }
+  }, [creditosDB, hidratado]);
+
+  // Cambios que llegan de otras pestañas. `storage` no se dispara en la pestaña que escribe.
+  useEffect(() => {
+    if (!hidratado) return;
+    const alRecibir = (e: StorageEvent) => {
+      if (e.storageArea !== localStorage) return;
+      if (e.key === RESET_KEY) {
+        reinicioLocal();
+        return;
+      }
+      if (e.key !== DB_KEY || !e.newValue || e.newValue === ultimoDB.current) return;
+      try {
+        const lista = JSON.parse(e.newValue);
+        if (!Array.isArray(lista)) return;
+        ultimoDB.current = e.newValue;
+        aplicarDBExterna(lista as CreditoDB[]);
+      } catch {
+        /* noop */
+      }
+    };
+    window.addEventListener("storage", alRecibir);
+    return () => window.removeEventListener("storage", alRecibir);
+    // reinicioLocal es estable (useCallback sin dependencias).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hidratado, aplicarDBExterna]);
 
   // Abre un crédito de la DB simulada en `app` y recuerda de qué registro vino, para que los
   // cambios posteriores (observar, rechazar, aprobar, tomar análisis, etc.) se reflejen ahí.
@@ -451,11 +574,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const registro = creditosDBRef.current.find((c) => c._id === id);
     if (!registro) return;
     setCreditosDBBase(creditosDBRef.current);
-    const { _bandeja: _b, _descripcion: _d, _id: _i, ...rest } = registro;
-    void _b;
-    void _d;
-    void _i;
-    setApp(rest as CreditApplication);
+    setApp(sinMeta(registro));
     setAppDbId(id);
   }, []);
 
@@ -746,12 +865,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
               refrendadoPor: SESION_SUPERVISOR.nombre,
             },
           ],
-          observacion: {
+          ...conObservacion(prev, {
             motivo: "Cambio de oferta del analista",
             nota: `${cambio.nota} (refrendado por ${SESION_SUPERVISOR.nombre})`,
             fecha: fechaHoy(),
             pantallas: [],
-          },
+          }),
         },
       };
     });
@@ -890,6 +1009,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...cambiosOfertaDe(prev),
             {
               tipo: "DATOS_FINANCIEROS",
+              datos: cambio.datos,
               fecha: selloTiempo(),
               montoAnterior: prev.oferta.montoSolicitado,
               plazoAnterior: prev.oferta.plazo,
@@ -899,14 +1019,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
               autor: SESION_ANALISTA.nombre,
             },
           ],
-          observacion: {
+          ...conObservacion(prev, {
             motivo: "Cambio de datos financieros del analista",
             nota: cambio.nota,
             fecha: fechaHoy(),
-            // Tras aceptar la nueva oferta, sólo queda habilitado el legajo virtual (subir más
-            // documentación, ver el legajo e imprimir el formulario).
+            // Tras aceptar la nueva oferta, quedan habilitados el legajo virtual (subir más
+            // documentación, ver el legajo e imprimir el formulario) y, aparte, la pantalla de
+            // impresión del legajo (ver PostOfertaShell).
             pantallas: ["legajo"],
-          },
+          }),
         },
       });
     });
@@ -1371,7 +1492,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           cambioOfertaPendiente: null,
           ofertaAnalista: null,
           observacionConfirmada: null,
-          observacion: { motivo, nota, fecha: fechaHoy(), pantallas, campos },
+          ...conObservacion(prev, { motivo, nota, fecha: fechaHoy(), pantallas, campos }),
         },
       }));
     },
@@ -1479,7 +1600,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Rechazar desde AFEL deja constancia en la firma que se estaba verificando.
       firmas:
         prev.estado === "FIRMADO" ? cerrarIntentoActual(prev.firmas, "RECHAZADA") : prev.firmas,
-      rechazo: { origen: "ANALISTA", codigos: [codigo], motivo, observacion, fecha: fechaHoy() },
+      rechazo: {
+        // Un crédito en SUP lo rechaza el superior; el resto, el analista.
+        origen: prev.estado === "SUPERIOR" ? "SUPERIOR" : "ANALISTA",
+        codigos: [codigo],
+        motivo,
+        observacion,
+        fecha: fechaHoy(),
+      },
     }));
   }, []);
 
@@ -1526,20 +1654,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // AFEL: el analista chequeó la firma con "Ver firma" y la confirma. Recién ahí se habilita
-  // pasar a chequeo/liquidar (creditonet-93); el rechazo usa el flujo existente de rechazarCredito.
+  // pasar a chequeo/liquidar o a SUP (creditonet-93); el rechazo usa el flujo existente de rechazarCredito.
   const confirmarChequeoFirma = useCallback(() => {
     setAppOperativo((prev) => (prev.estado === "FIRMADO" ? { ...prev, firmaChequeada: true } : prev));
   }, []);
 
-  // AFEL: firma aprobada. Sigue el chequeo telefónico si el producto lo exige; si no, queda
-  // para liquidar. Exige haber chequeado la firma primero (creditonet-93).
+  // AFEL: firma aprobada. Exige haber chequeado la firma primero (creditonet-93).
   const verificarFirma = useCallback(() => {
     setAppOperativo((prev) => {
       if (prev.estado !== "FIRMADO" || !prev.firmaChequeada) return prev;
-      const firmada = { ...prev, firmas: cerrarIntentoActual(prev.firmas, "APROBADA") };
-      if (!requiereChequeoTelefonico(prev.configuracion))
-        return puedeLiquidar(firmada) ? { ...firmada, estado: "PARA_LIQUIDAR" } : prev;
-      return { ...firmada, estado: "CHEQUEO_TELEFONICO", chequeoTelefonico: { ...CHEQUEO_PENDIENTE, fechaInicio: selloTiempo() } };
+      return pasoTrasFirma({ ...prev, firmas: cerrarIntentoActual(prev.firmas, "APROBADA") }, prev);
+    });
+  }, []);
+
+  // AFEL → SUP: la firma se da por verificada y el crédito espera la aprobación de un superior.
+  const enviarASuperior = useCallback(() => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "FIRMADO" || !prev.firmaChequeada) return prev;
+      return {
+        ...prev,
+        estado: "SUPERIOR",
+        firmas: cerrarIntentoActual(prev.firmas, "APROBADA"),
+        aprobacionSuperior: {
+          enviadaPor: SESION_ANALISTA.nombre,
+          fechaEnvio: selloTiempo(),
+          aprobadaPor: null,
+          fechaAprobacion: null,
+        },
+      };
+    });
+  }, []);
+
+  // SUP: el superior aprueba y el crédito sigue como después de AFEL.
+  const aprobarSuperior = useCallback(() => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "SUPERIOR" || !prev.aprobacionSuperior) return prev;
+      return pasoTrasFirma(
+        {
+          ...prev,
+          aprobacionSuperior: {
+            ...prev.aprobacionSuperior,
+            aprobadaPor: SESION_SUPERVISOR.nombre,
+            fechaAprobacion: selloTiempo(),
+          },
+        },
+        prev
+      );
     });
   }, []);
 
@@ -1586,6 +1746,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev.chequeoTelefonico,
           tomado: false,
           observacion: { nota, fecha: selloTiempo() },
+          intentos: [
+            ...intentosChequeo(prev.chequeoTelefonico),
+            { nota, fecha: selloTiempo() },
+          ],
         },
       };
     });
@@ -1615,19 +1779,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+
+  // "Reiniciar demo" reinicia todas las pestañas: las demás lo reciben por RESET_KEY.
   const reiniciarDemo = useCallback(() => {
-    // Reinicio total: la bandeja vuelve al JSON base (se descartan los cambios de la
-    // sesión) y la solicitud en curso se suelta. Como el estado se persiste en
-    // sessionStorage, el reset queda firme ante recargas.
-    setCreditosDBBase(creditosSeed());
-    setApp(crearAplicacionInicial());
-    setPasoState(1);
-    setPasoMaximo(1);
-    setPantallaActual("personales");
-    setMenuAbierto(false);
-    // La demo nueva no está ligada a ningún registro de la DB simulada.
-    setAppDbId(null);
-  }, []);
+    reinicioLocal();
+    try {
+      localStorage.setItem(RESET_KEY, String(Date.now()));
+    } catch {
+      /* noop */
+    }
+  }, [reinicioLocal]);
 
   const value = useMemo<ApplicationContextValue>(
     () => ({
@@ -1698,6 +1859,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       registrarFirmaCliente,
       confirmarChequeoFirma,
       verificarFirma,
+      enviarASuperior,
+      aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,
       soltarChequeo,
@@ -1771,6 +1934,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       registrarFirmaCliente,
       confirmarChequeoFirma,
       verificarFirma,
+      enviarASuperior,
+      aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,
       soltarChequeo,

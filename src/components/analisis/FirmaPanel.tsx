@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { intentoActual, puedeRefirmar, requiereChequeoTelefonico } from "@/lib/firma";
-import { textoChequeo } from "@/lib/historial";
+import { intentosChequeo, textoChequeo } from "@/lib/historial";
 import { HistorialCredito } from "@/components/HistorialCredito";
 import { MOTIVOS_RECHAZO } from "@/lib/validation";
 import { MAX_INTENTOS_FIRMA, type ResultadoFirma } from "@/lib/types";
@@ -14,7 +14,8 @@ import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/SelectField";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconCheck, IconEye, IconRefresh, IconX } from "@/components/icons";
+import { SESION_SUPERVISOR } from "@/lib/config";
+import { IconCheck, IconEye, IconRefresh, IconUsers, IconX } from "@/components/icons";
 
 const RESULTADO_LABEL: Record<ResultadoFirma, string> = {
   PENDIENTE: "Pendiente",
@@ -33,9 +34,16 @@ export function FirmaPanel({
 }: {
   onRechazar: (codigo: string, motivo: string, observacion: string) => void;
 }) {
-  const { app, registrarFirmaCliente, confirmarChequeoFirma, verificarFirma, solicitarRefirma } =
-    useApplication();
-  const [modal, setModal] = useState<"refirma" | "rechazo" | "verFirma" | null>(null);
+  const {
+    app,
+    registrarFirmaCliente,
+    confirmarChequeoFirma,
+    verificarFirma,
+    solicitarRefirma,
+    enviarASuperior,
+    aprobarSuperior,
+  } = useApplication();
+  const [modal, setModal] = useState<"refirma" | "rechazo" | "verFirma" | "superior" | null>(null);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
@@ -111,6 +119,15 @@ export function FirmaPanel({
                 <IconX width={16} height={16} />
                 Rechazar
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => setModal("superior")}
+                disabled={!app.firmaChequeada}
+                title="Pedir la aprobación de un superior antes de seguir"
+              >
+                <IconUsers width={16} height={16} />
+                SUP
+              </Button>
               {refirmaDisponible && (
                 <Button variant="outline" onClick={() => setModal("refirma")}>
                   <IconRefresh width={16} height={16} />
@@ -126,16 +143,52 @@ export function FirmaPanel({
         </Card>
       )}
 
+      {app.estado === "SUPERIOR" && (
+        <Card className="space-y-3 p-4 sm:p-5">
+          <Banner tone="info" title="Aprobación de un superior (SUP)">
+            La firma está verificada y el crédito espera el visto bueno de un superior de riesgo.{" "}
+            {chequeo
+              ? "Con su aprobación pasa al chequeador telefónico."
+              : "Con su aprobación queda para liquidar."}
+            {app.aprobacionSuperior &&
+              ` Pedida por ${app.aprobacionSuperior.enviadaPor} (${app.aprobacionSuperior.fechaEnvio}).`}
+          </Banner>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+            <Button variant="danger" onClick={abrirRechazo}>
+              <IconX width={16} height={16} />
+              Rechazar
+            </Button>
+            <Button variant="success" onClick={aprobarSuperior}>
+              <IconCheck width={16} height={16} />
+              Aprobar como superior · {SESION_SUPERVISOR.nombre}
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {app.estado === "CHEQUEO_TELEFONICO" && (
         <Card className="space-y-3 p-4 sm:p-5">
-          <Banner tone="info" title="En chequeo telefónico · sólo lectura">
-            La firma está verificada y el crédito lo gestiona el chequeador desde su bandeja. Desde
-            acá no se puede operar hasta que finalice el chequeo: si es correcto pasa solo a
-            liquidación y no vuelve a esta bandeja.
+          <Banner tone="info" title="En chequeo telefónico">
+            La firma está verificada y el crédito lo gestiona el chequeador desde su bandeja: si el
+            chequeo es correcto pasa solo a liquidación y no vuelve a esta bandeja. El chequeador
+            no puede rechazar; si no logra completarlo deja el intento registrado y el rechazo lo
+            decide el analista desde acá.
           </Banner>
           <p className="text-sm text-ink-600">
             Estado del chequeo: <strong>{textoChequeo(app.chequeoTelefonico)}</strong>
           </p>
+          {intentosChequeo(app.chequeoTelefonico).length > 0 ? (
+            <div className="flex justify-end">
+              <Button variant="danger" onClick={abrirRechazo}>
+                <IconX width={16} height={16} />
+                Rechazar
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-ink-500">
+              Se puede rechazar una vez que el chequeador registre un intento sin completar.
+            </p>
+          )}
         </Card>
       )}
 
@@ -221,6 +274,24 @@ export function FirmaPanel({
       </Modal>
 
       <ConfirmationModal
+        open={modal === "superior"}
+        title="Enviar a aprobación superior (SUP)"
+        descripcion={`La firma queda verificada y el crédito espera el visto bueno de un superior. ${
+          chequeo ? "Con su aprobación pasa al chequeo telefónico." : "Con su aprobación queda para liquidar."
+        }`}
+        rows={[
+          { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
+          { label: "Firma", value: actual ? `Instancia ${actual.n} de ${MAX_INTENTOS_FIRMA}` : "—" },
+        ]}
+        confirmLabel="Enviar a SUP"
+        onConfirm={() => {
+          setModal(null);
+          enviarASuperior();
+        }}
+        onCancel={() => setModal(null)}
+      />
+
+      <ConfirmationModal
         open={modal === "refirma"}
         title="Solicitar refirma"
         descripcion="El crédito vuelve a FEL para que el cliente firme de nuevo. Es la única refirma permitida: si la nueva firma también es incorrecta, sólo queda rechazar."
@@ -254,7 +325,7 @@ export function FirmaPanel({
       >
         <p className="text-sm text-ink-600">
           El rechazo es definitivo. Se registran el motivo codificado y la observación.
-          {segunda ? " Una segunda firma incorrecta obliga al rechazo." : ""}
+          {segunda && app.estado === "FIRMADO" ? " Una segunda firma incorrecta obliga al rechazo." : ""}
         </p>
         <div className="mt-4">
           <SelectField

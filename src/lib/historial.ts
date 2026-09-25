@@ -1,7 +1,7 @@
 // Historial general del crédito: lo que ven el canal de venta y el analista, incluida la etapa
 // de firma y de chequeo telefónico (que gestiona el chequeador).
 
-import { parseFecha } from "./format";
+import { formatARS, parseFecha } from "./format";
 import type { ChequeoTelefonico, CreditApplication } from "./types";
 
 export interface EventoHistorial {
@@ -12,12 +12,21 @@ export interface EventoHistorial {
 
 const METODO = { ELECTRONICA: "electrónica", FISICA: "manual" } as const;
 
+// Intentos de chequeo que no se pudieron completar. Los créditos anteriores al registro sólo
+// tienen la última observación.
+export function intentosChequeo(c: ChequeoTelefonico | null): { nota: string; fecha: string }[] {
+  if (!c) return [];
+  return c.intentos ?? (c.observacion ? [c.observacion] : []);
+}
+
 // Dónde está el chequeo, en una línea (para bandejas y avisos).
 export function textoChequeo(c: ChequeoTelefonico | null): string {
   if (!c) return "No aplica";
   if (c.resultado === "OK") return "Finalizado · correcto";
   if (c.resultado === "NO_OK") return "Finalizado · no correcto";
-  if (c.observacion) return `Observado · ${c.observacion.nota}`;
+  const intentos = intentosChequeo(c);
+  if (c.observacion)
+    return `Observado · ${intentos.length} ${intentos.length === 1 ? "intento" : "intentos"} · ${c.observacion.nota}`;
   return c.tomado ? "En curso · tomado por el chequeador" : "Pendiente de toma por el chequeador";
 }
 
@@ -32,6 +41,7 @@ export function historialCredito(
     | "analista"
     | "firmas"
     | "chequeoTelefonico"
+    | "aprobacionSuperior"
     | "rechazo"
   >
 ): EventoHistorial[] {
@@ -47,6 +57,14 @@ export function historialCredito(
   const ex = app.analista.excepcionCambioOferta;
   push("Excepción de cambio de oferta autorizada", ex?.fecha, `Supervisor: ${ex?.autorizadoPor}`);
   push("Observación confirmada por el analista", app.analista.observacionConfirmada?.fecha);
+  for (const c of app.analista.historialCambiosOferta ?? []) {
+    if (c.tipo !== "DATOS_FINANCIEROS" || !c.datos?.length) continue;
+    push(
+      "Datos financieros corregidos por el analista",
+      c.fecha,
+      c.datos.map((d) => `${d.campo}: ${formatARS(d.antes)} → ${formatARS(d.despues)}`).join(" · ")
+    );
+  }
   push("Aprobada por el analista", app.fechaAprobacion);
 
   for (const f of app.firmas) {
@@ -57,9 +75,18 @@ export function historialCredito(
     if (f.resultado === "RECHAZADA") push("Firma rechazada por el analista", f.fechaResultado);
   }
 
+  const sup = app.aprobacionSuperior;
+  if (sup) {
+    push("Enviada a aprobación superior (SUP)", sup.fechaEnvio, `Pedida por ${sup.enviadaPor}`);
+    push("Aprobada por el superior (SUP)", sup.fechaAprobacion, sup.aprobadaPor ? `Superior: ${sup.aprobadaPor}` : undefined);
+  }
+
   const ch = app.chequeoTelefonico;
   if (ch) {
     push("En chequeo telefónico", ch.fechaInicio, "Gestionado por el chequeador");
+    intentosChequeo(ch).forEach((it, i) =>
+      push(`Chequeo telefónico · intento ${i + 1} sin completar`, it.fecha, it.nota)
+    );
     if (ch.resultado)
       push(
         ch.resultado === "OK" ? "Chequeo telefónico correcto" : "Chequeo telefónico no correcto",

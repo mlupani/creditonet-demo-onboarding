@@ -8,7 +8,13 @@ import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
 import { formatARS, sumarDias } from "@/lib/format";
-import { cambiosOfertaDe, netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
+import {
+  SUBESTADO_OBSERVADO,
+  cambiosOfertaDe,
+  netoAAcreditar,
+  ofertaAnalistaDe,
+  subestadoObservado,
+} from "@/lib/credit";
 import { ESTADOS_FIRMA } from "@/lib/firma";
 import { textoChequeo } from "@/lib/historial";
 import { HistorialCredito } from "@/components/HistorialCredito";
@@ -37,12 +43,13 @@ export function SolicitudEnviada() {
           <div className="space-y-5 p-6">
             {obs && (
               <Banner tone="warning" title={obs.motivo}>
-                {obs.nota} Corregí antes del <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días)
+                <strong>{SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].etiqueta}</strong> ·{" "}
+                {SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].origen}. {obs.nota} Corregí antes del <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días)
                 para que no expire.
                 {ofertaAnalistaDe(app) &&
                   (cambiosOfertaDe(app).at(-1)?.tipo === "OFERTA"
                     ? " Tenés que aceptar la nueva oferta o declinarla: el resto de la carga queda bloqueada."
-                    : " Podés aceptar la nueva oferta o elegir otra menor en la grilla. Después sólo queda habilitado el legajo virtual: ver el legajo, imprimir el formulario y subir más documentación.")}
+                    : " Podés aceptar la nueva oferta o elegir otra menor en la grilla. Después sólo quedan habilitados el legajo virtual (ver el legajo, imprimir el formulario y subir más documentación) y la pantalla de impresión del legajo.")}
                 {obs.pantallas.length > 0 && !ofertaAnalistaDe(app) &&
                   " Es una corrección puntual: sólo se puede editar lo observado y el resto de la carga queda bloqueada."}
               </Banner>
@@ -75,6 +82,10 @@ export function SolicitudEnviada() {
       FIRMADO: {
         titulo: "con la firma aprobada (AFEL): el analista define el paso siguiente",
         quien: "el analista de riesgo",
+      },
+      SUPERIOR: {
+        titulo: "esperando la aprobación de un superior (SUP)",
+        quien: "el superior de riesgo",
       },
       CHEQUEO_TELEFONICO: {
         titulo: "en chequeo telefónico",

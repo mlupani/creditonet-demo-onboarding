@@ -6,6 +6,7 @@ import type {
   LimiteCapital,
   LimiteCuota,
   Oferta,
+  Observacion,
   OfertaAnalista,
   Plazo,
   ResultadoLimites,
@@ -93,14 +94,47 @@ export function cambioOfertaPermitido(app: CreditApplication): boolean {
   return hechos < MAX_CAMBIOS_OFERTA || app.analista.excepcionCambioOferta?.n === hechos;
 }
 
+// Observaciones del analista, de la más vieja a la más nueva. Los créditos anteriores al
+// historial sólo tienen la vigente.
+export function observacionesDe(app: Pick<CreditApplication, "analista">): Observacion[] {
+  const historial = app.analista.historialObservaciones ?? [];
+  if (historial.length > 0) return historial;
+  return app.analista.observacion ? [app.analista.observacion] : [];
+}
+
 // Estado con que la bandeja del vendedor muestra una solicitud devuelta por el analista: COFE
 // (cambio de oferta) si la observación es un cambio de oferta, si la solicitud está esperando su
 // confirmación o si el crédito ya tuvo uno y después recibió otra observación; si no, OBS. El
 // motivo de la observación no es un estado: se lee en el detalle de la fila.
 export function etiquetaObservado(app: CreditApplication): string | undefined {
+  const sub = subestadoObservado(app);
+  return sub ? SUBESTADO_OBSERVADO[sub].etiqueta : undefined;
+}
+
+// Subestados de un crédito devuelto al vendedor (creditonet-74): OBS es una observación pura,
+// COFE viene de un cambio de oferta y OBS_COFE es una observación pura sobre un crédito que ya
+// tuvo un cambio de oferta ("observado cofre").
+export type SubestadoObservado = "OBS" | "COFE" | "OBS_COFE";
+
+export const SUBESTADO_OBSERVADO: Record<SubestadoObservado, { etiqueta: string; origen: string }> = {
+  OBS: { etiqueta: "OBS", origen: "Observación pura del analista" },
+  COFE: { etiqueta: "COFE", origen: "Viene de un cambio de oferta" },
+  OBS_COFE: {
+    etiqueta: "OBS · COFE",
+    origen: "Observación pura sobre un crédito con cambio de oferta previo",
+  },
+};
+
+export function subestadoObservado(app: CreditApplication): SubestadoObservado | undefined {
   if (app.estado === "CAMBIO_OFERTA") return "COFE";
   if (app.estado !== "OBSERVADO") return undefined;
-  return ofertaAnalistaDe(app) !== null || cambiosOfertaDe(app).length > 0 ? "COFE" : "OBS";
+  const motivo = app.analista.observacion?.motivo;
+  const esCambio =
+    ofertaAnalistaDe(app) !== null ||
+    motivo === "Cambio de oferta del analista" ||
+    motivo === "Cambio de datos financieros del analista";
+  if (esCambio) return "COFE";
+  return cambiosOfertaDe(app).length > 0 ? "OBS_COFE" : "OBS";
 }
 
 // Grilla de un plan (o la base, si no hay plan).

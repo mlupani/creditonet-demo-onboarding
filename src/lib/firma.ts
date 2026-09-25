@@ -16,7 +16,7 @@ import { extrasEfectivos, type ModalidadFirma } from "./productos";
 
 type Seleccion = CreditApplication["configuracion"];
 
-export const ESTADOS_FIRMA: EstadoCredito[] = ["EN_FIRMA", "FIRMADO", "CHEQUEO_TELEFONICO"];
+export const ESTADOS_FIRMA: EstadoCredito[] = ["EN_FIRMA", "FIRMADO", "SUPERIOR", "CHEQUEO_TELEFONICO"];
 
 // Producto con las excepciones del organismo. Sin producto conocido, la modalidad más abierta.
 export function modalidadFirma(sel: Seleccion): ModalidadFirma {
@@ -65,6 +65,7 @@ export function firmasDeSemilla(
       return [{ n: 1, metodo: "ELECTRONICA", fechaFirma: null, resultado: "PENDIENTE", fechaResultado: null }];
     case "FIRMADO":
       return [{ n: 1, metodo: "ELECTRONICA", fechaFirma: fecha, resultado: "PENDIENTE", fechaResultado: null }];
+    case "SUPERIOR":
     case "CHEQUEO_TELEFONICO":
     case "PARA_LIQUIDAR":
       return [{ n: 1, metodo: "ELECTRONICA", fechaFirma: fecha, resultado: "APROBADA", fechaResultado: fecha }];

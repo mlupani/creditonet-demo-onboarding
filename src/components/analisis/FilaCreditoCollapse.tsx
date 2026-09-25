@@ -112,7 +112,7 @@ export function FilaCreditoCollapse({
           <p className="truncate text-sm font-semibold text-ink-800" title={organismo}>{organismo}</p>
         </div>
         <div className="flex w-40 shrink-0 justify-center">
-          <EstadoBadge estado={estadoVisible} />
+          <EstadoBadge estado={estadoVisible} conCodigo />
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <Button

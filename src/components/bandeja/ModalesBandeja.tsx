@@ -141,6 +141,7 @@ export function EstadoSolicitudModal({ open, onClose }: ModalProps) {
     app.estado === "APROBADO" ||
     app.estado === "EN_FIRMA" ||
     app.estado === "FIRMADO" ||
+    app.estado === "SUPERIOR" ||
     app.estado === "CHEQUEO_TELEFONICO"
       ? { label: "Aprobada", fecha: app.fechaAprobacion }
       : app.estado === "RECHAZADO"
@@ -237,6 +238,7 @@ const ORIGEN_RECHAZO = {
   SIN_LINEA: "Sin línea disponible",
   ANALISTA: "Analista de riesgo",
   CHEQUEADOR: "Chequeo telefónico",
+  SUPERIOR: "Superior de riesgo",
 } as const;
 
 // Motivo de un cierre negativo: rechazo (riesgo) o anulación (el cliente desistió).

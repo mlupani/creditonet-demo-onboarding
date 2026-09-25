@@ -11,6 +11,7 @@ import {
   valorCampoDisplay,
 } from "@/lib/campos-post-oferta";
 import { intentoActual } from "@/lib/firma";
+import { intentosChequeo } from "@/lib/historial";
 import { formatARS, formatDNI } from "@/lib/format";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
@@ -42,7 +43,8 @@ const OPCIONES: { valor: Resultado; titulo: string; detalle: string }[] = [
   {
     valor: "OBSERVACION",
     titulo: "Observación",
-    detalle: "No se pudo completar (ej.: no atendió). El crédito sigue en chequeo y el vendedor lo ve.",
+    detalle:
+      "No se pudo completar (ej.: no atendió). Queda registrado como intento y el crédito sigue en chequeo: el chequeador no rechaza, eso lo decide el analista.",
   },
 ];
 
@@ -74,6 +76,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
   const tomado = app.chequeoTelefonico.tomado;
   const firma = intentoActual(app.firmas);
   const comentarioValido = comentario.trim().length >= 5;
+  const intentos = intentosChequeo(app.chequeoTelefonico);
 
   const filasDe = (campos: ReturnType<typeof camposDe>) =>
     campos
@@ -100,6 +103,26 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
         </div>
         <EstadoBadge estado={app.estado} />
       </div>
+
+      {intentos.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="border-b border-ink-100 px-5 py-3">
+            <h3 className="text-sm font-semibold text-ink-900">
+              Intentos registrados ({intentos.length})
+            </h3>
+          </div>
+          <ol className="divide-y divide-ink-100">
+            {intentos.map((it, i) => (
+              <li key={`${it.fecha}-${i}`} className="px-5 py-2.5 text-sm">
+                <span className="text-xs text-ink-400">
+                  Intento {i + 1} · {it.fecha}
+                </span>
+                <p className="text-ink-800">{it.nota}</p>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
 
       {!tomado && (
         <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">

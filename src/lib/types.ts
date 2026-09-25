@@ -26,6 +26,9 @@ export type EstadoCredito =
   | "APROBADO"
   | "EN_FIRMA"
   | "FIRMADO"
+  // SUP (creditonet-90): aprobación de un superior. Opcional: el analista la pide desde AFEL y,
+  // con el visto bueno, el crédito sigue al chequeo telefónico o a liquidación.
+  | "SUPERIOR"
   | "CHEQUEO_TELEFONICO"
   | "PARA_LIQUIDAR";
 
@@ -60,6 +63,9 @@ export interface ChequeoTelefonico {
   // Subestado de observación: el chequeo sigue abierto pero no se pudo completar (por ejemplo,
   // el cliente no atendió). Lo ve el canal de venta.
   observacion?: { nota: string; fecha: string } | null;
+  // Registro de cada intento que no se pudo completar (creditonet-82). El chequeador no rechaza:
+  // deja el intento asentado y el crédito sigue en su bandeja; el rechazo lo decide el analista.
+  intentos?: { nota: string; fecha: string }[];
 }
 
 export const CHEQUEO_PENDIENTE: ChequeoTelefonico = {
@@ -386,7 +392,8 @@ export interface Rechazo {
   // motor y no llega al analista (02:28).
   // INSTITUCIONAL: una regla institucional bloqueante no pasó; el motor no llega a ejecutarse.
   // CHEQUEADOR: el chequeo telefónico posterior a la firma no fue correcto.
-  origen: "INSTITUCIONAL" | "MOTOR" | "SIN_LINEA" | "ANALISTA" | "CHEQUEADOR";
+  // SUPERIOR: el superior no aprobó el crédito enviado a SUP.
+  origen: "INSTITUCIONAL" | "MOTOR" | "SIN_LINEA" | "ANALISTA" | "CHEQUEADOR" | "SUPERIOR";
   codigos: string[];
   motivo: string;
   observacion: string;
@@ -426,6 +433,14 @@ export interface CambioOfertaRegistro {
   nota: string;
   autor: string;
   refrendadoPor?: string;
+  // Cambio de datos financieros (creditonet-80): cada dato corregido, con el valor anterior y el nuevo.
+  datos?: DatoFinancieroCorregido[];
+}
+
+export interface DatoFinancieroCorregido {
+  campo: string;
+  antes: number;
+  despues: number;
 }
 
 // Comentario que el canal de venta agrega a una solicitud En análisis para el analista.
@@ -434,6 +449,14 @@ export interface ComentarioSolicitud {
   autor: string;
   texto: string;
   fecha: string;
+}
+
+// Aprobación de un superior (SUP): quién la pidió y, cuando llega, quién la dio.
+export interface AprobacionSuperior {
+  enviadaPor: string;
+  fechaEnvio: string;
+  aprobadaPor: string | null;
+  fechaAprobacion: string | null;
 }
 
 // --- Aplicación ---
@@ -513,6 +536,9 @@ export interface CreditApplication {
     // El analista leyó y confirmó la observación de una solicitud reenviada (creditonet-75). Hasta
     // entonces no puede operar el crédito; se limpia al observar o al reenviar de nuevo.
     observacionConfirmada?: { fecha: string } | null;
+    // Todas las observaciones que el analista le devolvió al canal de venta, en orden. Con los
+    // comentarios arma el hilo de conversación (creditonet-88); `observacion` es la vigente.
+    historialObservaciones?: Observacion[];
   };
   rechazo: Rechazo | null;
   // Historial de firmas (FEL/AFEL): vacío hasta que el analista aprueba el crédito.
@@ -522,6 +548,8 @@ export interface CreditApplication {
   firmaChequeada?: boolean;
   // Chequeo telefónico (sólo si el producto lo requiere): nace al verificarse la firma.
   chequeoTelefonico: ChequeoTelefonico | null;
+  // Aprobación de un superior (sólo si el analista la pidió desde AFEL).
+  aprobacionSuperior?: AprobacionSuperior | null;
   comentarios: ComentarioSolicitud[];
 
   fechaSolicitud: string | null;

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { etiquetaObservado } from "@/lib/credit";
+import { SUBESTADO_OBSERVADO, etiquetaObservado, subestadoObservado } from "@/lib/credit";
 import { STEPS_ORIGINACION } from "@/lib/mocks";
 import { estadoPantallasPostOferta } from "@/lib/validation";
 import { coincideCliente, formatARS, formatDNI, sumarDias } from "@/lib/format";
@@ -83,6 +83,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
   APROBADO: "FIRMA",
   EN_FIRMA: "FIRMA",
   FIRMADO: "FIRMA",
+  SUPERIOR: "FIRMA",
   CHEQUEO_TELEFONICO: "CHEQUEO",
   PARA_LIQUIDAR: "PAGO",
   RECHAZADO: "RESUELTAS",
@@ -94,12 +95,14 @@ const SUBESTADOS: { id: string; label: string }[] = [
   { id: "BORRADOR", label: "Borrador" },
   { id: "EN_TRAMITE", label: "En trámite" },
   { id: "OBS", label: "OBS · Observada" },
+  { id: "OBS_COFE", label: "OBS · COFE · Observada con cambio de oferta previo" },
   { id: "COFE", label: "COFE · Cambio de oferta" },
   { id: "PREAPROBADO", label: "Preaprobada" },
   { id: "ANALISIS_TOMADO", label: "En análisis (tomada)" },
   { id: "APROBADO", label: "APR · Aprobada" },
   { id: "EN_FIRMA", label: "FEL · En firma" },
   { id: "FIRMADO", label: "AFEL · Firma aprobada" },
+  { id: "SUPERIOR", label: "SUP · Aprobación superior" },
   { id: "CHEQUEO", label: "Chequeo pendiente" },
   { id: "CHEQUEO_OBS", label: "Chequeo observado" },
   { id: "PARA_LIQUIDAR", label: "Para liquidar" },
@@ -108,7 +111,7 @@ const SUBESTADOS: { id: string; label: string }[] = [
 ];
 
 function subestadoDe(c: CreditApplication): string {
-  if (c.estado === "OBSERVADO" || c.estado === "CAMBIO_OFERTA") return etiquetaObservado(c) ?? "OBS";
+  if (c.estado === "OBSERVADO" || c.estado === "CAMBIO_OFERTA") return subestadoObservado(c) ?? "OBS";
   if (c.estado === "CHEQUEO_TELEFONICO") return c.chequeoTelefonico?.observacion ? "CHEQUEO_OBS" : "CHEQUEO";
   return c.estado;
 }
@@ -236,24 +239,26 @@ export default function BandejaCanalVentaPage() {
     }
     if (c.estado === "OBSERVADO") {
       const obs = c.analista.observacion;
-      return obs ? `${obs.motivo}: ${obs.nota}` : "Observada por el analista";
+      const origen = SUBESTADO_OBSERVADO[subestadoObservado(c) ?? "OBS"].origen;
+      return obs ? `${origen} · ${obs.motivo}: ${obs.nota}` : "Observada por el analista";
     }
     if (c.estado === "CAMBIO_OFERTA") {
       return "Oferta respondida · aguardando confirmación del analista";
     }
     if (c.estado === "PREAPROBADO" || c.estado === "ANALISIS_TOMADO") {
       return c.analista.reenviada
-        ? "Reenviada con correcciones · en bandeja del analista"
+        ? "Reenviada con correcciones · esperando al analista"
         : c.estado === "ANALISIS_TOMADO"
-          ? "Tomada por analista · en revisión"
-          : "Preaprobada · pendiente de toma";
+          ? "Un analista la está revisando"
+          : "Esperando que un analista la tome";
     }
-    if (c.estado === "APROBADO") return "Aprobada · pendiente de pasar a firma";
-    if (c.estado === "EN_FIRMA") return "Aprobada · esperando la firma del cliente (FEL)";
-    if (c.estado === "FIRMADO") return "Firmada · firma aprobada (AFEL)";
+    if (c.estado === "APROBADO") return "Pendiente de pasar a firma";
+    if (c.estado === "EN_FIRMA") return "Esperando la firma del cliente";
+    if (c.estado === "FIRMADO") return "Firma del cliente verificada por el analista";
+    if (c.estado === "SUPERIOR") return "Esperando la aprobación de un superior";
     if (c.estado === "CHEQUEO_TELEFONICO")
-      return `En chequeo telefónico · ${textoChequeo(c.chequeoTelefonico)} · sólo lectura`;
-    if (c.estado === "PARA_LIQUIDAR") return "Aprobada · en Bandeja de Liquidación (Tesorería)";
+      return `${textoChequeo(c.chequeoTelefonico)} · sólo lectura`;
+    if (c.estado === "PARA_LIQUIDAR") return "En Bandeja de Liquidación (Tesorería)";
     if (c.estado === "RECHAZADO" && c.rechazo) {
       const { origen, codigos, motivo } = c.rechazo;
       const map: Record<typeof origen, string> = {
@@ -262,6 +267,7 @@ export default function BandejaCanalVentaPage() {
         SIN_LINEA: `Sin línea · ${codigos.join(", ")}`,
         ANALISTA: `Rechazo analista · ${codigos.join(", ")} ${motivo}`,
         CHEQUEADOR: `Rechazo en chequeo telefónico · ${codigos.join(", ")} ${motivo}`,
+        SUPERIOR: `Rechazo superior · ${codigos.join(", ")} ${motivo}`,
       };
       return map[origen];
     }
@@ -388,7 +394,7 @@ export default function BandejaCanalVentaPage() {
                                 {app.oferta.planId && <p className="mt-1 text-xs font-semibold tabular-nums text-ink-700">{formatARS(app.oferta.montoSolicitado)} · {app.oferta.plazo} cuotas</p>}
                               </div>
                               <div>
-                                <EstadoBadge estado={app.estado} etiqueta={etiquetaObservado(app)} />
+                                <EstadoBadge estado={app.estado} etiqueta={etiquetaObservado(app)} conCodigo />
                                 {app.estado === "CHEQUEO_TELEFONICO" && app.chequeoTelefonico?.observacion && (
                                   <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
                                 )}
@@ -400,7 +406,7 @@ export default function BandejaCanalVentaPage() {
                             </div>
                             <div className="mt-3 flex flex-wrap gap-2 md:justify-end">
                               <Button size="sm" variant={app.estado === "OBSERVADO" ? "primary" : "outline"} onClick={irASolicitud}>
-                                {app.estado === "OBSERVADO" ? "Tramitar observación" : "Continuar carga"}
+                                {app.estado === "OBSERVADO" ? "Tratar observación" : "Continuar carga"}
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => setModal("posicion")}>Posición cliente</Button>
                             </div>
@@ -433,6 +439,7 @@ export default function BandejaCanalVentaPage() {
                                   <EstadoBadge
                                     estado={cred.estado}
                                     etiqueta={etiquetaObservado(cred as unknown as CreditApplication)}
+                                    conCodigo
                                   />
                                   {cred.estado === "CHEQUEO_TELEFONICO" && cred.chequeoTelefonico?.observacion && (
                                     <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
@@ -456,7 +463,7 @@ export default function BandejaCanalVentaPage() {
                                 )}
                                 {g.id === "OBSERVADAS" && (
                                   <Button size="sm" variant="primary" onClick={() => abrirCreditoDB(cred)}>
-                                    Tramitar observación
+                                    Tratar observación
                                   </Button>
                                 )}
                                 {(g.id === "ANALISIS" || g.id === "FIRMA" || g.id === "CHEQUEO" || g.id === "PAGO" || g.id === "RESUELTAS") && (
