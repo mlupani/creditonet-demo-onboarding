@@ -300,6 +300,8 @@ interface ApplicationContextValue {
   // Aprueba sin pasar todavía a firma (estado intermedio opcional, creditonet-87).
   dejarAprobado: () => void;
   registrarFirmaCliente: () => void;
+  // AFEL: el analista revisó la firma con "Ver firma" y la confirma o la rechaza (creditonet-93).
+  confirmarChequeoFirma: () => void;
   verificarFirma: () => void;
   solicitarRefirma: () => void;
   // Chequeo telefónico (bandeja del chequeador).
@@ -1518,15 +1520,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev,
         estado: "FIRMADO",
         firmas: [...prev.firmas.slice(0, -1), { ...actual, fechaFirma: selloTiempo() }],
+        firmaChequeada: false,
       };
     });
   }, []);
 
+  // AFEL: el analista chequeó la firma con "Ver firma" y la confirma. Recién ahí se habilita
+  // pasar a chequeo/liquidar (creditonet-93); el rechazo usa el flujo existente de rechazarCredito.
+  const confirmarChequeoFirma = useCallback(() => {
+    setAppOperativo((prev) => (prev.estado === "FIRMADO" ? { ...prev, firmaChequeada: true } : prev));
+  }, []);
+
   // AFEL: firma aprobada. Sigue el chequeo telefónico si el producto lo exige; si no, queda
-  // para liquidar.
+  // para liquidar. Exige haber chequeado la firma primero (creditonet-93).
   const verificarFirma = useCallback(() => {
     setAppOperativo((prev) => {
-      if (prev.estado !== "FIRMADO") return prev;
+      if (prev.estado !== "FIRMADO" || !prev.firmaChequeada) return prev;
       const firmada = { ...prev, firmas: cerrarIntentoActual(prev.firmas, "APROBADA") };
       if (!requiereChequeoTelefonico(prev.configuracion))
         return puedeLiquidar(firmada) ? { ...firmada, estado: "PARA_LIQUIDAR" } : prev;
@@ -1687,6 +1696,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       aprobarCredito,
       dejarAprobado,
       registrarFirmaCliente,
+      confirmarChequeoFirma,
       verificarFirma,
       solicitarRefirma,
       tomarChequeo,
@@ -1759,6 +1769,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       aprobarCredito,
       dejarAprobado,
       registrarFirmaCliente,
+      confirmarChequeoFirma,
       verificarFirma,
       solicitarRefirma,
       tomarChequeo,

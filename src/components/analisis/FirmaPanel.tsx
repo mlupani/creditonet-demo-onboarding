@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/SelectField";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconCheck, IconRefresh, IconX } from "@/components/icons";
+import { IconCheck, IconEye, IconRefresh, IconX } from "@/components/icons";
 
 const RESULTADO_LABEL: Record<ResultadoFirma, string> = {
   PENDIENTE: "Pendiente",
@@ -33,8 +33,9 @@ export function FirmaPanel({
 }: {
   onRechazar: (codigo: string, motivo: string, observacion: string) => void;
 }) {
-  const { app, registrarFirmaCliente, verificarFirma, solicitarRefirma } = useApplication();
-  const [modal, setModal] = useState<"refirma" | "rechazo" | null>(null);
+  const { app, registrarFirmaCliente, confirmarChequeoFirma, verificarFirma, solicitarRefirma } =
+    useApplication();
+  const [modal, setModal] = useState<"refirma" | "rechazo" | "verFirma" | null>(null);
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
@@ -97,10 +98,15 @@ export function FirmaPanel({
               : "El producto no requiere chequeo telefónico: al avanzar queda para liquidar."}{" "}
             {refirmaDisponible
               ? "Si la firma es inconsistente podés volver a FEL. Se permite una sola vez."
-              : "Ya se usó la única refirma: si esta firma no es correcta, el crédito se rechaza."}
+              : "Ya se usó la única refirma: si esta firma no es correcta, el crédito se rechaza."}{" "}
+            {!app.firmaChequeada && "Antes de avanzar, chequeá la firma con \"Ver firma\"."}
           </Banner>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row">
+              <Button variant="outline" onClick={() => setModal("verFirma")}>
+                <IconEye width={16} height={16} />
+                Ver firma
+              </Button>
               <Button variant="danger" onClick={abrirRechazo}>
                 <IconX width={16} height={16} />
                 Rechazar
@@ -112,7 +118,7 @@ export function FirmaPanel({
                 </Button>
               )}
             </div>
-            <Button variant="success" onClick={verificarFirma}>
+            <Button variant="success" onClick={verificarFirma} disabled={!app.firmaChequeada}>
               <IconCheck width={16} height={16} />
               {chequeo ? "Enviar a chequeo telefónico" : "Pasar a liquidar"}
             </Button>
@@ -170,6 +176,49 @@ export function FirmaPanel({
       </Card>
 
       <HistorialCredito />
+
+      <Modal
+        open={modal === "verFirma"}
+        onClose={() => setModal(null)}
+        title="Ver firma"
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="danger"
+              onClick={() => {
+                setModal(null);
+                abrirRechazo();
+              }}
+            >
+              <IconX width={16} height={16} />
+              Rechazar
+            </Button>
+            <Button
+              variant="success"
+              onClick={() => {
+                confirmarChequeoFirma();
+                setModal(null);
+              }}
+              autoFocus
+            >
+              <IconCheck width={16} height={16} />
+              Confirmar
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-ink-600">
+          Firma {actual ? METODO_LABEL[actual.metodo].toLowerCase() : ""} del cliente, recibida el{" "}
+          {actual?.fechaFirma ?? "—"}. Confirmá si la firma es consistente con la identidad del
+          cliente o rechazá la solicitud.
+        </p>
+        <div className="mt-4 flex h-32 items-center justify-center rounded-xl border border-dashed border-ink-300 bg-ink-25">
+          <span className="font-serif text-2xl italic text-ink-700">
+            {app.cliente?.nombre} {app.cliente?.apellido}
+          </span>
+        </div>
+      </Modal>
 
       <ConfirmationModal
         open={modal === "refirma"}
