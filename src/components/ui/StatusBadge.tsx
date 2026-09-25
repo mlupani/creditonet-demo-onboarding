@@ -63,15 +63,18 @@ export function EstadoBadge({
   estado,
   etiqueta,
   conCodigo = false,
+  soloCodigo = false,
 }: {
   estado: EstadoCredito;
   etiqueta?: string;
   conCodigo?: boolean;
+  soloCodigo?: boolean;
 }) {
   const meta =
     etiqueta && (estado === "OBSERVADO" || estado === "CAMBIO_OFERTA")
       ? { label: etiqueta, tone: "warning" as const }
       : ESTADO_META[estado];
-  const codigo = conCodigo ? CODIGO_ESTADO[estado] : undefined;
+  const codigo = conCodigo || soloCodigo ? CODIGO_ESTADO[estado] : undefined;
+  if (soloCodigo && codigo) return <StatusBadge tone={meta.tone}>{codigo}</StatusBadge>;
   return <StatusBadge tone={meta.tone}>{codigo ? `${meta.label} · ${codigo}` : meta.label}</StatusBadge>;
 }

@@ -100,12 +100,12 @@ const SUBESTADOS: { id: string; label: string }[] = [
   { id: "PREAPROBADO", label: "Preaprobada" },
   { id: "ANALISIS_TOMADO", label: "En análisis (tomada)" },
   { id: "APROBADO", label: "APR · Aprobada" },
-  { id: "EN_FIRMA", label: "FEL · En firma" },
-  { id: "FIRMADO", label: "AFEL · Firma aprobada" },
+  { id: "EN_FIRMA", label: "FEL" },
+  { id: "FIRMADO", label: "AFEL" },
   { id: "SUPERIOR", label: "SUP · Aprobación superior" },
-  { id: "CHEQUEO", label: "Chequeo pendiente" },
-  { id: "CHEQUEO_OBS", label: "Chequeo observado" },
-  { id: "PARA_LIQUIDAR", label: "Para liquidar" },
+  { id: "CHEQUEO", label: "CHEQ" },
+  { id: "CHEQUEO_OBS", label: "CHEQ · Observado" },
+  { id: "PARA_LIQUIDAR", label: "LIQ" },
   { id: "RECHAZADO", label: "Rechazada" },
   { id: "ANULADO", label: "Anulada" },
 ];
@@ -114,6 +114,16 @@ function subestadoDe(c: CreditApplication): string {
   if (c.estado === "OBSERVADO" || c.estado === "CAMBIO_OFERTA") return subestadoObservado(c) ?? "OBS";
   if (c.estado === "CHEQUEO_TELEFONICO") return c.chequeoTelefonico?.observacion ? "CHEQUEO_OBS" : "CHEQUEO";
   return c.estado;
+}
+
+// En firma, chequeo y en proceso de pago la bandeja muestra sólo el código: FEL, AFEL, CHEQ y LIQ.
+function esSoloCodigo(estado: EstadoCredito): boolean {
+  return (
+    estado === "EN_FIRMA" ||
+    estado === "FIRMADO" ||
+    estado === "CHEQUEO_TELEFONICO" ||
+    estado === "PARA_LIQUIDAR"
+  );
 }
 
 export default function BandejaCanalVentaPage() {
@@ -394,7 +404,12 @@ export default function BandejaCanalVentaPage() {
                                 {app.oferta.planId && <p className="mt-1 text-xs font-semibold tabular-nums text-ink-700">{formatARS(app.oferta.montoSolicitado)} · {app.oferta.plazo} cuotas</p>}
                               </div>
                               <div>
-                                <EstadoBadge estado={app.estado} etiqueta={etiquetaObservado(app)} conCodigo />
+                                <EstadoBadge
+                                  estado={app.estado}
+                                  etiqueta={etiquetaObservado(app)}
+                                  conCodigo
+                                  soloCodigo={esSoloCodigo(app.estado)}
+                                />
                                 {app.estado === "CHEQUEO_TELEFONICO" && app.chequeoTelefonico?.observacion && (
                                   <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
                                 )}
@@ -440,6 +455,7 @@ export default function BandejaCanalVentaPage() {
                                     estado={cred.estado}
                                     etiqueta={etiquetaObservado(cred as unknown as CreditApplication)}
                                     conCodigo
+                                    soloCodigo={esSoloCodigo(cred.estado)}
                                   />
                                   {cred.estado === "CHEQUEO_TELEFONICO" && cred.chequeoTelefonico?.observacion && (
                                     <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
