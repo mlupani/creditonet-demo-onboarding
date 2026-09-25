@@ -260,12 +260,10 @@ interface ApplicationContextValue {
   borrarFirma: () => void;
   solicitar: () => void;
   finalizarRiesgo: (resultado: ResultadoEvaluacion) => void;
-  // Cambio de oferta del analista: requiere refrendación del supervisor para regir.
-  proponerCambioOferta: (cambio: CambioOferta) => void;
-  refrendarCambioOferta: () => void;
+  // Cambio de oferta del analista: rige de inmediato y la solicitud vuelve al vendedor.
+  aplicarCambioOferta: (cambio: CambioOferta) => void;
   // El supervisor autoriza un cambio de oferta por encima del límite.
   autorizarExcepcionCambioOferta: () => void;
-  rechazarCambioOferta: () => void;
   // Cambio de datos financieros del analista: recalcula el Motor de Riesgo de inmediato
   // (no requiere refrendación) y puede terminar en Observado (nueva oferta) o Rechazado.
   aplicarCambioDatosFinancieros: (cambio: CambioDatosFinancieros) => void;
@@ -810,27 +808,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * recalcula sola. El crédito vuelve al vendedor en estado Observado con el nuevo importe:
    * "el analista dice un millón, se lo devuelve al pedido; va al vendedor, me viene observado".
    */
-  // El cambio no rige al proponerlo: queda pendiente hasta que lo refrende el supervisor.
-  const proponerCambioOferta = useCallback((cambio: CambioOferta) => {
-    setAppOperativo((prev) => ({
-      ...prev,
-      analista: {
-        ...prev.analista,
-        cambioOfertaPendiente: {
-          montoSolicitado: cambio.montoSolicitado,
-          plazo: cambio.plazo,
-          nota: cambio.nota,
-          fecha: selloTiempo(),
-          solicitadoPor: SESION_ANALISTA.nombre,
-        },
-      },
-    }));
-  }, []);
-
-  const refrendarCambioOferta = useCallback(() => {
+  // El cambio rige apenas lo confirma el analista: el vendedor lo ve directo, sin refrendación.
+  const aplicarCambioOferta = useCallback((cambio: CambioOferta) => {
     setAppOperativo((prev) => {
-      const cambio = prev.analista.cambioOfertaPendiente;
-      if (!cambio) return prev;
       return {
         ...prev,
         estado: "OBSERVADO",
@@ -845,7 +825,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           tomado: false,
           reenviada: false,
           pantallasCorregidas: [],
-          cambioOfertaPendiente: null,
           ofertaAnalista: {
             montoSolicitado: cambio.montoSolicitado,
             plazo: cambio.plazo,
@@ -861,13 +840,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
               montoNuevo: cambio.montoSolicitado,
               plazoNuevo: cambio.plazo,
               nota: cambio.nota,
-              autor: cambio.solicitadoPor,
-              refrendadoPor: SESION_SUPERVISOR.nombre,
+              autor: SESION_ANALISTA.nombre,
             },
           ],
           ...conObservacion(prev, {
             motivo: "Cambio de oferta del analista",
-            nota: `${cambio.nota} (refrendado por ${SESION_SUPERVISOR.nombre})`,
+            nota: cambio.nota,
             fecha: fechaHoy(),
             pantallas: [],
           }),
@@ -887,13 +865,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           fecha: selloTiempo(),
         },
       },
-    }));
-  }, []);
-
-  const rechazarCambioOferta = useCallback(() => {
-    setAppOperativo((prev) => ({
-      ...prev,
-      analista: { ...prev.analista, cambioOfertaPendiente: null },
     }));
   }, []);
 
@@ -1813,10 +1784,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       borrarFirma,
       solicitar,
       finalizarRiesgo,
-      proponerCambioOferta,
-      refrendarCambioOferta,
+      aplicarCambioOferta,
       autorizarExcepcionCambioOferta,
-      rechazarCambioOferta,
       aplicarCambioDatosFinancieros,
       patchOferta,
       togglePrecancelar,
@@ -1888,10 +1857,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       borrarFirma,
       solicitar,
       finalizarRiesgo,
-      proponerCambioOferta,
-      refrendarCambioOferta,
+      aplicarCambioOferta,
       autorizarExcepcionCambioOferta,
-      rechazarCambioOferta,
       aplicarCambioDatosFinancieros,
       patchOferta,
       togglePrecancelar,

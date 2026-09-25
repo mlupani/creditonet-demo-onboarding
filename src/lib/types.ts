@@ -400,8 +400,8 @@ export interface Rechazo {
   fecha: string;
 }
 
-// Cambio de oferta que el analista propuso y que todavía espera la refrendación del supervisor.
-// Hasta entonces no rige: la solicitud sigue En análisis con la oferta original.
+// Obsoleto (creditonet-95): el cambio de oferta ya rige sin refrendación; sólo se conserva
+// para no invalidar los datos guardados que aún traen el campo.
 export interface CambioOfertaPropuesto {
   montoSolicitado: number;
   plazo: Plazo;
