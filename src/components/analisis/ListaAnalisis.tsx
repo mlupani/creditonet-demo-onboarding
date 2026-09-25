@@ -8,7 +8,7 @@ import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
 import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { EstadoBadge } from "@/components/ui/StatusBadge";
+import { EstadoBadgeCorto } from "@/components/ui/StatusBadge";
 import { IconChevronDown, IconFileStack, IconRows, IconSearch, IconTable } from "@/components/icons";
 import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
@@ -397,7 +397,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                           <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(c.oferta.valorCuota)}</td>
                           <td className="px-3 py-3 tabular-nums text-ink-700">{c.oferta.plazo}</td>
                           <td className="px-3 py-3">
-                            <EstadoBadge estado={estadoVisible} conCodigo />
+                            <EstadoBadgeCorto estado={estadoVisible} />
                           </td>
                           <td className="px-3 py-3 text-ink-700">{fecha ?? "—"}</td>
                           <td className="px-3 py-3 text-ink-700">
@@ -428,13 +428,12 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                         <td className="px-3 py-3 font-semibold tabular-nums text-ink-900">{formatARS(app.oferta.valorCuota)}</td>
                         <td className="px-3 py-3 tabular-nums text-ink-700">{app.oferta.plazo}</td>
                         <td className="px-3 py-3">
-                          <EstadoBadge
+                          <EstadoBadgeCorto
                             estado={
                               app.analista.reenviada && app.estado === "PREAPROBADO"
                                 ? "OBSERVADO"
                                 : app.estado
                             }
-                            conCodigo
                           />
                         </td>
                         <td className="px-3 py-3 text-ink-700">{fechaApp ?? "—"}</td>

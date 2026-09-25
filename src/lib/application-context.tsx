@@ -332,9 +332,10 @@ interface ApplicationContextValue {
   guardarCorreccion: (pantalla: PantallaPostOfertaId) => void;
   reabrirCorreccion: (pantalla: PantallaPostOfertaId) => void;
   rechazarCredito: (codigo: string, motivo: string, observacion: string) => void;
-  // Aprobar abre el tramo de firma (FEL/AFEL); con modalidad "Ambas" se elige el método.
+  // Aprobar deja el crédito en APROBADO (bandeja APR); desde ahí se pasa a firma
+  // (FEL o AFEL directo según la modalidad del producto).
   aprobarCredito: (metodo?: MetodoFirma) => void;
-  // Aprueba sin pasar todavía a firma (estado intermedio opcional, creditonet-87).
+  // Aprueba sin pasar todavía a firma: el crédito queda en APROBADO (bandeja APR).
   dejarAprobado: () => void;
   registrarFirmaCliente: () => void;
   // AFEL: el analista revisó la firma con "Ver firma" y la confirma o la rechaza (creditonet-93).
@@ -1657,7 +1658,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const dejarAprobado = useCallback(() => {
     setAppOperativo((prev) =>
-      prev.estado === "ANALISIS_TOMADO"
+      prev.estado === "ANALISIS_TOMADO" ||
+      prev.estado === "PREAPROBADO" ||
+      prev.estado === "CAMBIO_OFERTA"
         ? {
             ...prev,
             estado: "APROBADO",
@@ -1667,17 +1670,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  // Aprobar el crédito ya no liquida: abre el tramo de firma. Con cualquier método (manual o
-  // electrónica) entra a FEL: el cliente tiene que firmar.
+  // Desde APROBADO se pasa a firma: electrónica → FEL (EN_FIRMA, el cliente tiene que
+  // firmar); física → AFEL (FIRMADO) directo, firma manual ya cargada en el legajo.
   const aprobarCredito = useCallback((metodo?: MetodoFirma) => {
     setAppOperativo((prev) => {
+      if (prev.estado !== "APROBADO") return prev;
       const m = metodo ?? metodoPorDefecto(modalidadFirma(prev.configuracion));
+      const fechaAprobacion = prev.fechaAprobacion ?? selloTiempo();
+      if (m === "FISICA") {
+        return {
+          ...prev,
+          estado: "FIRMADO",
+          fechaAprobacion,
+          firmas: [
+            {
+              n: 1,
+              metodo: m,
+              fechaFirma: selloTiempo(),
+              resultado: "PENDIENTE",
+              fechaResultado: null,
+            },
+          ],
+          firmaChequeada: false,
+          chequeoTelefonico: null,
+        };
+      }
       return {
         ...prev,
         estado: "EN_FIRMA",
-        // Desde Aprobado se conserva la fecha en que el analista aprobó.
-        fechaAprobacion: prev.estado === "APROBADO" ? prev.fechaAprobacion : selloTiempo(),
+        fechaAprobacion,
         firmas: [{ n: 1, metodo: m, fechaFirma: null, resultado: "PENDIENTE", fechaResultado: null }],
+        firmaChequeada: false,
         chequeoTelefonico: null,
       };
     });

@@ -56,7 +56,34 @@ const CODIGO_ESTADO: Partial<Record<EstadoCredito, string>> = {
   SUPERIOR: "SUP",
   CHEQUEO_TELEFONICO: "CHEQ",
   PARA_LIQUIDAR: "LIQ",
+  CAMBIO_OFERTA: "COFE",
 };
+
+// Mapa completo de códigos cortos (pestañas del analista). `CODIGO_ESTADO` rige el
+// sufijo de `conCodigo`; `CODIGO_CORTO` suma los estados sin sufijo (PRE/OBS/RECH)
+// para la tabla del analista, que muestra sólo el código.
+export const CODIGO_CORTO: Record<EstadoCredito, string> = {
+  BORRADOR: "BOR",
+  EN_TRAMITE: "TRA",
+  PREAPROBADO: "PRE",
+  ANALISIS_TOMADO: "PRE",
+  OBSERVADO: "OBS",
+  CAMBIO_OFERTA: "COFE",
+  RECHAZADO: "RECH",
+  ANULADO: "ANU",
+  APROBADO: "APR",
+  EN_FIRMA: "FEL",
+  FIRMADO: "AFEL",
+  SUPERIOR: "SUP",
+  CHEQUEO_TELEFONICO: "CHEQ",
+  PARA_LIQUIDAR: "LIQ",
+};
+
+// Badge de la tabla del analista: sólo el código corto, con el tono del estado.
+export function EstadoBadgeCorto({ estado }: { estado: EstadoCredito }) {
+  const meta = ESTADO_META[estado];
+  return <StatusBadge tone={meta.tone}>{CODIGO_CORTO[estado]}</StatusBadge>;
+}
 
 // `etiqueta`: reemplaza el texto de una solicitud devuelta por el analista (COFE u OBS en la bandeja del vendedor).
 export function EstadoBadge({
@@ -70,10 +97,11 @@ export function EstadoBadge({
   conCodigo?: boolean;
   soloCodigo?: boolean;
 }) {
-  const meta =
-    etiqueta && (estado === "OBSERVADO" || estado === "CAMBIO_OFERTA")
-      ? { label: etiqueta, tone: "warning" as const }
-      : ESTADO_META[estado];
+  // Con etiqueta personalizada (OBS/COFE del vendedor) se muestra sólo la etiqueta:
+  // ya trae el código y no se le agrega sufijo.
+  if (etiqueta && (estado === "OBSERVADO" || estado === "CAMBIO_OFERTA"))
+    return <StatusBadge tone="warning">{etiqueta}</StatusBadge>;
+  const meta = ESTADO_META[estado];
   const codigo = conCodigo || soloCodigo ? CODIGO_ESTADO[estado] : undefined;
   if (soloCodigo && codigo) return <StatusBadge tone={meta.tone}>{codigo}</StatusBadge>;
   return <StatusBadge tone={meta.tone}>{codigo ? `${meta.label} · ${codigo}` : meta.label}</StatusBadge>;

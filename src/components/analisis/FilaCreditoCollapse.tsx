@@ -6,7 +6,7 @@ import { CANALES, ORGANISMOS, PRODUCTOS, SESION_ANALISTA, VENDEDORES, nombreOpci
 import { formatARS, formatDNI } from "@/lib/format";
 import type { CreditApplication } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
-import { EstadoBadge } from "@/components/ui/StatusBadge";
+import { EstadoBadgeCorto } from "@/components/ui/StatusBadge";
 import {
   IconCalendar,
   IconChevronDown,
@@ -112,7 +112,7 @@ export function FilaCreditoCollapse({
           <p className="truncate text-sm font-semibold text-ink-800" title={organismo}>{organismo}</p>
         </div>
         <div className="flex w-40 shrink-0 justify-center">
-          <EstadoBadge estado={estadoVisible} conCodigo />
+          <EstadoBadgeCorto estado={estadoVisible} />
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <Button

@@ -160,7 +160,6 @@ export function AnalisisCredito({
     anularCredito,
     soltarAnalisis,
     tomarAnalisis,
-    dejarAprobado,
     confirmarObservacion,
   } = useApplication();
   const router = useRouter();
@@ -176,7 +175,6 @@ export function AnalisisCredito({
   >({});
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
-  const [dejarAprobadoAbierto, setDejarAprobadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
@@ -904,8 +902,8 @@ export function AnalisisCredito({
         decide: <strong>Cambiar oferta</strong> baja el capital o las cuotas desde la grilla y la
         devuelve al canal de venta; <strong>Observar</strong> la devuelve para corregir
         documentación; <strong>Anular</strong> la cierra cuando el cliente desiste;{" "}
-        <strong>Rechazar</strong> es definitivo y <strong>Aprobar</strong> la pasa a firma (FEL/AFEL)
-        y, si el producto lo pide, a chequeo telefónico antes de liquidar.
+        <strong>Rechazar</strong> es definitivo y <strong>Aprobar</strong> la deja en Aprobado
+        (APR), desde donde se pasa a firma (FEL/AFEL) y, si el producto lo pide, a chequeo telefónico antes de liquidar.
       </Banner>
 
       <Card className="space-y-3 p-4 sm:p-5">
@@ -960,14 +958,6 @@ export function AnalisisCredito({
                 <IconX width={16} height={16} />
                 Rechazar
               </Button>
-              <Button
-                variant="outline"
-                disabled={observacionPendiente}
-                onClick={() => setDejarAprobadoAbierto(true)}
-              >
-                <IconCheck width={16} height={16} />
-                Dejar en Aprobado
-              </Button>
               <Button variant="success" disabled={observacionPendiente} onClick={onAprobar}>
                 <IconCheck width={16} height={16} />
                 Aprobar
@@ -977,24 +967,6 @@ export function AnalisisCredito({
         )}
       </Card>
 
-      <ConfirmationModal
-        open={dejarAprobadoAbierto}
-        title="Dejar en Aprobado"
-        descripcion="La solicitud queda aprobada y no pasa todavía a firma: la retomás desde la pestaña Aprobados cuando corresponda."
-        rows={[
-          { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
-          { label: "Cliente", value: `${app.cliente.nombre} ${app.cliente.apellido}` },
-          { label: "Capital", value: formatARS(o.montoSolicitado) },
-          { label: "Cuotas", value: `${o.plazo}` },
-        ]}
-        confirmLabel="Dejar en Aprobado"
-        tone="success"
-        onConfirm={() => {
-          setDejarAprobadoAbierto(false);
-          dejarAprobado();
-        }}
-        onCancel={() => setDejarAprobadoAbierto(false)}
-      />
       <Modal
         open={lecturaAbierta}
         onClose={() => setLecturaAbierta(false)}

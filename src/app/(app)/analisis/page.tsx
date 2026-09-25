@@ -7,7 +7,7 @@ import { importeTerceros, netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit"
 import { TERMINOS } from "@/lib/terminologia";
 import { formatARS } from "@/lib/format";
 import { bancosDe } from "@/lib/campos-post-oferta";
-import { ESTADOS_FIRMA } from "@/lib/firma";
+import { ESTADOS_FIRMA, modalidadFirma } from "@/lib/firma";
 import type { MetodoFirma } from "@/lib/types";
 import { FirmaPanel } from "@/components/analisis/FirmaPanel";
 import { ListaComentarios } from "@/components/bandeja/ModalesBandeja";
@@ -40,9 +40,11 @@ export default function AnalisisPage() {
     observarCredito,
     rechazarCredito,
     aprobarCredito,
+    dejarAprobado,
     reiniciarDemo,
   } = useApplication();
   const [aprobarModal, setAprobarModal] = useState(false);
+  const [destinoFirma, setDestinoFirma] = useState<MetodoFirma>("ELECTRONICA");
   const [procesando, setProcesando] = useState(false);
   // La bandeja abre en la lista; "Abrir" entra al detalle de la solicitud.
   const [abierta, setAbierta] = useState(false);
@@ -112,7 +114,18 @@ export default function AnalisisPage() {
     );
   }
 
-  function aprobar(metodo: MetodoFirma) {
+  // Aprobar deja el crédito en APROBADO (bandeja APR); desde APR se pasa a FEL/AFEL.
+  function aprobarAprobado() {
+    setAprobarModal(false);
+    setProcesando(true);
+    window.setTimeout(() => {
+      dejarAprobado();
+      setProcesando(false);
+    }, 1200);
+  }
+
+  // Desde APR se pasa a firma: electrónica → FEL, física → AFEL directo.
+  function avanzarAFirma(metodo: MetodoFirma) {
     setAprobarModal(false);
     setProcesando(true);
     window.setTimeout(() => {
@@ -129,10 +142,10 @@ export default function AnalisisPage() {
             <IconLoader width={26} height={26} />
           </span>
           <h1 className="mt-5 text-lg font-bold tracking-tight text-ink-900">
-            Procesando aprobación…
+            Procesando…
           </h1>
           <p className="mt-1.5 text-sm text-ink-500">
-            La solicitud pasa al tramo de firma antes de liquidarse.
+            La solicitud avanza al siguiente tramo.
           </p>
         </Card>
       </div>
@@ -141,7 +154,7 @@ export default function AnalisisPage() {
 
   if (app.estado === "CAMBIO_OFERTA") {
     // Confirmar oferta: el vendedor aceptó la del analista o eligió una menor. Confirmar
-    // es aprobar directo: se reutiliza el modal de método de firma y aprobarCredito.
+    // deja el crédito en APROBADO (bandeja APR); desde ahí se pasa a firma (FEL/AFEL).
     // ofertaAnalistaDe() sólo responde en OBSERVADO: acá se lee la oferta conservada al reenviar.
     const inicial = app.analista.ofertaAnalista ?? null;
     const o = app.oferta;
@@ -158,7 +171,7 @@ export default function AnalisisPage() {
             </h1>
             <p className="mt-1 text-sm text-ink-500">
               El canal de venta respondió al cambio de oferta. Al confirmar, el crédito queda
-              aprobado y sigue el tramo de firma.
+              aprobado (APR) y desde ahí se pasa a firma.
             </p>
           </div>
           <EstadoBadge estado={app.estado} />
@@ -207,7 +220,8 @@ export default function AnalisisPage() {
         <AprobacionModal
           open={aprobarModal}
           loading={false}
-          onConfirm={aprobar}
+          modo="APROBADO"
+          onConfirm={aprobarAprobado}
           onCancel={() => setAprobarModal(false)}
         />
       </div>
@@ -216,6 +230,7 @@ export default function AnalisisPage() {
 
   if (app.estado === "APROBADO") {
     const o = app.oferta;
+    const modalidad = modalidadFirma(app.configuracion);
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         {volver}
@@ -228,8 +243,8 @@ export default function AnalisisPage() {
               Crédito aprobado · {app.numeroCredito}
             </h1>
             <p className="mt-1 text-sm text-ink-500">
-              El crédito está aprobado y espera pasar a firma. Al pasarlo a firma queda en FEL, a
-              la espera de la firma del cliente.
+              El crédito está aprobado y espera pasar a firma: electrónica (FEL) o física
+              (AFEL directo), según la modalidad del producto.
             </p>
           </div>
           <EstadoBadge estado={app.estado} />
@@ -239,17 +254,48 @@ export default function AnalisisPage() {
             {app.cliente.nombre} {app.cliente.apellido} · <strong>{formatARS(o.montoSolicitado)}</strong>{" "}
             en {o.plazo} cuotas de {formatARS(o.valorCuota)}
           </p>
-          <div className="flex justify-end">
-            <Button size="lg" variant="success" onClick={() => setAprobarModal(true)}>
-              Pasar a firma
-            </Button>
+          <p className="text-xs text-ink-500">
+            Modalidad del producto:{" "}
+            {modalidad === "FISICA"
+              ? "física (AFEL directo)"
+              : modalidad === "ELECTRONICA"
+                ? "electrónica (FEL)"
+                : "ambas (FEL o AFEL)"}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            {(modalidad === "ELECTRONICA" || modalidad === "AMBAS") && (
+              <Button
+                size="lg"
+                variant="success"
+                onClick={() => {
+                  setDestinoFirma("ELECTRONICA");
+                  setAprobarModal(true);
+                }}
+              >
+                Pasar a FEL
+              </Button>
+            )}
+            {(modalidad === "FISICA" || modalidad === "AMBAS") && (
+              <Button
+                size="lg"
+                variant="success"
+                onClick={() => {
+                  setDestinoFirma("FISICA");
+                  setAprobarModal(true);
+                }}
+              >
+                Pasar a AFEL
+              </Button>
+            )}
           </div>
         </Card>
         <HistorialCredito className="mt-5" />
         <AprobacionModal
           open={aprobarModal}
           loading={false}
-          onConfirm={aprobar}
+          modo="FIRMA"
+          metodoDestino={destinoFirma}
+          onConfirm={avanzarAFirma}
           onCancel={() => setAprobarModal(false)}
         />
       </div>
@@ -441,7 +487,8 @@ export default function AnalisisPage() {
       <AprobacionModal
         open={aprobarModal}
         loading={false}
-        onConfirm={aprobar}
+        modo="APROBADO"
+        onConfirm={aprobarAprobado}
         onCancel={() => setAprobarModal(false)}
       />
     </div>
