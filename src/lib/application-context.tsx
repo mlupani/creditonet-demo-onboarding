@@ -68,9 +68,11 @@ import {
 import { fechaHoy, onlyDigits, selloTiempo } from "./format";
 import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
-import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_SUPERVISOR, seleccionarLinea } from "./config";
+import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_SUPERVISOR, seleccionarLinea } from "./config";
 import { hidratarProductos } from "./productos";
+import { hidratarNotificaciones } from "./notificaciones";
 import {
+  firmaAprobada,
   intentoActual,
   metodoPorDefecto,
   modalidadFirma,
@@ -343,6 +345,9 @@ interface ApplicationContextValue {
   verificarFirma: () => void;
   // AFEL → SUP: pide la aprobación de un superior; `aprobarSuperior` la da y sigue el flujo.
   enviarASuperior: () => void;
+  // COFE → SUP: caso especial que el analista no puede resolver; lo toma un superior,
+  // que confirma la oferta igual que el analista (el crédito pasa a APR).
+  enviarCofeASuperior: () => void;
   aprobarSuperior: () => void;
   solicitarRefirma: () => void;
   // Chequeo telefónico (bandeja del chequeador).
@@ -351,6 +356,10 @@ interface ApplicationContextValue {
   finalizarChequeo: (resultado: ResultadoChequeo, comentario: string) => void;
   // Deja el chequeo observado (no se pudo completar) y lo suelta: el canal de venta lo ve.
   observarChequeo: (nota: string) => void;
+  // Chequeo no correcto: pasa a un superior con el comentario (ej.: el cliente se arrepintió).
+  enviarChequeoASuperior: (nota: string) => void;
+  // El superior devuelve a chequeo un no-correcto para reintentar.
+  devolverChequeo: () => void;
 
   reiniciarDemo: () => void;
 }
@@ -454,6 +463,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hidratarProductos();
       hidratarPlanes();
       hidratarOrganismos();
+      hidratarNotificaciones();
       try {
         // La base compartida manda sobre la de la sesión: la otra pestaña pudo haberla cambiado.
         let dbCompartida: CreditoDB[] | null = null;
@@ -1660,7 +1670,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAppOperativo((prev) =>
       prev.estado === "ANALISIS_TOMADO" ||
       prev.estado === "PREAPROBADO" ||
-      prev.estado === "CAMBIO_OFERTA"
+      prev.estado === "CAMBIO_OFERTA" ||
+      // El superior confirma un COFE que tomó por Enviar a SUP: sin firma aprobada.
+      (prev.estado === "SUPERIOR" && !firmaAprobada(prev.firmas))
         ? {
             ...prev,
             estado: "APROBADO",
@@ -1752,21 +1764,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // SUP: el superior aprueba y el crédito sigue como después de AFEL.
+  // COFE → SUP: caso especial que el analista no puede resolver; lo toma un superior.
+  const enviarCofeASuperior = useCallback(() => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "CAMBIO_OFERTA") return prev;
+      return {
+        ...prev,
+        estado: "SUPERIOR",
+        aprobacionSuperior: {
+          enviadaPor: SESION_ANALISTA.nombre,
+          fechaEnvio: selloTiempo(),
+          aprobadaPor: null,
+          fechaAprobacion: null,
+        },
+      };
+    });
+  }, []);
+
+  // SUP: el superior aprueba y el crédito sigue como después de AFEL. Excepción: un
+  // no-correcto de chequeo lo aprueba directo a liquidación, con constancia del superior.
   const aprobarSuperior = useCallback(() => {
     setAppOperativo((prev) => {
       if (prev.estado !== "SUPERIOR" || !prev.aprobacionSuperior) return prev;
-      return pasoTrasFirma(
-        {
-          ...prev,
-          aprobacionSuperior: {
-            ...prev.aprobacionSuperior,
-            aprobadaPor: SESION_SUPERVISOR.nombre,
-            fechaAprobacion: selloTiempo(),
-          },
+      const conAprobacion = {
+        ...prev,
+        aprobacionSuperior: {
+          ...prev.aprobacionSuperior,
+          aprobadaPor: SESION_SUPERVISOR.nombre,
+          fechaAprobacion: selloTiempo(),
         },
-        prev
-      );
+      };
+      if (prev.chequeoTelefonico?.resultado === "NO_OK") {
+        return { ...conAprobacion, estado: "PARA_LIQUIDAR" };
+      }
+      return pasoTrasFirma(conAprobacion, prev);
     });
   }, []);
 
@@ -1801,6 +1832,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? { ...prev, chequeoTelefonico: { ...prev.chequeoTelefonico, tomado: false } }
         : prev
     );
+  }, []);
+
+  // Chequeo no correcto: pasa a un superior con el comentario del chequeador
+  // (ej.: el cliente se arrepintió y no quiso el crédito). El superior lo cierra o,
+  // como excepción, lo devuelve a chequeo o lo aprueba a liquidación.
+  const enviarChequeoASuperior = useCallback((nota: string) => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "CHEQUEO_TELEFONICO" || !prev.chequeoTelefonico?.tomado) return prev;
+      return {
+        ...prev,
+        estado: "SUPERIOR",
+        chequeoTelefonico: {
+          ...prev.chequeoTelefonico,
+          tomado: true,
+          resultado: "NO_OK",
+          comentario: nota,
+          fecha: selloTiempo(),
+        },
+        aprobacionSuperior: {
+          enviadaPor: SESION_CHEQUEADOR.nombre,
+          fechaEnvio: selloTiempo(),
+          aprobadaPor: null,
+          fechaAprobacion: null,
+        },
+      };
+    });
+  }, []);
+
+  // El superior devuelve a chequeo un no-correcto para reintentar.
+  const devolverChequeo = useCallback(() => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "SUPERIOR" || prev.chequeoTelefonico?.resultado !== "NO_OK") return prev;
+      return {
+        ...prev,
+        estado: "CHEQUEO_TELEFONICO",
+        chequeoTelefonico: {
+          ...prev.chequeoTelefonico,
+          tomado: false,
+          resultado: null,
+          observacion: null,
+          intentos: [
+            ...intentosChequeo(prev.chequeoTelefonico),
+            { nota: `Devuelto por el superior (${SESION_SUPERVISOR.nombre}).`, fecha: selloTiempo() },
+          ],
+        },
+      };
+    });
   }, []);
 
   // Observa el chequeo: sigue En chequeo telefónico, con la nota a la vista del canal de venta.
@@ -1927,12 +2005,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       confirmarChequeoFirma,
       verificarFirma,
       enviarASuperior,
+      enviarCofeASuperior,
       aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,
       soltarChequeo,
       finalizarChequeo,
       observarChequeo,
+      enviarChequeoASuperior,
+      devolverChequeo,
       reiniciarDemo,
     }),
     [
@@ -2002,12 +2083,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       confirmarChequeoFirma,
       verificarFirma,
       enviarASuperior,
+      enviarCofeASuperior,
       aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,
       soltarChequeo,
       finalizarChequeo,
       observarChequeo,
+      enviarChequeoASuperior,
+      devolverChequeo,
       reiniciarDemo,
     ]
   );
