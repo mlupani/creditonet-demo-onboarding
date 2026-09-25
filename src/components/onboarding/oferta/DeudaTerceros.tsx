@@ -3,6 +3,7 @@
 import { useApplication } from "@/lib/application-context";
 import { DEUDA_TERCEROS_DEMO } from "@/lib/mocks";
 import { ENTIDADES_ACREEDORAS, validarDeudaTerceros } from "@/lib/validation";
+import { TERMINOS } from "@/lib/terminologia";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
@@ -19,7 +20,7 @@ export function DeudaTerceros() {
   return (
     <Card>
       <CardHeader
-        title="Cancelación de deudas con terceros"
+        title={TERMINOS.cancelacionTerceros}
         description="Destiná parte del préstamo a cancelar deudas en otras entidades financieras."
         icon={<IconLandmark width={18} height={18} />}
       />
@@ -34,7 +35,7 @@ export function DeudaTerceros() {
             )
           }
           label="Cancelar una deuda con otra entidad"
-          description="El monto se transfiere al CBU de la entidad acreedora y reduce la acreditación neta."
+          description={`El monto se transfiere al CBU de la entidad acreedora y reduce el ${TERMINOS.saldoAcreditacion.toLowerCase()}.`}
         />
         {d.habilitado && (
           <div className="animate-fade-up grid gap-x-5 gap-y-1 border-t border-ink-100 pt-3 sm:grid-cols-2">
@@ -54,7 +55,7 @@ export function DeudaTerceros() {
               value={d.importe}
               onChange={(v) => setDeudaTerceros({ importe: v })}
               error={err.importe}
-              hint="Se descuenta de la acreditación neta."
+              hint={`Se descuenta del ${TERMINOS.saldoAcreditacion.toLowerCase()}.`}
             />
             <FormField
               id="terceros-cbu"

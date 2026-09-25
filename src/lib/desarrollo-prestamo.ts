@@ -3,6 +3,7 @@ import { nombreOpcion, ORGANISMOS, PRODUCTOS, CANALES, VENDEDORES } from "./conf
 import { formatARS } from "./format";
 import { importeTerceros, netoAAcreditar, planDeSolicitud, totalPrecancelaciones } from "./credit";
 import { parseFecha } from "./format";
+import { TERMINOS } from "./terminologia";
 
 export interface FilaDesarrollo {
   dato: string;
@@ -54,8 +55,8 @@ export function getDesarrolloPrestamo(app: CreditApplication): FilaDesarrollo[] 
     { dato: "Capital Aprobado (Liq+Can)", valor: formatARS(capitalAprobado) },
     { dato: "Saldo Capital", valor: formatARS(o.montoSolicitado) },
     { dato: "Renovaciones", valor: formatARS(precancel) },
-    { dato: "Canc. Terceros", valor: formatARS(terceros) },
-    { dato: "Total Liquidado", valor: formatARS(liquidado) },
+    { dato: TERMINOS.cancelacionTerceros, valor: formatARS(terceros) },
+    { dato: TERMINOS.saldoAcreditacion, valor: formatARS(liquidado) },
     { dato: "Cantidad Cuotas", valor: String(o.plazo) },
     { dato: "Valor Cuota", valor: formatARS(o.valorCuota) },
     { dato: "Casa Matriz", valor: valorPresentacion(casaMatriz) },

@@ -16,6 +16,7 @@ import {
   subestadoObservado,
 } from "@/lib/credit";
 import { ESTADOS_FIRMA } from "@/lib/firma";
+import { TERMINOS } from "@/lib/terminologia";
 import { textoChequeo } from "@/lib/historial";
 import { HistorialCredito } from "@/components/HistorialCredito";
 import { IconAlertTriangle, IconFileStack } from "@/components/icons";
@@ -198,7 +199,7 @@ export function SolicitudEnviada() {
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] font-medium text-ink-500">Acreditación neta</dt>
+              <dt className="text-[11px] font-medium text-ink-500">{TERMINOS.saldoAcreditacion}</dt>
               <dd className="text-sm font-semibold tabular-nums text-success-700">
                 {formatARS(netoAAcreditar(app.oferta))}
               </dd>

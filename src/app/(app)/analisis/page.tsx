@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { importeTerceros, netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
+import { TERMINOS } from "@/lib/terminologia";
 import { formatARS } from "@/lib/format";
 import { bancosDe } from "@/lib/campos-post-oferta";
 import { ESTADOS_FIRMA } from "@/lib/firma";
@@ -260,7 +261,7 @@ export default function AnalisisPage() {
     const terceros = importeTerceros(o);
     const operaciones = [
       {
-        titulo: "Transferencia neta al cliente",
+        titulo: TERMINOS.saldoAcreditacion,
         detalle:
           bancosDe(app.postOferta.laboral.banco)
             .map((b) => `${b} · ${ultimos(app.postOferta.laboral[`cbu.${b}`] ?? "")}`)

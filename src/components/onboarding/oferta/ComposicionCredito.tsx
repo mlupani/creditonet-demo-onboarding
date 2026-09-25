@@ -8,6 +8,7 @@ import {
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import { IconWallet } from "@/components/icons";
 
 // Resumen de la oferta con la regla de validación en cascada (Guía §5.5).
@@ -63,7 +64,7 @@ export function ComposicionCredito() {
           )}
           {terceros > 0 && (
             <div className={filaCancelacion}>
-              <dt className="text-sm text-ink-600">Cancelación deudas con terceros</dt>
+              <dt className="text-sm text-ink-600">{TERMINOS.cancelacionTerceros}</dt>
               <dd className={montoCancelacion}>−{formatARS(terceros)}</dd>
             </div>
           )}
@@ -78,7 +79,7 @@ export function ComposicionCredito() {
               excede ? "text-danger-700" : "text-success-700"
             }`}
           >
-            Acreditación neta
+            {TERMINOS.saldoAcreditacion}
           </span>
           <span
             key={neto}

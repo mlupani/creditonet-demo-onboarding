@@ -31,6 +31,7 @@ import {
 } from "@/lib/campos-post-oferta";
 import type { PantallaPostOfertaId } from "@/lib/types";
 import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO } from "@/lib/validation";
+import { TERMINOS } from "@/lib/terminologia";
 import {
   formatARS,
   formatDNI,
@@ -220,7 +221,7 @@ export function AnalisisCredito({
   const sumaCancelacion = (cs: typeof aRenovar) => cs.reduce((t, c) => t + c.montoCancelacion, 0);
   const totalRenovaciones = sumaCancelacion(aRenovar.filter((c) => !c.enMora));
   const totalPrecancelacionesMora = sumaCancelacion(aRenovar.filter((c) => c.enMora));
-  // Sueldo neto recalculado: neto declarado menos los débitos no remunerativos.
+  // Sueldo neto recalculado: neto declarado menos los conceptos no remunerativos.
   const sueldoNetoRecalculado = app.laboral.ingresoNeto - app.laboral.debitosNoRemunerativos;
   const vector = vectorPago(o.creditosActivos);
   const creditoConPagos = o.creditosActivos.find((c) => c.cuotasAbonadas > 0);
@@ -404,10 +405,10 @@ export function AnalisisCredito({
           rows={[
             { label: "Ingreso bruto", value: formatARS(app.laboral.ingresoBruto) },
             { label: "Ingreso neto", value: formatARS(app.laboral.ingresoNeto) },
-            { label: "Disponible para extracción", value: formatARS(app.laboral.disponible) },
-            { label: "Día/saldo de acreditación", value: formatARS(app.laboral.extraccionesImporte) },
-            { label: "Transferencia", value: formatARS(app.laboral.transferenciasImporte) },
-            { label: "Débitos no remunerativos", value: formatARS(app.laboral.debitosNoRemunerativos) },
+            { label: TERMINOS.disponible, value: formatARS(app.laboral.disponible) },
+            { label: TERMINOS.saldoDiaAcreditacion, value: formatARS(app.laboral.extraccionesImporte) },
+            { label: TERMINOS.transferenciasExtracciones, value: formatARS(app.laboral.transferenciasImporte) },
+            { label: TERMINOS.conceptosNoRemunerativos, value: formatARS(app.laboral.debitosNoRemunerativos) },
             {
               label: "Sueldo neto recalculado",
               value: formatARS(sueldoNetoRecalculado),
@@ -497,7 +498,7 @@ export function AnalisisCredito({
               tone: totalPrecancelacionesMora > 0 ? "danger" : "muted",
             },
             {
-              label: "− Transferencia a terceros",
+              label: `− ${TERMINOS.cancelacionTerceros}`,
               value:
                 terceros > 0
                   ? `−${formatARS(terceros)} · ${valorOPresentacion(o.deudaTerceros.entidad)} · CBU ${valorOPresentacion(o.deudaTerceros.cbu)}`
@@ -505,7 +506,7 @@ export function AnalisisCredito({
               tone: terceros > 0 ? "danger" : "muted",
             },
             {
-              label: "Acreditación neta",
+              label: TERMINOS.saldoAcreditacion,
               value: formatARS(netoAAcreditar(o)),
               tone: "success",
               big: true,

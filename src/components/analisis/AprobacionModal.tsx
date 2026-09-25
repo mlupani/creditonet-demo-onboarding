@@ -4,6 +4,7 @@ import { useApplication } from "@/lib/application-context";
 import { netoAAcreditar } from "@/lib/credit";
 import { metodoPorDefecto, modalidadFirma, requiereChequeoTelefonico } from "@/lib/firma";
 import { formatARS } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import type { MetodoFirma } from "@/lib/types";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 
@@ -38,7 +39,7 @@ export function AprobacionModal({
         { label: "Capital", value: formatARS(o.montoSolicitado) },
         { label: "Cuotas", value: `${o.plazo}` },
         { label: "Valor de cuota", value: formatARS(o.valorCuota) },
-        { label: "Acreditación neta", value: formatARS(netoAAcreditar(o)) },
+        { label: TERMINOS.saldoAcreditacion, value: formatARS(netoAAcreditar(o)) },
         { label: "Chequeo telefónico", value: chequeo ? "Requerido por el producto" : "No requerido" },
         { label: "Firma electrónica", value: metodo === "ELECTRONICA" ? "Requerido" : "No requerido" },
       ]}

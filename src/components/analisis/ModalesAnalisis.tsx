@@ -4,6 +4,7 @@ import { useApplication } from "@/lib/application-context";
 import { evaluarReglas, getMotor, reglaMarcada } from "@/lib/motores";
 import { RESULTADO_LABEL, evaluarPlan, netoAAcreditar, seCancela, totalPrecancelaciones } from "@/lib/credit";
 import { formatARS, formatPct } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import { estadoTone, generarHistorialPagos } from "@/lib/historial-pagos";
 import { Modal } from "@/components/ui/Modal";
 import { CerrarFooter, Filas, Seccion } from "@/components/bandeja/ModalesBandeja";
@@ -314,7 +315,7 @@ export function CreditosRenovarModal({ open, onClose }: ModalProps) {
                   label: `Cancelación de ${aRenovar.length} crédito${aRenovar.length === 1 ? "" : "s"}`,
                   value: `−${formatARS(total)}`,
                 },
-                { label: "Acreditación neta", value: <strong>{formatARS(netoAAcreditar(app.oferta))}</strong> },
+                { label: TERMINOS.saldoAcreditacion, value: <strong>{formatARS(netoAAcreditar(app.oferta))}</strong> },
               ]}
             />
             <p className="mt-2 text-xs text-ink-500">
