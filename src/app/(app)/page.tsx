@@ -18,6 +18,7 @@ import {
   ComentarioModal,
   EstadoSolicitudModal,
   MotivoModal,
+  ObservacionModal,
   PosicionClienteModal,
 } from "@/components/bandeja/ModalesBandeja";
 import type { CreditApplication } from "@/lib/types";
@@ -48,7 +49,7 @@ const ACCIONES_PROXIMAS = [
 ];
 
 type Grupo = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "FIRMA" | "CHEQUEO" | "PAGO" | "RESUELTAS";
-type ModalId = "nueva" | "anular" | "posicion" | "estado" | "motivo" | "comentario" | "chequeo";
+type ModalId = "nueva" | "anular" | "posicion" | "estado" | "motivo" | "comentario" | "chequeo" | "observacion";
 
 // Secciones de la bandeja del canal de venta, en el orden en que se trabajan.
 const GRUPOS: { id: Grupo; titulo: string; vacio: string }[] = [
@@ -143,6 +144,8 @@ export default function BandejaCanalVentaPage() {
   const [busqueda, setBusqueda] = useState("");
   const [subestado, setSubestado] = useState("");
   const [modal, setModal] = useState<ModalId | null>(null);
+  // Fila observada cuyo comentario se está viendo (null = solicitud en curso).
+  const [credObs, setCredObs] = useState<(typeof creditosDB)[number] | null>(null);
   const [colapsados, setColapsados] = useState<Record<Grupo, boolean>>({
     TRAMITE: false,
     OBSERVADAS: true,
@@ -220,10 +223,20 @@ export default function BandejaCanalVentaPage() {
   // cambio, sigue por `abrirCreditoDB`.
   function actuar(
     cred: (typeof creditosDB)[number],
-    modalId: Extract<ModalId, "anular" | "posicion" | "estado" | "motivo" | "comentario" | "chequeo">
+    modalId: Extract<ModalId, "anular" | "posicion" | "estado" | "motivo" | "comentario" | "chequeo" | "observacion">
   ) {
     cargarCreditoDeDB(cred._id);
+    if (modalId === "observacion") setCredObs(cred);
     setModal(modalId);
+  }
+
+  // Desde el modal de observación: cierra y sigue el camino actual (retomar + /onboarding).
+  function tramitarObservacion() {
+    const cred = credObs;
+    setCredObs(null);
+    setModal(null);
+    if (cred) abrirCreditoDB(cred);
+    else irASolicitud();
   }
 
   function detallePara(c: CreditApplication, pasoActual: number) {
@@ -420,8 +433,13 @@ export default function BandejaCanalVentaPage() {
                               </div>
                             </div>
                             <div className="mt-3 flex flex-wrap gap-2 md:justify-end">
-                              <Button size="sm" variant={app.estado === "OBSERVADO" ? "primary" : "outline"} onClick={irASolicitud}>
-                                {app.estado === "OBSERVADO" ? "Tratar observación" : "Continuar carga"}
+                              <Button size="sm" variant={app.estado === "OBSERVADO" ? "primary" : "outline"} onClick={() => {
+                                if (app.estado === "OBSERVADO") {
+                                  setCredObs(null);
+                                  setModal("observacion");
+                                } else irASolicitud();
+                              }}>
+                                {app.estado === "OBSERVADO" ? "Ver observación" : "Continuar carga"}
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => setModal("posicion")}>Posición cliente</Button>
                             </div>
@@ -478,8 +496,8 @@ export default function BandejaCanalVentaPage() {
                                   </Button>
                                 )}
                                 {g.id === "OBSERVADAS" && (
-                                  <Button size="sm" variant="primary" onClick={() => abrirCreditoDB(cred)}>
-                                    Tratar observación
+                                  <Button size="sm" variant="primary" onClick={() => actuar(cred, "observacion")}>
+                                    Ver observación
                                   </Button>
                                 )}
                                 {(g.id === "ANALISIS" || g.id === "FIRMA" || g.id === "CHEQUEO" || g.id === "PAGO" || g.id === "RESUELTAS") && (
@@ -608,6 +626,14 @@ export default function BandejaCanalVentaPage() {
       <EstadoSolicitudModal open={modal === "estado"} onClose={() => setModal(null)} />
       <MotivoModal open={modal === "motivo"} onClose={() => setModal(null)} />
       <ChequeoObservacionModal open={modal === "chequeo"} onClose={() => setModal(null)} />
+      <ObservacionModal
+        open={modal === "observacion"}
+        onClose={() => {
+          setCredObs(null);
+          setModal(null);
+        }}
+        onTramitar={tramitarObservacion}
+      />
       <ComentarioModal open={modal === "comentario"} onClose={() => setModal(null)} />
     </div>
   );

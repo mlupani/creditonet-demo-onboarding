@@ -3,19 +3,22 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { importeTerceros, netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
+import { cambiosOfertaDe, importeTerceros, netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
 import { TERMINOS } from "@/lib/terminologia";
 import { formatARS } from "@/lib/format";
 import { bancosDe } from "@/lib/campos-post-oferta";
-import { ESTADOS_FIRMA, modalidadFirma } from "@/lib/firma";
+import { ESTADOS_FIRMA, firmaAprobada, modalidadFirma } from "@/lib/firma";
 import type { MetodoFirma } from "@/lib/types";
 import { FirmaPanel } from "@/components/analisis/FirmaPanel";
+import { HiloObservacion } from "@/components/analisis/HiloObservacion";
+import { LegajoVirtualModal } from "@/components/analisis/LegajoVirtualModal";
 import { ListaComentarios } from "@/components/bandeja/ModalesBandeja";
 import { HistorialCredito } from "@/components/HistorialCredito";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
+import { Modal } from "@/components/ui/Modal";
 import { SuccessScreen } from "@/components/SuccessScreen";
 import { AnalisisCredito } from "@/components/analisis/AnalisisCredito";
 import { ListaAnalisis } from "@/components/analisis/ListaAnalisis";
@@ -41,9 +44,16 @@ export default function AnalisisPage() {
     rechazarCredito,
     aprobarCredito,
     dejarAprobado,
+    enviarCofeASuperior,
     reiniciarDemo,
   } = useApplication();
   const [aprobarModal, setAprobarModal] = useState(false);
+  const [supAbierto, setSupAbierto] = useState(false);
+  const [legajoAbierto, setLegajoAbierto] = useState(false);
+  // El modal de observaciones se abre solo al entrar a Confirmar oferta; se guarda para
+  // qué crédito se descartó para no reabrirlo, y el botón lo vuelve a abrir.
+  const [obsCerradoPara, setObsCerradoPara] = useState<string | null>(null);
+  const [obsReabierto, setObsReabierto] = useState(false);
   const [destinoFirma, setDestinoFirma] = useState<MetodoFirma>("ELECTRONICA");
   const [procesando, setProcesando] = useState(false);
   // La bandeja abre en la lista; "Abrir" entra al detalle de la solicitud.
@@ -134,6 +144,16 @@ export default function AnalisisPage() {
     }, 1200);
   }
 
+  // Caso especial que el analista no puede resolver: lo toma un superior.
+  function enviarSup() {
+    setSupAbierto(false);
+    setProcesando(true);
+    window.setTimeout(() => {
+      enviarCofeASuperior();
+      setProcesando(false);
+    }, 1200);
+  }
+
   if (procesando) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
@@ -152,26 +172,35 @@ export default function AnalisisPage() {
     );
   }
 
-  if (app.estado === "CAMBIO_OFERTA") {
+  // Origen COFE en manos del superior: sin firma aprobada, confirma igual que el analista.
+  const cofeSuperior = app.estado === "SUPERIOR" && !firmaAprobada(app.firmas);
+
+  if (app.estado === "CAMBIO_OFERTA" || cofeSuperior) {
     // Confirmar oferta: el vendedor aceptó la del analista o eligió una menor. Confirmar
     // deja el crédito en APROBADO (bandeja APR); desde ahí se pasa a firma (FEL/AFEL).
-    // ofertaAnalistaDe() sólo responde en OBSERVADO: acá se lee la oferta conservada al reenviar.
-    const inicial = app.analista.ofertaAnalista ?? null;
+    // La inicial es la anterior al cambio (historial); ofertaAnalista guarda la nueva.
+    const ultimoCambio = cambiosOfertaDe(app).at(-1) ?? null;
     const o = app.oferta;
+    const obsAuto = obsCerradoPara !== app.numeroCredito;
+    const cerrarObs = () => {
+      setObsCerradoPara(app.numeroCredito);
+      setObsReabierto(false);
+    };
     return (
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         {volver}
         <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-              Analista de riesgo
+              {cofeSuperior ? "Superior de riesgo" : "Analista de riesgo"}
             </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
               Confirmar oferta · Crédito {app.numeroCredito}
             </h1>
             <p className="mt-1 text-sm text-ink-500">
-              El canal de venta respondió al cambio de oferta. Al confirmar, el crédito queda
-              aprobado (APR) y desde ahí se pasa a firma.
+              {cofeSuperior && app.aprobacionSuperior
+                ? `Caso especial tomado por el superior (pedido por ${app.aprobacionSuperior.enviadaPor} el ${app.aprobacionSuperior.fechaEnvio}). Al confirmar, el crédito queda aprobado (APR) y desde ahí se pasa a firma.`
+                : "El canal de venta respondió al cambio de oferta. Al confirmar, el crédito queda aprobado (APR) y desde ahí se pasa a firma."}
             </p>
           </div>
           <EstadoBadge estado={app.estado} />
@@ -185,15 +214,15 @@ export default function AnalisisPage() {
                   Oferta inicial
                 </p>
                 <p className="mt-1 text-xl font-bold tabular-nums text-ink-900">
-                  {inicial ? formatARS(inicial.montoSolicitado) : "—"}
+                  {ultimoCambio?.montoAnterior != null ? formatARS(ultimoCambio.montoAnterior) : "—"}
                 </p>
                 <p className="text-sm text-ink-500">
-                  {inicial ? `${inicial.plazo} cuotas` : ""} {inicial?.nota ? `· ${inicial.nota}` : ""}
+                  {ultimoCambio?.plazoAnterior != null ? `${ultimoCambio.plazoAnterior} cuotas` : "Sin dato previo"}
                 </p>
               </div>
               <div className="rounded-xl border border-success-200 bg-success-50/50 p-4">
                 <p className="text-xs font-bold uppercase tracking-widest text-success-700">
-                  Oferta final
+                  Oferta Modificada por el analista
                 </p>
                 <p className="mt-1 text-xl font-bold tabular-nums text-ink-900">
                   {formatARS(o.montoSolicitado)}
@@ -203,10 +232,25 @@ export default function AnalisisPage() {
                 </p>
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
-              <Button size="lg" variant="success" onClick={() => setAprobarModal(true)}>
-                Confirmar oferta
-              </Button>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="outline" onClick={() => setObsReabierto(true)}>
+                  Ver observaciones
+                </Button>
+                <Button variant="outline" onClick={() => setLegajoAbierto(true)}>
+                  Ver legajo virtual
+                </Button>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {!cofeSuperior && (
+                  <Button variant="outline" onClick={() => setSupAbierto(true)}>
+                    Enviar a SUP
+                  </Button>
+                )}
+                <Button size="lg" variant="success" onClick={() => setAprobarModal(true)}>
+                  Confirmar oferta
+                </Button>
+              </div>
             </div>
           </Card>
 
@@ -224,6 +268,29 @@ export default function AnalisisPage() {
           onConfirm={aprobarAprobado}
           onCancel={() => setAprobarModal(false)}
         />
+        <AprobacionModal
+          open={supAbierto}
+          loading={false}
+          modo="SUP"
+          onConfirm={() => enviarSup()}
+          onCancel={() => setSupAbierto(false)}
+        />
+        <Modal
+          open={obsAuto || obsReabierto}
+          onClose={cerrarObs}
+          title="Observaciones de la solicitud"
+          maxWidth="max-w-2xl"
+          footer={
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={cerrarObs}>
+                Cerrar
+              </Button>
+            </div>
+          }
+        >
+          <HiloObservacion />
+        </Modal>
+        <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
       </div>
     );
   }
@@ -273,18 +340,6 @@ export default function AnalisisPage() {
                 }}
               >
                 Pasar a FEL
-              </Button>
-            )}
-            {(modalidad === "FISICA" || modalidad === "AMBAS") && (
-              <Button
-                size="lg"
-                variant="success"
-                onClick={() => {
-                  setDestinoFirma("FISICA");
-                  setAprobarModal(true);
-                }}
-              >
-                Pasar a AFEL
               </Button>
             )}
           </div>

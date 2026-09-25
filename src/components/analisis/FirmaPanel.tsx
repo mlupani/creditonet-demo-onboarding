@@ -42,6 +42,7 @@ export function FirmaPanel({
     solicitarRefirma,
     enviarASuperior,
     aprobarSuperior,
+    devolverChequeo,
   } = useApplication();
   const [modal, setModal] = useState<"refirma" | "rechazo" | "verFirma" | "superior" | null>(null);
   const [motivo, setMotivo] = useState("");
@@ -52,6 +53,8 @@ export function FirmaPanel({
   const refirmaDisponible = puedeRefirmar(app.firmas);
   const chequeo = requiereChequeoTelefonico(app.configuracion);
   const segunda = actual?.n === MAX_INTENTOS_FIRMA;
+  // Origen chequeo: el chequeador marcó no-correcto y lo mandó al superior.
+  const supChequeo = app.estado === "SUPERIOR" && app.chequeoTelefonico?.resultado === "NO_OK";
 
   function abrirRechazo() {
     setMotivo("");
@@ -143,7 +146,35 @@ export function FirmaPanel({
         </Card>
       )}
 
-      {app.estado === "SUPERIOR" && (
+      {supChequeo && (
+        <Card className="space-y-3 p-4 sm:p-5">
+          <Banner tone="warning" title="Chequeo no correcto (SUP)">
+            El chequeador marcó el chequeo como no correcto
+            {app.aprobacionSuperior &&
+              ` (enviado por ${app.aprobacionSuperior.enviadaPor} el ${app.aprobacionSuperior.fechaEnvio})`}
+            : {app.chequeoTelefonico?.comentario} Lo común es rechazar y cerrar el crédito; como
+            excepción se puede devolver a chequeo o aprobar a liquidación.
+          </Banner>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button variant="danger" onClick={abrirRechazo}>
+                <IconX width={16} height={16} />
+                Rechazar y cerrar
+              </Button>
+              <Button variant="outline" onClick={devolverChequeo}>
+                <IconRefresh width={16} height={16} />
+                Devolver a chequeo
+              </Button>
+            </div>
+            <Button variant="success" onClick={aprobarSuperior}>
+              <IconCheck width={16} height={16} />
+              Aprobar a LIQ (excepción) · {SESION_SUPERVISOR.nombre}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {app.estado === "SUPERIOR" && !supChequeo && (
         <Card className="space-y-3 p-4 sm:p-5">
           <Banner tone="info" title="Aprobación de un superior (SUP)">
             La firma está verificada y el crédito espera el visto bueno de un superior de riesgo.{" "}

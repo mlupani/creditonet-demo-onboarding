@@ -10,6 +10,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 
 // Modo APR: el analista aprueba y el crédito queda en APROBADO (bandeja APR).
 // Modo FIRMA: desde APR se pasa a firma — electrónica → FEL, física → AFEL directo.
+// Modo SUP: caso especial que el analista no puede resolver; lo toma un superior.
 export function AprobacionModal({
   open,
   loading,
@@ -20,7 +21,7 @@ export function AprobacionModal({
 }: {
   open: boolean;
   loading: boolean;
-  modo: "APROBADO" | "FIRMA";
+  modo: "APROBADO" | "FIRMA" | "SUP";
   metodoDestino?: MetodoFirma;
   onConfirm: (metodo: MetodoFirma) => void;
   onCancel: () => void;
@@ -32,28 +33,38 @@ export function AprobacionModal({
   const chequeo = requiereChequeoTelefonico(app.configuracion);
 
   const descripcion =
-    modo === "APROBADO"
-      ? `Al confirmar, la solicitud queda aprobada (APR). Desde la pestaña Aprobados se la pasa a firma: ${
-          modalidad === "FISICA"
-            ? "física (AFEL directo)"
-            : modalidad === "ELECTRONICA"
-              ? "electrónica (FEL)"
-              : "electrónica (FEL) o física (AFEL directo)"
-        }. ${
-          chequeo ? "Con la firma aprobada, pasa por chequeo telefónico y" : "Con la firma aprobada,"
-        } queda para liquidar (Tesorería).`
-      : metodo === "FISICA"
-        ? `Al confirmar, la solicitud pasa de Aprobado a Firma aprobada (AFEL) directo: la firma manual ya está cargada en el legajo. ${
-            chequeo ? "Desde AFEL pasa por chequeo telefónico y" : "Desde AFEL,"
-          } queda para liquidar (Tesorería).`
-        : `Al confirmar, la solicitud pasa de Aprobado a En firma (FEL), a la espera de la firma electrónica del cliente. ${
+    modo === "SUP"
+      ? "El caso pasa a un superior (SUP): lo toma porque el analista no puede resolverlo. El superior confirma la oferta igual que el analista y el crédito pasa a APR."
+      : modo === "APROBADO"
+        ? `Al confirmar, la solicitud queda aprobada (APR). Desde la pestaña Aprobados se la pasa a firma: ${
+            modalidad === "FISICA"
+              ? "física (AFEL directo)"
+              : modalidad === "ELECTRONICA"
+                ? "electrónica (FEL)"
+                : "electrónica (FEL) o física (AFEL directo)"
+          }. ${
             chequeo ? "Con la firma aprobada, pasa por chequeo telefónico y" : "Con la firma aprobada,"
-          } queda para liquidar (Tesorería).`;
+          } queda para liquidar (Tesorería).`
+        : metodo === "FISICA"
+          ? `Al confirmar, la solicitud pasa de Aprobado a Firma aprobada (AFEL) directo: la firma manual ya está cargada en el legajo. ${
+              chequeo ? "Desde AFEL pasa por chequeo telefónico y" : "Desde AFEL,"
+            } queda para liquidar (Tesorería).`
+          : `Al confirmar, la solicitud pasa de Aprobado a En firma (FEL), a la espera de la firma electrónica del cliente. ${
+              chequeo ? "Con la firma aprobada, pasa por chequeo telefónico y" : "Con la firma aprobada,"
+            } queda para liquidar (Tesorería).`;
 
   return (
     <ConfirmationModal
       open={open}
-      title={modo === "APROBADO" ? "Confirmar aprobación" : metodo === "FISICA" ? "Pasar a AFEL" : "Pasar a FEL"}
+      title={
+        modo === "SUP"
+          ? "Enviar a superior"
+          : modo === "APROBADO"
+            ? "Confirmar aprobación"
+            : metodo === "FISICA"
+              ? "Pasar a AFEL"
+              : "Pasar a FEL"
+      }
       descripcion={descripcion}
       rows={[
         { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
@@ -77,7 +88,9 @@ export function AprobacionModal({
                 : "Electrónica (FEL)",
         },
       ]}
-      confirmLabel={modo === "APROBADO" ? "Confirmar aprobación" : metodo === "FISICA" ? "Pasar a AFEL" : "Pasar a FEL"}
+      confirmLabel={
+        modo === "SUP" ? "Enviar a SUP" : modo === "APROBADO" ? "Confirmar aprobación" : metodo === "FISICA" ? "Pasar a AFEL" : "Pasar a FEL"
+      }
       cancelLabel="Cancelar"
       tone="success"
       loading={loading}

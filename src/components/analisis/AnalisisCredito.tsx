@@ -57,6 +57,7 @@ import {
   PosicionClienteModal,
 } from "@/components/bandeja/ModalesBandeja";
 import { CambiarOfertaModal } from "./CambiarOfertaModal";
+import { TarjetaMini } from "../onboarding/postoferta/TarjetaAnimada";
 import { HiloObservacion } from "./HiloObservacion";
 import { CambioOfertaBloqueadoModal } from "./CambioOfertaBloqueadoModal";
 import { BuroMotorModal, CreditosRenovarModal, DatosCamposModal, ReglasMotorModal } from "./ModalesAnalisis";
@@ -176,6 +177,7 @@ export function AnalisisCredito({
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
+  const [tarjetasAbierto, setTarjetasAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
   const [logAbierto, setLogAbierto] = useState(false);
@@ -190,17 +192,6 @@ export function AnalisisCredito({
   const precancel = totalPrecancelaciones(o);
   const terceros = importeTerceros(o);
   const po = app.postOferta;
-  const docsObligatorios = configEfectiva(app.configuracion).documentos.filter(
-    (d) => d.obligatorio
-  );
-  const docsCargados = docsObligatorios.filter((d) => (po.legajo[d.tipoId]?.length ?? 0) > 0)
-    .length;
-  const totalLegajoArchivos =
-    Object.values(po.legajo).reduce((acc, arr) => acc + arr.length, 0) +
-    po.garantes.reduce(
-      (acc, g) => acc + (g.reciboSueldo?.length ?? 0) + (g.otrosDocumentos?.length ?? 0),
-      0
-    );
   // Precargados que el vendedor corrigió en la carga post-oferta (Onboarding §3).
   const rectificados = camposRectificados(app);
   const plan = evaluarPlan(app);
@@ -713,46 +704,6 @@ export function AnalisisCredito({
             ]}
           />
         )}
-        <SummaryCard
-          title="Renovaciones"
-          icon={<IconRefresh width={16} height={16} />}
-          rows={
-            aRenovar.length === 0
-              ? [{ label: "Créditos a renovar", value: "Ninguno", tone: "muted" as const }]
-              : [
-                  ...aRenovar.map((c) => ({
-                    label: c.id,
-                    value: formatARS(c.montoCancelacion),
-                    tone: c.enMora ? ("danger" as const) : undefined,
-                  })),
-                  { label: "Total a cancelar", value: formatARS(precancel), strong: true },
-                ]
-          }
-          footer={
-            puedeOperar ? (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={aRenovar.length === 0}
-                onClick={() => setConsulta("renovar")}
-              >
-                <IconEye width={14} height={14} />
-                Ver desarrollo del crédito
-              </Button>
-            ) : undefined
-          }
-        />
-        {rectificados.length > 0 && (
-          <SummaryCard
-            title="Datos rectificados en el onboarding"
-            icon={<IconRefresh width={16} height={16} />}
-            rows={rectificados.map((r) => ({
-              label: r.campo.label,
-              value: `${r.original || "vacío"} → ${r.actual || "vacío"}`,
-              tone: "warning" as const,
-            }))}
-          />
-        )}
       </div>
 
       {/* Detalle expandido: referencias, garantes y créditos (tablas post-oferta) */}
@@ -762,7 +713,7 @@ export function AnalisisCredito({
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <IconUser width={16} height={16} />
             </span>
-            Referencias personales (post-oferta)
+            Referencias personales
           </h3>
           {po.referencias.length === 0 ? (
             <p className="mt-3 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-500">
@@ -794,7 +745,7 @@ export function AnalisisCredito({
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <IconShieldCheck width={16} height={16} />
             </span>
-            Garantes (post-oferta)
+            Garantes
           </h3>
           {po.garantes.length === 0 ? (
             <p className="mt-3 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-500">
@@ -873,29 +824,96 @@ export function AnalisisCredito({
         </Card>
       )}
 
-      {/* Acceso rápido al legajo al final del resumen — pedido: botón para abrir documentos en el resumen del analista */}
-      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-            <IconFileText width={18} height={18} />
-          </span>
-          <div>
-            <h3 className="text-sm font-semibold text-ink-900">Legajo virtual — documentos adjuntos</h3>
-            <p className="text-xs text-ink-500">
-              {totalLegajoArchivos > 0
-                ? `${totalLegajoArchivos} archivo${totalLegajoArchivos === 1 ? "" : "s"} para revisar · ${docsCargados} de ${docsObligatorios.length} obligatorios`
-                : "Aún sin archivos — el vendedor carga la documentación en el paso Legajo."}
-              {po.impresion ? ` · ${po.impresion.accion === "IMPRESO" ? "Impreso" : "Visualizado"} ${po.impresion.fecha}` : ""}
-            </p>
+      {/* Tarjetas tokenizadas: botón que abre el modal con los plásticos y sus datos (sin CVV) */}
+      <div>
+        <Button variant="outline" onClick={() => setTarjetasAbierto(true)}>
+          <IconEye width={16} height={16} />
+          Ver tarjetas tokenizadas
+          {po.tarjetas.length > 0 ? ` (${po.tarjetas.length})` : ""}
+        </Button>
+      </div>
+
+      <Modal
+        open={tarjetasAbierto}
+        onClose={() => setTarjetasAbierto(false)}
+        title="Tarjetas tokenizadas"
+        maxWidth="max-w-2xl"
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setTarjetasAbierto(false)}>
+              Cerrar
+            </Button>
           </div>
-        </div>
-        {puedeOperar && (
-          <Button variant={totalLegajoArchivos > 0 ? "primary" : "outline"} onClick={() => setLegajoAbierto(true)}>
-            <IconEye width={16} height={16} />
-            Ver documentos del legajo
-          </Button>
+        }
+      >
+        {po.tarjetas.length === 0 ? (
+          <p className="rounded-xl border border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-500">
+            Sin tarjetas tokenizadas en esta solicitud.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {po.tarjetas.map((t) => (
+              <li
+                key={t.id}
+                className="flex flex-col gap-4 rounded-xl border border-ink-200 bg-white px-4 py-3 sm:flex-row sm:items-center"
+              >
+                <TarjetaMini
+                  marca={t.marca}
+                  tipo={t.tipo}
+                  nombreTitular={t.nombreTitular}
+                  primeros4={t.primeros4}
+                  ultimos4={t.ultimos4}
+                  vencimiento={t.vencimiento}
+                />
+                <dl className="grid flex-1 grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div>
+                    <dt className="text-xs text-ink-400">Emisor</dt>
+                    <dd className="font-semibold text-ink-900">{t.emisor ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-400">Tipo</dt>
+                    <dd className="font-semibold text-ink-900">
+                      {t.tipo === "CREDITO" ? "Crédito" : t.tipo === "DEBITO" ? "Débito" : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-400">Estado</dt>
+                    <dd className="font-semibold text-ink-900">
+                      {t.estado === "TOKENIZADA" ? "Tokenizada" : "Esperando al cliente"}
+                      {t.via === "BASE_INTERNA"
+                        ? t.verificada
+                          ? " · verificada"
+                          : " · pendiente de verificación"
+                        : ""}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-400">Vía</dt>
+                    <dd className="font-semibold text-ink-900">
+                      {t.via === "WHATSAPP"
+                        ? "WhatsApp"
+                        : t.via === "PRESENCIAL"
+                          ? "Presencial"
+                          : "Base interna"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-400">Token</dt>
+                    <dd className="font-mono text-[13px] font-semibold text-ink-900">{t.token ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-400">Fecha de tokenización</dt>
+                    <dd className="font-semibold text-ink-900">{t.fechaTokenizacion ?? "—"}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
         )}
-      </Card>
+        <p className="mt-3 text-xs text-ink-400">
+          Por seguridad el código de verificación (CVV) nunca se muestra.
+        </p>
+      </Modal>
 
       <Banner tone="info">
         El motor de riesgo ya filtró la solicitud. El analista controla los datos sensibles y

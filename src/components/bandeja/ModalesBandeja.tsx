@@ -2,6 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { useApplication } from "@/lib/application-context";
+import { cambiosOfertaDe, ofertaAnalistaDe } from "@/lib/credit";
+import { pantallasVisibles } from "@/lib/config";
 import { formatARS, formatDNI } from "@/lib/format";
 import { SESION_CHEQUEADOR } from "@/lib/config";
 import { historialCredito, textoChequeo } from "@/lib/historial";
@@ -311,6 +313,111 @@ export function ChequeoObservacionModal({ open, onClose }: ModalProps) {
         </>
       ) : (
         <p className="text-sm text-ink-500">El chequeo no registra observaciones.</p>
+      )}
+    </Modal>
+  );
+}
+
+// Observación del analista: lo que escribió (motivo + nota) bien visible, sin textos
+// por defecto. En cambios de datos financieros suma la tabla antes → después y la
+// nueva oferta; en observaciones comunes, las pantallas a corregir.
+export function ObservacionModal({
+  open,
+  onClose,
+  onTramitar,
+}: ModalProps & { onTramitar: () => void }) {
+  const { app } = useApplication();
+  const obs = app.analista.observacion;
+  const ultimo = cambiosOfertaDe(app).at(-1) ?? null;
+  const datos = ultimo?.tipo === "DATOS_FINANCIEROS" ? (ultimo.datos ?? []) : [];
+  const oferta = ofertaAnalistaDe(app);
+  const etiquetaPantalla = (id: string) =>
+    pantallasVisibles(app.configuracion).find((p) => p.id === id)?.label ?? id;
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Observación del analista"
+      maxWidth="max-w-lg"
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
+          <Button variant="primary" onClick={onTramitar}>
+            Tratar observación
+          </Button>
+        </div>
+      }
+    >
+      <Filas
+        filas={[
+          { label: "ID de Crédito", value: app.numeroCredito ?? "Sin ID" },
+          { label: "Fecha", value: obs?.fecha ?? "—" },
+        ]}
+      />
+      {obs ? (
+        <div className="mt-4 rounded-xl border border-warning-200 bg-warning-50 px-4 py-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-warning-700">
+            {obs.motivo}
+          </p>
+          <p className="mt-1.5 whitespace-pre-line text-base font-medium text-ink-900">{obs.nota}</p>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-ink-500">La solicitud no registra una observación.</p>
+      )}
+      {datos.length > 0 && (
+        <Seccion titulo="Datos corregidos por el analista">
+          <div className="overflow-hidden rounded-xl border border-ink-200">
+            <table className="w-full text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-ink-100 bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                  <th className="px-4 py-2.5">Dato</th>
+                  <th className="px-4 py-2.5 text-right">Antes</th>
+                  <th className="px-4 py-2.5 text-right">Después</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink-100 bg-white">
+                {datos.map((d) => (
+                  <tr key={d.campo}>
+                    <td className="px-4 py-2.5 font-medium text-ink-800">{d.campo}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-ink-500">
+                      {formatARS(d.antes)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-ink-900">
+                      {formatARS(d.despues)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Seccion>
+      )}
+      {oferta && (
+        <Seccion titulo="Nueva oferta del analista">
+          <Filas
+            filas={[
+              { label: "Capital", value: formatARS(oferta.montoSolicitado) },
+              { label: "Cuotas", value: `${oferta.plazo}` },
+            ]}
+          />
+        </Seccion>
+      )}
+      {datos.length === 0 && (obs?.pantallas.length ?? 0) > 0 && (
+        <Seccion titulo="Pantallas a corregir">
+          <div className="flex flex-wrap gap-1.5">
+            {obs!.pantallas.map((p) => (
+              <span
+                key={p}
+                className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-700"
+              >
+                {etiquetaPantalla(p)}
+              </span>
+            ))}
+          </div>
+        </Seccion>
       )}
     </Modal>
   );

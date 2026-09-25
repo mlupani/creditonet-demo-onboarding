@@ -11,7 +11,6 @@ import {
   planDeSolicitud,
 } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
-import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
@@ -33,9 +32,10 @@ import { ConfirmarOfertaModal } from "../oferta/ConfirmarOfertaModal";
  */
 export function PasoOfertaAnalista() {
   const router = useRouter();
-  const { app, aceptarOfertaAnalista, anularCredito } = useApplication();
+  const { app, aceptarOfertaAnalista, anularCredito, rechazarCredito } = useApplication();
   const [modal, setModal] = useState(false);
   const [declinarAbierto, setDeclinarAbierto] = useState(false);
+  const [rechazarAbierto, setRechazarAbierto] = useState(false);
   const o = app.oferta;
   const analista = ofertaAnalistaDe(app);
   if (!analista) return null;
@@ -56,10 +56,6 @@ export function PasoOfertaAnalista() {
     <div className="flex flex-col gap-5">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
         <div className="flex flex-col gap-5">
-          <Banner tone="warning" title="El analista cambió la oferta">
-            {analista.nota}
-          </Banner>
-
           <div className="overflow-hidden rounded-2xl shadow-card lg:sticky lg:top-[calc(4rem_+_var(--wizard-header-h,0px))] lg:z-30">
             <div className="bg-gradient-to-br from-brand-600 to-brand-800 px-5 py-6 text-center sm:py-7">
               <p className="text-sm font-medium text-brand-100">
@@ -107,6 +103,14 @@ export function PasoOfertaAnalista() {
               )}
               <Button
                 size="lg"
+                variant="danger"
+                onClick={() => setRechazarAbierto(true)}
+                className="sm:w-auto"
+              >
+                Rechazar oferta
+              </Button>
+              <Button
+                size="lg"
                 variant="success"
                 onClick={() => setModal(true)}
                 className="sm:w-auto"
@@ -148,6 +152,32 @@ export function PasoOfertaAnalista() {
           router.push("/");
         }}
         onCancel={() => setDeclinarAbierto(false)}
+      />
+
+      <ConfirmationModal
+        open={rechazarAbierto}
+        title="¿Rechazar la oferta del analista?"
+        descripcion="La solicitud queda rechazada: el cliente no acepta la nueva oferta. Esta acción no se puede deshacer."
+        rows={[
+          { label: "ID de Crédito", value: app.numeroCredito ?? "—" },
+          {
+            label: "Oferta del analista",
+            value: `${formatARS(analista.montoSolicitado)} en ${analista.plazo} cuotas de ${formatARS(cuotaAnalista)}`,
+          },
+        ]}
+        confirmLabel="Rechazar oferta"
+        cancelLabel="Volver"
+        tone="danger"
+        onConfirm={() => {
+          setRechazarAbierto(false);
+          rechazarCredito(
+            "RA-04",
+            "Otro motivo (detallar en la observación)",
+            `El cliente rechazó la oferta del analista: ${formatARS(analista.montoSolicitado)} en ${analista.plazo} cuotas.`
+          );
+          router.push("/");
+        }}
+        onCancel={() => setRechazarAbierto(false)}
       />
 
       <ConfirmarOfertaModal
