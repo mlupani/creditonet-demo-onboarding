@@ -74,12 +74,6 @@ const PESTANAS_ESTADO: DefPestana[] = [
     vacio: "No hay firmas aprobadas.",
   },
   {
-    id: "SUP",
-    titulo: "Aprobación superior",
-    estados: ["SUPERIOR"],
-    vacio: "No hay solicitudes pendientes de aprobación de un superior.",
-  },
-  {
     id: "CHEQ",
     titulo: "Chequeo telefónico",
     estados: ["CHEQUEO_TELEFONICO"],
@@ -90,6 +84,12 @@ const PESTANAS_ESTADO: DefPestana[] = [
     titulo: "Para liquidar",
     estados: ["PARA_LIQUIDAR"],
     vacio: "No hay solicitudes aprobadas para liquidar.",
+  },
+  {
+    id: "SUP",
+    titulo: "Aprobación superior",
+    estados: ["SUPERIOR"],
+    vacio: "No hay solicitudes pendientes de aprobación de un superior.",
   },
 ];
 
@@ -147,9 +147,9 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
     APR: 1,
     FEL: 1,
     AFEL: 1,
-    SUP: 1,
     CHEQ: 1,
     LIQ: 1,
+    SUP: 1,
   });
   const POR_PAGINA = 5;
 
