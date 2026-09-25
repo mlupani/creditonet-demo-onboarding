@@ -543,6 +543,9 @@ export interface CreditApplication {
   rechazo: Rechazo | null;
   // Historial de firmas (FEL/AFEL): vacío hasta que el analista aprueba el crédito.
   firmas: IntentoFirma[];
+  // El analista revisó la firma con "Ver firma" y la confirmó (creditonet-93). Se exige antes de
+  // poder pasar de AFEL a chequeo/liquidación; se limpia al volver a FIRMADO (nueva firma).
+  firmaChequeada?: boolean;
   // Chequeo telefónico (sólo si el producto lo requiere): nace al verificarse la firma.
   chequeoTelefonico: ChequeoTelefonico | null;
   // Aprobación de un superior (sólo si el analista la pidió desde AFEL).

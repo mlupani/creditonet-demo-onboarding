@@ -335,6 +335,8 @@ interface ApplicationContextValue {
   // Aprueba sin pasar todavía a firma (estado intermedio opcional, creditonet-87).
   dejarAprobado: () => void;
   registrarFirmaCliente: () => void;
+  // AFEL: el analista revisó la firma con "Ver firma" y la confirma o la rechaza (creditonet-93).
+  confirmarChequeoFirma: () => void;
   verificarFirma: () => void;
   // AFEL → SUP: pide la aprobación de un superior; `aprobarSuperior` la da y sigue el flujo.
   enviarASuperior: () => void;
@@ -1646,14 +1648,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev,
         estado: "FIRMADO",
         firmas: [...prev.firmas.slice(0, -1), { ...actual, fechaFirma: selloTiempo() }],
+        firmaChequeada: false,
       };
     });
   }, []);
 
-  // AFEL: firma aprobada.
+  // AFEL: el analista chequeó la firma con "Ver firma" y la confirma. Recién ahí se habilita
+  // pasar a chequeo/liquidar o a SUP (creditonet-93); el rechazo usa el flujo existente de rechazarCredito.
+  const confirmarChequeoFirma = useCallback(() => {
+    setAppOperativo((prev) => (prev.estado === "FIRMADO" ? { ...prev, firmaChequeada: true } : prev));
+  }, []);
+
+  // AFEL: firma aprobada. Exige haber chequeado la firma primero (creditonet-93).
   const verificarFirma = useCallback(() => {
     setAppOperativo((prev) => {
-      if (prev.estado !== "FIRMADO") return prev;
+      if (prev.estado !== "FIRMADO" || !prev.firmaChequeada) return prev;
       return pasoTrasFirma({ ...prev, firmas: cerrarIntentoActual(prev.firmas, "APROBADA") }, prev);
     });
   }, []);
@@ -1661,7 +1670,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // AFEL → SUP: la firma se da por verificada y el crédito espera la aprobación de un superior.
   const enviarASuperior = useCallback(() => {
     setAppOperativo((prev) => {
-      if (prev.estado !== "FIRMADO") return prev;
+      if (prev.estado !== "FIRMADO" || !prev.firmaChequeada) return prev;
       return {
         ...prev,
         estado: "SUPERIOR",
@@ -1848,6 +1857,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       aprobarCredito,
       dejarAprobado,
       registrarFirmaCliente,
+      confirmarChequeoFirma,
       verificarFirma,
       enviarASuperior,
       aprobarSuperior,
@@ -1922,6 +1932,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       aprobarCredito,
       dejarAprobado,
       registrarFirmaCliente,
+      confirmarChequeoFirma,
       verificarFirma,
       enviarASuperior,
       aprobarSuperior,
