@@ -35,7 +35,6 @@ const CAMPOS_RECALCULO = [
   "ingresoBruto",
   "ingresoNeto",
   "disponible",
-  "debitosNoRemunerativos",
   "extraccionesImporte",
   "transferenciasImporte",
 ] as const;
@@ -117,7 +116,6 @@ export function CambiarOfertaModal({
   const [ingresoBruto, setIngresoBruto] = useState(l.ingresoBruto);
   const [ingresoNeto, setIngresoNeto] = useState(l.ingresoNeto);
   const [disponible, setDisponible] = useState(l.disponible);
-  const [debitosNoRemunerativos, setDebitosNoRemunerativos] = useState(l.debitosNoRemunerativos);
   const [extraccionesImporte, setExtraccionesImporte] = useState(l.extraccionesImporte);
   const [transferenciasImporte, setTransferenciasImporte] = useState(l.transferenciasImporte);
   const [notaFin, setNotaFin] = useState("");
@@ -145,13 +143,6 @@ export function CambiarOfertaModal({
     { id: "ingresoNeto", label: "Ingreso neto", valor: ingresoNeto, set: setIngresoNeto, original: l.ingresoNeto },
     { id: "disponible", label: TERMINOS.disponible, valor: disponible, set: setDisponible, original: l.disponible },
     {
-      id: "debitosNoRemunerativos",
-      label: TERMINOS.conceptosNoRemunerativos,
-      valor: debitosNoRemunerativos,
-      set: setDebitosNoRemunerativos,
-      original: l.debitosNoRemunerativos,
-    },
-    {
       id: "extraccionesImporte",
       label: TERMINOS.saldoDiaAcreditacion,
       valor: extraccionesImporte,
@@ -175,7 +166,6 @@ export function CambiarOfertaModal({
     ingresoBruto,
     ingresoNeto,
     disponible,
-    debitosNoRemunerativos,
     extraccionesImporte,
     transferenciasImporte,
   };
@@ -230,7 +220,7 @@ export function CambiarOfertaModal({
   }
 
   function cambioFin(): CambioDatosFinancieros {
-    return { datos: datosCorregidos, ...valoresFin, nota: notaFin.trim() };
+    return { datos: datosCorregidos, ...valoresFin, nota: notaFin.trim(), debitosNoRemunerativos: 0 };
   }
 
   function aplicarFin() {
@@ -476,9 +466,8 @@ export function CambiarOfertaModal({
             <p className="mt-1 text-xs text-ink-500">
               Sueldo neto recalculado:{" "}
               <strong className="tabular-nums text-ink-700">
-                {formatARS(ingresoNeto - debitosNoRemunerativos)}
+                {formatARS(ingresoNeto)}
               </strong>{" "}
-              (neto menos {TERMINOS.conceptosNoRemunerativos.toLowerCase()}).
             </p>
 
             {intentadoFin && !hayCambioFin && (
