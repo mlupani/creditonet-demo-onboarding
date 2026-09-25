@@ -8,7 +8,7 @@ export const TERMINOS = {
   // Saldo de la cuenta el día en que se acreditaron los haberes.
   saldoDiaAcreditacion: "Saldo del día de la acreditación",
   // Movimientos de salida de la cuenta del cliente.
-  transferenciasExtracciones: "Transferencias/extracciones",
+  transferenciasExtracciones: "Transferencias/extracciones dia de la acreditación",
   // Conceptos del recibo que no integran la remuneración ("débito no
   // remunerativo" era un uso incorrecto del término).
   conceptosNoRemunerativos: "Conceptos no remunerativos",

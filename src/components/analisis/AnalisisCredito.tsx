@@ -452,7 +452,6 @@ export function AnalisisCredito({
             { label: TERMINOS.disponible, value: formatARS(app.laboral.disponible) },
             { label: TERMINOS.saldoDiaAcreditacion, value: formatARS(app.laboral.extraccionesImporte) },
             { label: TERMINOS.transferenciasExtracciones, value: formatARS(app.laboral.transferenciasImporte) },
-            { label: TERMINOS.conceptosNoRemunerativos, value: formatARS(app.laboral.debitosNoRemunerativos) },
             {
               label: "Sueldo neto recalculado",
               value: formatARS(sueldoNetoRecalculado),
@@ -576,7 +575,7 @@ export function AnalisisCredito({
           title="Situación y comportamiento de pago"
           icon={<IconShieldCheck width={16} height={16} />}
           rows={[
-            { label: "Situación BCRA", value: app.situaciones ? `Situación ${app.situaciones.bcra}` : "—" },
+            { label: "Situación BCRA", value: app.situaciones ? `${app.situaciones.bcra}` : "—" },
             {
               label: "Situación Buró interno",
               value: app.situaciones ? `${app.situaciones.interna}` : "—",
