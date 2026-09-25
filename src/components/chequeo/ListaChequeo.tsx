@@ -4,14 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import { CANALES, ORGANISMOS, PRODUCTOS, nombreOpcion } from "@/lib/config";
-import { marcarLeida, rutaParaEstado, useNotificaciones, type ComentarioNotificacion } from "@/lib/notificaciones";
+import { marcarLeida, quitarNotificacion, rutaParaEstado, useNotificaciones, type ComentarioNotificacion } from "@/lib/notificaciones";
 import { intentoActual } from "@/lib/firma";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
 import type { CreditoDB } from "@/lib/creditos-db";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconFileStack, IconSearch } from "@/components/icons";
+import { IconFileStack, IconSearch, IconX } from "@/components/icons";
 
 type Pestana = "PEND" | "CURSO" | "FIN" | "NOTIF";
 
@@ -231,6 +231,15 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                       )}
                       <Button size="sm" variant="outline" onClick={() => abrirAviso(n)}>
                         Abrir
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => quitarNotificacion(n.id)}
+                        aria-label={`Descartar aviso de ${n.numeroCredito ?? "la solicitud"}`}
+                      >
+                        <IconX width={14} height={14} />
+                        Descartar
                       </Button>
                     </div>
                   </li>

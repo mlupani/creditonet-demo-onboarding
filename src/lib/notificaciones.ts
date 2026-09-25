@@ -69,6 +69,10 @@ export function marcarTodasLeidas() {
   commit(registros.map((r) => ({ ...r, leida: true })));
 }
 
+export function quitarNotificacion(id: string) {
+  commit(registros.filter((r) => r.id !== id));
+}
+
 const VACIO: ComentarioNotificacion[] = [];
 
 export function useNotificaciones(): ComentarioNotificacion[] {
