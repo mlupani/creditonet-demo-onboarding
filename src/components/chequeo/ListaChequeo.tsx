@@ -235,7 +235,10 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => quitarNotificacion(n.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          quitarNotificacion(n.id);
+                        }}
                         aria-label={`Descartar aviso de ${n.numeroCredito ?? "la solicitud"}`}
                       >
                         <IconX width={14} height={14} />
