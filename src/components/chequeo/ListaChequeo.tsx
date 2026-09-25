@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import { CANALES, ORGANISMOS, PRODUCTOS, SESION_CHEQUEADOR, nombreOpcion } from "@/lib/config";
+import { CANALES, ORGANISMOS, PRODUCTOS, nombreOpcion } from "@/lib/config";
 import { marcarLeida, rutaParaEstado, useNotificaciones, type ComentarioNotificacion } from "@/lib/notificaciones";
 import { intentoActual } from "@/lib/firma";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
@@ -68,13 +68,13 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
   const [canal, setCanal] = useState("");
   const notificaciones = useNotificaciones();
 
-  // Entrantes para los telefonistas: no escritas por el propio chequeador y con
-  // crédito en la DB. Se siguen viendo mientras el crédito siga en chequeo
-  // telefónico (las leídas, atenuadas); al salir de chequeo desaparecen.
+  // Avisos sobre créditos en chequeo: de cualquier autor (ventas, analistas y el
+  // propio chequeador), con crédito en la DB. Se siguen viendo mientras el crédito
+  // siga en chequeo telefónico (las leídas, atenuadas); al salir de chequeo desaparecen.
   const creditoDe = (n: ComentarioNotificacion) =>
     creditosDB.find((c) => c._id === n.creditoId);
   const avisos = notificaciones.filter(
-    (n) => n.autor !== SESION_CHEQUEADOR.nombre && creditoDe(n)?.estado === "CHEQUEO_TELEFONICO"
+    (n) => creditoDe(n)?.estado === "CHEQUEO_TELEFONICO"
   );
   const pendientes = avisos.filter((n) => !n.leida).length;
   const avisosFiltrados = avisos.filter((n) => {
