@@ -269,6 +269,10 @@ interface ApplicationContextValue {
   // Cambio de datos financieros del analista: recalcula el Motor de Riesgo de inmediato
   // (no requiere refrendación) y puede terminar en Observado (nueva oferta) o Rechazado.
   aplicarCambioDatosFinancieros: (cambio: CambioDatosFinancieros) => void;
+  // Recálculo que no pasa (creditonet-97): en lugar de rechazar, el analista puede derivar el
+  // caso al supervisor, que confirma el rechazo o lo devuelve sin aplicar nada.
+  derivarCambioDatosFinancieros: (cambio: CambioDatosFinancieros, motivo: string) => void;
+  resolverDerivacionCambioFinanciero: (decision: "RECHAZAR" | "DEVOLVER") => void;
 
   patchOferta: (patch: Partial<Oferta>) => void;
   togglePrecancelar: (id: string) => void;
@@ -846,6 +850,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reenviada: false,
           pantallasCorregidas: [],
           cambioOfertaPendiente: null,
+          derivacionCambioFinanciero: null,
           ofertaAnalista: {
             montoSolicitado: cambio.montoSolicitado,
             plazo: cambio.plazo,
@@ -1000,6 +1005,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reenviada: false,
           pantallasCorregidas: [],
           cambioOfertaPendiente: null,
+          derivacionCambioFinanciero: null,
           ofertaAnalista: {
             montoSolicitado: ofertaNueva.montoSolicitado,
             plazo: ofertaNueva.plazo,
@@ -1032,6 +1038,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     });
   }, []);
+
+  /**
+   * El recálculo del cambio de datos financieros no pasa y el analista lo deriva al supervisor
+   * en lugar de rechazar él mismo la solicitud (creditonet-97).
+   *
+   * Nada rige al derivar: los valores corregidos quedan guardados en la derivación y la
+   * solicitud sigue En análisis con los datos originales hasta que el supervisor decida.
+   */
+  const derivarCambioDatosFinancieros = useCallback(
+    (cambio: CambioDatosFinancieros, motivo: string) => {
+      setAppOperativo((prev) => ({
+        ...prev,
+        analista: {
+          ...prev.analista,
+          derivacionCambioFinanciero: {
+            ingresoBruto: cambio.ingresoBruto,
+            ingresoNeto: cambio.ingresoNeto,
+            disponible: cambio.disponible,
+            debitosNoRemunerativos: cambio.debitosNoRemunerativos,
+            extraccionesImporte: cambio.extraccionesImporte,
+            transferenciasImporte: cambio.transferenciasImporte,
+            datos: cambio.datos,
+            nota: cambio.nota,
+            motivo,
+            fecha: selloTiempo(),
+            derivadoPor: SESION_ANALISTA.nombre,
+          },
+        },
+      }));
+    },
+    []
+  );
+
+  /**
+   * El supervisor resuelve la derivación: confirma el rechazo (se aplican los datos corregidos,
+   * que vuelven a no pasar, y la solicitud queda Rechazada) o la devuelve al analista, en cuyo
+   * caso no se aplica nada y la solicitud sigue En análisis como estaba.
+   */
+  const resolverDerivacionCambioFinanciero = useCallback(
+    (decision: "RECHAZAR" | "DEVOLVER") => {
+      const d = appRef.current.analista.derivacionCambioFinanciero;
+      if (!d) return;
+      setAppOperativo((prev) => ({
+        ...prev,
+        analista: { ...prev.analista, derivacionCambioFinanciero: null },
+      }));
+      if (decision === "DEVOLVER") return;
+      aplicarCambioDatosFinancieros({
+        ingresoBruto: d.ingresoBruto,
+        ingresoNeto: d.ingresoNeto,
+        disponible: d.disponible,
+        debitosNoRemunerativos: d.debitosNoRemunerativos,
+        extraccionesImporte: d.extraccionesImporte,
+        transferenciasImporte: d.transferenciasImporte,
+        datos: d.datos,
+        nota: `${d.nota} (rechazo confirmado por ${SESION_SUPERVISOR.nombre})`,
+      });
+    },
+    [aplicarCambioDatosFinancieros]
+  );
 
   const patchOferta = useCallback((patch: Partial<Oferta>) => {
     setApp((prev) => ({ ...prev, oferta: recalcularOferta({ ...prev.oferta, ...patch }) }));
@@ -1490,6 +1556,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reenviada: false,
           pantallasCorregidas: [],
           cambioOfertaPendiente: null,
+          derivacionCambioFinanciero: null,
           ofertaAnalista: null,
           observacionConfirmada: null,
           ...conObservacion(prev, { motivo, nota, fecha: fechaHoy(), pantallas, campos }),
@@ -1508,6 +1575,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev.analista,
         tomado: false,
         cambioOfertaPendiente: null,
+        derivacionCambioFinanciero: null,
         observacion: {
           motivo: "Anulada",
           nota,
@@ -1534,7 +1602,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAppOperativo((prev) => ({
       ...prev,
       estado: "PREAPROBADO",
-      analista: { ...prev.analista, tomado: false, cambioOfertaPendiente: null },
+      analista: {
+        ...prev.analista,
+        tomado: false,
+        cambioOfertaPendiente: null,
+        derivacionCambioFinanciero: null,
+      },
     }));
   }, []);
 
@@ -1818,6 +1891,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       autorizarExcepcionCambioOferta,
       rechazarCambioOferta,
       aplicarCambioDatosFinancieros,
+      derivarCambioDatosFinancieros,
+      resolverDerivacionCambioFinanciero,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,
@@ -1893,6 +1968,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       autorizarExcepcionCambioOferta,
       rechazarCambioOferta,
       aplicarCambioDatosFinancieros,
+      derivarCambioDatosFinancieros,
+      resolverDerivacionCambioFinanciero,
       patchOferta,
       togglePrecancelar,
       setDeudaTerceros,

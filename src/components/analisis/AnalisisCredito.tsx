@@ -157,6 +157,8 @@ export function AnalisisCredito({
     autorizarExcepcionCambioOferta,
     rechazarCambioOferta,
     aplicarCambioDatosFinancieros,
+    derivarCambioDatosFinancieros,
+    resolverDerivacionCambioFinanciero,
     anularCredito,
     soltarAnalisis,
     tomarAnalisis,
@@ -212,6 +214,8 @@ export function AnalisisCredito({
   const aRenovar = o.creditosActivos.filter(seCancela);
   // Cambio de oferta propuesto que espera la refrendación del supervisor.
   const cambioPendiente = app.analista.cambioOfertaPendiente;
+  // Cambio de datos financieros cuyo recálculo no pasó y que espera la decisión del supervisor.
+  const derivacion = app.analista.derivacionCambioFinanciero;
   // Sin tomar el caso no se opera: sólo se muestra el detalle y el botón Tomar análisis.
   const puedeOperar = app.analista.tomado;
   // Una reenviada con correcciones no se opera hasta leer y confirmar la observación
@@ -376,6 +380,45 @@ export function AnalisisCredito({
             </Button>
             <Button size="sm" variant="outline" onClick={rechazarCambioOferta}>
               Rechazar cambio
+            </Button>
+            <span className="text-[11px] text-warning-700/80">
+              Simulación de la demo: en producción lo hace el supervisor desde su sesión.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {derivacion && (
+        <div className="rounded-xl border border-warning-300 bg-warning-50 p-4">
+          <p className="text-sm font-bold text-warning-700">
+            Cambio de datos financieros derivado al supervisor
+          </p>
+          <p className="mt-1 text-sm text-warning-700/90">
+            El recálculo del Motor de Riesgo con los datos corregidos no pasa: {derivacion.motivo}{" "}
+            Nada rige todavía: la solicitud sigue con los datos originales hasta que{" "}
+            {SESION_SUPERVISOR.nombre} confirme el rechazo o la devuelva al analista. Derivado por{" "}
+            {derivacion.derivadoPor} ({derivacion.fecha}).
+          </p>
+          {derivacion.datos.map((d) => (
+            <p key={d.campo} className="mt-1 text-xs tabular-nums text-warning-700/80">
+              {d.campo}: {formatARS(d.antes)} → <strong>{formatARS(d.despues)}</strong>
+            </p>
+          ))}
+          <p className="mt-1 text-xs text-warning-700/80">Nota: {derivacion.nota}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => resolverDerivacionCambioFinanciero("RECHAZAR")}
+            >
+              Confirmar rechazo como supervisor
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => resolverDerivacionCambioFinanciero("DEVOLVER")}
+            >
+              Devolver al analista
             </Button>
             <span className="text-[11px] text-warning-700/80">
               Simulación de la demo: en producción lo hace el supervisor desde su sesión.
@@ -1082,6 +1125,10 @@ export function AnalisisCredito({
         onConfirmarDatosFinancieros={(cambio) => {
           setCambioAbierto(false);
           aplicarCambioDatosFinancieros(cambio);
+        }}
+        onDerivarDatosFinancieros={(cambio, motivo) => {
+          setCambioAbierto(false);
+          derivarCambioDatosFinancieros(cambio, motivo);
         }}
       />
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
