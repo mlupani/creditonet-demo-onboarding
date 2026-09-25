@@ -145,9 +145,17 @@ export function PostOfertaShell() {
     !!app.analista.ofertaAnalista?.aceptada &&
     !observadas.includes("impresion") &&
     visibles.some((p) => p.id === "impresion");
+  // Oferta del analista aceptada sin pantallas a corregir (creditonet-96): la carga previa queda
+  // bloqueada y sólo se entra al legajo y a la impresión, que hay que rehacer con la nueva oferta.
+  const pantallasReimpresion = soloLectura
+    ? visibles.filter((p) => p.id === "legajo" || p.id === "impresion").map((p) => p.id)
+    : SIN_PANTALLAS;
+  const restringidoALegajo = pantallasReimpresion.length > 0;
   const habilitadas: PantallaPostOfertaId[] = impresionHabilitada
     ? [...observadas, "impresion"]
-    : observadas;
+    : restringidoALegajo
+      ? pantallasReimpresion
+      : observadas;
 
   // Normaliza la pantalla actual si no está en las visibles.
   useEffect(() => {
@@ -164,7 +172,9 @@ export function PostOfertaShell() {
   // la primera y no se puede salir a las bloqueadas.
   useEffect(() => {
     if (puntual && !habilitadas.includes(pantallaActual)) setPantallaActual(observadas[0]);
-  }, [puntual, observadas, habilitadas, pantallaActual, setPantallaActual]);
+    if (restringidoALegajo && !habilitadas.includes(pantallaActual))
+      setPantallaActual(habilitadas[0]);
+  }, [puntual, restringidoALegajo, observadas, habilitadas, pantallaActual, setPantallaActual]);
 
   // Navegación secuencial (configurada en el producto o excepcionada por el organismo): no se
   // avanza más allá de la primera pantalla obligatoria que todavía no está completa.
@@ -179,15 +189,26 @@ export function PostOfertaShell() {
     if (i > limiteSecuencial) setPantallaActual(estados[limiteSecuencial].id);
   }, [limiteSecuencial, estados, pantallaActual, setPantallaActual]);
 
-  const pasos: PasoLibre[] = estados.map((e, i) => ({
-    id: e.id,
-    numero: e.numero,
-    label: e.label,
-    obligatoria: e.obligatoria,
-    estado: e.estadoVisual,
-    observada: observadas.includes(e.id),
-    bloqueada: puntual ? !habilitadas.includes(e.id) : limiteSecuencial !== -1 && i > limiteSecuencial,
-  }));
+  // Legajo e impresión se resaltan en azul: aunque estén completas, hay que volver a imprimir
+  // el formulario con la oferta nueva.
+  const pasos: PasoLibre[] = estados.map((e, i) => {
+    const reimprimir = restringidoALegajo
+      ? pantallasReimpresion.includes(e.id)
+      : impresionHabilitada && e.id === "impresion";
+    return {
+      id: e.id,
+      numero: e.numero,
+      label: e.label,
+      obligatoria: e.obligatoria,
+      estado: reimprimir ? "INICIADA" : e.estadoVisual,
+      detalle: reimprimir ? "Reimprimir formulario" : undefined,
+      observada: observadas.includes(e.id),
+      bloqueada:
+        puntual || restringidoALegajo
+          ? !habilitadas.includes(e.id)
+          : limiteSecuencial !== -1 && i > limiteSecuencial,
+    };
+  });
 
   const PantallaActiva = PANTALLAS[pantallaActual];
   // En una corrección puntual sólo cuentan los pendientes de las pantallas que se corrigen.
@@ -207,8 +228,12 @@ export function PostOfertaShell() {
   // Botón "Continuar" al pie de cada pantalla (Guía, igual que en originación): avanza a la
   // siguiente pantalla visible sólo si la actual no tiene pendientes.
   const indiceActual = estados.findIndex((e) => e.id === pantallaActual);
-  const siguientePantalla =
+  const siguienteCandidata =
     indiceActual >= 0 && indiceActual < estados.length - 1 ? estados[indiceActual + 1] : null;
+  const siguientePantalla =
+    siguienteCandidata && (!restringidoALegajo || habilitadas.includes(siguienteCandidata.id))
+      ? siguienteCandidata
+      : null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -226,7 +251,9 @@ export function PostOfertaShell() {
           </h1>
           <p className="mt-1 text-sm text-ink-500">
             {soloLectura
-              ? "Aceptaste la nueva oferta. Todo está completo y no se puede editar: sólo queda finalizar."
+              ? restringidoALegajo
+                ? "Aceptaste la nueva oferta. La carga anterior queda bloqueada: revisá el legajo, reimprimí el formulario y finalizá."
+                : "Aceptaste la nueva oferta. Todo está completo y no se puede editar: sólo queda finalizar."
               : puntual
               ? `Corrección puntual: sólo se puede editar ${
                   labelObservadas.length === 1 ? "la pantalla observada" : "las pantallas observadas"
@@ -270,8 +297,9 @@ export function PostOfertaShell() {
       {soloLectura && (
         <div className="mt-5">
           <Banner tone="info" title="Oferta aceptada">
-            La carga queda bloqueada: podés recorrer las pantallas pero no modificarlas. Finalizá
-            para reenviar la solicitud al analista.
+            {restringidoALegajo
+              ? "Las pantallas ya cargadas quedan bloqueadas. Entrá al legajo virtual y a la impresión (en azul) para volver a imprimir el formulario con la nueva oferta; después finalizá para reenviar la solicitud al analista."
+              : "La carga queda bloqueada: podés recorrer las pantallas pero no modificarlas. Finalizá para reenviar la solicitud al analista."}
           </Banner>
         </div>
       )}
@@ -297,7 +325,11 @@ export function PostOfertaShell() {
           actual={pantallaActual}
           onSelect={setPantallaActual}
           leyendaBloqueo={
-            secuencial ? "Se habilita al completar las obligatorias anteriores" : undefined
+            secuencial
+              ? "Se habilita al completar las obligatorias anteriores"
+              : restringidoALegajo
+                ? "Cargada: bloqueada tras aceptar la nueva oferta"
+                : undefined
           }
         />
       </div>
@@ -313,7 +345,10 @@ export function PostOfertaShell() {
             onGuardar={() => guardarCorreccion(pantallaActual)}
           />
         ) : (
-          <fieldset disabled={soloLectura && pantallaActual !== "impresion"} className="min-w-0">
+          <fieldset
+            disabled={soloLectura && !restringidoALegajo && pantallaActual !== "impresion"}
+            className="min-w-0"
+          >
             <PantallaActiva />
           </fieldset>
         )}
