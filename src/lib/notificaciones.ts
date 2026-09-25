@@ -69,8 +69,12 @@ export function marcarTodasLeidas() {
   commit(registros.map((r) => ({ ...r, leida: true })));
 }
 
+const VACIO: ComentarioNotificacion[] = [];
+
 export function useNotificaciones(): ComentarioNotificacion[] {
-  return useSyncExternalStore(suscribir, () => registros, () => []);
+  // getServerSnapshot debe devolver un valor cacheado (misma referencia): si no,
+  // React reporta "should be cached to avoid an infinite loop".
+  return useSyncExternalStore(suscribir, () => registros, () => VACIO);
 }
 
 export function extracto(texto: string): string {

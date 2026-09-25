@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import { NOTIFICACIONES } from "@/lib/mocks";
+import {
+  marcarLeida,
+  marcarTodasLeidas,
+  rutaParaEstado,
+  useNotificaciones,
+  type ComentarioNotificacion,
+} from "@/lib/notificaciones";
 import { SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_PARAMETROS } from "@/lib/config";
 import {
   IconAlertTriangle,
@@ -26,9 +33,26 @@ function tituloRuta(pathname: string) {
 }
 
 function Notificaciones() {
+  const router = useRouter();
+  const { cargarCreditoDeDB } = useApplication();
   const [abierto, setAbierto] = useState(false);
   const [leidas, setLeidas] = useState<string[]>([]);
-  const noLeidas = NOTIFICACIONES.filter((n) => !leidas.includes(n.id)).length;
+  const dinamicas = useNotificaciones();
+  const noLeidas =
+    dinamicas.filter((n) => !n.leida).length +
+    NOTIFICACIONES.filter((n) => !leidas.includes(n.id)).length;
+
+  function abrirNotificacion(n: ComentarioNotificacion) {
+    marcarLeida(n.id);
+    if (n.creditoId) cargarCreditoDeDB(n.creditoId);
+    router.push(rutaParaEstado(n.estado));
+    setAbierto(false);
+  }
+
+  function marcarTodas() {
+    marcarTodasLeidas();
+    setLeidas(NOTIFICACIONES.map((n) => n.id));
+  }
 
   return (
     <div className="relative">
@@ -49,13 +73,36 @@ function Notificaciones() {
             <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
               <p className="text-sm font-semibold text-ink-900">Notificaciones</p>
               <button
-                onClick={() => setLeidas(NOTIFICACIONES.map((n) => n.id))}
+                onClick={marcarTodas}
                 className="text-xs font-semibold text-brand-600 hover:text-brand-700"
               >
                 Marcar todas como leídas
               </button>
             </div>
             <ul className="max-h-80 overflow-y-auto scroll-thin">
+              {dinamicas.map((n) => (
+                <li key={n.id} className="border-b border-ink-50 last:border-0">
+                  <button
+                    onClick={() => abrirNotificacion(n)}
+                    className={`flex w-full gap-3 px-4 py-3 text-left transition hover:bg-ink-50 ${
+                      n.leida ? "opacity-60" : "bg-brand-50/40"
+                    }`}
+                  >
+                    <span className="mt-0.5 shrink-0 text-brand-600">
+                      <IconInfo width={17} height={17} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-snug text-ink-900">
+                        {n.numeroCredito ?? "Sin ID"} · {n.autor}
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-ink-500">
+                        {n.texto}
+                      </p>
+                      <p className="mt-1 text-[11px] font-medium text-ink-400">{n.fecha}</p>
+                    </div>
+                  </button>
+                </li>
+              ))}
               {NOTIFICACIONES.map((n) => {
                 const leida = leidas.includes(n.id);
                 return (
