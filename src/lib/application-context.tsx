@@ -70,7 +70,7 @@ import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
 import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_SUPERVISOR, seleccionarLinea } from "./config";
 import { hidratarProductos } from "./productos";
-import { hidratarNotificaciones } from "./notificaciones";
+import { agregarNotificacion, extracto, hidratarNotificaciones } from "./notificaciones";
 import {
   firmaAprobada,
   intentoActual,
@@ -1569,14 +1569,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Comentario sobre la solicitud: lo dejan tanto el canal de venta como el analista.
+  // Además genera un aviso en la campanita (se lee por snapshot de refs: el updater de
+  // setApp no debe tener efectos secundarios).
   const agregarComentario = useCallback((texto: string, autor: string = SESION.nombre) => {
+    const limpio = texto.trim();
+    const fecha = selloTiempo();
+    const snap = appRef.current;
     setApp((prev) => ({
       ...prev,
       comentarios: [
         ...prev.comentarios,
-        { id: `comentario-${Date.now()}`, autor, texto, fecha: selloTiempo() },
+        { id: `comentario-${Date.now()}`, autor, texto, fecha },
       ],
     }));
+    if (!limpio) return;
+    agregarNotificacion({
+      creditoId: appDbIdRef.current,
+      numeroCredito: snap.numeroCredito ?? null,
+      autor,
+      texto: extracto(limpio),
+      fecha,
+      estado: snap.estado,
+    });
   }, []);
 
   // Soltar análisis: el analista devuelve la solicitud a la bandeja para que otro la tome.
