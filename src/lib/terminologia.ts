@@ -6,7 +6,7 @@ export const TERMINOS = {
   // Dinero que el cliente tiene libre para extraer de su cuenta.
   disponible: "Disponible",
   // Saldo de la cuenta el día en que se acreditaron los haberes.
-  saldoDiaAcreditacion: "Saldo del día de la acreditación",
+  saldoDiaAcreditacion: "Saldo día de la acreditación",
   // Movimientos de salida de la cuenta del cliente.
   transferenciasExtracciones: "Transferencias/extracciones dia de la acreditación",
   // Conceptos del recibo que no integran la remuneración ("débito no
