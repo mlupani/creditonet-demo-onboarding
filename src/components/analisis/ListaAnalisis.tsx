@@ -14,26 +14,19 @@ import { FilaCreditoCollapse } from "./FilaCreditoCollapse";
 
 type Vista = "tabla" | "lista";
 
-type Pestana = "TODOS" | "PRE" | "ANA" | "OBS" | "COFE" | "RECH" | "APR" | "FEL" | "AFEL" | "SUP" | "CHEQ" | "LIQ";
+type Pestana = "TODOS" | "PRE" | "OBS" | "COFE" | "RECH" | "APR" | "FEL" | "AFEL" | "SUP" | "CHEQ" | "LIQ";
 
 // Bandeja del analista — 7 estados (desde preaprobado en adelante) de creditonet-34.
 // Las observadas pendientes del vendedor no figuran (las ve él en su bandeja); OBS muestra
-// las que ya corrigió y reenvió: entran a OBS, no a PRE ni ANA. PRE = para tomar; ANA = ya tomadas por un analista.
+// las que ya corrigió y reenvió: entran a OBS, no a PRE. PRE = para tomar o ya tomadas por un analista.
 type DefPestana = { id: Pestana; titulo: string; estados: EstadoCredito[]; vacio: string; reenviadas?: boolean };
 
 const PESTANAS_ESTADO: DefPestana[] = [
   {
     id: "PRE",
     titulo: "Preaprobados",
-    estados: ["PREAPROBADO"],
+    estados: ["PREAPROBADO", "ANALISIS_TOMADO"],
     vacio: "No hay solicitudes preaprobadas para tomar.",
-    reenviadas: false,
-  },
-  {
-    id: "ANA",
-    titulo: "En análisis",
-    estados: ["ANALISIS_TOMADO"],
-    vacio: "No hay solicitudes en análisis: tomá una desde Preaprobados.",
     reenviadas: false,
   },
   {
@@ -140,7 +133,6 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const [pagina, setPagina] = useState<Record<Pestana, number>>({
     TODOS: 1,
     PRE: 1,
-    ANA: 1,
     OBS: 1,
     COFE: 1,
     RECH: 1,
