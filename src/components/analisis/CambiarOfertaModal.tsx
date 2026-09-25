@@ -34,9 +34,8 @@ type Solapa = "oferta" | "financieros";
  * las cancelaciones se comen el capital nuevo, la operación no se puede cambiar y corresponde
  * rechazarla ("el nuevo monto no permite la precancelación").
  *
- * Un cambio de oferta requiere la refrendación del supervisor: al confirmar queda pendiente y
- * recién cuando lo refrenda el crédito vuelve al canal de venta en estado Observado con el
- * nuevo importe. El vendedor sólo puede aceptarlo o elegir otra oferta menor.
+ * El cambio de oferta rige de inmediato: al confirmar el crédito vuelve al canal de venta en
+ * estado Observado con el nuevo importe. El vendedor sólo puede aceptarlo o elegir otra oferta menor.
  */
 export function CambiarOfertaModal({
   open,
@@ -206,7 +205,7 @@ export function CambiarOfertaModal({
                 Cancelar
               </Button>
               <Button variant="primary" onClick={confirmar}>
-                Enviar a refrendación
+                Confirmar cambio
               </Button>
             </div>
           ) : (
@@ -254,9 +253,8 @@ export function CambiarOfertaModal({
           <>
         <p className="text-sm text-ink-600">
           Sólo se puede bajar el capital: elegí en la grilla un capital igual o menor, con la
-          cantidad de cuotas que corresponda. El cambio <strong>requiere la refrendación del supervisor</strong>:
-          recién entonces la solicitud vuelve al vendedor en estado <strong>Observado</strong> con
-          la nueva oferta.
+          cantidad de cuotas que corresponda. Al confirmar, la solicitud vuelve al vendedor en
+          estado <strong>Observado</strong> con la nueva oferta.
         </p>
 
         <dl className="mt-4 divide-y divide-ink-100 rounded-xl border border-ink-200 bg-ink-25">
