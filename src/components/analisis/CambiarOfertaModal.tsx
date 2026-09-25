@@ -12,6 +12,7 @@ import {
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import { PLANES_CUOTAS } from "@/lib/config";
 import type { DatoFinancieroCorregido, Plazo } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
@@ -30,7 +31,7 @@ type Solapa = "oferta" | "financieros";
  *
  * El capital actual es el techo: el capital máximo y las cuotas vigentes se muestran como texto y
  * el analista sólo puede bajar el capital eligiendo una celda de la grilla (mismo capital o
- * menos, con cualquier cantidad de cuotas del plan). La condición dura es que el monto a liquidar quede por encima de cero: si
+ * menos, con cualquier cantidad de cuotas del plan). La condición dura es que el saldo de acreditación quede por encima de cero: si
  * las cancelaciones se comen el capital nuevo, la operación no se puede cambiar y corresponde
  * rechazarla ("el nuevo monto no permite la precancelación").
  *
@@ -71,7 +72,7 @@ export function CambiarOfertaModal({
 
   const errorLiquidar =
     netoALiquidar <= 0
-      ? "Con este capital el monto a liquidar queda en cero o negativo: el nuevo monto no permite la precancelación. Corresponde rechazar la solicitud."
+      ? `Con este capital el ${TERMINOS.saldoAcreditacion.toLowerCase()} queda en cero o negativo: el nuevo monto no permite la precancelación. Corresponde rechazar la solicitud.`
       : null;
   const notaValida = nota.trim().length >= 5;
   const puedeConfirmar = cambio && !errorLiquidar && monto > 0 && notaValida;
@@ -100,24 +101,24 @@ export function CambiarOfertaModal({
   const camposFin = [
     { id: "ingresoBruto", label: "Ingreso bruto", valor: ingresoBruto, set: setIngresoBruto, original: l.ingresoBruto },
     { id: "ingresoNeto", label: "Ingreso neto", valor: ingresoNeto, set: setIngresoNeto, original: l.ingresoNeto },
-    { id: "disponible", label: "Disponible para extracción", valor: disponible, set: setDisponible, original: l.disponible },
+    { id: "disponible", label: TERMINOS.disponible, valor: disponible, set: setDisponible, original: l.disponible },
     {
       id: "debitosNoRemunerativos",
-      label: "Débitos no remunerativos",
+      label: TERMINOS.conceptosNoRemunerativos,
       valor: debitosNoRemunerativos,
       set: setDebitosNoRemunerativos,
       original: l.debitosNoRemunerativos,
     },
     {
       id: "extraccionesImporte",
-      label: "Día/saldo de acreditación",
+      label: TERMINOS.saldoDiaAcreditacion,
       valor: extraccionesImporte,
       set: setExtraccionesImporte,
       original: l.extraccionesImporte,
     },
     {
       id: "transferenciasImporte",
-      label: "Transferencia",
+      label: TERMINOS.transferenciasExtracciones,
       valor: transferenciasImporte,
       set: setTransferenciasImporte,
       original: l.transferenciasImporte,
@@ -297,14 +298,14 @@ export function CambiarOfertaModal({
             )}
             {terceros > 0 && (
               <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-                <span className="text-sm text-ink-500">Cancelación a terceros</span>
+                <span className="text-sm text-ink-500">{TERMINOS.cancelacionTerceros}</span>
                 <span className="text-sm font-semibold tabular-nums text-danger-600">
                   −{formatARS(terceros)}
                 </span>
               </div>
             )}
             <div className="flex items-center justify-between gap-4 px-4 py-2.5">
-              <span className="text-sm font-medium text-ink-700">Monto a liquidar</span>
+              <span className="text-sm font-medium text-ink-700">{TERMINOS.saldoAcreditacion}</span>
               <span
                 className={`text-base font-bold tabular-nums ${
                   netoALiquidar > 0 ? "text-success-700" : "text-danger-600"
@@ -409,7 +410,7 @@ export function CambiarOfertaModal({
               <strong className="tabular-nums text-ink-700">
                 {formatARS(ingresoNeto - debitosNoRemunerativos)}
               </strong>{" "}
-              (neto menos débitos no remunerativos).
+              (neto menos {TERMINOS.conceptosNoRemunerativos.toLowerCase()}).
             </p>
 
             {hayCambioFin && (

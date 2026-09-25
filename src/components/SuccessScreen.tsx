@@ -6,6 +6,7 @@ import { StatusBadge } from "./ui/StatusBadge";
 import { Button } from "./ui/Button";
 import { IconCheck, IconClock, IconArrowRight } from "@/components/icons";
 import { formatARS } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 
 export interface TimelineItem {
   label: string;
@@ -189,7 +190,7 @@ export function SuccessScreen({
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
               { label: "Capital aprobado", value: formatARS(capital ?? 0), tone: "text-ink-900" },
-              { label: "Acreditación neta", value: formatARS(neto ?? 0), tone: "text-success-700" },
+              { label: TERMINOS.saldoAcreditacion, value: formatARS(neto ?? 0), tone: "text-success-700" },
               { label: "Cuotas", value: `${cuotas ?? 0}`, tone: "text-ink-900" },
               { label: "Valor de cuota", value: formatARS(valorCuota ?? 0), tone: "text-brand-700" },
             ].map((stat) => (

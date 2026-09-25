@@ -229,7 +229,7 @@ export function importeTerceros(oferta: Oferta): number {
 }
 
 // Regla en cascada (Guía §5.5):
-// Acreditación neta = Capital solicitado − Σ cancelaciones propias − Σ cancelaciones terceros
+// Saldo de acreditación = Capital solicitado − Σ cancelaciones propias − Σ cancelaciones terceros
 export function netoAAcreditar(oferta: Oferta): number {
   return oferta.montoSolicitado - totalPrecancelaciones(oferta) - importeTerceros(oferta);
 }

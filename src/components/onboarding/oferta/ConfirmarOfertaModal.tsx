@@ -10,6 +10,7 @@ import {
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { formatARS } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 
@@ -61,7 +62,7 @@ export function ConfirmarOfertaModal({
           },
         ]
       : []),
-    { label: "Acreditación neta", value: formatARS(netoAAcreditar(o)), tone: "success" },
+    { label: TERMINOS.saldoAcreditacion, value: formatARS(netoAAcreditar(o)), tone: "success" },
     { label: "Plazo", value: `${o.plazo} cuotas` },
     { label: "Valor cuota", value: formatARS(o.valorCuota) },
     { label: "TNA", value: `${o.tna} %` },
@@ -72,9 +73,9 @@ export function ConfirmarOfertaModal({
   const financieros: { label: string; value: string }[] = [
     { label: "Ingreso bruto", value: formatARS(l.ingresoBruto) },
     { label: "Ingreso neto", value: formatARS(l.ingresoNeto) },
-    { label: "Disponible para extracción", value: formatARS(l.disponible) },
-    { label: "Día/saldo de acreditación", value: formatARS(l.extraccionesImporte) },
-    { label: "Transferencia", value: formatARS(l.transferenciasImporte) },
+    { label: TERMINOS.disponible, value: formatARS(l.disponible) },
+    { label: TERMINOS.saldoDiaAcreditacion, value: formatARS(l.extraccionesImporte) },
+    { label: TERMINOS.transferenciasExtracciones, value: formatARS(l.transferenciasImporte) },
   ];
 
   return (

@@ -13,6 +13,7 @@ import {
 } from "@/lib/productos";
 import type { VistaOrganismo } from "@/lib/organismos";
 import { formatARS } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
@@ -137,10 +138,10 @@ export type CampoExtra = {
 );
 
 const ETIQUETAS_NETO: Record<keyof RecalculoNeto, string> = {
-  disponible: "Disponible para extracción",
-  extraccionesTransferencias: "Día/saldo de acreditación y transferencia",
+  disponible: TERMINOS.disponible,
+  extraccionesTransferencias: `${TERMINOS.saldoDiaAcreditacion} y ${TERMINOS.transferenciasExtracciones.toLowerCase()}`,
   cuotasBuroExterno: "Cuotas de buró externo",
-  noRemunerativosHorasExtra: "No remunerativos / horas extra",
+  noRemunerativosHorasExtra: `${TERMINOS.conceptosNoRemunerativos} / horas extra`,
 };
 
 function texto(campo: CampoExtra, valor: unknown): ReactNode {

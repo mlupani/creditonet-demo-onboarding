@@ -14,6 +14,7 @@ import {
   type SeleccionLista,
   type TramoPunitorio,
 } from "@/lib/productos";
+import { TERMINOS } from "@/lib/terminologia";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
@@ -356,10 +357,14 @@ export function EditorGestion({
 // --- Datos financieros: recálculo del sueldo neto ---
 
 const CONCEPTOS_NETO: { clave: keyof RecalculoNeto; label: string; detalle: string }[] = [
-  { clave: "disponible", label: "Disponible para extracción", detalle: "Saldo disponible para extracción del cliente." },
+  {
+    clave: "disponible",
+    label: TERMINOS.disponible,
+    detalle: "Dinero que el cliente tiene libre para extraer de su cuenta.",
+  },
   {
     clave: "extraccionesTransferencias",
-    label: "Día/saldo de acreditación y transferencia",
+    label: `${TERMINOS.saldoDiaAcreditacion} y ${TERMINOS.transferenciasExtracciones.toLowerCase()}`,
     detalle: "Movimientos que reducen el ingreso neto efectivo.",
   },
   {
@@ -369,7 +374,7 @@ const CONCEPTOS_NETO: { clave: keyof RecalculoNeto; label: string; detalle: stri
   },
   {
     clave: "noRemunerativosHorasExtra",
-    label: "Conceptos no remunerativos / horas extra",
+    label: `${TERMINOS.conceptosNoRemunerativos} / horas extra`,
     detalle: "Ingresos variables que se incluyen o no en el neto.",
   },
 ];

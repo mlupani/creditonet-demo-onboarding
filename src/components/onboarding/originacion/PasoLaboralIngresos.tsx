@@ -4,6 +4,7 @@ import { useApplication } from "@/lib/application-context";
 import { CONDICIONES_LABORALES, validarLaboral } from "@/lib/validation";
 import { fechaAIso, isoAFecha, maskCuit } from "@/lib/format";
 import { BANCOS } from "@/lib/parametros";
+import { TERMINOS } from "@/lib/terminologia";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -191,19 +192,19 @@ export function PasoLaboralIngresos() {
             />
             <MoneyInput
               id="disponible"
-              label="Disponible para extracción"
+              label={TERMINOS.disponible}
               value={l.disponible}
               onChange={(v) => patchLaboral({ disponible: v })}
             />
             <MoneyInput
               id="extracciones-saldo"
-              label="Día/saldo de acreditación"
+              label={TERMINOS.saldoDiaAcreditacion}
               value={l.extraccionesImporte}
               onChange={(v) => patchLaboral({ extraccionesImporte: v })}
             />
             <MoneyInput
               id="transferencias-saldo"
-              label="Transferencia"
+              label={TERMINOS.transferenciasExtracciones}
               value={l.transferenciasImporte}
               onChange={(v) => patchLaboral({ transferenciasImporte: v })}
             />

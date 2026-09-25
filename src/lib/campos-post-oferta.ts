@@ -8,6 +8,7 @@ import type { CreditApplication, Domicilio, OrigenCampo } from "./types";
 import { configEfectiva } from "./config";
 import { isoAFecha, isValidCBU, isValidEmail, maskCuit, maskDNI, onlyDigits, parseFecha } from "./format";
 import { PAIS_POR_DEFECTO, sanitizarCaracteristica, sanitizarNumero, validarNumero } from "./telefono";
+import { TERMINOS } from "./terminologia";
 import {
   BANCOS,
   COMPANIAS_TELEFONICAS,
@@ -100,7 +101,7 @@ export const SECCIONES: Record<SeccionCampo, { titulo: string; descripcion: stri
   },
   acreditacion: {
     titulo: "Cuenta de acreditación",
-    descripcion: "Cuenta donde se transfiere el neto del crédito al liquidarlo.",
+    descripcion: `Cuenta donde se acredita el ${TERMINOS.saldoAcreditacion.toLowerCase()} al liquidar el crédito.`,
   },
 };
 

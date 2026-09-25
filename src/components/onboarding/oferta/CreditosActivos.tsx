@@ -4,6 +4,7 @@ import { useApplication } from "@/lib/application-context";
 import { cuotasAbonadasPct, hayPrecancelacion, requisitoRenovacion, seCancela } from "@/lib/credit";
 import { extrasEfectivos } from "@/lib/productos";
 import { formatARS } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -169,8 +170,8 @@ export function CreditosActivos({
                   }
                   description={
                     c.enMora
-                      ? "Incluido automáticamente en la renovación. El saldo a cancelar se descuenta de la acreditación neta."
-                      : "El saldo a cancelar se descuenta de la acreditación neta."
+                      ? `Incluido automáticamente en la renovación. El saldo a cancelar se descuenta del ${TERMINOS.saldoAcreditacion.toLowerCase()}.`
+                      : `El saldo a cancelar se descuenta del ${TERMINOS.saldoAcreditacion.toLowerCase()}.`
                   }
                 />
               </div>

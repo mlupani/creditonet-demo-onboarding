@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { formatARS, sumarDias } from "@/lib/format";
 import { netoAAcreditar } from "@/lib/credit";
+import { TERMINOS } from "@/lib/terminologia";
 import { IconArrowDown, IconArrowRight, IconCheck } from "@/components/icons";
 
 export function TransicionEtapa() {
@@ -33,7 +34,7 @@ export function TransicionEtapa() {
         <div className="px-6 py-1 sm:px-10">
 
           <div className="mt-5 flex items-center justify-between rounded-xl border border-success-200 bg-success-50/60 px-4 py-3">
-            <span className="text-sm font-medium text-success-700">Acreditación neta</span>
+            <span className="text-sm font-medium text-success-700">{TERMINOS.saldoAcreditacion}</span>
             <span className="text-lg font-bold tabular-nums text-success-700">
               {formatARS(netoAAcreditar(app.oferta))}
             </span>

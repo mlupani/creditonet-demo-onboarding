@@ -13,6 +13,7 @@ import {
 import { intentoActual } from "@/lib/firma";
 import { intentosChequeo } from "@/lib/historial";
 import { formatARS, formatDNI } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -213,7 +214,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
                   </dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-ink-500">Acreditación neta</dt>
+                  <dt className="text-ink-500">{TERMINOS.saldoAcreditacion}</dt>
                   <dd className="font-semibold tabular-nums text-ink-900">
                     {formatARS(netoAAcreditar(o))}
                   </dd>

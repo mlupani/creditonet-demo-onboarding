@@ -19,6 +19,7 @@ import {
 import { getTipoDocumento } from "@/lib/parametros";
 import { netoAAcreditar, planDeSolicitud } from "@/lib/credit";
 import { formatARS, nombreApellido } from "@/lib/format";
+import { TERMINOS } from "@/lib/terminologia";
 import { estadoPantallasPostOferta, tarjetaValida } from "@/lib/validation";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -94,7 +95,7 @@ export function DocumentoLegajo() {
         <Fila label="Organismo" value={nombreOpcion(ORGANISMOS, app.configuracion.organismoId)} />
         <Fila label="Plan de cuotas" value={planDeSolicitud(app).nombre} />
         <Fila label="Capital solicitado" value={formatARS(o.montoSolicitado)} />
-        <Fila label="Acreditación neta" value={formatARS(netoAAcreditar(o))} />
+        <Fila label={TERMINOS.saldoAcreditacion} value={formatARS(netoAAcreditar(o))} />
         <Fila label="Plazo" value={`${o.plazo} cuotas de ${formatARS(o.valorCuota)}`} />
         <Fila label="TNA" value={`${o.tna}%`} />
         <Fila label="Total a pagar" value={formatARS(o.totalAPagar)} />
