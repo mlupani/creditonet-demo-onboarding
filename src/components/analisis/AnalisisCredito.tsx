@@ -152,10 +152,8 @@ export function AnalisisCredito({
 }) {
   const {
     app,
-    proponerCambioOferta,
-    refrendarCambioOferta,
+    aplicarCambioOferta,
     autorizarExcepcionCambioOferta,
-    rechazarCambioOferta,
     aplicarCambioDatosFinancieros,
     derivarCambioDatosFinancieros,
     resolverDerivacionCambioFinanciero,
@@ -212,8 +210,6 @@ export function AnalisisCredito({
   // al final (Motor §10).
   const marcadas = app.riesgo.reglas.filter(reglaMarcada);
   const aRenovar = o.creditosActivos.filter(seCancela);
-  // Cambio de oferta propuesto que espera la refrendación del supervisor.
-  const cambioPendiente = app.analista.cambioOfertaPendiente;
   // Cambio de datos financieros cuyo recálculo no pasó y que espera la decisión del supervisor.
   const derivacion = app.analista.derivacionCambioFinanciero;
   // Sin tomar el caso no se opera: sólo se muestra el detalle y el botón Tomar análisis.
@@ -359,35 +355,6 @@ export function AnalisisCredito({
         </Banner>
       )}
 
-      {cambioPendiente && (
-        <div className="rounded-xl border border-warning-300 bg-warning-50 p-4">
-          <p className="text-sm font-bold text-warning-700">
-            Cambio de oferta pendiente de refrendación del supervisor
-          </p>
-          <p className="mt-1 text-sm text-warning-700/90">
-            {formatARS(o.montoSolicitado)} en {o.plazo} cuotas →{" "}
-            <strong>
-              {formatARS(cambioPendiente.montoSolicitado)} en {cambioPendiente.plazo} cuotas
-            </strong>
-            . Propuesto por{" "}
-            {cambioPendiente.solicitadoPor} ({cambioPendiente.fecha}). No rige y la solicitud no
-            vuelve al vendedor hasta que lo refrende {SESION_SUPERVISOR.nombre}.
-          </p>
-          <p className="mt-1 text-xs text-warning-700/80">Nota: {cambioPendiente.nota}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="success" onClick={refrendarCambioOferta}>
-              Refrendar como supervisor
-            </Button>
-            <Button size="sm" variant="outline" onClick={rechazarCambioOferta}>
-              Rechazar cambio
-            </Button>
-            <span className="text-[11px] text-warning-700/80">
-              Simulación de la demo: en producción lo hace el supervisor desde su sesión.
-            </span>
-          </div>
-        </div>
-      )}
-
       {derivacion && (
         <div className="rounded-xl border border-warning-300 bg-warning-50 p-4">
           <p className="text-sm font-bold text-warning-700">
@@ -511,7 +478,7 @@ export function AnalisisCredito({
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={cambioPendiente !== null || observacionPendiente}
+                    disabled={observacionPendiente}
                     onClick={intentarCambiarOferta}
                   >
                     <IconRefresh width={14} height={14} />
@@ -962,7 +929,7 @@ export function AnalisisCredito({
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 variant="outline"
-                disabled={cambioPendiente !== null || observacionPendiente}
+                disabled={observacionPendiente}
                 onClick={intentarCambiarOferta}
               >
                 <IconRefresh width={16} height={16} />
@@ -996,13 +963,13 @@ export function AnalisisCredito({
               </Button>
               <Button
                 variant="outline"
-                disabled={cambioPendiente !== null || observacionPendiente}
+                disabled={observacionPendiente}
                 onClick={() => setDejarAprobadoAbierto(true)}
               >
                 <IconCheck width={16} height={16} />
                 Dejar en Aprobado
               </Button>
-              <Button variant="success" disabled={cambioPendiente !== null || observacionPendiente} onClick={onAprobar}>
+              <Button variant="success" disabled={observacionPendiente} onClick={onAprobar}>
                 <IconCheck width={16} height={16} />
                 Aprobar
               </Button>
@@ -1118,7 +1085,7 @@ export function AnalisisCredito({
         onClose={() => setCambioAbierto(false)}
         onConfirmar={(cambio) => {
           setCambioAbierto(false);
-          proponerCambioOferta(cambio);
+          aplicarCambioOferta(cambio);
           // El cambio ya es del vendedor: se lo ve en su bandeja, no en la del analista.
           router.push("/");
         }}

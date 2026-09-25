@@ -178,9 +178,6 @@ export function EstadoSolicitudModal({ open, onClose }: ModalProps) {
                 },
               ]
             : []),
-          ...(app.analista.cambioOfertaPendiente
-            ? [{ label: "Cambio de oferta", value: "Pendiente de refrendación del supervisor" }]
-            : []),
           ...(enAnalisis
             ? [
                 {

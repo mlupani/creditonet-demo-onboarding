@@ -14,6 +14,8 @@ export interface PasoLibre {
   observada?: boolean;
   // Corrección puntual: sólo se puede entrar a las pantallas observadas, el resto se bloquea.
   bloqueada?: boolean;
+  // Reemplaza el detalle por defecto ("Completa · Obligatoria", etc.) bajo el nombre.
+  detalle?: string;
 }
 
 const CIRCULO: Record<EstadoVisualPantalla, string> = {
@@ -114,7 +116,8 @@ export function StepperLibre({
                       ? "Bloqueada"
                       : paso.observada
                         ? "A corregir"
-                        : `${DETALLE[paso.estado]} · ${paso.obligatoria ? "Obligatoria" : "Opcional"}`}
+                        : (paso.detalle ??
+                          `${DETALLE[paso.estado]} · ${paso.obligatoria ? "Obligatoria" : "Opcional"}`)}
                   </span>
                 </span>
               </button>

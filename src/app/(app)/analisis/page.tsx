@@ -47,7 +47,7 @@ export default function AnalisisPage() {
   // La bandeja abre en la lista; "Abrir" entra al detalle de la solicitud.
   const [abierta, setAbierta] = useState(false);
 
-  // La oferta la cambió el analista (refrendada o por datos financieros): la tiene que ver
+  // La oferta la cambió el analista (oferta o datos financieros): la tiene que ver
   // el vendedor, así que se redirige a su bandeja en vez de quedarse en la del analista.
   const ofertaCambiada = ofertaAnalistaDe(app) !== null;
   useEffect(() => {
