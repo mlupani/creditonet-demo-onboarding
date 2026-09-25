@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import { CANALES, ORGANISMOS, PRODUCTOS, nombreOpcion } from "@/lib/config";
+import { CANALES, ORGANISMOS, PRODUCTOS, SESION_CHEQUEADOR, nombreOpcion } from "@/lib/config";
+import { marcarLeida, rutaParaEstado, useNotificaciones, type ComentarioNotificacion } from "@/lib/notificaciones";
 import { intentoActual } from "@/lib/firma";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
 import type { CreditoDB } from "@/lib/creditos-db";
@@ -11,7 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { IconFileStack, IconSearch } from "@/components/icons";
 
-type Pestana = "PEND" | "CURSO" | "FIN";
+type Pestana = "PEND" | "CURSO" | "FIN" | "NOTIF";
 
 const PESTANAS: {
   id: Pestana;
@@ -37,6 +39,13 @@ const PESTANAS: {
     vacio: "Todavía no hay chequeos finalizados.",
     incluye: (c) => c.chequeoTelefonico?.resultado != null,
   },
+  {
+    id: "NOTIF",
+    titulo: "Notificaciones",
+    vacio: "No hay notificaciones pendientes de lectura.",
+    // Pestaña de avisos, no de créditos: el contenido y el contador van aparte.
+    incluye: () => false,
+  },
 ];
 
 const COLUMNAS = [
@@ -52,10 +61,26 @@ const COLUMNAS = [
 ];
 
 export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
+  const router = useRouter();
   const { creditosDB, cargarCreditoDeDB } = useApplication();
   const [pestana, setPestana] = useState<Pestana>("PEND");
   const [busqueda, setBusqueda] = useState("");
   const [canal, setCanal] = useState("");
+  const notificaciones = useNotificaciones();
+
+  // Entrantes pendientes para los telefonistas: no leídas, no escritas por el
+  // propio chequeador y con crédito en la DB para poder abrirlo.
+  const creditoDe = (n: ComentarioNotificacion) =>
+    creditosDB.find((c) => c._id === n.creditoId);
+  const avisos = notificaciones.filter(
+    (n) => !n.leida && n.autor !== SESION_CHEQUEADOR.nombre && creditoDe(n) !== undefined
+  );
+  const avisosFiltrados = avisos.filter((n) => {
+    const c = creditoDe(n)!;
+    if (canal && c.configuracion.canalId !== canal) return false;
+    if (busqueda.trim() && !(c.cliente && coincideCliente(c.cliente, busqueda))) return false;
+    return true;
+  });
 
   const enPestana = (p: (typeof PESTANAS)[number]) =>
     creditosDB.filter((c) => {
@@ -71,6 +96,22 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
   function abrir(c: CreditoDB) {
     cargarCreditoDeDB(c._id);
     onAbrir();
+  }
+
+  function abrirAviso(n: ComentarioNotificacion) {
+    const c = creditoDe(n);
+    if (!c) return;
+    marcarLeida(n.id);
+    cargarCreditoDeDB(c._id);
+    // Si el crédito sigue en la órbita del chequeador se abre acá; si no, se navega
+    // a la bandeja donde está (misma regla que la página de chequeo).
+    const ch = c.chequeoTelefonico;
+    const enChequeo = c.estado === "CHEQUEO_TELEFONICO" && ch !== null;
+    const finChequeo =
+      (c.estado === "PARA_LIQUIDAR" && ch?.resultado === "OK") ||
+      (c.estado === "RECHAZADO" && c.rechazo?.origen === "CHEQUEADOR");
+    if (enChequeo || finChequeo) onAbrir();
+    else router.push(rutaParaEstado(c.estado));
   }
 
   return (
@@ -109,12 +150,14 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
       <div role="tablist" aria-label="Estados del chequeo" className="flex flex-wrap gap-2">
         {PESTANAS.map((p) => {
           const seleccionada = p.id === pestana;
+          const cantidad = p.id === "NOTIF" ? avisos.length : enPestana(p).length;
           return (
             <button
               key={p.id}
               role="tab"
               aria-selected={seleccionada}
               onClick={() => setPestana(p.id)}
+              title={p.id === "NOTIF" ? "Notificaciones del canal de venta aún no leídas" : p.titulo}
               className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-bold tracking-wide transition ${
                 seleccionada
                   ? "border-brand-600 bg-brand-600 text-white shadow-sm"
@@ -127,7 +170,7 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                   seleccionada ? "bg-white/20 text-white" : "bg-ink-100 text-ink-500"
                 }`}
               >
-                {enPestana(p).length}
+                {cantidad}
               </span>
             </button>
           );
@@ -135,7 +178,57 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
       </div>
 
       <Card className="overflow-hidden">
-        {lista.length === 0 ? (
+        {pestana === "NOTIF" ? (
+          avisosFiltrados.length === 0 ? (
+            <p className="flex items-center justify-center gap-2 px-5 py-8 text-center text-sm text-ink-400">
+              <IconFileStack width={15} height={15} />
+              {busqueda.trim() || canal
+                ? "Ningún aviso coincide con la búsqueda o el filtro."
+                : "No hay notificaciones pendientes de lectura."}
+            </p>
+          ) : (
+            <ul className="divide-y divide-ink-100">
+              {avisosFiltrados.map((n) => {
+                const c = creditoDe(n)!;
+                const cli = c.cliente!;
+                return (
+                  <li
+                    key={n.id}
+                    className="flex cursor-pointer flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 transition hover:bg-ink-25"
+                    onClick={() => abrirAviso(n)}
+                  >
+                    <div className="min-w-0 flex-1 basis-56">
+                      <p className="truncate text-sm font-semibold text-ink-900">
+                        {cli.nombre} {cli.apellido}
+                      </p>
+                      <p className="font-mono text-[11px] font-bold text-brand-700">
+                        {c.numeroCredito ?? "Sin ID"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-500">
+                        {nombreOpcion(PRODUCTOS, c.configuracion.productoId)} ·{" "}
+                        {formatARS(c.oferta.montoSolicitado)}
+                      </p>
+                    </div>
+                    <div className="min-w-0 flex-[2] basis-72">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-ink-400">
+                        {n.autor} · {n.fecha}
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-ink-700">{n.texto}</p>
+                    </div>
+                    <div className="shrink-0">
+                      <EstadoBadge estado={c.estado} />
+                    </div>
+                    <div className="shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => abrirAviso(n)}>
+                        Abrir
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )
+        ) : lista.length === 0 ? (
           <p className="flex items-center justify-center gap-2 px-5 py-8 text-center text-sm text-ink-400">
             <IconFileStack width={15} height={15} />
             {busqueda.trim() || canal ? "Ningún crédito coincide con la búsqueda o el filtro." : activa.vacio}
