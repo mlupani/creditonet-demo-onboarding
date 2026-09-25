@@ -68,13 +68,15 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
   const [canal, setCanal] = useState("");
   const notificaciones = useNotificaciones();
 
-  // Entrantes pendientes para los telefonistas: no leídas, no escritas por el
-  // propio chequeador y con crédito en la DB para poder abrirlo.
+  // Entrantes para los telefonistas: no escritas por el propio chequeador y con
+  // crédito en la DB. Se siguen viendo mientras el crédito siga en chequeo
+  // telefónico (las leídas, atenuadas); al salir de chequeo desaparecen.
   const creditoDe = (n: ComentarioNotificacion) =>
     creditosDB.find((c) => c._id === n.creditoId);
   const avisos = notificaciones.filter(
-    (n) => !n.leida && n.autor !== SESION_CHEQUEADOR.nombre && creditoDe(n) !== undefined
+    (n) => n.autor !== SESION_CHEQUEADOR.nombre && creditoDe(n)?.estado === "CHEQUEO_TELEFONICO"
   );
+  const pendientes = avisos.filter((n) => !n.leida).length;
   const avisosFiltrados = avisos.filter((n) => {
     const c = creditoDe(n)!;
     if (canal && c.configuracion.canalId !== canal) return false;
@@ -150,7 +152,7 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
       <div role="tablist" aria-label="Estados del chequeo" className="flex flex-wrap gap-2">
         {PESTANAS.map((p) => {
           const seleccionada = p.id === pestana;
-          const cantidad = p.id === "NOTIF" ? avisos.length : enPestana(p).length;
+          const cantidad = p.id === "NOTIF" ? pendientes : enPestana(p).length;
           return (
             <button
               key={p.id}
@@ -194,7 +196,9 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                 return (
                   <li
                     key={n.id}
-                    className="flex cursor-pointer flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 transition hover:bg-ink-25"
+                    className={`flex cursor-pointer flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 transition hover:bg-ink-25 ${
+                      n.leida ? "opacity-60" : ""
+                    }`}
                     onClick={() => abrirAviso(n)}
                   >
                     <div className="min-w-0 flex-1 basis-56">
@@ -218,7 +222,13 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                     <div className="shrink-0">
                       <EstadoBadge estado={c.estado} />
                     </div>
-                    <div className="shrink-0">
+                    <div className="flex shrink-0 items-center gap-2">
+                      {!n.leida && (
+                        <span
+                          className="flex h-2.5 w-2.5 rounded-full bg-danger-500"
+                          title="Pendiente de lectura"
+                        />
+                      )}
                       <Button size="sm" variant="outline" onClick={() => abrirAviso(n)}>
                         Abrir
                       </Button>
