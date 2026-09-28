@@ -650,6 +650,43 @@ export function AnalisisCredito({
               </li>
             ))}
           </ul>
+          {app.riesgo.limites && (
+            <div className="mt-4 border-t border-ink-100 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">Límites de capital</p>
+              <dl className="mt-2 space-y-2">
+                {[
+                  ...app.riesgo.limites.limites.map((l) => ({
+                    label: l.label,
+                    value: formatARS(l.monto),
+                    aplicado: l.id === app.riesgo.limites!.limiteAplicadoId,
+                    strong: false,
+                  })),
+                  {
+                    label: "Capital considerado",
+                    value: formatARS(app.riesgo.limites.capitalConsiderado),
+                    aplicado: false,
+                    strong: true,
+                  },
+                  {
+                    label: "Cuota máxima",
+                    value: formatARS(app.riesgo.limites.cuotaMaxima),
+                    aplicado: false,
+                    strong: false,
+                  },
+                ].map((f) => (
+                  <div key={f.label} className="flex items-baseline justify-between gap-4 text-sm">
+                    <dt className={f.strong ? "font-medium text-ink-700" : "text-ink-500"}>
+                      {f.label}
+                      {f.aplicado && <span className="ml-1.5 text-xs text-brand-600">· aplicado</span>}
+                    </dt>
+                    <dd className={`font-semibold tabular-nums ${f.aplicado ? "text-brand-700" : "text-ink-900"}`}>
+                      {f.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
         </SummaryCard>
         <SummaryCard
           title={`Motor de riesgo · ${getMotor(app.riesgo.motorId).nombre}`}
@@ -699,28 +736,6 @@ export function AnalisisCredito({
             ) : undefined
           }
         />
-        {app.riesgo.limites && (
-          <SummaryCard
-            title="Límites aplicados"
-            icon={<IconWallet width={16} height={16} />}
-            rows={[
-              ...app.riesgo.limites.limites.map((l) => ({
-                label: l.label,
-                value: formatARS(l.monto),
-                tone:
-                  l.id === app.riesgo.limites!.limiteAplicadoId
-                    ? ("brand" as const)
-                    : undefined,
-              })),
-              {
-                label: "Capital considerado",
-                value: formatARS(app.riesgo.limites.capitalConsiderado),
-                strong: true,
-              },
-              { label: "Cuota máxima", value: formatARS(app.riesgo.limites.cuotaMaxima) },
-            ]}
-          />
-        )}
       </div>
 
       {/* Detalle expandido: referencias, garantes y créditos (tablas post-oferta) */}
