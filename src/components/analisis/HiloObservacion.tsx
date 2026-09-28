@@ -1,7 +1,12 @@
 "use client";
 
 import { useApplication } from "@/lib/application-context";
-import { SESION_ANALISTA, pantallasVisibles } from "@/lib/config";
+import {
+  SESION_ANALISTA,
+  SESION_CHEQUEADOR,
+  SESION_SUPERVISOR,
+  pantallasVisibles,
+} from "@/lib/config";
 import { observacionesDe } from "@/lib/credit";
 import { parseFecha } from "@/lib/format";
 
@@ -17,7 +22,7 @@ function instante(fecha: string): number {
 
 type Mensaje = {
   clave: string;
-  rol: "ANALISTA" | "VENTA";
+  rol: "ANALISTA" | "VENTA" | "CHEQUEO";
   autor: string;
   fecha: string;
   // Tema de una observación del analista; los comentarios no lo tienen.
@@ -51,7 +56,13 @@ export function HiloObservacion() {
     ...app.comentarios.map(
       (c): Mensaje => ({
         clave: c.id,
-        rol: c.autor === SESION_ANALISTA.nombre ? "ANALISTA" : "VENTA",
+        // Analista o superior de riesgo, chequeador telefónico o, si no, el canal de venta.
+        rol:
+          c.autor.startsWith(SESION_ANALISTA.nombre) || c.autor.startsWith(SESION_SUPERVISOR.nombre)
+            ? "ANALISTA"
+            : c.autor.startsWith(SESION_CHEQUEADOR.nombre)
+              ? "CHEQUEO"
+              : "VENTA",
         autor: c.autor,
         fecha: c.fecha,
         texto: c.texto,
@@ -91,7 +102,7 @@ export function HiloObservacion() {
             className="ml-5 rounded-xl border border-brand-200 border-l-4 bg-brand-50/60 px-4 py-3"
           >
             <p className="text-[11px] font-bold uppercase tracking-wider text-brand-700">
-              Canal de venta · {m.autor} · {m.fecha}
+              {m.rol === "CHEQUEO" ? "Chequeo telefónico" : "Canal de venta"} · {m.autor} · {m.fecha}
             </p>
             <p className="mt-1 whitespace-pre-line text-sm text-ink-800">{m.texto}</p>
           </li>

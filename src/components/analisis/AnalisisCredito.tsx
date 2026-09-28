@@ -785,18 +785,30 @@ export function AnalisisCredito({
           }
         >
           {logAbierto && (
-            <ul className="mt-3 space-y-1.5 border-t border-ink-100 pt-3">
-              {logEstados.length === 0 ? (
-                <li className="text-sm text-ink-500">Sin movimientos registrados.</li>
-              ) : (
-                logEstados.map((e) => (
-                  <li key={e.estado} className="flex items-baseline justify-between gap-4 text-sm">
-                    <span className="text-ink-500">{e.estado}</span>
-                    <span className="font-semibold tabular-nums text-ink-900">{e.fecha}</span>
-                  </li>
-                ))
-              )}
-            </ul>
+            <div className="mt-3 space-y-4 border-t border-ink-100 pt-3">
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-400">Estados</p>
+                <ul className="space-y-1.5">
+                  {logEstados.length === 0 ? (
+                    <li className="text-sm text-ink-500">Sin movimientos registrados.</li>
+                  ) : (
+                    logEstados.map((e) => (
+                      <li key={e.estado} className="flex items-baseline justify-between gap-4 text-sm">
+                        <span className="text-ink-500">{e.estado}</span>
+                        <span className="font-semibold tabular-nums text-ink-900">{e.fecha}</span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+              {/* Además de los estados, la conversación entre analista y vendedor. */}
+              <div>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-400">
+                  Comentarios del analista y del vendedor
+                </p>
+                <HiloObservacion />
+              </div>
+            </div>
           )}
         </SummaryCard>
       </div>
