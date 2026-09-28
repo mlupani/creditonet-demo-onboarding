@@ -57,7 +57,13 @@ import {
   ofertaAnalistaDe,
   recalcularOferta,
 } from "./credit";
-import { evaluarReglas, reglaBloquea, resolverResultado, seleccionarMotor } from "./motores";
+import {
+  evaluarReglas,
+  hidratarMotores,
+  reglaBloquea,
+  resolverResultado,
+  seleccionarMotor,
+} from "./motores";
 import { evaluarInstitucionales, institucionalesBloquean } from "./reglas-institucionales";
 import {
   aplicarCambioCampo,
@@ -460,6 +466,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const t = window.setTimeout(() => {
       // La configuración de los productos (ABM) se hidrata antes que la solicitud: el flujo
       // sólo se muestra cuando `hidratado` es true, así que nunca lee valores desactualizados.
+      hidratarMotores();
       hidratarProductos();
       hidratarPlanes();
       hidratarOrganismos();

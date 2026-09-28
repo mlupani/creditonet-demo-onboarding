@@ -1,7 +1,7 @@
 "use client";
 
 import type { AsignacionMotor, DocumentoConfig } from "@/lib/config";
-import { CONDICIONES_LABORALES, MOTORES } from "@/lib/motores";
+import { CONDICIONES_LABORALES, useMotores } from "@/lib/motores";
 import { TIPOS_DOCUMENTO } from "@/lib/parametros";
 import { PERFILES_INTERNOS, ROTULO_BCRA, ROTULO_PERFIL, SITUACIONES_BCRA } from "@/lib/planes";
 import {
@@ -403,8 +403,6 @@ export function EditorRecalculoNeto({
 
 // --- Motor de riesgo: asignación por tipo de cliente, condición laboral, situación BCRA y buró interno ---
 
-const OPCIONES_MOTOR = MOTORES.map((m) => ({ value: m.id, label: m.nombre }));
-
 export function EditorMotor({
   idBase,
   valor,
@@ -416,6 +414,11 @@ export function EditorMotor({
   onChange: (valor: AsignacionMotor) => void;
   placeholderGeneral?: string;
 }) {
+  // Los grupos de reglas salen del ABM del Motor de riesgo: los no activos se rotulan.
+  const OPCIONES_MOTOR = useMotores().map((m) => ({
+    value: m.id,
+    label: m.estado === "ACTIVO" ? m.nombre : `${m.nombre} (${m.estado.toLowerCase()})`,
+  }));
   const asignarCondicion = (condicion: string, motorId: string) => {
     const { [condicion]: _quitada, ...resto } = valor.porCondicionLaboral;
     void _quitada;
