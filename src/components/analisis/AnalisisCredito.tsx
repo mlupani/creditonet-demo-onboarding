@@ -418,7 +418,7 @@ export function AnalisisCredito({
                 </span>
                 <Button size="sm" variant="outline" onClick={() => setReglaObs(r)}>
                   <IconEye width={14} height={14} />
-                  Ver observación
+                  Ver Regla del motor
                 </Button>
               </li>
             ))}
