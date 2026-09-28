@@ -92,7 +92,12 @@ function tieneCatalogoCampos(id: PantallaPostOfertaId): id is PantallaConCampos 
 }
 
 // Por ahora el analista sólo puede observar estas pantallas (las demás se ocultan del selector).
-export const PANTALLAS_OBSERVABLES: PantallaPostOfertaId[] = ["referencias", "garantias", "legajo"];
+export const PANTALLAS_OBSERVABLES: PantallaPostOfertaId[] = [
+  "referencias",
+  "garantias",
+  "legajo",
+  "impresion",
+];
 
 export function AreaTexto({
   id,
