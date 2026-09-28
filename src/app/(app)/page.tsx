@@ -432,7 +432,7 @@ export default function BandejaCanalVentaPage() {
                               </div>
                               <div>
                                 {esPendiente(app) ? (
-                                  <StatusBadge tone="info">Pendiente · PEND</StatusBadge>
+                                  <StatusBadge tone="info">PEND</StatusBadge>
                                 ) : (
                                   <EstadoBadge
                                     estado={app.estado}
@@ -488,7 +488,7 @@ export default function BandejaCanalVentaPage() {
                                 </div>
                                 <div>
                                   {esPendiente(cred) ? (
-                                    <StatusBadge tone="info">Pendiente · PEND</StatusBadge>
+                                    <StatusBadge tone="info">PEND</StatusBadge>
                                   ) : (
                                     <EstadoBadge
                                       estado={cred.estado}
