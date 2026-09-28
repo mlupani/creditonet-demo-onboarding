@@ -1773,8 +1773,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // APR → LIQ con firma física: la firma manual ya está cargada en el legajo, así que se da por
-  // aprobada y el crédito sigue: a chequeo telefónico si el producto lo pide, si no a LIQ.
+  // APR → LIQ sin pasar por FEL: con firma física (la manual ya está en el legajo) o con el
+  // atajo "Pasar a LIQ" del analista. La firma se da por aprobada y el crédito sigue: a chequeo
+  // telefónico si el producto lo pide, si no a LIQ.
   const pasarFirmaFisicaASiguiente = useCallback(() => {
     setAppOperativo((prev) => {
       if (prev.estado !== "APROBADO") return prev;

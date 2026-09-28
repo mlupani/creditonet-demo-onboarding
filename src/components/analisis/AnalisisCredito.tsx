@@ -143,6 +143,7 @@ export function AnalisisCredito({
   onSalir,
   onEnviarSup,
   onSiguiente,
+  onPasarALiq,
 }: {
   onObservar: (
     motivo: string,
@@ -158,6 +159,8 @@ export function AnalisisCredito({
   onEnviarSup?: (motivo: string, nota: string) => void;
   // Crédito aprobado: pasa al paso siguiente (FEL, o LIQ / chequeo si la firma es física).
   onSiguiente?: () => void;
+  // Aprobado con firma electrónica: saltea FEL y pasa directo a LIQ (o a chequeo telefónico).
+  onPasarALiq?: () => void;
 }) {
   const {
     app,
@@ -187,7 +190,7 @@ export function AnalisisCredito({
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [reglaObs, setReglaObs] = useState<RiskRule | null>(null);
-  const [confirmarSiguiente, setConfirmarSiguiente] = useState(false);
+  const [confirmarSiguiente, setConfirmarSiguiente] = useState<"SIGUIENTE" | "LIQ" | null>(null);
   const [supAprobado, setSupAprobado] = useState<{ nota: string; intentado: boolean } | null>(null);
   const [legajoGarante, setLegajoGarante] = useState<string | null>(null);
   // Legajo abierto desde el modal de Observar: se apila encima sin cerrar la observación.
@@ -253,6 +256,15 @@ export function AnalisisCredito({
           }.`,
         };
   const supAprobadoHecho = !!app.aprobacionSuperior?.aprobadaPor;
+  // Atajo desde FEL: directo a LIQ, o a la bandeja de chequeo si el producto lo pide.
+  const puedeLiqDirecto = modalidadFirma(app.configuracion) !== "FISICA";
+  const liqDirecto = {
+    label: "Pasar a LIQ",
+    detalle: conChequeo
+      ? "Saltea la firma electrónica. El producto pide chequeo telefónico: el crédito pasa directo a la bandeja de chequeo y, con el chequeo correcto, a liquidación."
+      : "Saltea la firma electrónica: el crédito pasa directo a liquidación (LIQ).",
+  };
+  const destino = confirmarSiguiente === "LIQ" ? liqDirecto : siguiente;
   // Una reenviada con correcciones no se opera hasta leer y confirmar la observación
   // (creditonet-75); la confirmación queda guardada en la solicitud y en el historial.
   const requiereLectura =
@@ -1113,9 +1125,15 @@ export function AnalisisCredito({
                     </Button>
                   )}
                   {onSiguiente && (
-                    <Button variant="success" disabled={bloqueado} onClick={() => setConfirmarSiguiente(true)}>
+                    <Button variant="success" disabled={bloqueado} onClick={() => setConfirmarSiguiente("SIGUIENTE")}>
                       <IconCheck width={16} height={16} />
                       {siguiente.label}
+                    </Button>
+                  )}
+                  {onPasarALiq && puedeLiqDirecto && (
+                    <Button variant="success" disabled={bloqueado} onClick={() => setConfirmarSiguiente("LIQ")}>
+                      <IconCheck width={16} height={16} />
+                      {liqDirecto.label}
                     </Button>
                   )}
                 </>
@@ -1287,21 +1305,23 @@ export function AnalisisCredito({
         )}
       </Modal>
       <ConfirmationModal
-        open={confirmarSiguiente}
-        title={`¿${siguiente.label}?`}
-        descripcion={siguiente.detalle}
+        open={confirmarSiguiente !== null}
+        title={`¿${destino.label}?`}
+        descripcion={destino.detalle}
         rows={[
           { label: "Crédito", value: app.numeroCredito ?? "—" },
           { label: "Capital", value: formatARS(o.montoSolicitado) },
         ]}
-        confirmLabel={siguiente.label}
+        confirmLabel={destino.label}
         cancelLabel="Volver"
         tone="success"
         onConfirm={() => {
-          setConfirmarSiguiente(false);
-          onSiguiente?.();
+          const elegido = confirmarSiguiente;
+          setConfirmarSiguiente(null);
+          if (elegido === "LIQ") onPasarALiq?.();
+          else onSiguiente?.();
         }}
-        onCancel={() => setConfirmarSiguiente(false)}
+        onCancel={() => setConfirmarSiguiente(null)}
       />
       <Modal
         open={supAprobado !== null}
