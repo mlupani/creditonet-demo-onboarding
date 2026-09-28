@@ -265,6 +265,8 @@ export function AnalisisCredito({
   const verificacionDe = (r: RiskRule) => verificadas.find((v) => v.id === r.id);
   const reglasPendientes = marcadas.filter((r) => !verificacionDe(r));
   const bloqueado = observacionPendiente || (puedeOperar && reglasPendientes.length > 0);
+  // Antes de tomar el análisis: hay algo para chequear (reglas del motor u observación reenviada).
+  const hayPorVerificar = reglasPendientes.length > 0 || requiereLectura;
   const cfgEfectiva = configEfectiva(app.configuracion);
   // Oferta: renovaciones de créditos al día vs. precancelaciones obligatorias de créditos en mora.
   const sumaCancelacion = (cs: typeof aRenovar) => cs.reduce((t, c) => t + c.montoCancelacion, 0);
@@ -1015,10 +1017,24 @@ export function AnalisisCredito({
 
       <Card className="space-y-3 p-4 sm:p-5">
         {!puedeOperar ? (
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            {hayPorVerificar && (
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-warning-700">
+                <IconAlertTriangle width={16} height={16} />
+                Verificar observaciones pendientes
+              </p>
+            )}
             <Button
               size="lg"
-              onClick={() => (requiereLectura ? setLecturaAbierta(true) : tomarAnalisis())}
+              onClick={() => {
+                if (requiereLectura) {
+                  setLecturaAbierta(true);
+                  return;
+                }
+                tomarAnalisis();
+                // Con reglas por verificar, sube al aviso para que el analista las vea primero.
+                if (reglasPendientes.length > 0) window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             >
               Tomar análisis
             </Button>
