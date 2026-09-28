@@ -99,6 +99,35 @@ ya está bien.
     -X POST "$YOUTRACK_URL/api/issues/<ID>/attachments?fields=id,name"
   ```
 
+## Evidencia visual (tareas de front)
+
+Si la tarea cambia algo visible en la UI (pantalla, componente, estilo,
+texto, flujo), antes de crear el PR sacar capturas que demuestren el
+cambio o la feature pedida y subirlas al issue. Si la tarea no toca nada
+visible, saltear esta sección.
+
+1. Levantar la app desde el worktree del ticket (`npm run dev`, en
+   segundo plano) y esperar a que responda.
+2. Con `playwright-cli`, abrir la pantalla afectada y llegar al estado
+   que muestra el cambio (navegar, completar datos, abrir el modal,
+   etc.):
+   ```bash
+   playwright-cli open http://localhost:3000/<ruta>
+   playwright-cli screenshot --filename "${TMPDIR:-/tmp}/<ID>-1.png"
+   playwright-cli close
+   ```
+   Una captura por estado relevante (ej. antes/después de una acción);
+   no hacen falta más de 3. Guardarlas SIEMPRE fuera del repo (carpeta
+   temporal), nunca commitearlas.
+3. Subir cada captura como adjunto del issue con el mismo `curl` de
+   adjuntos de arriba (`file=@<ruta al .png>`), y en el comentario final
+   indicar qué muestra cada una.
+4. Frenar el servidor de desarrollo al terminar.
+
+Si no se puede llegar a la pantalla (la app no levanta, requiere datos
+que no hay, etc.), decirlo en el comentario del issue en vez de omitirlo
+en silencio, y seguir con el PR igual.
+
 ## Cuándo parar y cuándo no
 
 Un flujo corriendo no espera a un humano por defecto — ante una decisión
