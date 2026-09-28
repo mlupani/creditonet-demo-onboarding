@@ -564,7 +564,8 @@ export interface CreditApplication {
     // entonces no puede operar el crédito; se limpia al observar o al reenviar de nuevo.
     observacionConfirmada?: { fecha: string } | null;
     // Reglas de verificación del motor que el analista ya revisó. Mientras quede alguna marcada
-    // sin verificar no puede cambiar el estado del crédito; se limpian al observar.
+    // sin verificar no puede cambiar el estado del crédito. Se conservan en las idas y vueltas con
+    // el vendedor: una regla ya verificada no se vuelve a pedir.
     reglasVerificadas?: { id: string; nombre: string; analista: string; fecha: string }[];
     // Todas las observaciones que el analista le devolvió al canal de venta, en orden. Con los
     // comentarios arma el hilo de conversación (creditonet-88); `observacion` es la vigente.

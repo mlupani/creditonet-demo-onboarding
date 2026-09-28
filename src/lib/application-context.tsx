@@ -1571,8 +1571,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           derivacionCambioFinanciero: null,
           ofertaAnalista: null,
           observacionConfirmada: null,
-          // Con las correcciones del vendedor las reglas se vuelven a verificar.
-          reglasVerificadas: [],
           ...conObservacion(prev, { motivo, nota, fecha: fechaHoy(), pantallas, campos }),
         },
       }));
