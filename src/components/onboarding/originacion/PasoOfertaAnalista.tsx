@@ -91,7 +91,7 @@ export function PasoOfertaAnalista() {
 
           <Card className="p-4 sm:p-5">
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
-              {porGrilla && (
+              {/* {porGrilla && (
                 <Button
                   size="lg"
                   variant="outline"
@@ -100,7 +100,7 @@ export function PasoOfertaAnalista() {
                 >
                   Declinar oferta
                 </Button>
-              )}
+              )} */}
               <Button
                 size="lg"
                 variant="danger"
