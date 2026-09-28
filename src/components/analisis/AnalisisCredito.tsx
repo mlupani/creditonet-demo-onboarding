@@ -14,7 +14,7 @@ import {
   seCancela,
   totalPrecancelaciones,
 } from "@/lib/credit";
-import { getMotor, reglaMarcada } from "@/lib/motores";
+import { evaluarReglas, getMotor, reglaMarcada } from "@/lib/motores";
 import { reglasInstitucionalesCredito } from "@/lib/reglas-institucionales";
 import {
   SESION_ANALISTA,
@@ -31,7 +31,7 @@ import {
   valorCampoDisplay,
   type PantallaConCampos,
 } from "@/lib/campos-post-oferta";
-import type { PantallaPostOfertaId } from "@/lib/types";
+import type { PantallaPostOfertaId, RiskRule } from "@/lib/types";
 import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO } from "@/lib/validation";
 import { TERMINOS } from "@/lib/terminologia";
 import {
@@ -181,6 +181,7 @@ export function AnalisisCredito({
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
+  const [reglaObs, setReglaObs] = useState<RiskRule | null>(null);
   const [legajoGarante, setLegajoGarante] = useState<string | null>(null);
   // Legajo abierto desde el modal de Observar: se apila encima sin cerrar la observación.
   const [legajoObservar, setLegajoObservar] = useState(false);
@@ -204,7 +205,18 @@ export function AnalisisCredito({
   const plan = evaluarPlan(app);
   // Reglas no bloqueantes que no pasaron: no frenaron la solicitud y el analista las revisa
   // al final (Motor §10).
-  const marcadas = app.riesgo.reglas.filter(reglaMarcada);
+  // Reglas de verificación: las marcadas al evaluar más las que marcan hoy las reglas vigentes
+  // del motor (los créditos guardados se evaluaron con reglas anteriores). El analista tiene
+  // que verlas antes de decidir.
+  const enVivo =
+    app.riesgo.resultado === "PASA" && app.riesgo.motorId
+      ? evaluarReglas(app, getMotor(app.riesgo.motorId), app.riesgo.escenario)
+      : [];
+  const reglasMotor: RiskRule[] = [
+    ...app.riesgo.reglas,
+    ...enVivo.filter((r) => reglaMarcada(r) && !app.riesgo.reglas.some((g) => g.nombre === r.nombre)),
+  ];
+  const marcadas = reglasMotor.filter(reglaMarcada);
   const aRenovar = o.creditosActivos.filter(seCancela);
   // Cambio de datos financieros cuyo recálculo no pasó y que espera la decisión del supervisor.
   const derivacion = app.analista.derivacionCambioFinanciero;
@@ -382,15 +394,36 @@ export function AnalisisCredito({
       )}
 
       {marcadas.length > 0 && (
-        <Banner
-          tone="warning"
-          title={`${marcadas.length} regla${marcadas.length === 1 ? "" : "s"} no bloqueante${
-            marcadas.length === 1 ? "" : "s"
-          } para revisar`}
+        <div
+          role="alert"
+          className="animate-pulse-warning rounded-xl border-2 border-warning-400 bg-warning-50 p-4"
         >
-          No pasaron pero no frenaron la solicitud: quedaron marcadas para tu revisión.{" "}
-          {marcadas.map((r) => `${r.codigo} · ${r.nombre}: ${r.valorEvaluado}`).join(" · ")}
-        </Banner>
+          <p className="flex items-center gap-2 text-sm font-bold text-warning-700">
+            <IconAlertTriangle width={18} height={18} />
+            {marcadas.length} regla{marcadas.length === 1 ? "" : "s"} del motor para verificar
+          </p>
+          <p className="mt-1 text-sm text-warning-700">
+            No frenaron la solicitud, pero tenés que revisarlas antes de decidir.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {marcadas.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning-200 bg-white px-3 py-2"
+              >
+                <span className="text-sm text-ink-800">
+                  <span className="font-mono text-xs font-bold text-warning-700">{r.codigo}</span>{" "}
+                  <strong>{r.nombre}</strong>
+                  <span className="text-ink-500"> · {r.valorEvaluado}</span>
+                </span>
+                <Button size="sm" variant="outline" onClick={() => setReglaObs(r)}>
+                  <IconEye width={14} height={14} />
+                  Ver observación
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -689,7 +722,7 @@ export function AnalisisCredito({
           title={`Motor de riesgo · ${getMotor(app.riesgo.motorId).nombre}`}
           icon={<IconShieldCheck width={16} height={16} />}
           rows={[
-            ...app.riesgo.reglas.map((r) => ({
+            ...reglasMotor.map((r) => ({
               label: `${r.codigo} · ${r.nombre}${r.bloqueante ? "" : " (no bloqueante)"}`,
               value:
                 r.resultado === "PASA"
@@ -1071,6 +1104,48 @@ export function AnalisisCredito({
           derivarCambioDatosFinancieros(cambio, motivo);
         }}
       />
+      <Modal
+        open={reglaObs !== null}
+        onClose={() => setReglaObs(null)}
+        title={reglaObs ? `Regla para verificar · ${reglaObs.codigo}` : ""}
+        maxWidth="max-w-lg"
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setReglaObs(null)}>
+              Cerrar
+            </Button>
+          </div>
+        }
+      >
+        {reglaObs && (
+          <div className="space-y-3 text-sm">
+            <p className="text-base font-semibold text-ink-900">{reglaObs.nombre}</p>
+            <p className="text-ink-600">{reglaObs.detalle}</p>
+            <dl className="space-y-2 rounded-lg border border-ink-200 bg-ink-25 p-3">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+                  Se marca cuando se cumple
+                </dt>
+                <dd className="mt-0.5 font-mono text-ink-800">
+                  {reglaObs.condicion.replace(/^Que no se cumpla /, "")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-ink-400">Valores del cliente</dt>
+                <dd className="mt-0.5 text-ink-800">{reglaObs.valorEvaluado}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-ink-400">Fuente</dt>
+                <dd className="mt-0.5 text-ink-800">{reglaObs.fuente}</dd>
+              </div>
+            </dl>
+            <Banner tone="warning">
+              La regla es de verificación: no rechaza el crédito. Contrastá estos datos con el legajo
+              y el buró antes de aprobar, observar o rechazar.
+            </Banner>
+          </div>
+        )}
+      </Modal>
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
       <LegajoVirtualModal
         open={legajoGarante !== null}

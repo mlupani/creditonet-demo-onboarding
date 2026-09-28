@@ -158,6 +158,60 @@ export const VARIABLES: VariableMotor[] = [
     detalle: "Deuda total informada por el buró externo.",
     valor: (app) => (bcra(app) >= 3 ? 2_500_000 : 350_000),
   },
+  {
+    nombre: "BURO-consultas_30d",
+    fuente: "BURO",
+    tipo: "numero",
+    detalle: "Consultas de otras entidades al buró en los últimos 30 días.",
+    // Mock: con mora interna o con DNI terminado en impar el cliente viene "muy consultado",
+    // para que la regla de verificación aparezca en parte de los créditos de la demo.
+    valor: (app) =>
+      interna(app) >= 3 || Number((app.cliente?.dni ?? "").replace(/\D/g, "").slice(-1)) % 2 === 1
+        ? 6
+        : 1,
+  },
+  {
+    nombre: "CNET-genero",
+    fuente: "CNET",
+    tipo: "texto",
+    detalle: "Género informado por la API pública. Se compara con un texto: \"Femenino\".",
+    valor: (app) => app.cliente?.genero || null,
+  },
+  {
+    nombre: "CNET-sueldo_bruto",
+    fuente: "CNET",
+    tipo: "numero",
+    detalle: "Ingreso bruto mensual declarado.",
+    valor: (app) => app.laboral.ingresoBruto,
+  },
+  {
+    nombre: "CNET-creditos_activos",
+    fuente: "CNET",
+    tipo: "numero",
+    detalle: "Cantidad de créditos vigentes con la financiera.",
+    valor: (app) => app.oferta.creditosActivos.length,
+  },
+  {
+    nombre: "CNET-cuotas_vigentes",
+    fuente: "CNET",
+    tipo: "numero",
+    detalle: "Suma de las cuotas de los créditos vigentes con la financiera.",
+    valor: (app) => app.oferta.creditosActivos.reduce((t, c) => t + c.valorCuota, 0),
+  },
+  {
+    nombre: "BCRA-cheques_rechazados",
+    fuente: "BCRA",
+    tipo: "numero",
+    detalle: "Cheques rechazados sin fondos informados en la Central de Cheques.",
+    valor: (app) => (bcra(app) >= 4 ? 2 : 0),
+  },
+  {
+    nombre: "BCRA-entidades",
+    fuente: "BCRA",
+    tipo: "numero",
+    detalle: "Cantidad de entidades con deuda informada en la Central de Deudores.",
+    valor: (app) => (bcra(app) >= 3 ? 5 : bcra(app) === 2 ? 3 : 1),
+  },
 ];
 
 export function variablesDeFuentes(fuentes: FuenteVariable[]): VariableMotor[] {
@@ -295,7 +349,7 @@ function motoresIniciales(): MotorRiesgo[] {
       codigo: "06",
       nombre: "Políticas generales BCRA y buró interno",
       fuentes: ["CNET", "BCRA"],
-      concatenarCon: null,
+      concatenarCon: "motor-buro-capacidad",
       condicionesLaborales: [],
       reglas: [
         { id: "r1", nombre: "Situación BCRA irregular", expresion: "BCRA-situacion >= 3", accion: "RECHAZAR" },
@@ -315,6 +369,80 @@ function motoresIniciales(): MotorRiesgo[] {
           expresion: "CNET-coincidencias_blacklist > 0",
           accion: "VERIFICAR",
         },
+        {
+          // Ex regla institucional RI-01: dejó de ser universal y pasó al motor.
+          id: "r5",
+          nombre: "Mujer mayor de 65 años",
+          expresion: 'CNET-genero = "Femenino" AND CNET-edad > 65',
+          accion: "RECHAZAR",
+        },
+        { id: "r6", nombre: "Mora BCRA mayor a 90 días", expresion: "BCRA-dias_mora > 90", accion: "RECHAZAR" },
+        {
+          id: "r7",
+          nombre: "Cheques rechazados sin fondos",
+          expresion: "BCRA-cheques_rechazados > 0",
+          accion: "RECHAZAR",
+        },
+        {
+          id: "r8",
+          nombre: "Deuda en 5 o más entidades",
+          expresion: "BCRA-entidades >= 5",
+          accion: "VERIFICAR",
+        },
+      ],
+    }),
+    // Segundo tramo de la cadena (v1 §5, "Evaluación en cascada"): buró externo y capacidad
+    // de pago, después de las políticas generales.
+    grupo({
+      id: "motor-buro-capacidad",
+      codigo: "07",
+      nombre: "Buró externo y capacidad de pago",
+      fuentes: ["CNET", "BURO"],
+      concatenarCon: null,
+      condicionesLaborales: [],
+      reglas: [
+        {
+          id: "r1",
+          nombre: "Deuda en buró mayor a 10 sueldos netos",
+          expresion: "BURO-deuda_total > CNET-sueldo_neto * 10",
+          accion: "VERIFICAR",
+        },
+        {
+          id: "r2",
+          nombre: "4 o más créditos con cuotas activas",
+          expresion: "BURO-cuotas_activas >= 4",
+          accion: "VERIFICAR",
+        },
+        {
+          id: "r3",
+          nombre: "Muchas consultas recientes al buró",
+          expresion: "BURO-consultas_30d > 5",
+          accion: "VERIFICAR",
+        },
+        {
+          id: "r4",
+          nombre: "Cuotas vigentes mayores al 35 % del neto",
+          expresion: "CNET-cuotas_vigentes * 100 / CNET-sueldo_neto > 35",
+          accion: "VERIFICAR",
+        },
+        {
+          id: "r5",
+          nombre: "Deuda interna mayor a $500.000",
+          expresion: "CNET-monto_deuda > 500000",
+          accion: "VERIFICAR",
+        },
+        {
+          id: "r6",
+          nombre: "Sueldo bruto menor al neto (dato inconsistente)",
+          expresion: "CNET-sueldo_bruto < CNET-sueldo_neto",
+          accion: "VERIFICAR",
+        },
+        {
+          id: "r7",
+          nombre: "4 o más créditos vigentes con la financiera",
+          expresion: "CNET-creditos_activos >= 4",
+          accion: "RECHAZAR",
+        },
       ],
     }),
   ];
@@ -324,7 +452,7 @@ function motoresIniciales(): MotorRiesgo[] {
 export const MOTORES: MotorRiesgo[] = motoresIniciales();
 
 const store = crearStoreAbm<MotorRiesgo>({
-  clave: "creditonet.motores.v1",
+  clave: "creditonet.motores.v2",
   inicial: motoresIniciales(),
   valido: (r) => !!r?.id && Array.isArray(r.reglas) && Array.isArray(r.fuentes),
   aplicar: (lista) => {

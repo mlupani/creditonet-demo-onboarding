@@ -61,6 +61,7 @@
   --animate-draw: draw 0.55s ease-out 0.2s both;
   --animate-slide-down: slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-pulse-electric: pulse-electric 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-pulse-warning: pulse-warning 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
   @keyframes fade-up {
     from {
@@ -121,6 +122,16 @@
       transform: none;
     }
   }
+  /* Reglas de verificación del motor: el analista tiene que verlas sí o sí. */
+  @keyframes pulse-warning {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(234, 150, 12, 0.6);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(234, 150, 12, 0);
+    }
+  }
+
   @keyframes pulse-electric {
     0%, 100% {
       box-shadow: 0 0 0 0 rgba(31, 85, 240, 0.7);

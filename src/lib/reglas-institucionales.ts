@@ -1,5 +1,8 @@
 // Reglas universales / institucionales (Motor de Riesgo v2 §6 y §11 · Arquitectura §6).
 //
+// La edad máxima para personas de género femenino dejó de ser universal: ahora es una regla
+// del motor de riesgo (grupo 06, Políticas generales).
+//
 // Son políticas transversales al negocio: no pertenecen a un motor en particular y se
 // evalúan en el momento en que están disponibles los datos que necesitan. Una regla
 // bloqueante que no pasa descarta la solicitud antes de continuar.
@@ -9,7 +12,7 @@
 import type { CreditApplication, MomentoRegla, ReglaInstitucional, ResultadoRegla } from "./types";
 import { configEfectiva } from "./config";
 import { LIMITE_SUELDOS_BRUTOS } from "./credit";
-import { calcularEdad, formatARS, formatPct } from "./format";
+import { formatARS, formatPct } from "./format";
 import { reglaBloquea } from "./motores";
 
 const ORDEN_MOMENTO: Record<MomentoRegla, number> = { IDENTIFICACION: 1, EVALUACION: 2 };
@@ -19,7 +22,6 @@ export const MOMENTO_LABEL: Record<MomentoRegla, string> = {
   EVALUACION: "Se evalúa al solicitar, con los datos mínimos confirmados",
 };
 
-export const EDAD_MAXIMA_FEMENINO = 65;
 export const ENDEUDAMIENTO_MAXIMO_PCT = 50;
 
 /**
@@ -37,12 +39,6 @@ export function evaluarInstitucionales(
   const resultado = (listo: boolean, pasa: boolean): ResultadoRegla | "ESPERANDO_DATOS" =>
     !listo ? "ESPERANDO_DATOS" : pasa ? "PASA" : "NO_PASA";
 
-  // RI-01 · "No otorgar créditos a personas femeninas mayores de 65 años" (Motor §6).
-  const genero = app.cliente?.genero ?? "";
-  const edad = calcularEdad(app.cliente?.fechaNacimiento ?? "");
-  const ri01Listo = alcanzado("IDENTIFICACION") && !!genero && edad !== null;
-  const ri01Pasa = !(genero === "Femenino" && edad !== null && edad > EDAD_MAXIMA_FEMENINO);
-
   // RI-02 · "No otorgar cuando el nivel de endeudamiento supera el 50 %" (Motor §6). Usa
   // todas las cuotas vigentes: es anterior a la primera oferta y a la precancelación.
   const neto = app.laboral.ingresoNeto;
@@ -51,18 +47,6 @@ export function evaluarInstitucionales(
   const ri02Listo = alcanzado("EVALUACION") && endeudamientoPct !== null;
 
   return [
-    {
-      id: "edad-genero",
-      codigo: "RI-01",
-      nombre: "Edad máxima para personas de género femenino",
-      detalle: `No se otorgan créditos a personas de género femenino mayores de ${EDAD_MAXIMA_FEMENINO} años.`,
-      fuente: "API pública",
-      valorEvaluado: edad !== null && genero ? `${genero} · ${edad} años` : "Sin dato",
-      condicion: `Femenino hasta ${EDAD_MAXIMA_FEMENINO} años`,
-      bloqueante: true,
-      momento: "IDENTIFICACION",
-      resultado: resultado(ri01Listo, ri01Pasa),
-    },
     {
       id: "endeudamiento",
       codigo: "RI-02",
@@ -96,7 +80,7 @@ export interface ReglaInstitucionalCredito {
 /**
  * Reglas institucionales que se muestran en el análisis del préstamo con la posición del
  * cliente frente a cada regla: capital máximo, capital hasta 3 sueldos brutos y nivel de
- * endeudamiento (más RI-01). Se calculan en vivo con los datos actuales de la solicitud: las
+ * endeudamiento. Se calculan en vivo con los datos actuales de la solicitud: las
  * de capital dependen del monto de la oferta, que recién existe después de la evaluación.
  */
 export function reglasInstitucionalesCredito(app: CreditApplication): ReglaInstitucionalCredito[] {
@@ -106,7 +90,7 @@ export function reglasInstitucionalesCredito(app: CreditApplication): ReglaInsti
   const topeBrutos = bruto * LIMITE_SUELDOS_BRUTOS;
   const conCapital = (pasa: boolean): ReglaInstitucionalCredito["resultado"] =>
     capital > 0 ? (pasa ? "PASA" : "NO_PASA") : "ESPERANDO_DATOS";
-  // RI-01 y RI-02 se recalculan con los datos actuales: la posición del cliente es la de hoy.
+  // RI-02 se recalcula con los datos actuales: la posición del cliente es la de hoy.
   const vigentes = evaluarInstitucionales(app, "EVALUACION");
 
   const capitalMaximo: ReglaInstitucionalCredito = {
@@ -127,7 +111,6 @@ export function reglasInstitucionalesCredito(app: CreditApplication): ReglaInsti
     resultado: bruto > 0 ? conCapital(capital <= topeBrutos) : "ESPERANDO_DATOS",
   };
   const endeudamiento = vigentes.find((r) => r.codigo === "RI-02");
-  const edadGenero = vigentes.find((r) => r.codigo === "RI-01");
   const desdeGuardada = (r: ReglaInstitucional): ReglaInstitucionalCredito => ({
     codigo: r.codigo,
     nombre: r.nombre,
@@ -140,6 +123,5 @@ export function reglasInstitucionalesCredito(app: CreditApplication): ReglaInsti
     capitalMaximo,
     sueldosBrutos,
     ...(endeudamiento ? [{ ...desdeGuardada(endeudamiento), nombre: "Nivel de endeudamiento" }] : []),
-    ...(edadGenero ? [desdeGuardada(edadGenero)] : []),
   ];
 }
