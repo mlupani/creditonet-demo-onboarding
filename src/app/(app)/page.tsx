@@ -95,6 +95,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
 const SUBESTADOS: { id: string; label: string }[] = [
   { id: "BORRADOR", label: "Borrador" },
   { id: "EN_TRAMITE", label: "En trámite" },
+  { id: "PEND", label: "PEND · Pendientes (con oferta)" },
   { id: "OBS", label: "OBS · Observada" },
   { id: "OBS_COFE", label: "OBS · COFE · Observada con cambio de oferta previo" },
   { id: "COFE", label: "COFE · Cambio de oferta" },
@@ -111,7 +112,20 @@ const SUBESTADOS: { id: string; label: string }[] = [
   { id: "ANULADO", label: "Anulada" },
 ];
 
+// PEND: la solicitud sigue en el onboarding pero ya tiene oferta (llegó al paso 6 y sigue en la
+// oferta o en la carga post-oferta).
+function esPendiente(
+  c: Pick<CreditApplication, "estado" | "oferta" | "riesgo">
+): boolean {
+  return (
+    (c.estado === "BORRADOR" || c.estado === "EN_TRAMITE") &&
+    c.oferta.planId !== null &&
+    c.riesgo.estado === "COMPLETO"
+  );
+}
+
 function subestadoDe(c: CreditApplication): string {
+  if (esPendiente(c)) return "PEND";
   if (c.estado === "OBSERVADO" || c.estado === "CAMBIO_OFERTA") return subestadoObservado(c) ?? "OBS";
   if (c.estado === "CHEQUEO_TELEFONICO") return c.chequeoTelefonico?.observacion ? "CHEQUEO_OBS" : "CHEQUEO";
   return c.estado;
@@ -417,12 +431,16 @@ export default function BandejaCanalVentaPage() {
                                 {app.oferta.planId && <p className="mt-1 text-xs font-semibold tabular-nums text-ink-700">{formatARS(app.oferta.montoSolicitado)} · {app.oferta.plazo} cuotas</p>}
                               </div>
                               <div>
-                                <EstadoBadge
-                                  estado={app.estado}
-                                  etiqueta={etiquetaObservado(app)}
-                                  conCodigo
-                                  soloCodigo={esSoloCodigo(app.estado)}
-                                />
+                                {esPendiente(app) ? (
+                                  <StatusBadge tone="info">Pendiente · PEND</StatusBadge>
+                                ) : (
+                                  <EstadoBadge
+                                    estado={app.estado}
+                                    etiqueta={etiquetaObservado(app)}
+                                    conCodigo
+                                    soloCodigo={esSoloCodigo(app.estado)}
+                                  />
+                                )}
                                 {app.estado === "CHEQUEO_TELEFONICO" && app.chequeoTelefonico?.observacion && (
                                   <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
                                 )}
@@ -469,12 +487,16 @@ export default function BandejaCanalVentaPage() {
                                   )}
                                 </div>
                                 <div>
-                                  <EstadoBadge
-                                    estado={cred.estado}
-                                    etiqueta={etiquetaObservado(cred as unknown as CreditApplication)}
-                                    conCodigo
-                                    soloCodigo={esSoloCodigo(cred.estado)}
-                                  />
+                                  {esPendiente(cred) ? (
+                                    <StatusBadge tone="info">Pendiente · PEND</StatusBadge>
+                                  ) : (
+                                    <EstadoBadge
+                                      estado={cred.estado}
+                                      etiqueta={etiquetaObservado(cred as unknown as CreditApplication)}
+                                      conCodigo
+                                      soloCodigo={esSoloCodigo(cred.estado)}
+                                    />
+                                  )}
                                   {cred.estado === "CHEQUEO_TELEFONICO" && cred.chequeoTelefonico?.observacion && (
                                     <StatusBadge tone="warning" className="mt-1">Observado</StatusBadge>
                                   )}
