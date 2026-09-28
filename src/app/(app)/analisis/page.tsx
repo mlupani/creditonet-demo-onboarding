@@ -409,9 +409,9 @@ export default function AnalisisPage() {
               <Button variant="outline" onClick={() => setVerAprobado("comentarios")}>
                 Ver comentarios{app.comentarios.length > 0 ? ` (${app.comentarios.length})` : ""}
               </Button>
-              <Button variant="outline" onClick={() => setVerAprobado("mensajes")}>
+              {/* <Button variant="outline" onClick={() => setVerAprobado("mensajes")}>
                 Ver observaciones
-              </Button>
+              </Button> */}
             </div>
             {(modalidad === "ELECTRONICA" || modalidad === "AMBAS") && (
               <Button
