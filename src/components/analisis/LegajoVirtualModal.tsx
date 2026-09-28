@@ -170,6 +170,48 @@ export function LegajoVirtualModal({
         </div>
       )}
 
+      {!soloGarante && po.referencias.length > 0 && (
+        <div className="mt-5 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-400">Referencias personales</p>
+          {po.referencias.map((r, idx) => {
+            const nombre = [r.nombre, r.apellido].filter(Boolean).join(" ") || `Referencia ${idx + 1}`;
+            const docs = [...(r.reciboSueldo ?? []), ...(r.otrosDocumentos ?? [])];
+            return (
+              <div key={r.id} className="rounded-lg border border-ink-200 bg-ink-50/40 px-3 py-3">
+                <p className="text-sm font-semibold text-ink-900">
+                  {idx + 1}. {nombre} - DNI {r.dni || "-"}
+                </p>
+                <p className="mt-0.5 text-xs text-ink-500">
+                  {r.vinculo || "Sin vínculo"} · Tel. {r.telefono || "-"} · {r.email || "sin email"}
+                </p>
+                {docs.length > 0 ? (
+                  <ul className="mt-2 space-y-1">
+                    {docs.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2 text-xs text-ink-600">
+                        <span className="flex items-center gap-1.5">
+                          <IconFileText width={12} height={12} />
+                          {a.nombre} - {a.detalle}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPreview({ archivo: a, tipo: `Referencia · ${nombre}` })}
+                        >
+                          <IconEye width={12} height={12} />
+                          Ver
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-xs text-ink-400">Sin documentación adjunta (no se exige para referencias).</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {!soloGarante && app.identificacion.tipoCliente === "NUEVO" && (
         <p className="mt-4 rounded-lg border border-ink-100 bg-ink-50 px-3 py-2 text-xs text-ink-500">
           {app.identificacion.firmaRegistrada ? "Firma de referencia registrada en la identificacion." : "Sin firma de referencia registrada."}

@@ -179,6 +179,8 @@ export function AnalisisCredito({
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [legajoGarante, setLegajoGarante] = useState<string | null>(null);
+  // Legajo abierto desde el modal de Observar: se apila encima sin cerrar la observación.
+  const [legajoObservar, setLegajoObservar] = useState(false);
   const [tarjetasAbierto, setTarjetasAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
@@ -1065,7 +1067,9 @@ export function AnalisisCredito({
 
       <Modal
         open={modal !== null}
-        onClose={() => setModal(null)}
+        onClose={() => {
+          if (!legajoObservar) setModal(null);
+        }}
         title={
           modal === "observar"
             ? "Observar la solicitud"
@@ -1096,6 +1100,17 @@ export function AnalisisCredito({
               ? "Anular no es un rechazo de riesgo: se usa cuando el cliente desiste. La solicitud queda cerrada como Anulada."
               : "El rechazo es definitivo. Se registran el motivo codificado y la observación."}
         </p>
+        {modal === "observar" && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2.5">
+            <p className="text-xs text-ink-600">
+              Revisá la documentación del titular, los garantes y las referencias antes de observar.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => setLegajoObservar(true)}>
+              <IconFileText width={14} height={14} />
+              Ver legajo virtual
+            </Button>
+          </div>
+        )}
         {modal !== "anular" && (
           <div className="mt-4">
             <SelectField
@@ -1207,6 +1222,8 @@ export function AnalisisCredito({
           error="Ingresá al menos 5 caracteres para que el registro sea claro."
         />
       </Modal>
+      {/* Después del modal de observar para quedar encima de él. */}
+      <LegajoVirtualModal open={legajoObservar} onClose={() => setLegajoObservar(false)} />
     </div>
   );
 }
