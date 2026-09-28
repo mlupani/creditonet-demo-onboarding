@@ -478,7 +478,7 @@ export function AnalisisCredito({
                       ✓ Verificada · {verificacionDe(r)!.analista} · {verificacionDe(r)!.fecha}
                     </span>
                   ) : (
-                    <span className="text-xs font-semibold text-warning-700">Pendiente</span>
+                    <span className="text-xs font-semibold text-danger-600">Sin verificar</span>
                   )}
                   <Button size="sm" variant="outline" onClick={() => setReglaObs(r)}>
                     <IconEye width={14} height={14} />
@@ -662,30 +662,33 @@ export function AnalisisCredito({
           rows={[
             ...reglasMotor.map((r) => ({
               label: `${r.codigo} · ${r.nombre}${r.bloqueante ? "" : " (no bloqueante)"}`,
+              // Las de verificación: rojo hasta que se marcan arriba, verde una vez verificadas.
               value:
                 r.resultado === "PASA"
                   ? "✓ Pasa"
                   : reglaMarcada(r)
-                    ? "! Marcada · revisar"
+                    ? verificacionDe(r)
+                      ? "✓ Verificada"
+                      : "✕ Sin verificar"
                     : "✕ No pasa",
               tone:
-                r.resultado === "PASA"
+                r.resultado === "PASA" || (reglaMarcada(r) && verificacionDe(r))
                   ? ("success" as const)
-                  : reglaMarcada(r)
-                    ? ("warning" as const)
-                    : ("danger" as const),
+                  : ("danger" as const),
             })),
             {
               label: "Resultado",
               value: app.riesgo.resultado
                 ? `${RESULTADO_LABEL[app.riesgo.resultado]}${
-                    marcadas.length > 0
-                      ? ` · ${marcadas.length} marcada${marcadas.length === 1 ? "" : "s"}`
-                      : ""
+                    reglasPendientes.length > 0
+                      ? ` · ${reglasPendientes.length} sin verificar`
+                      : marcadas.length > 0
+                        ? ` · ${marcadas.length} verificada${marcadas.length === 1 ? "" : "s"}`
+                        : ""
                   }`
                 : "—",
               strong: true,
-              tone: marcadas.length > 0 ? ("warning" as const) : ("success" as const),
+              tone: reglasPendientes.length > 0 ? ("danger" as const) : ("success" as const),
             },
             { label: "Evaluado", value: app.riesgo.fecha ?? "—" },
           ]}
