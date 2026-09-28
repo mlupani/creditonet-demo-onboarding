@@ -10,20 +10,34 @@ import { Button } from "@/components/ui/Button";
 import { DocumentoPreviewModal } from "@/components/ui/DocumentoPreviewModal";
 import { IconCheck, IconEye, IconFileText } from "@/components/icons";
 
-export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+// Con `garanteId` muestra sólo la documentación de ese garante (botón de su ficha en el análisis).
+export function LegajoVirtualModal({
+  open,
+  onClose,
+  garanteId = null,
+}: {
+  open: boolean;
+  onClose: () => void;
+  garanteId?: string | null;
+}) {
   const { app } = useApplication();
   const cfg = configEfectiva(app.configuracion);
   const po = app.postOferta;
   const obligatorios = cfg.documentos.filter((d) => d.obligatorio);
   const cargados = obligatorios.filter((d) => (po.legajo[d.tipoId]?.length ?? 0) > 0).length;
-  const garantes = po.garantes;
+  const garantes = garanteId ? po.garantes.filter((g) => g.id === garanteId) : po.garantes;
+  const soloGarante = garanteId ? garantes[0] : undefined;
   const [preview, setPreview] = useState<{ archivo: ArchivoLegajo; tipo: string } | null>(null);
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Legajo virtual"
+      title={
+        soloGarante
+          ? `Legajo virtual · Garante ${[soloGarante.nombre, soloGarante.apellido].filter(Boolean).join(" ")}`
+          : "Legajo virtual"
+      }
       maxWidth="max-w-2xl"
       footer={
         <div className="flex justify-end">
@@ -33,6 +47,9 @@ export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: 
         </div>
       }
     >
+      {/* Con un garante puntual se omite la documentación del titular. */}
+      {!soloGarante && (
+      <>
       <p className="text-sm text-ink-600">
         Documentacion del credito {app.numeroCredito ?? "-"} - {cargados} de {obligatorios.length} obligatorios completos.
         {po.impresion ? ` - ${po.impresion.accion === "IMPRESO" ? "Impreso" : "Visualizado"} el ${po.impresion.fecha}` : " - Sin imprimir"}
@@ -82,10 +99,14 @@ export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: 
           })}
         </ul>
       </div>
+      </>
+      )}
 
       {garantes.length > 0 && (
-        <div className="mt-5 space-y-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-ink-400">Documentacion de garantes</p>
+        <div className={`${soloGarante ? "" : "mt-5 "}space-y-3`}>
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-400">
+            {soloGarante ? "Documentacion del garante" : "Documentacion de garantes"}
+          </p>
           {garantes.map((g, idx) => {
             const nombre = [g.nombre, g.apellido].filter(Boolean).join(" ") || `Garante ${idx + 1}`;
             return (
@@ -149,7 +170,7 @@ export function LegajoVirtualModal({ open, onClose }: { open: boolean; onClose: 
         </div>
       )}
 
-      {app.identificacion.tipoCliente === "NUEVO" && (
+      {!soloGarante && app.identificacion.tipoCliente === "NUEVO" && (
         <p className="mt-4 rounded-lg border border-ink-100 bg-ink-50 px-3 py-2 text-xs text-ink-500">
           {app.identificacion.firmaRegistrada ? "Firma de referencia registrada en la identificacion." : "Sin firma de referencia registrada."}
         </p>

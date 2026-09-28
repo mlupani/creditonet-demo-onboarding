@@ -38,7 +38,6 @@ import {
   formatARS,
   formatDNI,
   formatPct,
-  nombreApellido,
 } from "@/lib/format";
 import { textoUltimoPago, vectorPago } from "@/lib/historial-pagos";
 import { historialCredito } from "@/lib/historial";
@@ -65,6 +64,7 @@ import { BuroMotorModal, CreditosRenovarModal, DatosCamposModal, ReglasMotorModa
 import { HistorialPagosModal } from "./HistorialPagosModal";
 import { DesarrolloPrestamoModal } from "./DesarrolloPrestamoModal";
 import { LegajoVirtualModal } from "./LegajoVirtualModal";
+import { PersonasVinculadas } from "./PersonasVinculadas";
 import {
   IconAlertTriangle,
   IconBuilding,
@@ -178,6 +178,7 @@ export function AnalisisCredito({
   const [cambioAbierto, setCambioAbierto] = useState(false);
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
+  const [legajoGarante, setLegajoGarante] = useState<string | null>(null);
   const [tarjetasAbierto, setTarjetasAbierto] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
@@ -239,24 +240,6 @@ export function AnalisisCredito({
       label: c.label,
       value: valorOPresentacion(valorCampoDisplay(app, c) || valorCampo(app, c)),
     }));
-  }
-
-  function domicilioCompleto(d: {
-    calle: string;
-    numero: string;
-    piso: string;
-    departamento: string;
-    provincia: string;
-    localidad: string;
-    codigoPostal: string;
-  }): string {
-    const base = `${d.calle} ${d.numero}`.trim();
-    const piso = d.piso ? ` piso ${d.piso}` : "";
-    const depto = d.departamento ? ` dpto ${d.departamento}` : "";
-    const loc = [d.localidad, d.provincia].filter(Boolean).join(", ");
-    const cp = d.codigoPostal ? ` (CP ${d.codigoPostal})` : "";
-    if (!base && !loc) return "—";
-    return `${base}${piso}${depto}${loc ? ` · ${loc}` : ""}${cp}`.trim() || "—";
   }
 
   // Hasta MAX_CAMBIOS_OFERTA cambios por solicitud: superado el límite se muestra el historial
@@ -740,72 +723,24 @@ export function AnalisisCredito({
 
       {/* Detalle expandido: referencias, garantes y créditos (tablas post-oferta) */}
       <div className="grid gap-4">
-        <Card className="p-5">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <IconUser width={16} height={16} />
-            </span>
-            Referencias personales
-          </h3>
-          {po.referencias.length === 0 ? (
-            <p className="mt-3 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-500">
-              Sin referencias cargadas.
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {po.referencias.map((r, idx) => (
-                <li key={r.id} className="rounded-xl border border-ink-200 px-4 py-3">
-                  <p className="text-sm font-semibold text-ink-900">
-                    {idx + 1}. {valorOPresentacion(r.vinculo) || "Sin vínculo"} · {nombreApellido(r) || "Sin nombre"} · DNI {valorOPresentacion(r.dni)}
-                    {r.autocompletado && <span className="ml-2 text-xs font-medium text-success-700">autocompletado por DNI</span>}
-                  </p>
-                  <div className="mt-2 grid gap-1 text-xs text-ink-600 sm:grid-cols-2">
-                    <span>Domicilio: {domicilioCompleto(r.domicilio)}</span>
-                    <span>Email: {valorOPresentacion(r.email)}</span>
-                    <span>Teléfono: {valorOPresentacion(r.telefono)}</span>
-                    <span>Condición laboral: {valorOPresentacion(r.condicionLaboral)}</span>
-                    <span>Banco / CBU: {valorOPresentacion(r.banco)} {valorOPresentacion(r.cbu) !== "—" ? `· ${r.cbu}` : ""}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+        <PersonasVinculadas
+          titulo="Referencias personales"
+          icono={<IconUser width={16} height={16} />}
+          tipo="REFERENCIA"
+          personas={po.referencias}
+          minimo={cfgEfectiva.referencias.minimo}
+          maximo={cfgEfectiva.referencias.maximo}
+        />
 
-        <Card className="p-5">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <IconShieldCheck width={16} height={16} />
-            </span>
-            Garantes
-          </h3>
-          {po.garantes.length === 0 ? (
-            <p className="mt-3 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-500">
-              Sin garantes cargados{cfgEfectiva.garantes.minimo > 0 ? ` (mínimo requerido: ${cfgEfectiva.garantes.minimo})` : ""}.
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-3">
-              {po.garantes.map((g, idx) => (
-                <li key={g.id} className="rounded-xl border border-ink-200 px-4 py-3">
-                  <p className="text-sm font-semibold text-ink-900">
-                    {idx + 1}. {valorOPresentacion(g.vinculo) || "Sin vínculo"} · {nombreApellido(g) || "Sin nombre"} · DNI {valorOPresentacion(g.dni)}
-                    {g.autocompletado && <span className="ml-2 text-xs font-medium text-success-700">autocompletado</span>}
-                  </p>
-                  <div className="mt-2 grid gap-1 text-xs text-ink-600 sm:grid-cols-2">
-                    <span>Domicilio: {domicilioCompleto(g.domicilio)}</span>
-                    <span>Email: {valorOPresentacion(g.email)}</span>
-                    <span>Teléfono: {valorOPresentacion(g.telefono)}</span>
-                    <span>Condición laboral: {valorOPresentacion(g.condicionLaboral)} · Bruto {formatARS(g.ingresoBruto)} / Neto {formatARS(g.ingresoNeto)}</span>
-                    <span>Empleador: {valorOPresentacion(g.empleadorCalle)} · {valorOPresentacion(g.empleadorLocalidad)} · {valorOPresentacion(g.empleadorCompaniaTelefonica)} {valorOPresentacion(g.empleadorTelefono)}</span>
-                    <span>Banco / CBU: {valorOPresentacion(g.banco)} {valorOPresentacion(g.cbu) !== "—" ? `· ${g.cbu}` : ""}</span>
-                    <span>Recibos sueldo: {g.reciboSueldo.length > 0 ? g.reciboSueldo.map((a) => a.nombre).join(", ") : "—"}</span>
-                    <span>Otros docs garante: {g.otrosDocumentos.length > 0 ? g.otrosDocumentos.map((a) => a.nombre).join(", ") : "—"}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+        <PersonasVinculadas
+          titulo="Garantes"
+          icono={<IconShieldCheck width={16} height={16} />}
+          tipo="GARANTE"
+          personas={po.garantes}
+          minimo={cfgEfectiva.garantes.minimo}
+          maximo={cfgEfectiva.garantes.maximo}
+          onVerLegajo={setLegajoGarante}
+        />
 
         <Card className="p-5">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-ink-900">
@@ -1120,6 +1055,11 @@ export function AnalisisCredito({
         }}
       />
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
+      <LegajoVirtualModal
+        open={legajoGarante !== null}
+        garanteId={legajoGarante}
+        onClose={() => setLegajoGarante(null)}
+      />
       <HistorialPagosModal open={historialAbierto} onClose={() => setHistorialAbierto(false)} />
       <DesarrolloPrestamoModal open={desarrolloAbierto} onClose={() => setDesarrolloAbierto(false)} />
 
