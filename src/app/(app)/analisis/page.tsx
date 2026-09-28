@@ -45,6 +45,7 @@ export default function AnalisisPage() {
     aprobarCredito,
     dejarAprobado,
     enviarCofeASuperior,
+    enviarAnalisisASuperior,
     reiniciarDemo,
   } = useApplication();
   const [aprobarModal, setAprobarModal] = useState(false);
@@ -173,7 +174,9 @@ export default function AnalisisPage() {
   }
 
   // Origen COFE en manos del superior: sin firma aprobada, confirma igual que el analista.
-  const cofeSuperior = app.estado === "SUPERIOR" && !firmaAprobada(app.firmas);
+  // Enviada a SUP desde la observación del análisis: el superior la resuelve en el análisis.
+  const supAnalisis = app.estado === "SUPERIOR" && app.aprobacionSuperior?.origen === "ANALISIS";
+  const cofeSuperior = app.estado === "SUPERIOR" && !firmaAprobada(app.firmas) && !supAnalisis;
 
   if (app.estado === "CAMBIO_OFERTA" || cofeSuperior) {
     // Confirmar oferta: el vendedor aceptó la del analista o eligió una menor. Confirmar
@@ -512,7 +515,7 @@ export default function AnalisisPage() {
       <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-            Analista de riesgo
+            {supAnalisis ? "Superior de riesgo" : "Analista de riesgo"}
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
             Crédito {app.numeroCredito}
@@ -527,14 +530,26 @@ export default function AnalisisPage() {
       </div>
 
       <div className="mt-6 space-y-5">
-        {ESTADOS_FIRMA.includes(app.estado) && <FirmaPanel onRechazar={rechazarCredito} />}
+        {ESTADOS_FIRMA.includes(app.estado) && !supAnalisis && (
+          <FirmaPanel onRechazar={rechazarCredito} />
+        )}
 
-        {(app.estado === "ANALISIS_TOMADO" || app.estado === "PREAPROBADO") && (
+        {supAnalisis && app.aprobacionSuperior && (
+          <Banner tone="info" title="Enviada a SUP desde el análisis">
+            {app.aprobacionSuperior.enviadaPor} la derivó el {app.aprobacionSuperior.fechaEnvio}
+            {app.aprobacionSuperior.motivo ? ` · Motivo: ${app.aprobacionSuperior.motivo}` : ""}
+            {app.aprobacionSuperior.nota ? ` — ${app.aprobacionSuperior.nota.replace(/\.+$/, "")}` : ""}. El superior
+            puede aprobarla, observarla o rechazarla.
+          </Banner>
+        )}
+
+        {(app.estado === "ANALISIS_TOMADO" || app.estado === "PREAPROBADO" || supAnalisis) && (
           <AnalisisCredito
             onObservar={observarCredito}
             onRechazar={rechazarCredito}
             onAprobar={() => setAprobarModal(true)}
             onSalir={() => setAbierta(false)}
+            onEnviarSup={enviarAnalisisASuperior}
           />
         )}
       </div>

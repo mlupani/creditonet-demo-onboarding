@@ -354,6 +354,8 @@ interface ApplicationContextValue {
   // COFE → SUP: caso especial que el analista no puede resolver; lo toma un superior,
   // que confirma la oferta igual que el analista (el crédito pasa a APR).
   enviarCofeASuperior: () => void;
+  // Análisis → SUP: desde la observación, el analista deriva el caso a un superior.
+  enviarAnalisisASuperior: (motivo: string, nota: string) => void;
   aprobarSuperior: () => void;
   solicitarRefirma: () => void;
   // Chequeo telefónico (bandeja del chequeador).
@@ -1698,6 +1700,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...prev,
             estado: "APROBADO",
             fechaAprobacion: selloTiempo(),
+            // Si lo aprueba el superior (COFE o análisis enviado a SUP), queda su constancia.
+            aprobacionSuperior:
+              prev.estado === "SUPERIOR" && prev.aprobacionSuperior
+                ? {
+                    ...prev.aprobacionSuperior,
+                    aprobadaPor: SESION_SUPERVISOR.nombre,
+                    fechaAprobacion: selloTiempo(),
+                  }
+                : prev.aprobacionSuperior,
           }
         : prev
     );
@@ -1797,6 +1808,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
           fechaEnvio: selloTiempo(),
           aprobadaPor: null,
           fechaAprobacion: null,
+        },
+      };
+    });
+  }, []);
+
+  // Análisis → SUP: el analista no resuelve el caso y lo deriva, con motivo y nota, desde el
+  // modal de observación. El superior lo toma en la misma pantalla de análisis.
+  const enviarAnalisisASuperior = useCallback((motivo: string, nota: string) => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "ANALISIS_TOMADO" && prev.estado !== "PREAPROBADO") return prev;
+      return {
+        ...prev,
+        estado: "SUPERIOR",
+        aprobacionSuperior: {
+          enviadaPor: SESION_ANALISTA.nombre,
+          fechaEnvio: selloTiempo(),
+          aprobadaPor: null,
+          fechaAprobacion: null,
+          origen: "ANALISIS",
+          motivo,
+          nota,
         },
       };
     });
@@ -2027,6 +2059,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verificarFirma,
       enviarASuperior,
       enviarCofeASuperior,
+      enviarAnalisisASuperior,
       aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,
@@ -2105,6 +2138,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verificarFirma,
       enviarASuperior,
       enviarCofeASuperior,
+      enviarAnalisisASuperior,
       aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,

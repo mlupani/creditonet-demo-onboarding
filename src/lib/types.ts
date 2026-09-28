@@ -476,6 +476,11 @@ export interface AprobacionSuperior {
   fechaEnvio: string;
   aprobadaPor: string | null;
   fechaAprobacion: string | null;
+  // Enviada desde la observación del análisis (antes de aprobar): el superior la resuelve en
+  // la pantalla de análisis, con la nota del analista.
+  origen?: "ANALISIS";
+  motivo?: string;
+  nota?: string;
 }
 
 // --- Aplicación ---

@@ -140,6 +140,7 @@ export function AnalisisCredito({
   onRechazar,
   onAprobar,
   onSalir,
+  onEnviarSup,
 }: {
   onObservar: (
     motivo: string,
@@ -151,6 +152,8 @@ export function AnalisisCredito({
   onAprobar: () => void;
   // Vuelve a la lista cuando la solicitud deja el análisis (al soltarla).
   onSalir: () => void;
+  // Deriva el caso a un superior desde el modal de observación (estado SUP).
+  onEnviarSup?: (motivo: string, nota: string) => void;
 }) {
   const {
     app,
@@ -286,6 +289,15 @@ export function AnalisisCredito({
       onRechazar(motivo, m?.label ?? motivo, texto.trim());
     }
     setModal(null);
+  }
+
+  // Enviar a SUP desde la observación: pide motivo y nota, no las pantallas a corregir.
+  function enviarSup() {
+    setIntentado(true);
+    if (!motivo || !textoValido || !onEnviarSup) return;
+    onEnviarSup(motivo, texto.trim());
+    setModal(null);
+    onSalir();
   }
 
   return (
@@ -935,10 +947,13 @@ export function AnalisisCredito({
                 <IconFileText width={16} height={16} />
                 Agregar comentario
               </Button>
-              <Button variant="outline" onClick={() => setConsulta("soltar")}>
-                <IconUsers width={16} height={16} />
-                Soltar análisis
-              </Button>
+              {/* En SUP no se suelta: volvería a PRE sin pasar por el superior. */}
+              {app.estado !== "SUPERIOR" && (
+                <Button variant="outline" onClick={() => setConsulta("soltar")}>
+                  <IconUsers width={16} height={16} />
+                  Soltar análisis
+                </Button>
+              )}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button variant="danger" disabled={observacionPendiente} onClick={() => abrir("rechazar")}>
@@ -1083,6 +1098,11 @@ export function AnalisisCredito({
             <Button variant="outline" onClick={() => setModal(null)}>
               Cancelar
             </Button>
+            {modal === "observar" && onEnviarSup && app.estado !== "SUPERIOR" && (
+              <Button variant="outline" className="whitespace-nowrap" onClick={enviarSup}>
+                Enviar a SUP
+              </Button>
+            )}
             <Button variant={modal === "rechazar" ? "danger" : "primary"} onClick={confirmar}>
               {modal === "observar"
                 ? "Devolver al canal de venta"
@@ -1095,7 +1115,11 @@ export function AnalisisCredito({
       >
         <p className="text-sm text-ink-600">
           {modal === "observar"
-            ? "La solicitud vuelve a la bandeja del vendedor en estado Observado, con tus notas. Tendrá 15 días para corregir y reenviar."
+            ? `La solicitud vuelve a la bandeja del vendedor en estado Observado, con tus notas. Tendrá 15 días para corregir y reenviar.${
+                onEnviarSup && app.estado !== "SUPERIOR"
+                  ? " Si el caso lo tiene que resolver un superior, usá Enviar a SUP: pasa a la bandeja SUP con el motivo y la nota."
+                  : ""
+              }`
             : modal === "anular"
               ? "Anular no es un rechazo de riesgo: se usa cuando el cliente desiste. La solicitud queda cerrada como Anulada."
               : "El rechazo es definitivo. Se registran el motivo codificado y la observación."}
