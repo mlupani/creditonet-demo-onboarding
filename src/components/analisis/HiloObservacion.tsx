@@ -62,6 +62,13 @@ export function HiloObservacion() {
     .sort((a, b) => a.t - b.t || Number(!!b.m.tema) - Number(!!a.m.tema) || a.i - b.i)
     .map(({ m }) => m);
 
+  if (mensajes.length === 0)
+    return (
+      <p className="text-sm text-ink-500">
+        Todavía no hay mensajes entre el canal de venta y el analista.
+      </p>
+    );
+
   return (
     <ol className="space-y-3" aria-label="Conversación con el canal de venta">
       {mensajes.map((m) =>

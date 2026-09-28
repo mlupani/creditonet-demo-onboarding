@@ -1,73 +1,38 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { SuccessScreen } from "@/components/SuccessScreen";
-import { formatARS, sumarDias } from "@/lib/format";
-import {
-  SUBESTADO_OBSERVADO,
-  cambiosOfertaDe,
-  netoAAcreditar,
-  ofertaAnalistaDe,
-  subestadoObservado,
-} from "@/lib/credit";
+import { formatARS } from "@/lib/format";
+import { netoAAcreditar } from "@/lib/credit";
 import { ESTADOS_FIRMA } from "@/lib/firma";
 import { TERMINOS } from "@/lib/terminologia";
 import { textoChequeo } from "@/lib/historial";
 import { HistorialCredito } from "@/components/HistorialCredito";
-import { IconAlertTriangle, IconFileStack } from "@/components/icons";
+import { IconFileStack, IconLoader } from "@/components/icons";
+
+function RetomarObservada({ onRetomar }: { onRetomar: () => void }) {
+  useEffect(() => {
+    onRetomar();
+  }, [onRetomar]);
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center text-ink-400">
+      <IconLoader width={24} height={24} />
+    </div>
+  );
+}
 
 export function SolicitudEnviada() {
   const router = useRouter();
   const { app, reiniciarDemo, retomarObservada } = useApplication();
 
-  if (app.estado === "OBSERVADO") {
-    const obs = app.analista.observacion;
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
-        <Card className="animate-fade-up overflow-hidden">
-          <div className="bg-warning-50 px-6 py-8 text-center">
-            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-warning-500 text-white shadow-sm">
-              <IconAlertTriangle width={26} height={26} />
-            </span>
-            <h1 className="mt-4 text-xl font-bold tracking-tight text-warning-700">
-              La solicitud {app.numeroCredito} fue observada
-            </h1>
-            <p className="mx-auto mt-1.5 max-w-md text-sm text-warning-700/80">
-              El analista de riesgo la devolvió al canal de venta con correcciones requeridas.
-            </p>
-          </div>
-          <div className="space-y-5 p-6">
-            {obs && (
-              <Banner tone="warning" title={obs.motivo}>
-                <strong>{SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].etiqueta}</strong> ·{" "}
-                {SUBESTADO_OBSERVADO[subestadoObservado(app) ?? "OBS"].origen}. {obs.nota} Corregí antes del <strong>{sumarDias(obs.fecha, 15)}</strong> (15 días)
-                para que no expire.
-                {ofertaAnalistaDe(app) &&
-                  (cambiosOfertaDe(app).at(-1)?.tipo === "OFERTA"
-                    ? " Tenés que aceptar la nueva oferta o declinarla: el resto de la carga queda bloqueada."
-                    : " Podés aceptar la nueva oferta o elegir otra menor en la grilla. Después sólo quedan habilitados el legajo virtual (ver el legajo, imprimir el formulario y subir más documentación) y la pantalla de impresión del legajo.")}
-                {obs.pantallas.length > 0 && !ofertaAnalistaDe(app) &&
-                  " Es una corrección puntual: sólo se puede editar lo observado y el resto de la carga queda bloqueada."}
-              </Banner>
-            )}
-            <div className="flex flex-col justify-center gap-2 sm:flex-row">
-              <Button onClick={retomarObservada}>
-                {ofertaAnalistaDe(app) ? "Ver la nueva oferta" : "Corregir y reenviar"}
-              </Button>
-              <Button variant="outline" onClick={() => router.push("/")}>
-                Volver a la bandeja
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  // Observada: sin pantalla intermedia, va directo a corregir o a la nueva oferta del
+  // analista. La observación ya se lee en la bandeja ("Ver observación") y en el flujo.
+  if (app.estado === "OBSERVADO") return <RetomarObservada onRetomar={retomarObservada} />;
 
   // Firma y chequeo telefónico: el canal de venta sólo puede ver en qué etapa está el crédito.
   if (app.estado === "APROBADO" || ESTADOS_FIRMA.includes(app.estado)) {

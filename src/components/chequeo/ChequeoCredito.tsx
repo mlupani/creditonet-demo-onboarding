@@ -21,6 +21,8 @@ import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { DatosCamposModal } from "@/components/analisis/ModalesAnalisis";
 import { LegajoVirtualModal } from "@/components/analisis/LegajoVirtualModal";
+import { HiloObservacion } from "@/components/analisis/HiloObservacion";
+import { Modal } from "@/components/ui/Modal";
 import { ComentarioModal, ListaComentarios } from "@/components/bandeja/ModalesBandeja";
 import {
   IconCheck,
@@ -75,6 +77,8 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
   const [confirmar, setConfirmar] = useState(false);
   const [consulta, setConsulta] = useState<"personales" | "laborales" | "comentario" | null>(null);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
+  // Comentarios y conversación vendedor-analista: se ven en un modal, no en la pantalla.
+  const [verMensajes, setVerMensajes] = useState<"comentarios" | "mensajes" | null>(null);
   if (!app.cliente || !app.chequeoTelefonico) return null;
 
   const cli = app.cliente;
@@ -122,11 +126,6 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
 
       {intentos.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="border-b border-ink-100 px-5 py-3">
-            <h3 className="text-sm font-semibold text-ink-900">
-              Intentos registrados ({intentos.length})
-            </h3>
-          </div>
           <ol className="divide-y divide-ink-100">
             {intentos.map((it, i) => (
               <li key={`${it.fecha}-${i}`} className="px-5 py-2.5 text-sm">
@@ -151,6 +150,9 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
           <div className="flex gap-2">
             <Button variant="outline" onClick={onSalir}>
               Volver
+            </Button>
+            <Button variant="outline" onClick={() => setVerMensajes("mensajes")}>
+              Mensajes vendedor-analista
             </Button>
             <Button onClick={tomarChequeo}>Tomar chequeo</Button>
           </div>
@@ -255,14 +257,12 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
                 <IconEye width={15} height={15} />
                 Legajo virtual
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setVerMensajes("comentarios")}>
+                <IconEye width={15} height={15} />
+                Ver comentarios{app.comentarios.length > 0 ? ` (${app.comentarios.length})` : ""}
+              </Button>
             </div>
           </Card>
-
-          {app.comentarios.length > 0 && (
-            <Card className="px-5 pb-5 pt-1">
-              <ListaComentarios titulo="Comentarios" />
-            </Card>
-          )}
 
           <Card className="space-y-4 p-4 sm:p-5">
             <div>
@@ -378,6 +378,27 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
         autor={SESION_CHEQUEADOR.nombre}
         paraQuien="el canal de venta"
       />
+      <Modal
+        open={verMensajes !== null}
+        onClose={() => setVerMensajes(null)}
+        title={verMensajes === "mensajes" ? "Mensajes entre vendedor y analista" : "Comentarios"}
+        maxWidth="max-w-2xl"
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setVerMensajes(null)}>
+              Cerrar
+            </Button>
+          </div>
+        }
+      >
+        {verMensajes === "mensajes" ? (
+          <HiloObservacion />
+        ) : app.comentarios.length > 0 ? (
+          <ListaComentarios titulo="Comentarios" />
+        ) : (
+          <p className="text-sm text-ink-500">La solicitud no tiene comentarios.</p>
+        )}
+      </Modal>
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
       <ConfirmationModal
         open={confirmar}
