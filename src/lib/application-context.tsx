@@ -356,8 +356,10 @@ interface ApplicationContextValue {
   // COFE → SUP: caso especial que el analista no puede resolver; lo toma un superior,
   // que confirma la oferta igual que el analista (el crédito pasa a APR).
   enviarCofeASuperior: () => void;
-  // Análisis → SUP: desde la observación, el analista deriva el caso a un superior.
+  // Análisis (o aprobado) → SUP: el analista deriva el caso a un superior.
   enviarAnalisisASuperior: (motivo: string, nota: string) => void;
+  // APR con firma física: la firma ya está en el legajo, pasa a LIQ (o a chequeo telefónico).
+  pasarFirmaFisicaASiguiente: () => void;
   aprobarSuperior: () => void;
   solicitarRefirma: () => void;
   // Chequeo telefónico (bandeja del chequeador).
@@ -1771,6 +1773,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // APR → LIQ con firma física: la firma manual ya está cargada en el legajo, así que se da por
+  // aprobada y el crédito sigue: a chequeo telefónico si el producto lo pide, si no a LIQ.
+  const pasarFirmaFisicaASiguiente = useCallback(() => {
+    setAppOperativo((prev) => {
+      if (prev.estado !== "APROBADO") return prev;
+      const ahora = selloTiempo();
+      const firmada: CreditApplication = {
+        ...prev,
+        fechaAprobacion: prev.fechaAprobacion ?? ahora,
+        firmas: [
+          { n: 1, metodo: "FISICA", fechaFirma: ahora, resultado: "APROBADA", fechaResultado: ahora },
+        ],
+        firmaChequeada: true,
+        chequeoTelefonico: null,
+      };
+      return pasoTrasFirma(firmada, prev);
+    });
+  }, []);
+
   // FEL → AFEL: el cliente firmó, en papel o en línea (en la demo se simula con un botón).
   const registrarFirmaCliente = useCallback(() => {
     setAppOperativo((prev) => {
@@ -1838,7 +1859,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // modal de observación. El superior lo toma en la misma pantalla de análisis.
   const enviarAnalisisASuperior = useCallback((motivo: string, nota: string) => {
     setAppOperativo((prev) => {
-      if (prev.estado !== "ANALISIS_TOMADO" && prev.estado !== "PREAPROBADO") return prev;
+      if (prev.estado !== "ANALISIS_TOMADO" && prev.estado !== "PREAPROBADO" && prev.estado !== "APROBADO")
+        return prev;
       return {
         ...prev,
         estado: "SUPERIOR",
@@ -2082,6 +2104,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       enviarASuperior,
       enviarCofeASuperior,
       enviarAnalisisASuperior,
+      pasarFirmaFisicaASiguiente,
       aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,
@@ -2162,6 +2185,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       enviarASuperior,
       enviarCofeASuperior,
       enviarAnalisisASuperior,
+      pasarFirmaFisicaASiguiente,
       aprobarSuperior,
       solicitarRefirma,
       tomarChequeo,

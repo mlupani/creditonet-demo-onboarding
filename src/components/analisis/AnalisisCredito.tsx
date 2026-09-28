@@ -15,6 +15,7 @@ import {
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { evaluarReglas, getMotor, reglaMarcada } from "@/lib/motores";
+import { modalidadFirma, requiereChequeoTelefonico } from "@/lib/firma";
 import { reglasInstitucionalesCredito } from "@/lib/reglas-institucionales";
 import {
   SESION_ANALISTA,
@@ -141,6 +142,7 @@ export function AnalisisCredito({
   onAprobar,
   onSalir,
   onEnviarSup,
+  onSiguiente,
 }: {
   onObservar: (
     motivo: string,
@@ -154,6 +156,8 @@ export function AnalisisCredito({
   onSalir: () => void;
   // Deriva el caso a un superior desde el modal de observación (estado SUP).
   onEnviarSup?: (motivo: string, nota: string) => void;
+  // Crédito aprobado: pasa al paso siguiente (FEL, o LIQ / chequeo si la firma es física).
+  onSiguiente?: () => void;
 }) {
   const {
     app,
@@ -183,6 +187,8 @@ export function AnalisisCredito({
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [reglaObs, setReglaObs] = useState<RiskRule | null>(null);
+  const [confirmarSiguiente, setConfirmarSiguiente] = useState(false);
+  const [supAprobado, setSupAprobado] = useState<{ nota: string; intentado: boolean } | null>(null);
   const [legajoGarante, setLegajoGarante] = useState<string | null>(null);
   // Legajo abierto desde el modal de Observar: se apila encima sin cerrar la observación.
   const [legajoObservar, setLegajoObservar] = useState(false);
@@ -222,7 +228,31 @@ export function AnalisisCredito({
   // Cambio de datos financieros cuyo recálculo no pasó y que espera la decisión del supervisor.
   const derivacion = app.analista.derivacionCambioFinanciero;
   // Sin tomar el caso no se opera: sólo se muestra el detalle y el botón Tomar análisis.
-  const puedeOperar = app.analista.tomado;
+  // Aprobado (APR) se sigue operando desde el análisis: no hace falta volver a tomarlo.
+  const aprobado = app.estado === "APROBADO";
+  const puedeOperar = app.analista.tomado || aprobado;
+  // Paso siguiente de un aprobado: FEL si la firma es electrónica; con firma física la firma ya
+  // está en el legajo y va a LIQ, o a chequeo telefónico si el producto lo pide.
+  const conChequeo = requiereChequeoTelefonico(app.configuracion);
+  const siguiente =
+    modalidadFirma(app.configuracion) === "FISICA"
+      ? conChequeo
+        ? {
+            label: "Pasar a chequeo telefónico",
+            detalle:
+              "La firma física ya está cargada en el legajo. El producto pide chequeo telefónico: el crédito pasa a la bandeja de chequeo.",
+          }
+        : {
+            label: "Pasar a LIQ",
+            detalle: "La firma física ya está cargada en el legajo: el crédito pasa a liquidación (LIQ).",
+          }
+      : {
+          label: "Pasar a FEL",
+          detalle: `El crédito pasa a firma electrónica (FEL) y el cliente tiene que firmar. Después de la firma ${
+            conChequeo ? "va a chequeo telefónico" : "pasa a liquidación"
+          }.`,
+        };
+  const supAprobadoHecho = !!app.aprobacionSuperior?.aprobadaPor;
   // Una reenviada con correcciones no se opera hasta leer y confirmar la observación
   // (creditonet-75); la confirmación queda guardada en la solicitud y en el historial.
   const requiereLectura =
@@ -1025,23 +1055,54 @@ export function AnalisisCredito({
                 <IconFileText width={16} height={16} />
                 Agregar comentario
               </Button>
-              {/* En SUP no se suelta: volvería a PRE sin pasar por el superior. */}
-              {app.estado !== "SUPERIOR" && (
+              {/* En SUP no se suelta (volvería a PRE sin el superior), ni aprobado (perdería la aprobación). */}
+              {app.estado !== "SUPERIOR" && !aprobado && (
                 <Button variant="outline" onClick={() => setConsulta("soltar")}>
                   <IconUsers width={16} height={16} />
                   Soltar análisis
                 </Button>
               )}
             </div>
+            {aprobado && (
+              <p className="border-t border-ink-100 pt-3 text-sm text-ink-700">
+                <strong className="text-success-700">Crédito aprobado (APR)</strong>
+                {app.fechaAprobacion ? ` el ${app.fechaAprobacion}` : ""}
+                {app.aprobacionSuperior?.aprobadaPor
+                  ? ` · aprobación superior de ${app.aprobacionSuperior.aprobadaPor}`
+                  : ""}
+                . Elegí el paso siguiente.
+              </p>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button variant="danger" disabled={bloqueado} onClick={() => abrir("rechazar")}>
                 <IconX width={16} height={16} />
                 Rechazar
               </Button>
-              <Button variant="success" disabled={bloqueado} onClick={onAprobar}>
-                <IconCheck width={16} height={16} />
-                Aprobar
-              </Button>
+              {aprobado ? (
+                <>
+                  {onEnviarSup && !supAprobadoHecho && (
+                    <Button
+                      variant="outline"
+                      disabled={bloqueado}
+                      onClick={() => setSupAprobado({ nota: "", intentado: false })}
+                    >
+                      <IconUsers width={16} height={16} />
+                      Pasar a SUP
+                    </Button>
+                  )}
+                  {onSiguiente && (
+                    <Button variant="success" disabled={bloqueado} onClick={() => setConfirmarSiguiente(true)}>
+                      <IconCheck width={16} height={16} />
+                      {siguiente.label}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button variant="success" disabled={bloqueado} onClick={onAprobar}>
+                  <IconCheck width={16} height={16} />
+                  Aprobar
+                </Button>
+              )}
             </div>
           </>
         )}
@@ -1202,6 +1263,64 @@ export function AnalisisCredito({
             </Banner>
           </div>
         )}
+      </Modal>
+      <ConfirmationModal
+        open={confirmarSiguiente}
+        title={`¿${siguiente.label}?`}
+        descripcion={siguiente.detalle}
+        rows={[
+          { label: "Crédito", value: app.numeroCredito ?? "—" },
+          { label: "Capital", value: formatARS(o.montoSolicitado) },
+        ]}
+        confirmLabel={siguiente.label}
+        cancelLabel="Volver"
+        tone="success"
+        onConfirm={() => {
+          setConfirmarSiguiente(false);
+          onSiguiente?.();
+        }}
+        onCancel={() => setConfirmarSiguiente(false)}
+      />
+      <Modal
+        open={supAprobado !== null}
+        onClose={() => setSupAprobado(null)}
+        title="Pasar a SUP"
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setSupAprobado(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!supAprobado) return;
+                if (supAprobado.nota.trim().length < 5) {
+                  setSupAprobado({ ...supAprobado, intentado: true });
+                  return;
+                }
+                onEnviarSup?.("Pedido de aprobación superior", supAprobado.nota.trim());
+                setSupAprobado(null);
+                onSalir();
+              }}
+            >
+              Enviar a SUP
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-ink-600">
+          El crédito aprobado pasa a la bandeja SUP. Cuando el superior lo aprueba vuelve acá para
+          seguir al paso siguiente.
+        </p>
+        <AreaTexto
+          id="nota-sup-aprobado"
+          label="Nota para el superior"
+          value={supAprobado?.nota ?? ""}
+          onChange={(v) => supAprobado && setSupAprobado({ ...supAprobado, nota: v })}
+          invalido={!!supAprobado?.intentado && (supAprobado?.nota.trim().length ?? 0) < 5}
+          placeholder="Ej.: Monto cercano al tope del plan, pido aprobación superior."
+          error="Ingresá al menos 5 caracteres para que el registro sea claro."
+        />
       </Modal>
       <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
       <LegajoVirtualModal

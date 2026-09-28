@@ -8,7 +8,6 @@ import { TERMINOS } from "@/lib/terminologia";
 import { formatARS } from "@/lib/format";
 import { bancosDe } from "@/lib/campos-post-oferta";
 import { ESTADOS_FIRMA, firmaAprobada, modalidadFirma } from "@/lib/firma";
-import type { MetodoFirma } from "@/lib/types";
 import { FirmaPanel } from "@/components/analisis/FirmaPanel";
 import { HiloObservacion } from "@/components/analisis/HiloObservacion";
 import { LegajoVirtualModal } from "@/components/analisis/LegajoVirtualModal";
@@ -45,6 +44,7 @@ export default function AnalisisPage() {
     observarCredito,
     rechazarCredito,
     aprobarCredito,
+    pasarFirmaFisicaASiguiente,
     dejarAprobado,
     enviarCofeASuperior,
     enviarAnalisisASuperior,
@@ -53,15 +53,12 @@ export default function AnalisisPage() {
   const [aprobarModal, setAprobarModal] = useState(false);
   const [supAbierto, setSupAbierto] = useState(false);
   const [observarOferta, setObservarOferta] = useState(false);
-  // Pantalla APR: comentarios y conversación completa vendedor-analista.
-  const [verAprobado, setVerAprobado] = useState<"comentarios" | "mensajes" | null>(null);
   const [rechazoOferta, setRechazoOferta] = useState<{ nota: string; intentado: boolean } | null>(null);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   // El modal de observaciones se abre solo al entrar a Confirmar oferta; se guarda para
   // qué crédito se descartó para no reabrirlo, y el botón lo vuelve a abrir.
   const [obsCerradoPara, setObsCerradoPara] = useState<string | null>(null);
   const [obsReabierto, setObsReabierto] = useState(false);
-  const [destinoFirma, setDestinoFirma] = useState<MetodoFirma>("ELECTRONICA");
   const [procesando, setProcesando] = useState(false);
   // La bandeja abre en la lista; "Abrir" entra al detalle de la solicitud.
   const [abierta, setAbierta] = useState(false);
@@ -142,11 +139,13 @@ export default function AnalisisPage() {
   }
 
   // Desde APR se pasa a firma: electrónica → FEL, física → AFEL directo.
-  function avanzarAFirma(metodo: MetodoFirma) {
-    setAprobarModal(false);
+  // APR → paso siguiente: FEL con firma electrónica; con firma física la firma ya está en el
+  // legajo y pasa a LIQ, o a chequeo telefónico si el producto lo pide.
+  function pasarASiguiente() {
     setProcesando(true);
     window.setTimeout(() => {
-      aprobarCredito(metodo);
+      if (modalidadFirma(app.configuracion) === "FISICA") pasarFirmaFisicaASiguiente();
+      else aprobarCredito("ELECTRONICA");
       setProcesando(false);
     }, 1200);
   }
@@ -370,97 +369,6 @@ export default function AnalisisPage() {
     );
   }
 
-  if (app.estado === "APROBADO") {
-    const o = app.oferta;
-    const modalidad = modalidadFirma(app.configuracion);
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        {volver}
-        <div className="animate-fade-in flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-              Analista de riesgo
-            </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
-              Crédito aprobado · {app.numeroCredito}
-            </h1>
-            <p className="mt-1 text-sm text-ink-500">
-              El crédito está aprobado y espera pasar a firma: electrónica (FEL) o física
-              (AFEL directo), según la modalidad del producto.
-            </p>
-          </div>
-          <EstadoBadge estado={app.estado} />
-        </div>
-        <Card className="mt-6 space-y-4 p-4 sm:p-5">
-          <p className="text-sm text-ink-700">
-            {app.cliente.nombre} {app.cliente.apellido} · <strong>{formatARS(o.montoSolicitado)}</strong>{" "}
-            en {o.plazo} cuotas de {formatARS(o.valorCuota)}
-          </p>
-          <p className="text-xs text-ink-500">
-            Modalidad del producto:{" "}
-            {modalidad === "FISICA"
-              ? "física (AFEL directo)"
-              : modalidad === "ELECTRONICA"
-                ? "electrónica (FEL)"
-                : "ambas (FEL o AFEL)"}
-          </p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              {/* <Button variant="outline" onClick={() => setVerAprobado("comentarios")}>
-                Ver comentarios{app.comentarios.length > 0 ? ` (${app.comentarios.length})` : ""}
-              </Button> */}
-              {/* <Button variant="outline" onClick={() => setVerAprobado("mensajes")}>
-                Ver observaciones
-              </Button> */}
-            </div>
-            {(modalidad === "ELECTRONICA" || modalidad === "AMBAS") && (
-              <Button
-                size="lg"
-                variant="success"
-                onClick={() => {
-                  setDestinoFirma("ELECTRONICA");
-                  setAprobarModal(true);
-                }}
-              >
-                Pasar a FEL
-              </Button>
-            )}
-          </div>
-        </Card>
-        <HistorialCredito className="mt-5" />
-        <Modal
-          open={verAprobado !== null}
-          onClose={() => setVerAprobado(null)}
-          title={verAprobado === "mensajes" ? "Mensajes entre vendedor y analista" : "Comentarios"}
-          maxWidth="max-w-2xl"
-          footer={
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={() => setVerAprobado(null)}>
-                Cerrar
-              </Button>
-            </div>
-          }
-        >
-          {verAprobado === "mensajes" ? (
-            <HiloObservacion />
-          ) : app.comentarios.length > 0 ? (
-            <ListaComentarios titulo="Comentarios" />
-          ) : (
-            <p className="text-sm text-ink-500">La solicitud no tiene comentarios.</p>
-          )}
-        </Modal>
-        <AprobacionModal
-          open={aprobarModal}
-          loading={false}
-          modo="FIRMA"
-          metodoDestino={destinoFirma}
-          onConfirm={avanzarAFirma}
-          onCancel={() => setAprobarModal(false)}
-        />
-      </div>
-    );
-  }
-
   if (app.estado === "PARA_LIQUIDAR") {
     const o = app.oferta;
     const terceros = importeTerceros(o);
@@ -644,13 +552,17 @@ export default function AnalisisPage() {
           </Banner>
         )}
 
-        {(app.estado === "ANALISIS_TOMADO" || app.estado === "PREAPROBADO" || supAnalisis) && (
+        {(app.estado === "ANALISIS_TOMADO" ||
+          app.estado === "PREAPROBADO" ||
+          app.estado === "APROBADO" ||
+          supAnalisis) && (
           <AnalisisCredito
             onObservar={observarCredito}
             onRechazar={rechazarCredito}
             onAprobar={() => setAprobarModal(true)}
             onSalir={() => setAbierta(false)}
             onEnviarSup={enviarAnalisisASuperior}
+            onSiguiente={pasarASiguiente}
           />
         )}
       </div>
