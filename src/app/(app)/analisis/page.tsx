@@ -141,16 +141,6 @@ export default function AnalisisPage() {
   // Desde APR se pasa a firma: electrónica → FEL, física → AFEL directo.
   // APR → paso siguiente: FEL con firma electrónica; con firma física la firma ya está en el
   // legajo y pasa a LIQ, o a chequeo telefónico si el producto lo pide.
-  // APR → LIQ directo, sin FEL: la acción da la firma por hecha y decide entre chequeo
-  // telefónico (si el producto lo pide) y liquidación.
-  function pasarALiq() {
-    setProcesando(true);
-    window.setTimeout(() => {
-      pasarFirmaFisicaASiguiente();
-      setProcesando(false);
-    }, 1200);
-  }
-
   function pasarASiguiente() {
     setProcesando(true);
     window.setTimeout(() => {
@@ -577,7 +567,6 @@ export default function AnalisisPage() {
             onSalir={() => setAbierta(false)}
             onEnviarSup={enviarAnalisisASuperior}
             onSiguiente={pasarASiguiente}
-            onPasarALiq={pasarALiq}
           />
         )}
       </div>
