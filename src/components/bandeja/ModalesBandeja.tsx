@@ -424,6 +424,94 @@ export function ObservacionModal({
 }
 
 // `autor` distingue al analista del canal de venta; `paraQuien` ajusta el texto de ayuda.
+// Comentarios entre el canal de venta y el chequeador telefónico: el vendedor ve la conversación
+// (incluida la observación del chequeo, si la hay) y responde sin salir de la bandeja.
+export function ComentariosChequeoModal({ open, onClose }: ModalProps) {
+  const { app, agregarComentario } = useApplication();
+  const [texto, setTexto] = useState("");
+  const obs = app.chequeoTelefonico?.observacion;
+  const mensajes = [
+    ...(obs
+      ? [{ id: "obs-chequeo", autor: SESION_CHEQUEADOR.nombre, texto: obs.nota, fecha: obs.fecha }]
+      : []),
+    ...app.comentarios,
+  ];
+  const esChequeador = (autor: string) => autor.startsWith(SESION_CHEQUEADOR.nombre);
+
+  function cerrar() {
+    setTexto("");
+    onClose();
+  }
+
+  function enviar() {
+    const limpio = texto.trim();
+    if (!limpio) return;
+    agregarComentario(limpio);
+    setTexto("");
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={cerrar}
+      title="Comentarios con el chequeo telefónico"
+      maxWidth="max-w-lg"
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={cerrar}>
+            Cerrar
+          </Button>
+          <Button onClick={enviar} disabled={!texto.trim()}>
+            Enviar comentario
+          </Button>
+        </div>
+      }
+    >
+      <p className="text-sm text-ink-600">
+        Solicitud {app.numeroCredito} · los comentarios los ve el chequeador ({SESION_CHEQUEADOR.nombre}).
+      </p>
+      {mensajes.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3 text-sm text-ink-500">
+          Todavía no hay comentarios.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-2">
+          {mensajes.map((m) => (
+            <li
+              key={m.id}
+              className={`rounded-xl border px-4 py-2.5 ${
+                esChequeador(m.autor)
+                  ? "mr-6 border-warning-200 bg-warning-50"
+                  : "ml-6 border-brand-200 bg-brand-50/60"
+              }`}
+            >
+              <p
+                className={`text-[11px] font-bold uppercase tracking-wider ${
+                  esChequeador(m.autor) ? "text-warning-700" : "text-brand-700"
+                }`}
+              >
+                {esChequeador(m.autor) ? "Chequeo telefónico" : "Canal de venta"} · {m.autor} · {m.fecha}
+              </p>
+              <p className="mt-1 whitespace-pre-line text-sm text-ink-800">{m.texto}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <label htmlFor="comentario-chequeo-vendedor" className="mt-4 block text-sm font-medium text-ink-700">
+        Tu comentario
+      </label>
+      <textarea
+        id="comentario-chequeo-vendedor"
+        rows={3}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Ej.: El cliente atiende después de las 17 hs."
+        className="mt-1.5 w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm shadow-xs outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+      />
+    </Modal>
+  );
+}
+
 export function ComentarioModal({
   open,
   onClose,

@@ -16,6 +16,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import {
   ChequeoObservacionModal,
   ComentarioModal,
+  ComentariosChequeoModal,
   EstadoSolicitudModal,
   MotivoModal,
   ObservacionModal,
@@ -49,7 +50,16 @@ const ACCIONES_PROXIMAS = [
 ];
 
 type Grupo = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "FIRMA" | "CHEQUEO" | "PAGO" | "RESUELTAS";
-type ModalId = "nueva" | "anular" | "posicion" | "estado" | "motivo" | "comentario" | "chequeo" | "observacion";
+type ModalId =
+  | "nueva"
+  | "anular"
+  | "posicion"
+  | "estado"
+  | "motivo"
+  | "comentario"
+  | "chequeo"
+  | "observacion"
+  | "comentariosChequeo";
 
 // Secciones de la bandeja del canal de venta, en el orden en que se trabajan.
 const GRUPOS: { id: Grupo; titulo: string; vacio: string }[] = [
@@ -237,7 +247,7 @@ export default function BandejaCanalVentaPage() {
   // cambio, sigue por `abrirCreditoDB`.
   function actuar(
     cred: (typeof creditosDB)[number],
-    modalId: Extract<ModalId, "anular" | "posicion" | "estado" | "motivo" | "comentario" | "chequeo" | "observacion">
+    modalId: Exclude<ModalId, "nueva">
   ) {
     cargarCreditoDeDB(cred._id);
     if (modalId === "observacion") setCredObs(cred);
@@ -532,6 +542,12 @@ export default function BandejaCanalVentaPage() {
                                     Ver comentario del chequeo
                                   </Button>
                                 )}
+                                {g.id === "CHEQUEO" && (
+                                  <Button size="sm" variant="outline" onClick={() => actuar(cred, "comentariosChequeo")}>
+                                    Comentarios
+                                    {cred.comentarios.length > 0 ? ` (${cred.comentarios.length})` : ""}
+                                  </Button>
+                                )}
                                 {g.id === "ANALISIS" && (
                                   <Button size="sm" variant="outline" onClick={() => actuar(cred, "comentario")}>
                                     Agregar comentario
@@ -657,6 +673,7 @@ export default function BandejaCanalVentaPage() {
         onTramitar={tramitarObservacion}
       />
       <ComentarioModal open={modal === "comentario"} onClose={() => setModal(null)} />
+      <ComentariosChequeoModal open={modal === "comentariosChequeo"} onClose={() => setModal(null)} />
     </div>
   );
 }
