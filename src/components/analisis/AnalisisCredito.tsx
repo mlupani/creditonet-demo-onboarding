@@ -15,6 +15,7 @@ import {
   totalPrecancelaciones,
 } from "@/lib/credit";
 import { getMotor, reglaMarcada } from "@/lib/motores";
+import { reglasInstitucionalesCredito } from "@/lib/reglas-institucionales";
 import {
   SESION_ANALISTA,
   SESION_SUPERVISOR,
@@ -615,25 +616,41 @@ export function AnalisisCredito({
             </ul>
           )}
         </SummaryCard>
-        <SummaryCard
-          title="Reglas institucionales"
-          icon={<IconLandmark width={16} height={16} />}
-          rows={app.riesgo.institucionales.map((r) => ({
-            label: `${r.codigo} · ${r.nombre}`,
-            value:
-              r.resultado === "PASA"
-                ? "✓ Pasa"
-                : r.resultado === "NO_PASA"
-                  ? "✕ No pasa"
-                  : "Esperando datos",
-            tone:
-              r.resultado === "PASA"
-                ? ("success" as const)
-                : r.resultado === "NO_PASA"
-                  ? ("danger" as const)
-                  : ("muted" as const),
-          }))}
-        />
+        <SummaryCard title="Reglas institucionales" icon={<IconLandmark width={16} height={16} />}>
+          {/* Doble columna: la posición del cliente frente a lo que exige cada regla. */}
+          <ul className="divide-y divide-ink-100">
+            {reglasInstitucionalesCredito(app).map((r) => (
+              <li key={r.codigo} className="py-2.5 first:pt-0 last:pb-0">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-medium text-ink-800">
+                    <span className="font-mono text-xs font-bold text-brand-700">{r.codigo}</span> {r.nombre}
+                  </p>
+                  <span
+                    className={`shrink-0 text-sm font-semibold ${
+                      r.resultado === "PASA"
+                        ? "text-success-700"
+                        : r.resultado === "NO_PASA"
+                          ? "text-danger-600"
+                          : "text-ink-400"
+                    }`}
+                  >
+                    {r.resultado === "PASA" ? "✓ Pasa" : r.resultado === "NO_PASA" ? "✕ No pasa" : "Esperando datos"}
+                  </span>
+                </div>
+                <dl className="mt-1.5 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wider text-ink-400">Posición del cliente</dt>
+                    <dd className="mt-0.5 tabular-nums text-ink-800">{r.posicion}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wider text-ink-400">Regla</dt>
+                    <dd className="mt-0.5 tabular-nums text-ink-800">{r.regla}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </SummaryCard>
         <SummaryCard
           title={`Motor de riesgo · ${getMotor(app.riesgo.motorId).nombre}`}
           icon={<IconShieldCheck width={16} height={16} />}

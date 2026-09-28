@@ -7,7 +7,9 @@
 // En la demo son datos fijos: no hay reglas persistidas ni configurables.
 
 import type { CreditApplication, MomentoRegla, ReglaInstitucional, ResultadoRegla } from "./types";
-import { calcularEdad, formatPct } from "./format";
+import { configEfectiva } from "./config";
+import { LIMITE_SUELDOS_BRUTOS } from "./credit";
+import { calcularEdad, formatARS, formatPct } from "./format";
 import { reglaBloquea } from "./motores";
 
 const ORDEN_MOMENTO: Record<MomentoRegla, number> = { IDENTIFICACION: 1, EVALUACION: 2 };
@@ -78,4 +80,66 @@ export function evaluarInstitucionales(
 
 export function institucionalesBloquean(reglas: ReglaInstitucional[]): boolean {
   return reglas.some(reglaBloquea);
+}
+
+// --- Reglas institucionales sobre el capital del crédito ---
+
+export interface ReglaInstitucionalCredito {
+  codigo: string;
+  nombre: string;
+  // Doble columna del análisis: dónde está el cliente y qué exige la regla.
+  posicion: string;
+  regla: string;
+  resultado: ResultadoRegla | "ESPERANDO_DATOS";
+}
+
+/**
+ * Reglas institucionales que se muestran en el análisis del préstamo con la posición del
+ * cliente frente a cada regla: capital máximo, capital hasta 3 sueldos brutos y nivel de
+ * endeudamiento (más RI-01). Se calculan en vivo con los datos actuales de la solicitud: las
+ * de capital dependen del monto de la oferta, que recién existe después de la evaluación.
+ */
+export function reglasInstitucionalesCredito(app: CreditApplication): ReglaInstitucionalCredito[] {
+  const capital = app.oferta.montoSolicitado;
+  const bruto = app.laboral.ingresoBruto;
+  const cfg = configEfectiva(app.configuracion);
+  const topeBrutos = bruto * LIMITE_SUELDOS_BRUTOS;
+  const conCapital = (pasa: boolean): ReglaInstitucionalCredito["resultado"] =>
+    capital > 0 ? (pasa ? "PASA" : "NO_PASA") : "ESPERANDO_DATOS";
+  // RI-01 y RI-02 se recalculan con los datos actuales: la posición del cliente es la de hoy.
+  const vigentes = evaluarInstitucionales(app, "EVALUACION");
+
+  const capitalMaximo: ReglaInstitucionalCredito = {
+    codigo: "RI-03",
+    nombre: "Capital máximo",
+    posicion: capital > 0 ? `Solicita ${formatARS(capital)}` : "Sin monto solicitado",
+    regla: `Hasta ${formatARS(cfg.capitalMaximo)}${cfg.overrides.capitalMaximo !== undefined ? " (excepción del organismo)" : ""}`,
+    resultado: conCapital(capital <= cfg.capitalMaximo),
+  };
+  const sueldosBrutos: ReglaInstitucionalCredito = {
+    codigo: "RI-04",
+    nombre: `${LIMITE_SUELDOS_BRUTOS} veces el sueldo bruto`,
+    posicion:
+      capital > 0 && bruto > 0
+        ? `Solicita ${formatARS(capital)} · ${(capital / bruto).toLocaleString("es-AR", { maximumFractionDigits: 1 })} sueldos brutos`
+        : "Sin monto o sin sueldo bruto",
+    regla: `Hasta ${formatARS(topeBrutos)} (${LIMITE_SUELDOS_BRUTOS} × ${formatARS(bruto)})`,
+    resultado: bruto > 0 ? conCapital(capital <= topeBrutos) : "ESPERANDO_DATOS",
+  };
+  const endeudamiento = vigentes.find((r) => r.codigo === "RI-02");
+  const edadGenero = vigentes.find((r) => r.codigo === "RI-01");
+  const desdeGuardada = (r: ReglaInstitucional): ReglaInstitucionalCredito => ({
+    codigo: r.codigo,
+    nombre: r.nombre,
+    posicion: r.valorEvaluado,
+    regla: r.condicion,
+    resultado: r.resultado,
+  });
+
+  return [
+    capitalMaximo,
+    sueldosBrutos,
+    ...(endeudamiento ? [{ ...desdeGuardada(endeudamiento), nombre: "Nivel de endeudamiento" }] : []),
+    ...(edadGenero ? [desdeGuardada(edadGenero)] : []),
+  ];
 }
