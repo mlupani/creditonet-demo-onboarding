@@ -43,7 +43,7 @@ export function Stepper({
               <span
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all ${
                   active
-                    ? "bg-brand-600 text-white shadow-sm ring-4 ring-brand-100"
+                    ? "bg-brand-600 text-white shadow-sm ring-4 ring-brand-100 animate-pulse-electric"
                     : done
                       ? "border border-brand-200 bg-brand-100 text-brand-700"
                       : "border border-ink-200 bg-white text-ink-400"
