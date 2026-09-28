@@ -17,6 +17,9 @@ interface ModalProps {
 const tonoResultado = {
   ok: "text-success-700",
   marcada: "text-warning-700",
+  // Reglas de verificación: rojo hasta que el analista las verifica, verde después.
+  sinVerificar: "text-danger-600",
+  verificada: "text-success-700",
   falla: "text-danger-600",
 } as const;
 
@@ -46,7 +49,15 @@ export function BuroMotorModal({ open, onClose }: ModalProps) {
         <ul className="space-y-2">
           {app.riesgo.reglas.map((r) => {
             const marcada = reglaMarcada(r);
-            const estado = r.resultado === "PASA" ? "ok" : marcada ? "marcada" : "falla";
+            const verificada = (app.analista.reglasVerificadas ?? []).some((v) => v.id === r.id);
+            const estado =
+              r.resultado === "PASA"
+                ? "ok"
+                : marcada
+                  ? verificada
+                    ? "verificada"
+                    : "sinVerificar"
+                  : "falla";
             return (
               <li key={r.id} className="rounded-xl border border-ink-200 px-4 py-2.5">
                 <div className="flex items-start justify-between gap-3">
@@ -59,7 +70,13 @@ export function BuroMotorModal({ open, onClose }: ModalProps) {
                     )}
                   </p>
                   <span className={`shrink-0 text-xs font-bold ${tonoResultado[estado]}`}>
-                    {estado === "ok" ? "Pasa" : estado === "marcada" ? "Marcada · revisar" : "No pasa"}
+                    {estado === "ok"
+                      ? "Pasa"
+                      : estado === "verificada"
+                        ? "✓ Verificada"
+                        : estado === "sinVerificar"
+                          ? "✕ Sin verificar"
+                          : "No pasa"}
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-ink-500">
@@ -87,8 +104,11 @@ export function ReglasMotorModal({ open, onClose }: ModalProps) {
   // Reglas ya evaluadas en la solicitud + el resto del catálogo del motor, para ver el conjunto completo.
   const reglasMotor = [
     ...app.riesgo.reglas,
-    ...evaluarReglas(app, motor).filter((r) => !app.riesgo.reglas.some((e) => e.nombre === r.nombre)),
+    ...evaluarReglas(app, motor, app.riesgo.escenario).filter(
+      (r) => !app.riesgo.reglas.some((e) => e.nombre === r.nombre)
+    ),
   ];
+  const verificadas = app.analista.reglasVerificadas ?? [];
 
   type Estado = keyof typeof tonoResultado;
   const filas: {
@@ -109,7 +129,13 @@ export function ReglasMotorModal({ open, onClose }: ModalProps) {
       condicion: r.condicion,
       valor: r.valorEvaluado,
       tipo: r.bloqueante ? "Bloqueante" : "No bloqueante",
-      estado: (r.resultado === "PASA" ? "ok" : reglaMarcada(r) ? "marcada" : "falla") as Estado,
+      estado: (r.resultado === "PASA"
+        ? "ok"
+        : reglaMarcada(r)
+          ? verificadas.some((v) => v.id === r.id)
+            ? "verificada"
+            : "sinVerificar"
+          : "falla") as Estado,
     })),
     {
       id: "rci",
@@ -184,7 +210,15 @@ export function ReglasMotorModal({ open, onClose }: ModalProps) {
                 <td className="px-3 py-2 text-ink-700">{f.valor}</td>
                 <td className="px-3 py-2 text-ink-500">{f.tipo}</td>
                 <td className={`px-3 py-2 font-bold ${tonoResultado[f.estado]}`}>
-                  {f.estado === "ok" ? "Pasa" : f.estado === "marcada" ? "Marcada · revisar" : "No pasa"}
+                  {f.estado === "ok"
+                    ? "Pasa"
+                    : f.estado === "verificada"
+                      ? "✓ Verificada"
+                      : f.estado === "sinVerificar"
+                        ? "✕ Sin verificar"
+                        : f.estado === "marcada"
+                          ? "Marcada · revisar"
+                          : "No pasa"}
                 </td>
               </tr>
             ))}
