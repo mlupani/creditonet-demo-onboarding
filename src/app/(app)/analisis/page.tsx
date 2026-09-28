@@ -19,10 +19,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
+import { MOTIVO_RECHAZO_OFERTA } from "@/lib/validation";
 import { SuccessScreen } from "@/components/SuccessScreen";
 import { AnalisisCredito } from "@/components/analisis/AnalisisCredito";
 import { ListaAnalisis } from "@/components/analisis/ListaAnalisis";
 import { AprobacionModal } from "@/components/analisis/AprobacionModal";
+import { ObservarOfertaModal } from "@/components/analisis/ObservarOfertaModal";
 import {
   IconArrowLeft,
   IconClock,
@@ -50,6 +52,10 @@ export default function AnalisisPage() {
   } = useApplication();
   const [aprobarModal, setAprobarModal] = useState(false);
   const [supAbierto, setSupAbierto] = useState(false);
+  const [observarOferta, setObservarOferta] = useState(false);
+  // Pantalla APR: comentarios y conversación completa vendedor-analista.
+  const [verAprobado, setVerAprobado] = useState<"comentarios" | "mensajes" | null>(null);
+  const [rechazoOferta, setRechazoOferta] = useState<{ nota: string; intentado: boolean } | null>(null);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   // El modal de observaciones se abre solo al entrar a Confirmar oferta; se guarda para
   // qué crédito se descartó para no reabrirlo, y el botón lo vuelve a abrir.
@@ -210,6 +216,13 @@ export default function AnalisisPage() {
         </div>
 
         <div className="mt-6 space-y-5">
+          {/* Los comentarios van primero: dan el contexto antes de comparar las ofertas. */}
+          {app.comentarios.length > 0 && (
+            <Card className="px-5 pb-5 pt-1">
+              <ListaComentarios titulo="Comentarios" />
+            </Card>
+          )}
+
           <Card className="p-4 sm:p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border border-warning-200 bg-warning-50/50 p-4">
@@ -225,7 +238,7 @@ export default function AnalisisPage() {
               </div>
               <div className="rounded-xl border border-success-200 bg-success-50/50 p-4">
                 <p className="text-xs font-bold uppercase tracking-widest text-success-700">
-                  Oferta Modificada por el analista
+                  Oferta propuesta aceptada
                 </p>
                 <p className="mt-1 text-xl font-bold tabular-nums text-ink-900">
                   {formatARS(o.montoSolicitado)}
@@ -245,11 +258,21 @@ export default function AnalisisPage() {
                 </Button>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="outline" onClick={() => setObservarOferta(true)}>
+                  Observar
+                </Button>
                 {!cofeSuperior && (
                   <Button variant="outline" onClick={() => setSupAbierto(true)}>
                     Enviar a SUP
                   </Button>
                 )}
+                <Button
+                  size="lg"
+                  variant="danger"
+                  onClick={() => setRechazoOferta({ nota: "", intentado: false })}
+                >
+                  Rechazar oferta
+                </Button>
                 <Button size="lg" variant="success" onClick={() => setAprobarModal(true)}>
                   Confirmar oferta
                 </Button>
@@ -257,11 +280,6 @@ export default function AnalisisPage() {
             </div>
           </Card>
 
-          {app.comentarios.length > 0 && (
-            <Card className="px-5 pb-5 pt-1">
-              <ListaComentarios titulo="Comentarios" />
-            </Card>
-          )}
         </div>
 
         <AprobacionModal
@@ -294,6 +312,60 @@ export default function AnalisisPage() {
           <HiloObservacion />
         </Modal>
         <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
+        <ObservarOfertaModal open={observarOferta} onClose={() => setObservarOferta(false)} />
+        <Modal
+          open={rechazoOferta !== null}
+          onClose={() => setRechazoOferta(null)}
+          title="Rechazar la oferta"
+          maxWidth="max-w-md"
+          footer={
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setRechazoOferta(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  if (!rechazoOferta) return;
+                  const nota = rechazoOferta.nota.trim();
+                  if (nota.length < 5) {
+                    setRechazoOferta({ ...rechazoOferta, intentado: true });
+                    return;
+                  }
+                  rechazarCredito(MOTIVO_RECHAZO_OFERTA.codigo, MOTIVO_RECHAZO_OFERTA.label, nota);
+                  setRechazoOferta(null);
+                }}
+              >
+                Rechazar y dar de baja
+              </Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-ink-600">
+            El crédito se da de baja: queda <strong>Rechazado</strong> ({MOTIVO_RECHAZO_OFERTA.codigo} ·{" "}
+            {MOTIVO_RECHAZO_OFERTA.label}) y no sigue a firma. No se puede deshacer.
+          </p>
+          <label htmlFor="nota-rechazo-oferta" className="mt-4 block text-sm font-medium text-ink-700">
+            Observación <span className="text-danger-500">*</span>
+          </label>
+          <textarea
+            id="nota-rechazo-oferta"
+            rows={3}
+            value={rechazoOferta?.nota ?? ""}
+            onChange={(e) => rechazoOferta && setRechazoOferta({ ...rechazoOferta, nota: e.target.value })}
+            placeholder="Ej.: El cliente no acepta el monto reducido de la oferta."
+            className={`mt-1.5 w-full rounded-lg border px-3 py-2 text-sm shadow-xs outline-none transition ${
+              rechazoOferta?.intentado && rechazoOferta.nota.trim().length < 5
+                ? "border-danger-400 focus:ring-2 focus:ring-danger-100"
+                : "border-ink-300 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            }`}
+          />
+          {rechazoOferta?.intentado && rechazoOferta.nota.trim().length < 5 && (
+            <p className="mt-1.5 text-sm text-danger-600">
+              Ingresá al menos 5 caracteres para que el registro sea claro.
+            </p>
+          )}
+        </Modal>
       </div>
     );
   }
@@ -332,7 +404,15 @@ export default function AnalisisPage() {
                 ? "electrónica (FEL)"
                 : "ambas (FEL o AFEL)"}
           </p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button variant="outline" onClick={() => setVerAprobado("comentarios")}>
+                Ver comentarios{app.comentarios.length > 0 ? ` (${app.comentarios.length})` : ""}
+              </Button>
+              <Button variant="outline" onClick={() => setVerAprobado("mensajes")}>
+                Mensajes vendedor-analista
+              </Button>
+            </div>
             {(modalidad === "ELECTRONICA" || modalidad === "AMBAS") && (
               <Button
                 size="lg"
@@ -348,6 +428,27 @@ export default function AnalisisPage() {
           </div>
         </Card>
         <HistorialCredito className="mt-5" />
+        <Modal
+          open={verAprobado !== null}
+          onClose={() => setVerAprobado(null)}
+          title={verAprobado === "mensajes" ? "Mensajes entre vendedor y analista" : "Comentarios"}
+          maxWidth="max-w-2xl"
+          footer={
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setVerAprobado(null)}>
+                Cerrar
+              </Button>
+            </div>
+          }
+        >
+          {verAprobado === "mensajes" ? (
+            <HiloObservacion />
+          ) : app.comentarios.length > 0 ? (
+            <ListaComentarios titulo="Comentarios" />
+          ) : (
+            <p className="text-sm text-ink-500">La solicitud no tiene comentarios.</p>
+          )}
+        </Modal>
         <AprobacionModal
           open={aprobarModal}
           loading={false}

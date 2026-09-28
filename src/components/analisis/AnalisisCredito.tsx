@@ -91,9 +91,9 @@ function tieneCatalogoCampos(id: PantallaPostOfertaId): id is PantallaConCampos 
 }
 
 // Por ahora el analista sólo puede observar estas pantallas (las demás se ocultan del selector).
-const PANTALLAS_OBSERVABLES: PantallaPostOfertaId[] = ["referencias", "garantias", "legajo"];
+export const PANTALLAS_OBSERVABLES: PantallaPostOfertaId[] = ["referencias", "garantias", "legajo"];
 
-function AreaTexto({
+export function AreaTexto({
   id,
   label,
   value,
@@ -1161,6 +1161,7 @@ export function AnalisisCredito({
               id="pantallas-observadas"
               label="Pantallas a corregir"
               required
+              placeholder="Seleccioná pantallas…"
               values={pantallasVisibles(app.configuracion)
                 .filter((pv) => PANTALLAS_OBSERVABLES.includes(pv.id))
                 .filter((pv) => pantallas.includes(pv.id))
