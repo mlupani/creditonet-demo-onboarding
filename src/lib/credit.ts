@@ -85,9 +85,9 @@ export function cambiosOfertaDe(app: CreditApplication): CambioOfertaRegistro[] 
   ];
 }
 
-// Cambios de oferta que el analista puede hacer por solicitud sin excepción. El siguiente
-// requiere que lo autorice el supervisor (creditonet-78).
-export const MAX_CAMBIOS_OFERTA = 2;
+// Cambios de oferta que el analista puede hacer por solicitud sin excepción (creditonet-104:
+// uno solo). El siguiente requiere que lo autorice el supervisor (creditonet-78).
+export const MAX_CAMBIOS_OFERTA = 1;
 
 export function cambioOfertaPermitido(app: CreditApplication): boolean {
   const hechos = cambiosOfertaDe(app).length;
