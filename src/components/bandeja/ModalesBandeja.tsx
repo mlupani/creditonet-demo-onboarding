@@ -146,6 +146,7 @@ export function EstadoSolicitudModal({ open, onClose }: ModalProps) {
   const historial = historialCredito(app);
   const resolucion =
     app.estado === "PARA_LIQUIDAR" ||
+    app.estado === "ACTIVO" ||
     app.estado === "APROBADO" ||
     app.estado === "EN_FIRMA" ||
     app.estado === "FIRMADO" ||

@@ -3,7 +3,7 @@
 
 export type EtapaFlujo = "ORIGINACION" | "TRANSICION" | "POST_OFERTA" | "ENVIADA";
 
-// Máquina de estados de la solicitud. "Expirado" y "Activo" no se simulan en la demo.
+// Máquina de estados de la solicitud. "Expirado" no se simula en la demo.
 //
 // Reunión 11/09 (13:15, 01:03:29): la carga transcurre EN_TRAMITE; al finalizarla la
 // solicitud pasa a PREAPROBADO y *eso* es lo que la manda a la bandeja del analista.
@@ -30,7 +30,10 @@ export type EstadoCredito =
   // con el visto bueno, el crédito sigue al chequeo telefónico o a liquidación.
   | "SUPERIOR"
   | "CHEQUEO_TELEFONICO"
-  | "PARA_LIQUIDAR";
+  | "PARA_LIQUIDAR"
+  // Activo (creditonet-108): crédito ya liquidado y vigente. La liquidación (Tesorería) no se
+  // simula, así que sólo aparece en los datos de ejemplo.
+  | "ACTIVO";
 
 export type MetodoFirma = "ELECTRONICA" | "FISICA";
 export type ResultadoFirma = "PENDIENTE" | "APROBADA" | "REFIRMA_SOLICITADA" | "RECHAZADA";
