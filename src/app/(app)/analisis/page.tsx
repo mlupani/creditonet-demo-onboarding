@@ -406,9 +406,9 @@ export default function AnalisisPage() {
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="outline" onClick={() => setVerAprobado("comentarios")}>
+              {/* <Button variant="outline" onClick={() => setVerAprobado("comentarios")}>
                 Ver comentarios{app.comentarios.length > 0 ? ` (${app.comentarios.length})` : ""}
-              </Button>
+              </Button> */}
               {/* <Button variant="outline" onClick={() => setVerAprobado("mensajes")}>
                 Ver observaciones
               </Button> */}
