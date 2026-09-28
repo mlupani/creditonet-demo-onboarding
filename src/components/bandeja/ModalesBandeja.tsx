@@ -2,7 +2,13 @@
 
 import { useState, type ReactNode } from "react";
 import { useApplication } from "@/lib/application-context";
-import { cambiosOfertaDe, ofertaAnalistaDe } from "@/lib/credit";
+import {
+  calcularCuota,
+  cambiosOfertaDe,
+  getTerm,
+  ofertaAnalistaDe,
+  planDeSolicitud,
+} from "@/lib/credit";
 import { pantallasVisibles } from "@/lib/config";
 import { formatARS, formatDNI } from "@/lib/format";
 import { SESION_CHEQUEADOR } from "@/lib/config";
@@ -401,6 +407,18 @@ export function ObservacionModal({
             filas={[
               { label: "Capital", value: formatARS(oferta.montoSolicitado) },
               { label: "Cuotas", value: `${oferta.plazo}` },
+              // Mismo cálculo que la pantalla de la nueva oferta del vendedor.
+              {
+                label: "Valor cuota",
+                value: formatARS(
+                  calcularCuota(
+                    oferta.montoSolicitado,
+                    oferta.plazo,
+                    getTerm(oferta.plazo, planDeSolicitud(app)).tna,
+                    planDeSolicitud(app).sistema
+                  )
+                ),
+              },
             ]}
           />
         </Seccion>
