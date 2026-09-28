@@ -43,7 +43,7 @@ const NAV: NavItem[] = [
   { label: "Liquidación", icon: IconLandmark },
   { label: "Clientes", icon: IconUsers },
   { label: "Créditos", icon: IconCreditCard },
-  { label: "Motor de riesgo", icon: IconShieldCheck },
+  { label: "Motor de riesgo", href: "/motor-riesgo", icon: IconShieldCheck, disponible: true },
   { label: "Reportes", icon: IconBarChart },
   { label: "Parámetros", icon: IconSettings },
 ];
