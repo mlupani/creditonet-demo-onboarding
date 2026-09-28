@@ -592,60 +592,53 @@ export function AnalisisCredito({
           </dl>
         </SummaryCard>
         <SummaryCard
-          title="Situación y comportamiento de pago"
+          title={`Motor de riesgo · ${getMotor(app.riesgo.motorId).nombre}`}
           icon={<IconShieldCheck width={16} height={16} />}
           rows={[
-            { label: "Situación BCRA", value: app.situaciones ? `${app.situaciones.bcra}` : "—" },
+            ...reglasMotor.map((r) => ({
+              label: `${r.codigo} · ${r.nombre}${r.bloqueante ? "" : " (no bloqueante)"}`,
+              value:
+                r.resultado === "PASA"
+                  ? "✓ Pasa"
+                  : reglaMarcada(r)
+                    ? "! Marcada · revisar"
+                    : "✕ No pasa",
+              tone:
+                r.resultado === "PASA"
+                  ? ("success" as const)
+                  : reglaMarcada(r)
+                    ? ("warning" as const)
+                    : ("danger" as const),
+            })),
             {
-              label: "Situación Buró interno",
-              value: app.situaciones ? `${app.situaciones.interna}` : "—",
+              label: "Resultado",
+              value: app.riesgo.resultado
+                ? `${RESULTADO_LABEL[app.riesgo.resultado]}${
+                    marcadas.length > 0
+                      ? ` · ${marcadas.length} marcada${marcadas.length === 1 ? "" : "s"}`
+                      : ""
+                  }`
+                : "—",
+              strong: true,
+              tone: marcadas.length > 0 ? ("warning" as const) : ("success" as const),
             },
-            { label: "Vector de pago", value: vector ?? "Sin historial" },
-            {
-              label: "Último pago",
-              value: creditoConPagos ? textoUltimoPago(creditoConPagos) : "Sin pagos registrados",
-            },
+            { label: "Evaluado", value: app.riesgo.fecha ?? "—" },
           ]}
           footer={
             puedeOperar ? (
               <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant={o.creditosActivos.length > 0 ? "outline" : "ghost"}
-                  onClick={() => setHistorialAbierto(true)}
-                  aria-label="Ver historial de pagos"
-                >
-                  <IconEye width={14} height={14} />
-                  Ver historial de pagos
+                <Button size="sm" variant="outline" onClick={() => setConsulta("reglas")}>
+                  <IconShieldCheck width={14} height={14} />
+                  Visualizar reglas
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-expanded={logAbierto}
-                  onClick={() => setLogAbierto((v) => !v)}
-                >
-                  <IconCalendar width={14} height={14} />
-                  {logAbierto ? "Ocultar log de estados" : "Ver log de estados"}
+                <Button size="sm" variant="outline" onClick={() => setConsulta("buro")}>
+                  <IconLandmark width={14} height={14} />
+                  Ver buró
                 </Button>
               </div>
             ) : undefined
           }
-        >
-          {logAbierto && (
-            <ul className="mt-3 space-y-1.5 border-t border-ink-100 pt-3">
-              {logEstados.length === 0 ? (
-                <li className="text-sm text-ink-500">Sin movimientos registrados.</li>
-              ) : (
-                logEstados.map((e) => (
-                  <li key={e.estado} className="flex items-baseline justify-between gap-4 text-sm">
-                    <span className="text-ink-500">{e.estado}</span>
-                    <span className="font-semibold tabular-nums text-ink-900">{e.fecha}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          )}
-        </SummaryCard>
+        />
         <SummaryCard title="Reglas institucionales" icon={<IconLandmark width={16} height={16} />}>
           {/* Doble columna: la posición del cliente frente a lo que exige cada regla. */}
           <ul className="divide-y divide-ink-100">
@@ -719,53 +712,60 @@ export function AnalisisCredito({
           )}
         </SummaryCard>
         <SummaryCard
-          title={`Motor de riesgo · ${getMotor(app.riesgo.motorId).nombre}`}
+          title="Situación y comportamiento de pago"
           icon={<IconShieldCheck width={16} height={16} />}
           rows={[
-            ...reglasMotor.map((r) => ({
-              label: `${r.codigo} · ${r.nombre}${r.bloqueante ? "" : " (no bloqueante)"}`,
-              value:
-                r.resultado === "PASA"
-                  ? "✓ Pasa"
-                  : reglaMarcada(r)
-                    ? "! Marcada · revisar"
-                    : "✕ No pasa",
-              tone:
-                r.resultado === "PASA"
-                  ? ("success" as const)
-                  : reglaMarcada(r)
-                    ? ("warning" as const)
-                    : ("danger" as const),
-            })),
+            { label: "Situación BCRA", value: app.situaciones ? `${app.situaciones.bcra}` : "—" },
             {
-              label: "Resultado",
-              value: app.riesgo.resultado
-                ? `${RESULTADO_LABEL[app.riesgo.resultado]}${
-                    marcadas.length > 0
-                      ? ` · ${marcadas.length} marcada${marcadas.length === 1 ? "" : "s"}`
-                      : ""
-                  }`
-                : "—",
-              strong: true,
-              tone: marcadas.length > 0 ? ("warning" as const) : ("success" as const),
+              label: "Situación Buró interno",
+              value: app.situaciones ? `${app.situaciones.interna}` : "—",
             },
-            { label: "Evaluado", value: app.riesgo.fecha ?? "—" },
+            { label: "Vector de pago", value: vector ?? "Sin historial" },
+            {
+              label: "Último pago",
+              value: creditoConPagos ? textoUltimoPago(creditoConPagos) : "Sin pagos registrados",
+            },
           ]}
           footer={
             puedeOperar ? (
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => setConsulta("reglas")}>
-                  <IconShieldCheck width={14} height={14} />
-                  Visualizar reglas
+                <Button
+                  size="sm"
+                  variant={o.creditosActivos.length > 0 ? "outline" : "ghost"}
+                  onClick={() => setHistorialAbierto(true)}
+                  aria-label="Ver historial de pagos"
+                >
+                  <IconEye width={14} height={14} />
+                  Ver historial de pagos
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setConsulta("buro")}>
-                  <IconLandmark width={14} height={14} />
-                  Ver buró
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-expanded={logAbierto}
+                  onClick={() => setLogAbierto((v) => !v)}
+                >
+                  <IconCalendar width={14} height={14} />
+                  {logAbierto ? "Ocultar log de estados" : "Ver log de estados"}
                 </Button>
               </div>
             ) : undefined
           }
-        />
+        >
+          {logAbierto && (
+            <ul className="mt-3 space-y-1.5 border-t border-ink-100 pt-3">
+              {logEstados.length === 0 ? (
+                <li className="text-sm text-ink-500">Sin movimientos registrados.</li>
+              ) : (
+                logEstados.map((e) => (
+                  <li key={e.estado} className="flex items-baseline justify-between gap-4 text-sm">
+                    <span className="text-ink-500">{e.estado}</span>
+                    <span className="font-semibold tabular-nums text-ink-900">{e.fecha}</span>
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
+        </SummaryCard>
       </div>
 
       {/* Detalle expandido: referencias, garantes y créditos (tablas post-oferta) */}
