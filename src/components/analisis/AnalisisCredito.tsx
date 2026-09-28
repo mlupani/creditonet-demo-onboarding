@@ -165,6 +165,7 @@ export function AnalisisCredito({
     anularCredito,
     soltarAnalisis,
     tomarAnalisis,
+    verificarReglaMotor,
     confirmarObservacion,
   } = useApplication();
   const router = useRouter();
@@ -229,6 +230,11 @@ export function AnalisisCredito({
     app.analista.observacion !== null &&
     !app.analista.observacionConfirmada;
   const observacionPendiente = puedeOperar && requiereLectura;
+  // Reglas de verificación del motor sin revisar: bloquean los cambios de estado.
+  const verificadas = app.analista.reglasVerificadas ?? [];
+  const verificacionDe = (r: RiskRule) => verificadas.find((v) => v.id === r.id);
+  const reglasPendientes = marcadas.filter((r) => !verificacionDe(r));
+  const bloqueado = observacionPendiente || (puedeOperar && reglasPendientes.length > 0);
   const cfgEfectiva = configEfectiva(app.configuracion);
   // Oferta: renovaciones de créditos al día vs. precancelaciones obligatorias de créditos en mora.
   const sumaCancelacion = (cs: typeof aRenovar) => cs.reduce((t, c) => t + c.montoCancelacion, 0);
@@ -396,30 +402,57 @@ export function AnalisisCredito({
       {marcadas.length > 0 && (
         <div
           role="alert"
-          className="animate-pulse-warning rounded-xl border-2 border-warning-400 bg-warning-50 p-4"
+          className={`rounded-xl border-2 p-4 ${
+            reglasPendientes.length > 0
+              ? "animate-pulse-warning border-warning-400 bg-warning-50"
+              : "border-success-200 bg-success-50"
+          }`}
         >
-          <p className="flex items-center gap-2 text-sm font-bold text-warning-700">
-            <IconAlertTriangle width={18} height={18} />
-            {marcadas.length} regla{marcadas.length === 1 ? "" : "s"} del motor para verificar
+          <p
+            className={`flex items-center gap-2 text-sm font-bold ${
+              reglasPendientes.length > 0 ? "text-warning-700" : "text-success-700"
+            }`}
+          >
+            {reglasPendientes.length > 0 ? (
+              <IconAlertTriangle width={18} height={18} />
+            ) : (
+              <IconCheck width={18} height={18} />
+            )}
+            {reglasPendientes.length > 0
+              ? `${reglasPendientes.length} de ${marcadas.length} regla${marcadas.length === 1 ? "" : "s"} del motor sin verificar`
+              : `Reglas del motor verificadas (${marcadas.length})`}
           </p>
-          <p className="mt-1 text-sm text-warning-700">
-            No frenaron la solicitud, pero tenés que revisarlas antes de decidir.
+          <p className={`mt-1 text-sm ${reglasPendientes.length > 0 ? "text-warning-700" : "text-success-700"}`}>
+            {reglasPendientes.length > 0
+              ? "No frenaron la solicitud, pero hasta verificarlas no podés cambiar el estado del crédito (aprobar, observar, cambiar la oferta, anular ni rechazar)."
+              : "Ya podés decidir sobre la solicitud."}
           </p>
           <ul className="mt-3 space-y-2">
             {marcadas.map((r) => (
               <li
                 key={r.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning-200 bg-white px-3 py-2"
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 ${
+                  verificacionDe(r) ? "border-success-200" : "border-warning-200"
+                }`}
               >
                 <span className="text-sm text-ink-800">
                   <span className="font-mono text-xs font-bold text-warning-700">{r.codigo}</span>{" "}
                   <strong>{r.nombre}</strong>
                   <span className="text-ink-500"> · {r.valorEvaluado}</span>
                 </span>
-                <Button size="sm" variant="outline" onClick={() => setReglaObs(r)}>
-                  <IconEye width={14} height={14} />
-                  Ver Regla del motor
-                </Button>
+                <span className="flex items-center gap-2">
+                  {verificacionDe(r) ? (
+                    <span className="text-xs font-semibold text-success-700">
+                      ✓ Verificada · {verificacionDe(r)!.analista} · {verificacionDe(r)!.fecha}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-semibold text-warning-700">Pendiente</span>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => setReglaObs(r)}>
+                    <IconEye width={14} height={14} />
+                    Ver Regla del motor
+                  </Button>
+                </span>
               </li>
             ))}
           </ul>
@@ -490,14 +523,14 @@ export function AnalisisCredito({
                     <IconEye width={14} height={14} />
                     Ver legajo virtual
                   </Button>
-                  <Button size="sm" variant="outline" disabled={observacionPendiente} onClick={() => abrir("observar")}>
+                  <Button size="sm" variant="outline" disabled={bloqueado} onClick={() => abrir("observar")}>
                     <IconAlertTriangle width={14} height={14} />
                     Observar
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={observacionPendiente}
+                    disabled={bloqueado}
                     onClick={intentarCambiarOferta}
                   >
                     <IconRefresh width={14} height={14} />
@@ -958,17 +991,17 @@ export function AnalisisCredito({
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 variant="outline"
-                disabled={observacionPendiente}
+                disabled={bloqueado}
                 onClick={intentarCambiarOferta}
               >
                 <IconRefresh width={16} height={16} />
                 Cambiar oferta
               </Button>
-              <Button variant="outline" disabled={observacionPendiente} onClick={() => abrir("observar")}>
+              <Button variant="outline" disabled={bloqueado} onClick={() => abrir("observar")}>
                 <IconAlertTriangle width={16} height={16} />
                 Observar
               </Button>
-              <Button variant="outline" disabled={observacionPendiente} onClick={() => abrir("anular")}>
+              <Button variant="outline" disabled={bloqueado} onClick={() => abrir("anular")}>
                 <IconTrash width={16} height={16} />
                 Anular
               </Button>
@@ -989,11 +1022,11 @@ export function AnalisisCredito({
               )}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button variant="danger" disabled={observacionPendiente} onClick={() => abrir("rechazar")}>
+              <Button variant="danger" disabled={bloqueado} onClick={() => abrir("rechazar")}>
                 <IconX width={16} height={16} />
                 Rechazar
               </Button>
-              <Button variant="success" disabled={observacionPendiente} onClick={onAprobar}>
+              <Button variant="success" disabled={bloqueado} onClick={onAprobar}>
                 <IconCheck width={16} height={16} />
                 Aprobar
               </Button>
@@ -1110,10 +1143,22 @@ export function AnalisisCredito({
         title={reglaObs ? `Regla para verificar · ${reglaObs.codigo}` : ""}
         maxWidth="max-w-lg"
         footer={
-          <div className="flex justify-end">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setReglaObs(null)}>
               Cerrar
             </Button>
+            {reglaObs && puedeOperar && !verificacionDe(reglaObs) && (
+              <Button
+                variant="success"
+                onClick={() => {
+                  verificarReglaMotor(reglaObs.id, reglaObs.nombre);
+                  setReglaObs(null);
+                }}
+              >
+                <IconCheck width={16} height={16} />
+                Marcar como verificada
+              </Button>
+            )}
           </div>
         }
       >

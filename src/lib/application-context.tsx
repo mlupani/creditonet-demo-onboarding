@@ -325,6 +325,8 @@ interface ApplicationContextValue {
 
   tomarAnalisis: () => void;
   confirmarObservacion: () => void;
+  // El analista revisó una regla de verificación del motor (desbloquea las acciones).
+  verificarReglaMotor: (id: string, nombre: string) => void;
   observarCredito: (
     motivo: string,
     nota: string,
@@ -1529,6 +1531,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const verificarReglaMotor = useCallback((id: string, nombre: string) => {
+    setAppOperativo((prev) => {
+      const actuales = prev.analista.reglasVerificadas ?? [];
+      if (actuales.some((r) => r.id === id)) return prev;
+      return {
+        ...prev,
+        analista: {
+          ...prev.analista,
+          reglasVerificadas: [
+            ...actuales,
+            { id, nombre, analista: SESION_ANALISTA.nombre, fecha: selloTiempo() },
+          ],
+        },
+      };
+    });
+  }, []);
+
   // Observar devuelve la solicitud a la bandeja del canal de venta (Guía §7.3). El analista
   // indica qué pantalla hay que corregir para que el vendedor vaya derecho ahí (01:09).
   const observarCredito = useCallback(
@@ -1550,6 +1569,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           derivacionCambioFinanciero: null,
           ofertaAnalista: null,
           observacionConfirmada: null,
+          // Con las correcciones del vendedor las reglas se vuelven a verificar.
+          reglasVerificadas: [],
           ...conObservacion(prev, { motivo, nota, fecha: fechaHoy(), pantallas, campos }),
         },
       }));
@@ -2043,6 +2064,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finalizarCarga,
       tomarAnalisis,
       confirmarObservacion,
+      verificarReglaMotor,
       observarCredito,
       anularCredito,
       agregarComentario,
@@ -2122,6 +2144,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finalizarCarga,
       tomarAnalisis,
       confirmarObservacion,
+      verificarReglaMotor,
       observarCredito,
       anularCredito,
       agregarComentario,
