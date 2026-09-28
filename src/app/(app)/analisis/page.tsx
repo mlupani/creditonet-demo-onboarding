@@ -410,7 +410,7 @@ export default function AnalisisPage() {
                 Ver comentarios{app.comentarios.length > 0 ? ` (${app.comentarios.length})` : ""}
               </Button>
               <Button variant="outline" onClick={() => setVerAprobado("mensajes")}>
-                Mensajes vendedor-analista
+                Ver observaciones
               </Button>
             </div>
             {(modalidad === "ELECTRONICA" || modalidad === "AMBAS") && (

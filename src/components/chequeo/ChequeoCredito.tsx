@@ -152,7 +152,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
               Volver
             </Button>
             <Button variant="outline" onClick={() => setVerMensajes("mensajes")}>
-              Mensajes vendedor-analista
+              Ver observaciones
             </Button>
             <Button onClick={tomarChequeo}>Tomar chequeo</Button>
           </div>
