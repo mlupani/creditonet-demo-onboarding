@@ -44,6 +44,20 @@ function Fila({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Garantes y referencias: una persona por bloque, con sus datos uno debajo del otro.
+function Persona({ nombre, detalle }: { nombre: string; detalle: string[] }) {
+  return (
+    <div className="border-b border-ink-100 py-1.5 text-sm last:border-b-0">
+      <p className="font-semibold text-ink-900">{nombre}</p>
+      {detalle.map((d, i) => (
+        <p key={i} className="break-words text-xs text-ink-500">
+          {d}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function Bloque({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <div className="mt-3 border-t border-ink-100 pt-3">
@@ -116,10 +130,10 @@ export function DocumentoLegajo() {
 
       <Bloque titulo="Referencias personales">
         {po.referencias.map((r) => (
-          <Fila
+          <Persona
             key={r.id}
-            label={`${nombreApellido(r) || "Sin nombre"} · ${r.vinculo || "sin vínculo"}`}
-            value={r.email || "—"}
+            nombre={nombreApellido(r) || "Sin nombre"}
+            detalle={[r.vinculo || "sin vínculo", r.email || "—"]}
           />
         ))}
       </Bloque>
@@ -127,10 +141,10 @@ export function DocumentoLegajo() {
       {po.garantes.length > 0 && (
         <Bloque titulo="Garantes">
           {po.garantes.map((g) => (
-            <Fila
+            <Persona
               key={g.id}
-              label={`${nombreApellido(g) || "Sin nombre"} · DNI ${g.dni || "—"}`}
-              value={g.vinculo || "—"}
+              nombre={nombreApellido(g) || "Sin nombre"}
+              detalle={[`DNI ${g.dni || "—"}`, g.vinculo || "—"]}
             />
           ))}
         </Bloque>
