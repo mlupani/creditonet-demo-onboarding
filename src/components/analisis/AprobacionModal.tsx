@@ -31,19 +31,17 @@ export function AprobacionModal({
   const modalidad = modalidadFirma(app.configuracion);
   const metodo: MetodoFirma = metodoDestino ?? "ELECTRONICA";
   const chequeo = requiereChequeoTelefonico(app.configuracion);
+  // Con firma física no hace falta firma electrónica: la manual ya está en el legajo.
+  const firmaElectronica = modo === "APROBADO" ? modalidad !== "FISICA" : metodo !== "FISICA";
 
   const descripcion =
     modo === "SUP"
       ? "El caso pasa a un superior (SUP): lo toma porque el analista no puede resolverlo. El superior confirma la oferta igual que el analista y el crédito pasa a APR."
       : modo === "APROBADO"
-        ? `Al confirmar, la solicitud queda aprobada (APR). Desde la pestaña Aprobados se la pasa a firma: ${
-            modalidad === "FISICA"
-              ? "física (AFEL directo)"
-              : modalidad === "ELECTRONICA"
-                ? "electrónica (FEL)"
-                : "electrónica (FEL) o física (AFEL directo)"
+        ? `Al confirmar, la solicitud queda aprobada (APR) y desde el análisis se la pasa al paso siguiente: ${
+            firmaElectronica ? "firma electrónica (FEL)" : "la firma física ya está en el legajo"
           }. ${
-            chequeo ? "Con la firma aprobada, pasa por chequeo telefónico y" : "Con la firma aprobada,"
+            chequeo ? "Después pasa por chequeo telefónico y" : "Después"
           } queda para liquidar (Tesorería).`
         : metodo === "FISICA"
           ? `Al confirmar, la solicitud pasa de Aprobado a Firma aprobada (AFEL) directo: la firma manual ya está cargada en el legajo. ${
@@ -73,20 +71,9 @@ export function AprobacionModal({
         { label: "Cuotas", value: `${o.plazo}` },
         { label: "Valor de cuota", value: formatARS(o.valorCuota) },
         { label: TERMINOS.saldoAcreditacion, value: formatARS(netoAAcreditar(o)) },
-        { label: "Chequeo telefónico", value: chequeo ? "Requerido por el producto" : "No requerido" },
-        {
-          label: "Firma",
-          value:
-            modo === "APROBADO"
-              ? modalidad === "FISICA"
-                ? "Física (AFEL directo)"
-                : modalidad === "ELECTRONICA"
-                  ? "Electrónica (FEL)"
-                  : "Ambas (FEL o AFEL)"
-              : metodo === "FISICA"
-                ? "Física (AFEL directo)"
-                : "Electrónica (FEL)",
-        },
+        // Lo que tiene configurado el producto: firma electrónica y chequeo telefónico.
+        { label: "Firma electrónica", value: firmaElectronica ? "Configurada" : "No requerida" },
+        { label: "Chequeo telefónico", value: chequeo ? "Configurado" : "No requerido" },
       ]}
       confirmLabel={
         modo === "SUP" ? "Enviar a SUP" : modo === "APROBADO" ? "Confirmar aprobación" : metodo === "FISICA" ? "Pasar a AFEL" : "Pasar a FEL"

@@ -1059,10 +1059,13 @@ export function AnalisisCredito({
                 <IconAlertTriangle width={16} height={16} />
                 Observar
               </Button>
-              <Button variant="outline" disabled={bloqueado} onClick={() => abrir("anular")}>
-                <IconTrash width={16} height={16} />
-                Anular
-              </Button>
+              {/* Aprobado ya no se anula: sigue a firma (FEL) o se rechaza. */}
+              {!aprobado && (
+                <Button variant="outline" disabled={bloqueado} onClick={() => abrir("anular")}>
+                  <IconTrash width={16} height={16} />
+                  Anular
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setConsulta("posicion")}>
                 <IconUser width={16} height={16} />
                 Posición cliente
