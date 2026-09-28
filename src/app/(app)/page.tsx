@@ -95,7 +95,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
 const SUBESTADOS: { id: string; label: string }[] = [
   { id: "BORRADOR", label: "Borrador" },
   { id: "EN_TRAMITE", label: "En trámite" },
-  { id: "PEND", label: "PEND · Pendientes (con oferta)" },
+  { id: "PEND", label: "PEND" },
   { id: "OBS", label: "OBS · Observada" },
   { id: "OBS_COFE", label: "OBS · COFE · Observada con cambio de oferta previo" },
   { id: "COFE", label: "COFE · Cambio de oferta" },
