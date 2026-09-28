@@ -255,6 +255,10 @@ export default function AnalisisPage() {
                 <p className="text-sm text-ink-500">
                   {o.plazo} cuotas de {formatARS(o.valorCuota)}
                 </p>
+                <p className="mt-1 text-sm text-ink-600">
+                  Saldo de cuotas:{" "}
+                  <strong className="tabular-nums text-ink-900">{formatARS(o.plazo * o.valorCuota)}</strong>
+                </p>
               </div>
             </div>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

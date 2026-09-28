@@ -67,6 +67,13 @@ export function PasoOfertaAnalista() {
               <p className="mt-2 text-sm font-semibold text-brand-50">
                 {analista.plazo} cuotas de {formatARS(cuotaAnalista)}
               </p>
+              {/* Saldo de cuotas: lo que suman todas las cuotas de la nueva oferta. */}
+              <p className="mt-1 text-sm text-brand-100">
+                Saldo de cuotas:{" "}
+                <strong className="tabular-nums text-white">
+                  {formatARS(analista.plazo * cuotaAnalista)}
+                </strong>
+              </p>
             </div>
           </div>
 
