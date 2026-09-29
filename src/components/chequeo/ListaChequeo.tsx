@@ -60,6 +60,18 @@ const COLUMNAS = [
   "Resultado",
 ];
 
+function LuzNotificaciones({ cantidad }: { cantidad: number }) {
+  if (cantidad === 0) return null;
+  return (
+    <span
+      className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger-500 px-1 text-[11px] font-bold tabular-nums text-white"
+      title={`${cantidad} notificación${cantidad === 1 ? "" : "es"} sin leer`}
+    >
+      {cantidad}
+    </span>
+  );
+}
+
 export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
   const router = useRouter();
   const { creditosDB, cargarCreditoDeDB } = useApplication();
@@ -77,6 +89,8 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
     (n) => creditoDe(n)?.estado === "CHEQUEO_TELEFONICO"
   );
   const pendientes = avisos.filter((n) => !n.leida).length;
+  const sinLeerDe = (creditoId: string) =>
+    avisos.filter((n) => !n.leida && n.creditoId === creditoId).length;
   const avisosFiltrados = avisos.filter((n) => {
     const c = creditoDe(n)!;
     if (canal && c.configuracion.canalId !== canal) return false;
@@ -223,12 +237,6 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                       <EstadoBadge estado={c.estado} />
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {!n.leida && (
-                        <span
-                          className="flex h-2.5 w-2.5 rounded-full bg-danger-500"
-                          title="Pendiente de lectura"
-                        />
-                      )}
                       <Button size="sm" variant="outline" onClick={() => abrirAviso(n)}>
                         Abrir
                       </Button>
@@ -244,6 +252,7 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                         <IconX width={14} height={14} />
                         Descartar
                       </Button>
+                      {!n.leida && <LuzNotificaciones cantidad={sinLeerDe(c._id)} />}
                     </div>
                   </li>
                 );
@@ -313,9 +322,12 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                               : "—"}
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <Button size="sm" variant="outline" onClick={() => abrir(c)}>
-                          Abrir
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => abrir(c)}>
+                            Abrir
+                          </Button>
+                          <LuzNotificaciones cantidad={sinLeerDe(c._id)} />
+                        </div>
                       </td>
                     </tr>
                   );
