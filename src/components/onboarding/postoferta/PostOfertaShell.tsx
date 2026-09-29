@@ -6,7 +6,7 @@ import { configEfectiva, pantallasVisibles } from "@/lib/config";
 import { estadoPantallasPostOferta, pendientesFinalizarCarga } from "@/lib/validation";
 import { SUBESTADO_OBSERVADO, subestadoObservado } from "@/lib/credit";
 import { sumarDias } from "@/lib/format";
-import type { PantallaPostOfertaId } from "@/lib/types";
+import type { PantallaPostOfertaId, PostOferta } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -36,14 +36,37 @@ const PANTALLAS: Record<PantallaPostOfertaId, () => React.ReactNode> = {
 
 const SIN_PANTALLAS: PantallaPostOfertaId[] = [];
 
+// Datos que carga cada pantalla, serializados: sirven para detectar si el vendedor cambió algo
+// entre Editar y Guardar.
+function datosDePantalla(po: PostOferta, id: PantallaPostOfertaId): string {
+  switch (id) {
+    case "personales":
+      return JSON.stringify(po.personales);
+    case "laboral":
+      return JSON.stringify(po.laboral);
+    case "tokenizacion":
+      return JSON.stringify(po.tarjetas);
+    case "referencias":
+      return JSON.stringify(po.referencias);
+    case "garantias":
+      return JSON.stringify(po.garantes);
+    case "legajo":
+      return JSON.stringify([po.legajo, po.garantes]);
+    case "impresion":
+      return JSON.stringify(po.impresion);
+  }
+}
+
 // Corrección puntual: la pantalla observada se ve en sólo lectura hasta tocar Editar; al
-// guardar queda corregida y se puede enviar nuevamente. El `key` al cambiar de pantalla la
-// vuelve a dejar en sólo lectura.
+// guardar queda corregida y se puede enviar nuevamente. Sólo se puede guardar si hubo algún
+// cambio respecto de lo que había al tocar Editar. El `key` al cambiar de pantalla la vuelve a
+// dejar en sólo lectura.
 function PantallaObservada({
   id,
   label,
   corregida,
   pendientes,
+  datos,
   onEditar,
   onGuardar,
 }: {
@@ -51,10 +74,14 @@ function PantallaObservada({
   label: string;
   corregida: boolean;
   pendientes: number;
+  datos: string;
   onEditar: () => void;
   onGuardar: () => void;
 }) {
   const [editando, setEditando] = useState(false);
+  // Datos de la pantalla al tocar Editar: sin diferencia con los actuales no hay nada que guardar.
+  const [datosIniciales, setDatosIniciales] = useState(datos);
+  const hayCambio = datos !== datosIniciales;
   const Pantalla = PANTALLAS[id];
 
   return (
@@ -66,7 +93,9 @@ function PantallaObservada({
             {editando
               ? pendientes > 0
                 ? `Completá los datos obligatorios pendientes (${pendientes}) para poder guardar.`
-                : "Corregí lo que pidió el analista y guardá los cambios."
+                : hayCambio
+                  ? "Cambio detectado: guardá para dejar corregida la pantalla."
+                  : "Corregí lo que pidió el analista: hace falta modificar algún dato para poder guardar."
               : corregida
                 ? "Corrección guardada. Ya podés enviarla nuevamente."
                 : "Tocá Editar para corregirla."}
@@ -75,7 +104,7 @@ function PantallaObservada({
         {editando ? (
           <Button
             variant="success"
-            disabled={pendientes > 0}
+            disabled={pendientes > 0 || !hayCambio}
             onClick={() => {
               onGuardar();
               setEditando(false);
@@ -88,6 +117,7 @@ function PantallaObservada({
           <Button
             variant={corregida ? "outline" : "primary"}
             onClick={() => {
+              setDatosIniciales(datos);
               onEditar();
               setEditando(true);
             }}
@@ -195,14 +225,16 @@ export function PostOfertaShell() {
     const reimprimir = restringidoALegajo
       ? pantallasReimpresion.includes(e.id)
       : impresionHabilitada && e.id === "impresion";
+    // Corrección guardada: deja de ser una pantalla observada y se ve en verde.
+    const corregida = observadas.includes(e.id) && corregidas.includes(e.id);
     return {
       id: e.id,
       numero: e.numero,
       label: e.label,
       obligatoria: e.obligatoria,
-      estado: reimprimir ? "INICIADA" : e.estadoVisual,
-      detalle: reimprimir ? "Reimprimir formulario" : undefined,
-      observada: observadas.includes(e.id),
+      estado: reimprimir ? "INICIADA" : corregida ? "COMPLETA" : e.estadoVisual,
+      detalle: reimprimir ? "Reimprimir formulario" : corregida ? "Corregida" : undefined,
+      observada: observadas.includes(e.id) && !corregida,
       bloqueada:
         puntual || restringidoALegajo
           ? !habilitadas.includes(e.id)
@@ -341,6 +373,7 @@ export function PostOfertaShell() {
             label={estadoActual?.label ?? ""}
             corregida={corregidas.includes(pantallaActual)}
             pendientes={estadoActual?.pendientes.length ?? 0}
+            datos={datosDePantalla(app.postOferta, pantallaActual)}
             onEditar={() => reabrirCorreccion(pantallaActual)}
             onGuardar={() => guardarCorreccion(pantallaActual)}
           />
