@@ -264,7 +264,7 @@ export function AnalisisCredito({
   // Atajo desde FEL: directo a LIQ, o a la bandeja de chequeo si el producto lo pide.
   const puedeLiqDirecto = modalidadFirma(app.configuracion) !== "FISICA";
   const liqDirecto = {
-    label: "Pasar a LIQ",
+    label: conChequeo ? "Pasar a chequeo telefónico" : "Pasar a LIQ",
     detalle: conChequeo
       ? "Saltea la firma electrónica. El producto pide chequeo telefónico: el crédito pasa directo a la bandeja de chequeo y, con el chequeo correcto, a liquidación."
       : "Saltea la firma electrónica: el crédito pasa directo a liquidación (LIQ).",

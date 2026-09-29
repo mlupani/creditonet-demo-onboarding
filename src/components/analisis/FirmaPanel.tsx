@@ -140,7 +140,7 @@ export function FirmaPanel({
             </div>
             <Button variant="success" onClick={verificarFirma} disabled={!app.firmaChequeada}>
               <IconCheck width={16} height={16} />
-              {chequeo ? "Enviar a chequeo telefónico" : "Pasar a liquidar"}
+              {chequeo ? "Pasar a chequeo telefónico" : "Pasar a LIQ"}
             </Button>
           </div>
         </Card>
