@@ -45,9 +45,11 @@ export function CambioOfertaBloqueadoModal({
       }
     >
       <Banner tone="warning">
-        Esta solicitud ya tuvo {cambios.length} cambios de oferta (máximo {MAX_CAMBIOS_OFERTA}). Un
-        cambio más requiere la excepción de {SESION_SUPERVISOR.nombre}; sin ella podés aprobarla,
-        observarla o rechazarla con la oferta vigente.
+        Esta solicitud ya tuvo {cambios.length}{" "}
+        {cambios.length === 1 ? "cambio de oferta" : "cambios de oferta"} (máximo{" "}
+        {MAX_CAMBIOS_OFERTA} sin excepción). No se puede hacer otro cambio: la decisión la debe
+        tomar un superior ({SESION_SUPERVISOR.nombre}) autorizando la excepción; sin ella podés
+        aprobarla, observarla o rechazarla con la oferta vigente.
       </Banner>
 
       <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-ink-500">
