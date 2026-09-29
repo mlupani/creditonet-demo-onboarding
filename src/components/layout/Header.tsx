@@ -11,7 +11,8 @@ import {
   useNotificaciones,
   type ComentarioNotificacion,
 } from "@/lib/notificaciones";
-import { SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_PARAMETROS } from "@/lib/config";
+import { useRol } from "@/lib/rol-context";
+import { LISTA_ROLES, ROLES } from "@/lib/roles";
 import {
   IconAlertTriangle,
   IconBell,
@@ -145,19 +146,37 @@ function Notificaciones() {
   );
 }
 
+function SelectorRol() {
+  const { rol, cambiarRol } = useRol();
+  return (
+    <div
+      role="group"
+      aria-label="Usuario de la demo"
+      className="flex items-center gap-0.5 rounded-lg bg-ink-100 p-0.5"
+    >
+      {LISTA_ROLES.map((r) => (
+        <button
+          key={r}
+          onClick={() => cambiarRol(r)}
+          aria-pressed={r === rol}
+          className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+            r === rol
+              ? "bg-white text-brand-700 shadow-xs"
+              : "text-ink-500 hover:text-ink-800"
+          }`}
+        >
+          {ROLES[r].corto}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Header() {
   const { menuAbierto, setMenuAbierto } = useApplication();
   const pathname = usePathname();
-  // El usuario mostrado cambia según la bandeja (roles de la Guía §1).
-  const usuario = pathname.startsWith("/analisis")
-    ? SESION_ANALISTA
-    : pathname.startsWith("/chequeo")
-      ? SESION_CHEQUEADOR
-      : pathname.startsWith("/productos") ||
-        pathname.startsWith("/organismos") ||
-        pathname.startsWith("/planes")
-      ? SESION_PARAMETROS
-      : SESION;
+  const { rol } = useRol();
+  const usuario = ROLES[rol].sesion;
   return (
     <header className="sticky top-0 z-30 border-b border-ink-200 bg-white/85 backdrop-blur">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
@@ -179,6 +198,8 @@ export function Header() {
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-500" />
           Demo
         </span>
+
+        <SelectorRol />
 
         <div className="mx-1 hidden h-6 w-px bg-ink-200 sm:block" />
 

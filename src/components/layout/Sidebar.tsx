@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
+import { useRol } from "@/lib/rol-context";
+import { puedeVer } from "@/lib/roles";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
   IconBarChart,
@@ -50,9 +52,12 @@ const NAV: NavItem[] = [
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { rol } = useRol();
+  // Sólo se listan las pantallas del rol; los módulos "Pronto" (sin ruta) son del superior.
+  const items = NAV.filter((i) => (i.href ? puedeVer(rol, i.href) : rol === "superior"));
   return (
     <nav className="flex flex-1 flex-col gap-1 px-3">
-      {NAV.map((item) => {
+      {items.map((item) => {
         const activo = item.href && (pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)));
         if (!item.disponible) {
           return (
