@@ -101,10 +101,11 @@ export function historialCredito(
         ch.comentario || undefined
       );
   }
-  if (app.estado === "PARA_LIQUIDAR") {
+  if (app.estado === "PARA_LIQUIDAR" || app.estado === "ACTIVO") {
     const ultimaFirma = app.firmas[app.firmas.length - 1];
     push("Para liquidar", ch?.fecha ?? ultimaFirma?.fechaResultado ?? app.fechaAprobacion);
   }
+  if (app.estado === "ACTIVO") push("Liquidado · crédito activo", app.fechaAprobacion);
   if (app.estado === "RECHAZADO" && app.rechazo) {
     push("Rechazada", app.rechazo.fecha, `${app.rechazo.codigos.join(", ")} · ${app.rechazo.motivo}`);
   }

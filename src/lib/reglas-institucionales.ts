@@ -102,7 +102,7 @@ export function reglasInstitucionalesCredito(app: CreditApplication): ReglaInsti
   };
   const sueldosBrutos: ReglaInstitucionalCredito = {
     codigo: "RI-04",
-    nombre: `${LIMITE_SUELDOS_BRUTOS} veces el sueldo bruto`,
+    nombre: "el triple sueldo bruto",
     posicion:
       capital > 0 && bruto > 0
         ? `Solicita ${formatARS(capital)} · ${(capital / bruto).toLocaleString("es-AR", { maximumFractionDigits: 1 })} sueldos brutos`

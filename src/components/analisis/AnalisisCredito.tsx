@@ -148,7 +148,6 @@ export function AnalisisCredito({
   onSalir,
   onEnviarSup,
   onSiguiente,
-  onPasarALiq,
 }: {
   onObservar: (
     motivo: string,
@@ -164,8 +163,6 @@ export function AnalisisCredito({
   onEnviarSup?: (motivo: string, nota: string) => void;
   // Crédito aprobado: pasa al paso siguiente (FEL, o LIQ / chequeo si la firma es física).
   onSiguiente?: () => void;
-  // Aprobado con firma electrónica: saltea FEL y pasa directo a LIQ (o a chequeo telefónico).
-  onPasarALiq?: () => void;
 }) {
   const {
     app,
@@ -195,7 +192,7 @@ export function AnalisisCredito({
   const [cambioBloqueadoAbierto, setCambioBloqueadoAbierto] = useState(false);
   const [legajoAbierto, setLegajoAbierto] = useState(false);
   const [reglaObs, setReglaObs] = useState<RiskRule | null>(null);
-  const [confirmarSiguiente, setConfirmarSiguiente] = useState<"SIGUIENTE" | "LIQ" | null>(null);
+  const [confirmarSiguiente, setConfirmarSiguiente] = useState(false);
   const [supAprobado, setSupAprobado] = useState<{ nota: string; intentado: boolean } | null>(null);
   const [legajoGarante, setLegajoGarante] = useState<string | null>(null);
   // Legajo abierto desde el modal de Observar: se apila encima sin cerrar la observación.
@@ -239,8 +236,9 @@ export function AnalisisCredito({
   // Aprobado (APR) se sigue operando desde el análisis: no hace falta volver a tomarlo.
   const aprobado = app.estado === "APROBADO";
   const puedeOperar = app.analista.tomado || aprobado;
-  // Paso siguiente de un aprobado: FEL si la firma es electrónica; con firma física la firma ya
-  // está en el legajo y va a LIQ, o a chequeo telefónico si el producto lo pide.
+  // Paso siguiente de un aprobado, según la firma del producto (creditonet-100): si requiere firma
+  // electrónica (Electrónica/Ambas) sólo se ofrece FEL; con firma física la firma ya está en el
+  // legajo y sólo se ofrece LIQ, o chequeo telefónico si el producto lo pide.
   const conChequeo = requiereChequeoTelefonico(app.configuracion);
   const siguiente =
     modalidadFirma(app.configuracion) === "FISICA"
@@ -261,15 +259,6 @@ export function AnalisisCredito({
           }.`,
         };
   const supAprobadoHecho = !!app.aprobacionSuperior?.aprobadaPor;
-  // Atajo desde FEL: directo a LIQ, o a la bandeja de chequeo si el producto lo pide.
-  const puedeLiqDirecto = modalidadFirma(app.configuracion) !== "FISICA";
-  const liqDirecto = {
-    label: conChequeo ? "Pasar a chequeo telefónico" : "Pasar a LIQ",
-    detalle: conChequeo
-      ? "Saltea la firma electrónica. El producto pide chequeo telefónico: el crédito pasa directo a la bandeja de chequeo y, con el chequeo correcto, a liquidación."
-      : "Saltea la firma electrónica: el crédito pasa directo a liquidación (LIQ).",
-  };
-  const destino = confirmarSiguiente === "LIQ" ? liqDirecto : siguiente;
   // Una reenviada con correcciones no se opera hasta leer y confirmar la observación
   // (creditonet-75); la confirmación queda guardada en la solicitud y en el historial.
   const requiereLectura =
@@ -1130,15 +1119,9 @@ export function AnalisisCredito({
                     </Button>
                   )}
                   {onSiguiente && (
-                    <Button variant="success" disabled={bloqueado} onClick={() => setConfirmarSiguiente("SIGUIENTE")}>
+                    <Button variant="success" disabled={bloqueado} onClick={() => setConfirmarSiguiente(true)}>
                       <IconCheck width={16} height={16} />
                       {siguiente.label}
-                    </Button>
-                  )}
-                  {onPasarALiq && puedeLiqDirecto && (
-                    <Button variant="success" disabled={bloqueado} onClick={() => setConfirmarSiguiente("LIQ")}>
-                      <IconCheck width={16} height={16} />
-                      {liqDirecto.label}
                     </Button>
                   )}
                 </>
@@ -1310,23 +1293,21 @@ export function AnalisisCredito({
         )}
       </Modal>
       <ConfirmationModal
-        open={confirmarSiguiente !== null}
-        title={`¿${destino.label}?`}
-        descripcion={destino.detalle}
+        open={confirmarSiguiente}
+        title={`¿${siguiente.label}?`}
+        descripcion={siguiente.detalle}
         rows={[
           { label: "Crédito", value: app.numeroCredito ?? "—" },
           { label: "Capital", value: formatARS(o.montoSolicitado) },
         ]}
-        confirmLabel={destino.label}
+        confirmLabel={siguiente.label}
         cancelLabel="Volver"
         tone="success"
         onConfirm={() => {
-          const elegido = confirmarSiguiente;
-          setConfirmarSiguiente(null);
-          if (elegido === "LIQ") onPasarALiq?.();
-          else onSiguiente?.();
+          setConfirmarSiguiente(false);
+          onSiguiente?.();
         }}
-        onCancel={() => setConfirmarSiguiente(null)}
+        onCancel={() => setConfirmarSiguiente(false)}
       />
       <Modal
         open={supAprobado !== null}

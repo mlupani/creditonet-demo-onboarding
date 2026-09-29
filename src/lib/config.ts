@@ -694,8 +694,6 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
       "linea-consumo",
     ],
     overrides: {},
-    // Los préstamos personales del organismo pasan por chequeo telefónico antes de liquidarse.
-    extrasPorProducto: { "prestamo-personal": { requiereChequeoTelefonico: true } },
   },
   {
     id: "policia-provincial",

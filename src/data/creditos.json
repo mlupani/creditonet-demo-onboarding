@@ -3,9 +3,9 @@
     "version": "1.0.0",
     "descripcion": "DB simulada CreditoNet — 10 préstamos precargados con estados diversos",
     "generado": "2026-09-22",
-    "total": 47,
+    "total": 49,
     "bandejas": {
-      "vendedor": 22,
+      "vendedor": 24,
       "analista": 25
     }
   },
@@ -15430,6 +15430,687 @@
       "fechaPreaprobacion": null,
       "fechaEnvioAnalisis": null,
       "fechaAprobacion": null
+    },
+    {
+      "_bandeja": "vendedor",
+      "_descripcion": "ACTIVO — Liquidado por Tesorería, crédito vigente (creditonet-108).",
+      "numeroCredito": "CR-000234",
+      "numeroCliente": "000928",
+      "estado": "ACTIVO",
+      "etapa": "ENVIADA",
+      "tipoPersona": "FISICA",
+      "identificacion": {
+        "documento": "30112222",
+        "consultado": true,
+        "tipoCliente": "EXISTENTE",
+        "firmaRegistrada": null
+      },
+      "cliente": {
+        "apellido": "Giménez",
+        "nombre": "Carla Andrea",
+        "dni": "30112222",
+        "cuil": "27-30112222-3",
+        "genero": "Femenino",
+        "fechaNacimiento": "05/03/1983",
+        "calle": "Av. Colón",
+        "numero": "1450",
+        "localidad": "Córdoba",
+        "provincia": "Córdoba",
+        "email": "carla.gimenez@gmail.com",
+        "telefono": "351 6543000"
+      },
+      "situaciones": {
+        "bcra": 1,
+        "interna": 1
+      },
+      "origenCampos": {
+        "apellido": "API pública",
+        "nombre": "API pública",
+        "dni": "API pública",
+        "cuil": "API pública",
+        "genero": "API pública",
+        "fechaNacimiento": "API pública",
+        "calle": "API pública",
+        "numero": "API pública",
+        "localidad": "API pública",
+        "provincia": "API pública",
+        "email": "Base interna"
+      },
+      "identidadVerificada": true,
+      "configuracion": {
+        "productoId": "prestamo-personal",
+        "organismoId": "empleados-salud",
+        "canalId": "sucursal",
+        "vendedorId": "juan-perez"
+      },
+      "laboral": {
+        "condicionLaboral": "Empleado fijo",
+        "fechaInicioLaboral": "10/03/2018",
+        "empleadores": [
+          {
+            "banco": "Banco Santander",
+            "cuit": "30-71234567-1",
+            "razonSocial": "Sanatorio Modelo S.A."
+          }
+        ],
+        "ingresoBruto": 1500000,
+        "ingresoNeto": 1200000,
+        "disponible": 0,
+        "debitosNoRemunerativos": 0,
+        "extraccionesImporte": 0,
+        "transferenciasImporte": 0
+      },
+      "riesgo": {
+        "estado": "COMPLETO",
+        "motorId": "motor-salud",
+        "escenario": "PASA",
+        "reglas": [
+          {
+            "id": "R01",
+            "codigo": "BCRA-01",
+            "nombre": "Situación BCRA",
+            "detalle": "Situación 1 habilitada",
+            "fuente": "BCRA",
+            "valorEvaluado": "1",
+            "condicion": "<= 2",
+            "bloqueante": true,
+            "resultado": "PASA"
+          }
+        ],
+        "institucionales": [
+          {
+            "id": "I01",
+            "codigo": "INST-01",
+            "nombre": "Edad mínima",
+            "detalle": "Mayor de 18",
+            "fuente": "Parámetros",
+            "valorEvaluado": "43 años",
+            "condicion": ">= 18",
+            "bloqueante": true,
+            "resultado": "PASA",
+            "momento": "IDENTIFICACION"
+          }
+        ],
+        "resultado": "PASA",
+        "planId": "linea-salud-2026",
+        "limites": {
+          "capitalSolicitado": 2200000,
+          "cuotasVigentes": 0,
+          "cuotasLiberadas": 0,
+          "limites": [
+            {
+              "id": "universal",
+              "label": "Límite universal por cliente",
+              "detalle": "Exposición máxima",
+              "monto": 5000000
+            },
+            {
+              "id": "brutos",
+              "label": "Límite por sueldos brutos",
+              "detalle": "3 sueldos brutos de $1.500.000",
+              "monto": 4500000
+            },
+            {
+              "id": "producto",
+              "label": "Límite por producto",
+              "detalle": "Préstamo personal",
+              "monto": 4000000
+            },
+            {
+              "id": "plan",
+              "label": "Límite por plan de cuotas",
+              "detalle": "Línea Salud 2026",
+              "monto": 2500000
+            },
+            {
+              "id": "cuota",
+              "label": "Límite por cuota máxima",
+              "detalle": "Relación cuota-ingreso: $480.000 en 48 cuotas",
+              "monto": 5900000
+            }
+          ],
+          "limiteAplicadoId": "plan",
+          "capitalPorLimites": 2500000,
+          "limitantes": [
+            {
+              "id": "tipo-cliente",
+              "label": "Cliente existente",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": true
+            },
+            {
+              "id": "condicion-laboral",
+              "label": "Condición laboral: Empleado fijo",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            },
+            {
+              "id": "situacion-bcra",
+              "label": "Situación BCRA 1",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            }
+          ],
+          "recorteAplicadoPct": 0,
+          "capitalConsiderado": 2500000,
+          "limitesCuota": [
+            {
+              "id": "smvm",
+              "label": "SMVM de bolsillo",
+              "detalle": "Ingreso neto $1.200.000 menos mínimo $350.000",
+              "monto": 850000
+            },
+            {
+              "id": "rci",
+              "label": "Relación cuota-ingreso",
+              "detalle": "40 % del ingreso neto",
+              "monto": 480000
+            },
+            {
+              "id": "endeudamiento",
+              "label": "Nivel de endeudamiento",
+              "detalle": "50 % del bruto menos cuotas vigentes",
+              "monto": 750000
+            }
+          ],
+          "limiteCuotaAplicadoId": "rci",
+          "cuotaMaxima": 480000
+        },
+        "evaluadoCon": {
+          "ingresoNeto": 1200000,
+          "fechaNacimiento": "05/03/1983",
+          "genero": "Femenino"
+        },
+        "fecha": "Hoy 06:30"
+      },
+      "oferta": {
+        "planId": "linea-salud-2026",
+        "capitalMaximoBase": 2500000,
+        "capitalMaximoRenovacion": 2500000,
+        "capitalMaximoActual": 2500000,
+        "montoSolicitado": 2200000,
+        "plazo": 48,
+        "tna": 75,
+        "valorCuota": 134200,
+        "totalAPagar": 6441600,
+        "primeraCuotaVencimiento": "10/12/2026",
+        "creditosActivos": [],
+        "deudaTerceros": {
+          "habilitado": false,
+          "entidad": "",
+          "importe": 0,
+          "cbu": ""
+        },
+        "aceptada": true
+      },
+      "postOferta": {
+        "precarga": {
+          "nombre": "Carla Andrea",
+          "apellido": "Giménez",
+          "dni": "30.112.222",
+          "cuit": "27-30112222-3",
+          "banco": "Banco Santander"
+        },
+        "personales": {
+          "nacionalidad": "Argentina",
+          "estadoCivil": "Casada/o",
+          "tipoVivienda": "Propietario"
+        },
+        "laboral": {
+          "cuitEmpleador": "30-71234567-1",
+          "razonSocial": "Sanatorio Modelo S.A.",
+          "banco": "Banco Santander",
+          "cbu.Banco Santander": "0170299940000052135212"
+        },
+        "tarjetas": [
+          {
+            "id": "tarjeta-1",
+            "via": "PRESENCIAL",
+            "estado": "TOKENIZADA",
+            "verificada": true,
+            "enviadoA": null,
+            "tipo": "DEBITO",
+            "marca": "Visa",
+            "nombreTitular": "CARLA ANDREA GIMENEZ",
+            "primeros4": "4509",
+            "ultimos4": "8899",
+            "vencimiento": "12/29",
+            "emisor": "Banco Santander",
+            "fechaTokenizacion": "Hoy 06:40",
+            "token": "tok_demo_ZZ99YY",
+            "numeroCompleto": "4509000000008899",
+            "cvv": "111"
+          }
+        ],
+        "referencias": [
+          {
+            "id": "referencia-1",
+            "vinculo": "Familiar directo",
+            "dni": "30.111.222",
+            "nombre": "Diego",
+            "apellido": "Romero",
+            "domicilio": {
+              "calle": "Av. Hipólito Yrigoyen",
+              "numero": "355",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "diego.romero@email.com",
+            "telefono": "351 6543213",
+            "autocompletado": true,
+            "condicionLaboral": "",
+            "ingresoBruto": 0,
+            "ingresoNeto": 0,
+            "reciboSueldo": [],
+            "otrosDocumentos": [],
+            "empleadorCalle": "",
+            "empleadorLocalidad": "",
+            "empleadorTelefono": "",
+            "banco": "",
+            "cbu": ""
+          }
+        ],
+        "garantes": [],
+        "legajo": {
+          "dni-frente": [
+            {
+              "id": "dni-frente-1",
+              "nombre": "dni_frente_1.jpg",
+              "detalle": "1.1 MB · Hoy 06:45"
+            }
+          ],
+          "dni-dorso": [
+            {
+              "id": "dni-dorso-1",
+              "nombre": "dni_dorso_1.jpg",
+              "detalle": "1.0 MB · Hoy 06:45"
+            }
+          ],
+          "recibo-sueldo": [
+            {
+              "id": "recibo-sueldo-1",
+              "nombre": "recibo_sueldo_1.jpg",
+              "detalle": "1.3 MB · Hoy 06:45"
+            }
+          ],
+          "comprobante-servicio": [
+            {
+              "id": "comprobante-servicio-1",
+              "nombre": "comprobante_servicio_1.jpg",
+              "detalle": "1.2 MB · Hoy 06:45"
+            }
+          ]
+        },
+        "impresion": {
+          "accion": "IMPRESO",
+          "fecha": "Hoy 07:00"
+        }
+      },
+      "pantallasVisitadas": [
+        "personales",
+        "laboral",
+        "tokenizacion",
+        "referencias",
+        "legajo",
+        "impresion"
+      ],
+      "analista": {
+        "tomado": true,
+        "observacion": null,
+        "reenviada": false,
+        "pantallasCorregidas": [],
+        "cambioOfertaPendiente": null
+      },
+      "rechazo": null,
+      "comentarios": [],
+      "fechaSolicitud": "05/08/2026",
+      "fechaPreaprobacion": "05/08/2026",
+      "fechaEnvioAnalisis": "05/08/2026",
+      "fechaAprobacion": "12/08/2026"
+    },
+    {
+      "_bandeja": "vendedor",
+      "_descripcion": "ACTIVO — Liquidado por Tesorería, crédito vigente (creditonet-108).",
+      "numeroCredito": "CR-000235",
+      "numeroCliente": "011227",
+      "estado": "ACTIVO",
+      "etapa": "ENVIADA",
+      "tipoPersona": "FISICA",
+      "identificacion": {
+        "documento": "332295568",
+        "consultado": true,
+        "tipoCliente": "EXISTENTE",
+        "firmaRegistrada": null
+      },
+      "cliente": {
+        "apellido": "Romero",
+        "nombre": "Tomás",
+        "dni": "332295568",
+        "cuil": "20-332295568-6",
+        "genero": "Masculino",
+        "fechaNacimiento": "15/04/1990",
+        "calle": "Av. Colón",
+        "numero": "2016",
+        "localidad": "Córdoba",
+        "provincia": "Córdoba",
+        "email": "tomás.romero@email.com",
+        "telefono": "351 6000016"
+      },
+      "situaciones": {
+        "bcra": 2,
+        "interna": 1
+      },
+      "origenCampos": {
+        "apellido": "API pública",
+        "nombre": "API pública",
+        "dni": "API pública",
+        "cuil": "API pública",
+        "genero": "API pública",
+        "fechaNacimiento": "API pública",
+        "calle": "API pública",
+        "numero": "API pública",
+        "localidad": "API pública",
+        "provincia": "API pública",
+        "email": "Base interna"
+      },
+      "identidadVerificada": true,
+      "configuracion": {
+        "productoId": "prestamo-personal",
+        "organismoId": "policia-provincial",
+        "canalId": "sucursal",
+        "vendedorId": "ana-torres"
+      },
+      "laboral": {
+        "condicionLaboral": "Contratado",
+        "fechaInicioLaboral": "17/08/2016",
+        "empleadores": [
+          {
+            "banco": "Banco BBVA",
+            "cuit": "30-80207984-6",
+            "razonSocial": "Empresa Romero S.A."
+          }
+        ],
+        "ingresoBruto": 1739588,
+        "ingresoNeto": 1391670,
+        "disponible": 0,
+        "debitosNoRemunerativos": 0,
+        "extraccionesImporte": 0,
+        "transferenciasImporte": 0
+      },
+      "riesgo": {
+        "estado": "COMPLETO",
+        "motorId": "motor-salud",
+        "escenario": "PASA",
+        "reglas": [
+          {
+            "id": "R01",
+            "codigo": "BCRA-01",
+            "nombre": "Situación BCRA",
+            "detalle": "Situación 1 habilitada",
+            "fuente": "BCRA",
+            "valorEvaluado": "1",
+            "condicion": "<=2",
+            "bloqueante": true,
+            "resultado": "PASA"
+          }
+        ],
+        "institucionales": [
+          {
+            "id": "I01",
+            "codigo": "INST-01",
+            "nombre": "Edad mínima",
+            "detalle": "Mayor de 18",
+            "fuente": "Parámetros",
+            "valorEvaluado": "30 años",
+            "condicion": ">=18",
+            "bloqueante": true,
+            "resultado": "PASA",
+            "momento": "IDENTIFICACION"
+          }
+        ],
+        "resultado": "PASA",
+        "planId": "linea-salud-2026",
+        "limites": {
+          "capitalSolicitado": 2180000,
+          "cuotasVigentes": 0,
+          "cuotasLiberadas": 0,
+          "limites": [
+            {
+              "id": "universal",
+              "label": "Límite universal por cliente",
+              "detalle": "Exposición máxima",
+              "monto": 5000000
+            },
+            {
+              "id": "brutos",
+              "label": "Límite por sueldos brutos",
+              "detalle": "3 sueldos brutos de $1739588",
+              "monto": 5218764
+            },
+            {
+              "id": "producto",
+              "label": "Límite por producto",
+              "detalle": "Préstamo personal",
+              "monto": 4000000
+            },
+            {
+              "id": "plan",
+              "label": "Límite por plan de cuotas",
+              "detalle": "Línea Salud 2026",
+              "monto": 2500000
+            },
+            {
+              "id": "cuota",
+              "label": "Límite por cuota máxima",
+              "detalle": "Relación cuota-ingreso",
+              "monto": 556668
+            }
+          ],
+          "limiteAplicadoId": "plan",
+          "capitalPorLimites": 2500000,
+          "limitantes": [
+            {
+              "id": "tipo-cliente",
+              "label": "Cliente existente",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": true
+            },
+            {
+              "id": "condicion-laboral",
+              "label": "Condición laboral: Empleado fijo",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            },
+            {
+              "id": "situacion-bcra",
+              "label": "Situación BCRA 1",
+              "detalle": "Sin recorte",
+              "recortePct": 0,
+              "aplica": false
+            }
+          ],
+          "recorteAplicadoPct": 0,
+          "capitalConsiderado": 2500000,
+          "limitesCuota": [
+            {
+              "id": "smvm",
+              "label": "SMVM de bolsillo",
+              "detalle": "Ingreso neto $1391670 menos mínimo $350.000",
+              "monto": 1041670
+            },
+            {
+              "id": "rci",
+              "label": "Relación cuota-ingreso",
+              "detalle": "40 % del ingreso neto",
+              "monto": 556668
+            },
+            {
+              "id": "endeudamiento",
+              "label": "Nivel de endeudamiento",
+              "detalle": "50 % del bruto menos cuotas vigentes",
+              "monto": 869794
+            }
+          ],
+          "limiteCuotaAplicadoId": "rci",
+          "cuotaMaxima": 556668
+        },
+        "evaluadoCon": {
+          "ingresoNeto": 1391670,
+          "fechaNacimiento": "15/04/1990",
+          "genero": "Masculino"
+        },
+        "fecha": "Hoy 10:00"
+      },
+      "oferta": {
+        "planId": "linea-salud-2026",
+        "capitalMaximoBase": 2500000,
+        "capitalMaximoRenovacion": 2850000,
+        "capitalMaximoActual": 2500000,
+        "montoSolicitado": 2180000,
+        "plazo": 24,
+        "tna": 67,
+        "valorCuota": 110000,
+        "totalAPagar": 3270000,
+        "primeraCuotaVencimiento": "10/11/2026",
+        "creditosActivos": [],
+        "deudaTerceros": {
+          "habilitado": false,
+          "entidad": "",
+          "importe": 0,
+          "cbu": ""
+        },
+        "aceptada": true
+      },
+      "postOferta": {
+        "precarga": {
+          "nombre": "Tomás",
+          "apellido": "Romero",
+          "dni": "33.229.5568",
+          "banco": "Banco BBVA"
+        },
+        "personales": {
+          "nacionalidad": "Argentina",
+          "estadoCivil": "Soltero/a",
+          "tipoVivienda": "Propietario",
+          "personasACargo": "1",
+          "tieneConyuge": "No"
+        },
+        "laboral": {
+          "banco": "Banco BBVA",
+          "cbu.Banco BBVA": "01700080630285061464",
+          "cuitEmpleador": "30-70177776-9",
+          "razonSocial": "Empresa Romero S.A.",
+          "rubro": "Salud"
+        },
+        "tarjetas": [
+          {
+            "id": "tarjeta-1",
+            "via": "PRESENCIAL",
+            "estado": "TOKENIZADA",
+            "verificada": true,
+            "enviadoA": null,
+            "tipo": "DEBITO",
+            "marca": "Visa",
+            "nombreTitular": "TOMÁS ROMERO",
+            "primeros4": "4509",
+            "ultimos4": "1234",
+            "vencimiento": "11/29",
+            "emisor": "Banco BBVA",
+            "fechaTokenizacion": "Hoy 10:00",
+            "token": "tok_demo_XXXX",
+            "numeroCompleto": "4509000000001234",
+            "cvv": "123"
+          }
+        ],
+        "referencias": [
+          {
+            "id": "referencia-1",
+            "vinculo": "Familiar directo",
+            "dni": "30.111.222",
+            "nombre": "Carla",
+            "apellido": "Giménez",
+            "domicilio": {
+              "calle": "Av. Colón",
+              "numero": "1450",
+              "piso": "",
+              "departamento": "",
+              "provincia": "Córdoba",
+              "localidad": "Córdoba",
+              "codigoPostal": "5000"
+            },
+            "email": "carla@example.com",
+            "telefono": "351 6543210",
+            "autocompletado": true,
+            "condicionLaboral": "",
+            "ingresoBruto": 0,
+            "ingresoNeto": 0,
+            "reciboSueldo": [],
+            "otrosDocumentos": [],
+            "empleadorCalle": "",
+            "empleadorLocalidad": "",
+            "empleadorTelefono": "",
+            "banco": "",
+            "cbu": ""
+          }
+        ],
+        "garantes": [],
+        "legajo": {
+          "dni-frente": [
+            {
+              "id": "dni-frente-1",
+              "nombre": "dni_frente_1.jpg",
+              "detalle": "1.1 MB · Hoy 10:00"
+            }
+          ],
+          "dni-dorso": [
+            {
+              "id": "dni-dorso-1",
+              "nombre": "dni_dorso_1.jpg",
+              "detalle": "1.0 MB · Hoy 10:00"
+            }
+          ],
+          "recibo-sueldo": [
+            {
+              "id": "recibo-sueldo-1",
+              "nombre": "recibo_sueldo_1.jpg",
+              "detalle": "1.2 MB · Hoy 10:00"
+            }
+          ]
+        },
+        "impresion": {
+          "accion": "IMPRESO",
+          "fecha": "Hoy 10:00"
+        }
+      },
+      "pantallasVisitadas": [
+        "personales",
+        "laboral",
+        "tokenizacion",
+        "referencias",
+        "legajo",
+        "impresion"
+      ],
+      "analista": {
+        "tomado": false,
+        "observacion": null,
+        "reenviada": false,
+        "pantallasCorregidas": [],
+        "cambioOfertaPendiente": null
+      },
+      "rechazo": null,
+      "comentarios": [],
+      "fechaSolicitud": "18/07/2026",
+      "fechaPreaprobacion": "18/07/2026",
+      "fechaEnvioAnalisis": "18/07/2026",
+      "fechaAprobacion": "24/07/2026"
     }
   ]
 }
