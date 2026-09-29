@@ -75,12 +75,12 @@ const GRUPOS: { id: Grupo; titulo: string; vacio: string }[] = [
   {
     id: "PAGO",
     titulo: "En proceso de pago",
-    vacio: "No hay solicitudes en liquidación ni activas.",
+    vacio: "No hay solicitudes en liquidación.",
   },
   {
     id: "RESUELTAS",
-    titulo: "Cancelados / Rechazados",
-    vacio: "Todavía no hay solicitudes resueltas.",
+    titulo: "Activos / Rechazados / Anulados",
+    vacio: "Todavía no hay créditos activos ni solicitudes rechazadas o anuladas.",
   },
 ];
 
@@ -99,6 +99,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, Grupo> = {
   PARA_LIQUIDAR: "PAGO",
   RECHAZADO: "RESUELTAS",
   ANULADO: "RESUELTAS",
+  ACTIVO: "RESUELTAS",
 };
 
 // Subestados que el vendedor puede filtrar (en cualquier sección de la bandeja).
@@ -118,6 +119,7 @@ const SUBESTADOS: { id: string; label: string }[] = [
   { id: "CHEQUEO", label: "CHEQ" },
   { id: "CHEQUEO_OBS", label: "CHEQ · Observado" },
   { id: "PARA_LIQUIDAR", label: "LIQ" },
+  { id: "ACTIVO", label: "Activo" },
   { id: "RECHAZADO", label: "Rechazada" },
   { id: "ANULADO", label: "Anulada" },
 ];
@@ -306,6 +308,9 @@ export default function BandejaCanalVentaPage() {
     if (c.estado === "CHEQUEO_TELEFONICO")
       return `${textoChequeo(c.chequeoTelefonico)} · sólo lectura`;
     if (c.estado === "PARA_LIQUIDAR") return "En Bandeja de Liquidación (Tesorería)";
+    if (c.estado === "ACTIVO") {
+      return `Liquidado · vigente · ${formatARS(c.oferta.montoSolicitado)} · ${c.oferta.plazo} cuotas`;
+    }
     if (c.estado === "RECHAZADO" && c.rechazo) {
       const { origen, codigos, motivo } = c.rechazo;
       const map: Record<typeof origen, string> = {
@@ -324,6 +329,7 @@ export default function BandejaCanalVentaPage() {
 
   function vencimientoPara(c: CreditApplication, pasoActual: number) {
     if (c.estado === "OBSERVADO" && c.analista.observacion) return `Corregir antes del ${sumarDias(c.analista.observacion.fecha, 15)}`;
+    if (c.estado === "ACTIVO") return "";
     if (c.fechaSolicitud) return `Condiciones vigentes hasta ${sumarDias(c.fechaSolicitud, 30)}`;
     if (c.estado === "BORRADOR") return "Se genera al presionar Solicitar";
     return "";

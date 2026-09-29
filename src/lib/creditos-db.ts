@@ -99,6 +99,7 @@ const GRUPO_POR_ESTADO: Record<EstadoCredito, GrupoVendedor> = {
   PARA_LIQUIDAR: "RESUELTAS",
   RECHAZADO: "RESUELTAS",
   ANULADO: "RESUELTAS",
+  ACTIVO: "RESUELTAS",
 };
 
 export function creditosPorGrupoVendedor(grupo: GrupoVendedor): CreditoDB[] {

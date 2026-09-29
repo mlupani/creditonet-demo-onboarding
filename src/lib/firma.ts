@@ -68,6 +68,7 @@ export function firmasDeSemilla(
     case "SUPERIOR":
     case "CHEQUEO_TELEFONICO":
     case "PARA_LIQUIDAR":
+    case "ACTIVO":
       return [{ n: 1, metodo: "ELECTRONICA", fechaFirma: fecha, resultado: "APROBADA", fechaResultado: fecha }];
     default:
       return [];

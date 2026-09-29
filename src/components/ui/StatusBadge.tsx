@@ -27,6 +27,7 @@ export const ESTADO_META: Record<EstadoCredito, { label: string; tone: Tone }> =
   SUPERIOR: { label: "Aprobación superior", tone: "info" },
   CHEQUEO_TELEFONICO: { label: "Chequeo telefónico", tone: "info" },
   PARA_LIQUIDAR: { label: "Para liquidar", tone: "success" },
+  ACTIVO: { label: "Activo", tone: "success" },
 };
 
 export function StatusBadge({
@@ -77,6 +78,7 @@ export const CODIGO_CORTO: Record<EstadoCredito, string> = {
   SUPERIOR: "SUP",
   CHEQUEO_TELEFONICO: "CHEQ",
   PARA_LIQUIDAR: "LIQ",
+  ACTIVO: "ACT",
 };
 
 // Badge de la tabla del analista: sólo el código corto, con el tono del estado.
