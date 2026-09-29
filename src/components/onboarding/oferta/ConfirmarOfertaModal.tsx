@@ -7,9 +7,8 @@ import {
   netoAAcreditar,
   planDeSolicitud,
   seCancela,
-  totalPrecancelaciones,
 } from "@/lib/credit";
-import { formatARS } from "@/lib/format";
+import { formatARS, nombreApellido } from "@/lib/format";
 import { TERMINOS } from "@/lib/terminologia";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -28,11 +27,14 @@ export function ConfirmarOfertaModal({
 }) {
   const { app } = useApplication();
   const o = app.oferta;
-  const precancel = totalPrecancelaciones(o);
   const terceros = importeTerceros(o);
   const cancelados = o.creditosActivos.filter(seCancela);
-  const renovados = cancelados.map((c) => c.id);
-  const hayMora = cancelados.some((c) => c.enMora);
+  const po = app.postOferta;
+  // Ya cargadas en post oferta (reenvío tras la oferta del analista): una por renglón.
+  const vinculadas = [
+    ...po.garantes.map((g) => ({ tipo: "Garante", p: g, detalle: `DNI ${g.dni || "—"}` })),
+    ...po.referencias.map((r) => ({ tipo: "Referencia", p: r, detalle: r.email || "—" })),
+  ];
 
   const l = app.laboral;
 
@@ -44,15 +46,12 @@ export function ConfirmarOfertaModal({
     { label: "Plan de cuotas", value: planDeSolicitud(app).nombre },
     { label: "Capital solicitado (bruto)", value: formatARS(o.montoSolicitado) },
     { label: "Capital máximo disponible", value: formatARS(o.capitalMaximoActual) },
-    ...(precancel > 0
-      ? [
-          {
-            label: `Renovación ${renovados.join(", ")}${hayMora ? " (incluye mora)" : ""}`,
-            value: `−${formatARS(precancel)}`,
-            tone: "danger" as const,
-          },
-        ]
-      : []),
+    // Un renglón por crédito cancelado, cada uno con su monto.
+    ...cancelados.map((c) => ({
+      label: `Renovación ${c.id}${c.enMora ? " (en mora)" : ""}`,
+      value: `−${formatARS(c.montoCancelacion)}`,
+      tone: "danger" as const,
+    })),
     ...(terceros > 0
       ? [
           {
@@ -130,6 +129,27 @@ export function ConfirmarOfertaModal({
           </div>
         ))}
       </dl>
+
+      {vinculadas.length > 0 && (
+        <>
+          <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-ink-500">
+            Garantes y referencias
+          </p>
+          <ul className="mt-1.5 divide-y divide-ink-100 rounded-xl border border-ink-200 bg-ink-25">
+            {vinculadas.map(({ tipo, p, detalle }) => (
+              <li key={p.id} className="px-4 py-2.5">
+                <p className="text-xs text-ink-500">
+                  {tipo} · {p.vinculo || "sin vínculo"}
+                </p>
+                <p className="text-sm font-semibold text-ink-900">
+                  {nombreApellido(p) || "Sin nombre"}
+                </p>
+                <p className="text-xs text-ink-500">{detalle}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-ink-500">
         Datos financieros
