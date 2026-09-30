@@ -6,12 +6,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 import { CHEQUEO_PENDIENTE } from "./types";
-import { intentosChequeo } from "./historial";
+import { conCambioEstadoRegistrado, conPendienteIniciado, intentosChequeo } from "./historial";
 import type {
   AccionLegajo,
   ArchivoLegajo,
@@ -379,8 +380,26 @@ interface ApplicationContextValue {
 
 const ApplicationContext = createContext<ApplicationContextValue | null>(null);
 
+type ActualizarApp = (prev: CreditApplication) => CreditApplication;
+
+// Una actualización de `app`: la función común asienta el cambio de estado en el log; la marcada
+// `sinRegistro` (abrir un crédito, hidratar, sincronizar pestañas) no.
+function reducirApp(prev: CreditApplication, accion: ActualizarApp | { sinRegistro: ActualizarApp }) {
+  return typeof accion === "function"
+    ? conCambioEstadoRegistrado(prev, accion(prev))
+    : accion.sinRegistro(prev);
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [app, setApp] = useState<CreditApplication>(() => crearAplicacionInicial());
+  // Todo cambio de `app` hecho por una acción (`setApp`) deja asentado el cambio de estado que
+  // provoque (log de estados, creditonet-112). Abrir, hidratar o recibir de otra pestaña un crédito
+  // usan `setAppRaw`: no son cambios de estado.
+  const [app, setApp] = useReducer(reducirApp, undefined, crearAplicacionInicial);
+  const setAppRaw = useCallback(
+    (valor: CreditApplication | ((prev: CreditApplication) => CreditApplication)) =>
+      setApp({ sinRegistro: typeof valor === "function" ? valor : () => valor }),
+    []
+  );
   const [paso, setPasoState] = useState(1);
   const [pasoMaximo, setPasoMaximo] = useState(1);
   const [pantallaActual, setPantallaActual] = useState<PantallaPostOfertaId>("personales");
@@ -426,14 +445,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // sesión) y la solicitud en curso se suelta. Como el estado se persiste en
     // sessionStorage, el reset queda firme ante recargas.
     setCreditosDBBase(creditosSeed());
-    setApp(crearAplicacionInicial());
+    setAppRaw(crearAplicacionInicial());
     setPasoState(1);
     setPasoMaximo(1);
     setPantallaActual("personales");
     setMenuAbierto(false);
     // La demo nueva no está ligada a ningún registro de la DB simulada.
     setAppDbId(null);
-  }, []);
+  }, [setAppRaw]);
 
   // Sincronización entre pestañas (creditonet-92). `ultimoDB` es la última base escrita o leída
   // del storage: evita reescribir lo mismo y que dos pestañas se rebotan cambios sin fin.
@@ -453,8 +472,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const registro = id === null ? undefined : lista.find((c) => c._id === id);
     if (!registro) return;
     const nueva = sinMeta(registro);
-    setApp((prev) => (JSON.stringify(prev) === JSON.stringify(nueva) ? prev : nueva));
-  }, []);
+    setAppRaw((prev) => (JSON.stringify(prev) === JSON.stringify(nueva) ? prev : nueva));
+  }, [setAppRaw]);
 
   // Durante el chequeo telefónico el crédito lo gestiona sólo el chequeador: ni el analista ni
   // el canal de venta pueden operarlo desde su bandeja (sólo verlo).
@@ -518,7 +537,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
             const idActivo = parsed.appDbId ?? appPersistida.numeroCredito;
             const enDB = idActivo === null ? undefined : dbCompartida?.find((c) => c._id === idActivo);
-            setApp(enDB ? sinMeta(enDB) : (appPersistida as CreditApplication));
+            setAppRaw(enDB ? sinMeta(enDB) : (appPersistida as CreditApplication));
           }
           if (typeof parsed.paso === "number") setPasoState(parsed.paso);
           if (typeof parsed.pasoMaximo === "number") setPasoMaximo(parsed.pasoMaximo);
@@ -534,7 +553,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }, 0);
     return () => window.clearTimeout(t);
-  }, []);
+  }, [setAppRaw]);
 
   useEffect(() => {
     if (!hidratado) return;
@@ -601,9 +620,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const registro = creditosDBRef.current.find((c) => c._id === id);
     if (!registro) return;
     setCreditosDBBase(creditosDBRef.current);
-    setApp(sinMeta(registro));
+    setAppRaw(sinMeta(registro));
     setAppDbId(id);
-  }, []);
+  }, [setAppRaw]);
 
   /**
    * Recalcula la oferta con la selección actual de precancelaciones (Plan §9).
@@ -1130,11 +1149,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // El cliente acepta la oferta y arranca la carga post-oferta. La solicitud sigue
   // En trámite: recién al finalizar la carga queda preaprobada (reunión 11/09, 01:03:29).
   const aceptarOferta = useCallback(() => {
-    setApp((prev) => ({
-      ...prev,
-      oferta: { ...prev.oferta, aceptada: true },
-      etapa: "TRANSICION",
-    }));
+    setApp((prev) =>
+      conPendienteIniciado({
+        ...prev,
+        oferta: { ...prev.oferta, aceptada: true },
+        etapa: "TRANSICION",
+      })
+    );
   }, []);
 
   const irAPostOferta = useCallback(() => {

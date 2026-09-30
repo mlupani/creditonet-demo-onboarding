@@ -476,6 +476,23 @@ export interface ComentarioSolicitud {
   fecha: string;
 }
 
+// Log de estados (creditonet-112): sólo los cambios de estado, para medir tiempos de respuesta.
+// "PENDIENTE" es el primer tramo: arranca cuando el vendedor elige la oferta y termina cuando la
+// solicitud pasa a análisis (Preaprobado). `anterior` es null en el primer registro.
+export type EstadoLog = EstadoCredito | "PENDIENTE";
+
+export interface CambioEstadoLog {
+  anterior: EstadoLog | null;
+  siguiente: EstadoLog;
+  // "dd/mm/aaaa HH:MM".
+  fecha: string;
+  usuario: string;
+  // Perfil de quien hizo el cambio (canal de venta, analista, chequeador, supervisor).
+  perfil: string;
+  // Canal de venta del crédito (sucursal, digital).
+  canal: string;
+}
+
 // Aprobación de un superior (SUP): quién la pidió y, cuando llega, quién la dio.
 export interface AprobacionSuperior {
   enviadaPor: string;
@@ -588,6 +605,8 @@ export interface CreditApplication {
   // Aprobación de un superior (sólo si el analista la pidió desde AFEL).
   aprobacionSuperior?: AprobacionSuperior | null;
   comentarios: ComentarioSolicitud[];
+  // Ausente en los créditos anteriores al registro (creditonet-112).
+  logEstados?: CambioEstadoLog[];
 
   fechaSolicitud: string | null;
   fechaPreaprobacion: string | null;
