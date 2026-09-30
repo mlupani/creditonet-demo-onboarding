@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
+import { useRol } from "@/lib/rol-context";
+import { soloLecturaPorSup } from "@/lib/posesion-sup";
+import { BannerPosesionSup } from "@/components/analisis/BannerPosesionSup";
 import { cambiosOfertaDe, importeTerceros, netoAAcreditar, ofertaAnalistaDe } from "@/lib/credit";
 import { TERMINOS } from "@/lib/terminologia";
 import { formatARS } from "@/lib/format";
@@ -50,6 +53,7 @@ export default function AnalisisPage() {
     enviarAnalisisASuperior,
     reiniciarDemo,
   } = useApplication();
+  const { rol } = useRol();
   const [aprobarModal, setAprobarModal] = useState(false);
   const [supAbierto, setSupAbierto] = useState(false);
   const [observarOferta, setObservarOferta] = useState(false);
@@ -182,6 +186,8 @@ export default function AnalisisPage() {
   // Enviada a SUP desde la observación del análisis: el superior la resuelve en el análisis.
   const supAnalisis = app.estado === "SUPERIOR" && app.aprobacionSuperior?.origen === "ANALISIS";
   const cofeSuperior = app.estado === "SUPERIOR" && !firmaAprobada(app.firmas) && !supAnalisis;
+  // En posesión del superior: los demás roles ven el crédito en modo consulta (creditonet-114).
+  const soloLectura = soloLecturaPorSup(app.estado, rol);
 
   if (app.estado === "CAMBIO_OFERTA" || cofeSuperior) {
     // Confirmar oferta: el vendedor aceptó la del analista o eligió una menor. Confirmar
@@ -215,6 +221,7 @@ export default function AnalisisPage() {
         </div>
 
         <div className="mt-6 space-y-5">
+          {soloLectura && <BannerPosesionSup />}
           {/* Los comentarios van primero: dan el contexto antes de comparar las ofertas. */}
           {app.comentarios.length > 0 && (
             <Card className="px-5 pb-5 pt-1">
@@ -260,26 +267,28 @@ export default function AnalisisPage() {
                   Ver legajo virtual
                 </Button>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant="outline" onClick={() => setObservarOferta(true)}>
-                  Observar
-                </Button>
-                {!cofeSuperior && (
-                  <Button variant="outline" onClick={() => setSupAbierto(true)}>
-                    Enviar a SUP
+              {!soloLectura && (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button variant="outline" onClick={() => setObservarOferta(true)}>
+                    Observar
                   </Button>
-                )}
-                <Button
-                  size="lg"
-                  variant="danger"
-                  onClick={() => setRechazoOferta({ nota: "", intentado: false })}
-                >
-                  Rechazar oferta
-                </Button>
-                <Button size="lg" variant="success" onClick={() => setAprobarModal(true)}>
-                  Confirmar oferta
-                </Button>
-              </div>
+                  {!cofeSuperior && (
+                    <Button variant="outline" onClick={() => setSupAbierto(true)}>
+                      Enviar a SUP
+                    </Button>
+                  )}
+                  <Button
+                    size="lg"
+                    variant="danger"
+                    onClick={() => setRechazoOferta({ nota: "", intentado: false })}
+                  >
+                    Rechazar oferta
+                  </Button>
+                  <Button size="lg" variant="success" onClick={() => setAprobarModal(true)}>
+                    Confirmar oferta
+                  </Button>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -543,8 +552,10 @@ export default function AnalisisPage() {
       </div>
 
       <div className="mt-6 space-y-5">
+        {soloLectura && <BannerPosesionSup />}
+
         {ESTADOS_FIRMA.includes(app.estado) && !supAnalisis && (
-          <FirmaPanel onRechazar={rechazarCredito} />
+          <FirmaPanel onRechazar={rechazarCredito} soloLectura={soloLectura} />
         )}
 
         {supAnalisis && app.aprobacionSuperior && (
