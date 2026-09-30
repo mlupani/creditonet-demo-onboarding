@@ -109,6 +109,7 @@ function Formulario({
   const [intentado, setIntentado] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [pendiente, setPendiente] = useState<EstadoProducto | null>(null);
+  const [reglaActiva, setReglaActiva] = useState<string | null>(null);
 
   const errores = validarMotor(borrador, todos);
   const cantErrores = Object.keys(errores).length;
@@ -124,6 +125,13 @@ function Formulario({
   }
   const editarRegla = (rid: string, cambio: Partial<ReglaMotor>) =>
     editar((m) => ({ ...m, reglas: m.reglas.map((r) => (r.id === rid ? { ...r, ...cambio } : r)) }));
+
+  // Clic en una variable disponible → se agrega a la regla que se estaba editando (por defecto, la última).
+  function agregarVariable(nombre: string) {
+    const destino = borrador.reglas.find((r) => r.id === reglaActiva) ?? borrador.reglas.at(-1);
+    if (!destino) return;
+    editarRegla(destino.id, { expresion: `${destino.expresion.trimEnd()} ${nombre}`.trimStart() });
+  }
 
   function grabar() {
     setIntentado(true);
@@ -356,9 +364,14 @@ function Formulario({
               <div className="flex flex-wrap gap-1.5">
                 {variablesDeFuentes(borrador.fuentes).map((v) => (
                   <Tooltip key={v.nombre} label={v.detalle} side="top">
-                    <span className="rounded-md border border-ink-200 bg-ink-25 px-2 py-1 font-mono text-xs text-ink-700">
+                    <button
+                      type="button"
+                      disabled={!editando || borrador.reglas.length === 0}
+                      onClick={() => agregarVariable(v.nombre)}
+                      className="rounded-md border border-ink-200 bg-ink-25 px-2 py-1 font-mono text-xs text-ink-700 transition enabled:hover:border-brand-300 enabled:hover:bg-brand-50 disabled:cursor-default"
+                    >
                       {v.nombre}
-                    </span>
+                    </button>
                   </Tooltip>
                 ))}
               </div>
@@ -406,6 +419,7 @@ function Formulario({
                   intentado || r.expresion.trim() ? errores[`regla-${r.id}-expresion`] : undefined
                 }
                 onChange={(c) => editarRegla(r.id, c)}
+                onActivar={() => setReglaActiva(r.id)}
                 onCopiar={() =>
                   editar((m) => {
                     const idx = m.reglas.findIndex((x) => x.id === r.id);
@@ -416,6 +430,14 @@ function Formulario({
                 onEliminar={() => editar((m) => ({ ...m, reglas: m.reglas.filter((x) => x.id !== r.id) }))}
               />
             ))}
+            {editando && borrador.reglas.length > 0 && (
+              <div className="flex justify-end border-t border-ink-100 pt-4">
+                <Button onClick={grabar}>
+                  <IconCheckCircle width={15} height={15} />
+                  Guardar regla
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -496,6 +518,7 @@ function ReglaEditor({
   errorNombre,
   errorExpresion,
   onChange,
+  onActivar,
   onCopiar,
   onEliminar,
 }: {
@@ -506,6 +529,7 @@ function ReglaEditor({
   errorNombre?: string;
   errorExpresion?: string;
   onChange: (c: Partial<ReglaMotor>) => void;
+  onActivar: () => void;
   onCopiar: () => void;
   onEliminar: () => void;
 }) {
@@ -516,7 +540,7 @@ function ReglaEditor({
   const accion = ACCIONES.find((a) => a.id === regla.accion)!;
 
   return (
-    <div className="rounded-xl border border-ink-200 p-4">
+    <div className="rounded-xl border border-ink-200 p-4" onFocusCapture={onActivar}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-bold uppercase tracking-widest text-ink-500">Regla {numero}</p>
         {editando && (
