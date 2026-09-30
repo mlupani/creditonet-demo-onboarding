@@ -2050,7 +2050,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // (ej.: el cliente se arrepintió y no quiso el crédito). El superior lo cierra o,
   // como excepción, lo devuelve a chequeo o lo aprueba a liquidación.
   const enviarChequeoASuperior = useCallback((nota: string) => {
-    setAppOperativo((prev) => {
+    // setApp y no setAppOperativo: éste ignora todo cambio mientras el crédito está en chequeo.
+    setApp((prev) => {
       if (prev.estado !== "CHEQUEO_TELEFONICO" || !prev.chequeoTelefonico?.tomado) return prev;
       return {
         ...prev,
