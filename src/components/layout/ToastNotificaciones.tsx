@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import { marcarLeida, rutaParaEstado, useNotificaciones } from "@/lib/notificaciones";
+import { useRol } from "@/lib/rol-context";
+import { marcarLeida, paraRol, rutaNotificacion, rutaParaEstado, useNotificaciones } from "@/lib/notificaciones";
 import { IconBell } from "@/components/icons";
 
 const VISIBLE_MS = 8000;
@@ -41,8 +42,9 @@ function sonar() {
 export function ToastNotificaciones() {
   const router = useRouter();
   const pathname = usePathname();
-  const { app, cargarCreditoDeDB } = useApplication();
-  const notificaciones = useNotificaciones();
+  const { app, creditosDB, cargarCreditoDeDB } = useApplication();
+  const { rol } = useRol();
+  const notificaciones = useNotificaciones().filter((n) => paraRol(n, rol));
   const [vistas, setVistas] = useState<string[]>([]);
   const [visible, setVisible] = useState(false);
 
@@ -81,7 +83,8 @@ export function ToastNotificaciones() {
     setVistas((v) => [...v, ...pendientes.map((n) => n.id)]);
     marcarLeida(ultima.id);
     if (ultima.creditoId) cargarCreditoDeDB(ultima.creditoId);
-    router.push(rutaParaEstado(ultima.estado));
+    const actual = creditosDB.find((c) => c._id === ultima.creditoId)?.estado ?? ultima.estado;
+    router.push(rutaNotificacion(actual));
   }
 
   return (

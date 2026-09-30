@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
+import { mostrarToast } from "@/lib/toast";
 import { netoAAcreditar } from "@/lib/credit";
 import { ORGANISMOS, PRODUCTOS, SESION_CHEQUEADOR, nombreOpcion } from "@/lib/config";
 import {
@@ -110,6 +111,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
     setComentario("");
     setResultado(null);
     setIntentado(false);
+    mostrarToast("Comentario enviado");
   }
 
   return (
@@ -154,7 +156,14 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
             <Button variant="outline" onClick={() => setVerMensajes("mensajes")}>
               Ver observaciones
             </Button>
-            <Button onClick={tomarChequeo}>Tomar chequeo</Button>
+            <Button
+              onClick={() => {
+                tomarChequeo();
+                mostrarToast("Chequeo tomado");
+              }}
+            >
+              Tomar chequeo
+            </Button>
           </div>
         </Card>
       )}
@@ -329,6 +338,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
                 variant="outline"
                 onClick={() => {
                   soltarChequeo();
+                  mostrarToast("Chequeo soltado");
                   onSalir();
                 }}
               >
@@ -417,9 +427,12 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
         tone={resultado === "NO_OK" ? "danger" : "success"}
         onConfirm={() => {
           setConfirmar(false);
-          if (resultado === "OK") finalizarChequeo("OK", comentario.trim());
-          else if (resultado === "NO_OK") {
+          if (resultado === "OK") {
+            finalizarChequeo("OK", comentario.trim());
+            mostrarToast("Chequeo finalizado: el crédito pasó a liquidación");
+          } else if (resultado === "NO_OK") {
             enviarChequeoASuperior(comentario.trim());
+            mostrarToast("Chequeo enviado a SUP");
             onSalir();
           }
         }}

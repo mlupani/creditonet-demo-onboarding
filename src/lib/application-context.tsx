@@ -77,7 +77,9 @@ import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
 import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_SUPERVISOR, seleccionarLinea } from "./config";
 import { hidratarProductos } from "./productos";
+import { actorActivo } from "./actor";
 import { agregarNotificacion, extracto, hidratarNotificaciones } from "./notificaciones";
+import { rolDeSuperior } from "./posesion-sup";
 import {
   firmaAprobada,
   intentoActual,
@@ -280,6 +282,8 @@ interface ApplicationContextValue {
   // Recálculo que no pasa (creditonet-97): en lugar de rechazar, el analista puede derivar el
   // caso al supervisor, que confirma el rechazo o lo devuelve sin aplicar nada.
   derivarCambioDatosFinancieros: (cambio: CambioDatosFinancieros, motivo: string) => void;
+  // SUP → otro SUP: pasa la solicitud a otro superior (creditonet-115).
+  derivarASuperior: (destino: string) => void;
   resolverDerivacionCambioFinanciero: (decision: "RECHAZAR" | "DEVOLVER") => void;
 
   patchOferta: (patch: Partial<Oferta>) => void;
@@ -860,11 +864,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * "el analista dice un millón, se lo devuelve al pedido; va al vendedor, me viene observado".
    */
   // El cambio rige apenas lo confirma el analista: el vendedor lo ve directo, sin refrendación.
+  // Si lo levanta un superior (la solicitud está en SUPERIOR), queda a su nombre: cuando el
+  // vendedor lo resuelva vuelve a ese mismo superior y no a la bandeja del analista.
   const aplicarCambioOferta = useCallback((cambio: CambioOferta) => {
     setAppOperativo((prev) => {
+      const sup = prev.estado === "SUPERIOR" ? actorActivo().usuario : null;
       return {
         ...prev,
         estado: "OBSERVADO",
+        aprobacionSuperior: sup && prev.aprobacionSuperior
+          ? { ...prev.aprobacionSuperior, responsable: sup }
+          : prev.aprobacionSuperior,
         oferta: recalcularOferta({
           ...prev.oferta,
           montoSolicitado: cambio.montoSolicitado,
@@ -877,6 +887,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reenviada: false,
           pantallasCorregidas: [],
           derivacionCambioFinanciero: null,
+          supLevantaCofe: sup,
           ofertaAnalista: {
             montoSolicitado: cambio.montoSolicitado,
             plazo: cambio.plazo,
@@ -892,11 +903,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
               montoNuevo: cambio.montoSolicitado,
               plazoNuevo: cambio.plazo,
               nota: cambio.nota,
-              autor: SESION_ANALISTA.nombre,
+              autor: sup ?? SESION_ANALISTA.nombre,
             },
           ],
           ...conObservacion(prev, {
-            motivo: "Cambio de oferta del analista",
+            motivo: sup ? "Cambio de oferta del superior" : "Cambio de oferta del analista",
             nota: cambio.nota,
             fecha: fechaHoy(),
             pantallas: [],
@@ -1523,11 +1534,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // vuelve al analista en CAMBIO_OFERTA para que confirme la oferta final. Se conserva
   // el tope (ofertaAnalista) para poder comparar contra la oferta elegida.
   const finalizarCarga = useCallback(() => {
+    const snap = appRef.current;
+    // Si el cambio lo levantó un superior, la respuesta vuelve a ese mismo superior.
+    const sup = snap.analista.supLevantaCofe ?? null;
+    const rolSup = rolDeSuperior(sup);
+    if (ofertaAnalistaDe(snap) !== null) {
+      // El vendedor respondió el cambio de oferta: aviso al analista o al superior que lo levantó
+      // (efecto fuera del updater).
+      agregarNotificacion({
+        creditoId: appDbIdRef.current,
+        numeroCredito: snap.numeroCredito ?? null,
+        autor: SESION.nombre,
+        texto: "Respondió el cambio de oferta: la solicitud espera tu confirmación.",
+        fecha: selloTiempo(),
+        estado: rolSup ? "SUPERIOR" : "CAMBIO_OFERTA",
+        roles: rolSup ? [rolSup] : ["analista", "superior", "superior2"],
+      });
+    }
     setApp((prev) => {
       const tope = ofertaAnalistaDe(prev);
+      const vuelveASup = tope !== null && !!prev.analista.supLevantaCofe && !!prev.aprobacionSuperior;
       return {
         ...prev,
-        estado: tope !== null ? "CAMBIO_OFERTA" : "PREAPROBADO",
+        estado: vuelveASup ? "SUPERIOR" : tope !== null ? "CAMBIO_OFERTA" : "PREAPROBADO",
+        // Vuelve como "Confirmar oferta" del superior, no como análisis derivado (sin `origen`).
+        aprobacionSuperior: vuelveASup
+          ? { ...prev.aprobacionSuperior!, origen: undefined, aprobadaPor: null, fechaAprobacion: null }
+          : prev.aprobacionSuperior,
         etapa: "ENVIADA",
         fechaPreaprobacion: prev.fechaPreaprobacion ?? selloTiempo(),
         fechaEnvioAnalisis: selloTiempo(),
@@ -1537,9 +1570,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
           reenviada: prev.estado === "OBSERVADO",
           observacionConfirmada: null,
           ofertaAnalista: tope,
+          supLevantaCofe: null,
         },
       };
     });
+  }, []);
+
+  // SUP → otro SUP: el nuevo superior queda a cargo; el anterior pasa a sólo lectura. Se guarda la
+  // cadena de derivaciones y se le avisa al superior destino.
+  const derivarASuperior = useCallback((destino: string) => {
+    const snap = appRef.current;
+    const actual = snap.aprobacionSuperior;
+    if (snap.estado !== "SUPERIOR" || !actual) return;
+    const de = actorActivo().usuario;
+    setApp((prev) =>
+      prev.estado !== "SUPERIOR" || !prev.aprobacionSuperior
+        ? prev
+        : {
+            ...prev,
+            aprobacionSuperior: {
+              ...prev.aprobacionSuperior,
+              responsable: destino,
+              derivaciones: [
+                ...(prev.aprobacionSuperior.derivaciones ?? []),
+                { de, a: destino, fecha: selloTiempo() },
+              ],
+            },
+          }
+    );
+    const rolDestino = rolDeSuperior(destino);
+    if (rolDestino)
+      agregarNotificacion({
+        creditoId: appDbIdRef.current,
+        numeroCredito: snap.numeroCredito ?? null,
+        autor: de,
+        texto: `Te derivó la solicitud para su resolución.`,
+        fecha: selloTiempo(),
+        estado: "SUPERIOR",
+        roles: [rolDestino],
+      });
   }, []);
 
   const tomarAnalisis = useCallback(() => {
@@ -2105,6 +2174,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       autorizarExcepcionCambioOferta,
       aplicarCambioDatosFinancieros,
       derivarCambioDatosFinancieros,
+      derivarASuperior,
       resolverDerivacionCambioFinanciero,
       patchOferta,
       togglePrecancelar,
@@ -2187,6 +2257,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       autorizarExcepcionCambioOferta,
       aplicarCambioDatosFinancieros,
       derivarCambioDatosFinancieros,
+      derivarASuperior,
       resolverDerivacionCambioFinanciero,
       patchOferta,
       togglePrecancelar,

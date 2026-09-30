@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
+import { useRol } from "@/lib/rol-context";
+import { esSuperior } from "@/lib/roles";
 import { fechaVisibleAnalista, ordenarPorFechaVisibleAnalista } from "@/lib/creditos-db";
 import { CANALES, ORGANISMOS, PRODUCTOS, SESION_ANALISTA, VENDEDORES, nombreOpcion } from "@/lib/config";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
-import { CLASE_FILA_POSESION_SUP, LEYENDA_POSESION_SUP, enPosesionSup } from "@/lib/posesion-sup";
+import { CLASE_FILA_POSESION_SUP, enPosesionSup, leyendaPosesionSup } from "@/lib/posesion-sup";
 import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -123,12 +125,15 @@ const COLUMNAS = [
   "Analista",
 ];
 
-function LeyendaPosesionSup() {
-  return <p className="mt-1 text-[11px] font-semibold text-violet-700">{LEYENDA_POSESION_SUP}</p>;
+function LeyendaPosesionSup({ responsable }: { responsable?: string | null }) {
+  return <p className="mt-1 text-[11px] font-semibold text-violet-700">{leyendaPosesionSup(responsable)}</p>;
 }
 
 export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const { app, creditosDB, cargarCreditoDeDB } = useApplication();
+  const { rol } = useRol();
+  // La solapa "Aprobación superior" sólo la ve el superior; los analistas ven esos créditos en "Todos".
+  const pestanasVisibles = esSuperior(rol) ? PESTANAS : PESTANAS.filter((p) => p.id !== "SUP");
   const [eleccion, setEleccion] = useState<Pestana | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [canal, setCanal] = useState("");
@@ -153,7 +158,8 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const cliente = app.cliente;
   const propia = PESTANAS_ESTADO.find((p) => p.estados.includes(app.estado));
   // Sin elección explícita se muestra la pestaña donde está la solicitud; si no hay solicitud, default PRE.
-  const activa = PESTANAS.find((p) => p.id === (eleccion ?? propia?.id ?? "PRE")) ?? PESTANAS[0];
+  const activa =
+    pestanasVisibles.find((p) => p.id === (eleccion ?? propia?.id ?? "PRE")) ?? pestanasVisibles[0];
 
   // DB simulada: créditos filtrados por pestaña, canal y búsqueda, ordenados por la misma
   // fecha que se muestra en la columna "Fecha" de esa pestaña (creditonet-67).
@@ -284,7 +290,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
       </div>
 
       <div role="tablist" aria-label="Estados" className="flex flex-wrap gap-2">
-        {PESTANAS.map((p) => {
+        {pestanasVisibles.map((p) => {
           const seleccionada = p.id === activa.id;
           return (
             <button
@@ -409,7 +415,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                           <td className="px-3 py-3 tabular-nums text-ink-700">{c.oferta.plazo}</td>
                           <td className="px-3 py-3">
                             <EstadoBadgeCorto estado={estadoVisible} />
-                            {enPosesionSup(c.estado) && <LeyendaPosesionSup />}
+                            {enPosesionSup(c.estado) && <LeyendaPosesionSup responsable={c.aprobacionSuperior?.responsable} />}
                           </td>
                           <td className="px-3 py-3 text-ink-700">{fecha ?? "—"}</td>
                           <td className="px-3 py-3 text-ink-700">
@@ -452,7 +458,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                                 : app.estado
                             }
                           />
-                          {enPosesionSup(app.estado) && <LeyendaPosesionSup />}
+                          {enPosesionSup(app.estado) && <LeyendaPosesionSup responsable={app.aprobacionSuperior?.responsable} />}
                         </td>
                         <td className="px-3 py-3 text-ink-700">{fechaApp ?? "—"}</td>
                         <td className="px-3 py-3 text-ink-700">

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { GuardaRol } from "@/components/layout/GuardaRol";
+import { ToastAcciones } from "@/components/layout/ToastAcciones";
 import { ToastNotificaciones } from "@/components/layout/ToastNotificaciones";
 import { RolProvider } from "@/lib/rol-context";
 
@@ -18,6 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </main>
           </div>
           <ToastNotificaciones />
+          <ToastAcciones />
         </div>
       </RolProvider>
     </Suspense>

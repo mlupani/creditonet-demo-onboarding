@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { fechaVisibleAnalista } from "@/lib/creditos-db";
 import { CANALES, ORGANISMOS, PRODUCTOS, SESION_ANALISTA, VENDEDORES, nombreOpcion } from "@/lib/config";
 import { formatARS, formatDNI } from "@/lib/format";
-import { LEYENDA_POSESION_SUP, enPosesionSup } from "@/lib/posesion-sup";
+import { enPosesionSup, leyendaPosesionSup } from "@/lib/posesion-sup";
 import type { CreditApplication } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { EstadoBadgeCorto } from "@/components/ui/StatusBadge";
@@ -118,7 +118,7 @@ export function FilaCreditoCollapse({
         <div className="flex w-40 shrink-0 flex-col items-center">
           <EstadoBadgeCorto estado={estadoVisible} />
           {posesionSup && (
-            <p className="mt-1 text-center text-[11px] font-semibold text-violet-700">{LEYENDA_POSESION_SUP}</p>
+            <p className="mt-1 text-center text-[11px] font-semibold text-violet-700">{leyendaPosesionSup(credito.aprobacionSuperior?.responsable)}</p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-3">

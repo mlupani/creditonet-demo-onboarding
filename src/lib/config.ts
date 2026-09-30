@@ -1032,6 +1032,14 @@ export const SESION_SUPERVISOR = {
   organizacion: "CreditoNet · Supervisión",
 };
 
+// Segundo superior: el caso puede derivarse de un SUP a otro.
+export const SESION_SUPERVISOR_2 = {
+  nombre: "Laura Benítez",
+  iniciales: "LB",
+  rol: "Supervisor de riesgo",
+  organizacion: "CreditoNet · Supervisión",
+};
+
 // Quien llama al cliente para el chequeo telefónico posterior a la firma.
 export const SESION_CHEQUEADOR = {
   nombre: "Rodrigo Bianchi",

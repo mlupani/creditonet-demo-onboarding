@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
+import { mostrarToast } from "@/lib/toast";
 import { CANALES, ORGANISMOS, PRODUCTOS, nombreOpcion } from "@/lib/config";
 import {
   estaPendiente,
   estaRespondida,
   marcarLeida,
   quitarNotificacion,
-  rutaParaEstado,
+  rutaNotificacion,
   sinRespuestaDesdeAyer,
   useNotificaciones,
   type ComentarioNotificacion,
@@ -151,7 +152,7 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
       (c.estado === "PARA_LIQUIDAR" && ch?.resultado === "OK") ||
       (c.estado === "RECHAZADO" && c.rechazo?.origen === "CHEQUEADOR");
     if (enChequeo || finChequeo) onAbrir();
-    else router.push(rutaParaEstado(c.estado));
+    else router.push(rutaNotificacion(c.estado));
   }
 
   return (
@@ -279,6 +280,7 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                           onClick={(e) => {
                             e.stopPropagation();
                             quitarNotificacion(n.id);
+                            mostrarToast("Respuesta marcada como tratada");
                           }}
                           aria-label={`Marcar como tratada la respuesta de ${n.numeroCredito ?? "la solicitud"}`}
                         >
@@ -403,7 +405,10 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
         confirmLabel="Cerrar como no concretado"
         tone="danger"
         onConfirm={() => {
-          if (porCerrar?.creditoId) cerrarNoConcretado(porCerrar.creditoId);
+          if (porCerrar?.creditoId) {
+            cerrarNoConcretado(porCerrar.creditoId);
+            mostrarToast("Crédito cerrado como no concretado");
+          }
           setPorCerrar(null);
         }}
         onCancel={() => setPorCerrar(null)}

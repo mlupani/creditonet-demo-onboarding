@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { Banner } from "@/components/ui/Banner";
@@ -15,7 +15,14 @@ export default function ChequeoPage() {
   const router = useRouter();
   const { app, hidratado } = useApplication();
   // La bandeja abre en la lista; "Abrir" entra al detalle del crédito.
-  const [abierta, setAbierta] = useState(false);
+  const [abierta, setAbierta] = useState(useSearchParams().get("abrir") !== null);
+  // Una notificación navega con ?abrir=<sello>: entra directo al detalle del crédito cargado.
+  const abrirParam = useSearchParams().get("abrir");
+  const [abrirVisto, setAbrirVisto] = useState(abrirParam);
+  if (abrirParam !== abrirVisto) {
+    setAbrirVisto(abrirParam);
+    if (abrirParam) setAbierta(true);
+  }
 
   if (!hidratado) {
     return (

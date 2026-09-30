@@ -242,7 +242,7 @@ export function AnalisisCredito({
   const aprobado = app.estado === "APROBADO";
   const puedeOperar = app.analista.tomado || aprobado;
   // En posesión del superior (creditonet-114): los demás roles consultan sin poder accionar.
-  const soloLectura = soloLecturaPorSup(app.estado, rol);
+  const soloLectura = soloLecturaPorSup(app.estado, rol, app.aprobacionSuperior?.responsable);
   // Paso siguiente de un aprobado, según la firma del producto (creditonet-100): si requiere firma
   // electrónica (Electrónica/Ambas) sólo se ofrece FEL; con firma física la firma ya está en el
   // legajo y sólo se ofrece LIQ, o chequeo telefónico si el producto lo pide.
@@ -445,7 +445,10 @@ export function AnalisisCredito({
         </div>
       )}
 
-      {marcadas.length > 0 && (
+      {/* Si ya hubo cambios de oferta (o está en cambio de oferta) la verificación ya pasó: no se vuelve
+          a mostrar el cartel de reglas aprobadas, para ningún rol. */}
+      {marcadas.length > 0 &&
+        !((app.estado === "CAMBIO_OFERTA" || cambiosOfertaDe(app).length > 0) && reglasPendientes.length === 0) && (
         <div
           role="alert"
           className={`rounded-xl border-2 p-4 ${

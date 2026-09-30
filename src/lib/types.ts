@@ -504,6 +504,10 @@ export interface AprobacionSuperior {
   origen?: "ANALISIS";
   motivo?: string;
   nota?: string;
+  // Superior a cargo (creditonet-115): quien levantó el cambio de oferta o a quien se lo derivaron.
+  // Sin responsable, cualquier superior puede tomarlo.
+  responsable?: string | null;
+  derivaciones?: { de: string; a: string; fecha: string }[];
 }
 
 // --- Aplicación ---
@@ -573,6 +577,8 @@ export interface CreditApplication {
     pantallasCorregidas: PantallaPostOfertaId[];
     // Cambio de oferta pendiente de refrendación del supervisor (o null).
     cambioOfertaPendiente: CambioOfertaPropuesto | null;
+    // Superior que levantó el cambio de oferta al vendedor: al resolverlo, vuelve a él.
+    supLevantaCofe?: string | null;
     // Oferta refrendada que el vendedor tiene que aceptar o reducir (o ausente).
     ofertaAnalista?: OfertaAnalista | null;
     // Cambios de oferta ya hechos por el analista (ausente en créditos anteriores al campo).

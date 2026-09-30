@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { SESION_CHEQUEADOR } from "./config";
+import type { Rol } from "./roles";
 import type { EstadoCredito } from "./types";
 
 export interface ComentarioNotificacion {
@@ -15,7 +16,12 @@ export interface ComentarioNotificacion {
   creadaEn: number;
   // Sólo en avisos del chequeador: el canal de venta ya contestó sobre este crédito.
   respondida: boolean;
+  // Si viene, el aviso sólo le llega a esos roles (ej. cambio de oferta → analista y superior).
+  roles?: Rol[];
 }
+
+export const paraRol = (n: Pick<ComentarioNotificacion, "roles">, rol: Rol) =>
+  !n.roles || n.roles.includes(rol);
 
 const CLAVE = "creditonet.notificaciones.v1";
 let registros: ComentarioNotificacion[] = [];
@@ -120,6 +126,13 @@ export function useNotificaciones(): ComentarioNotificacion[] {
 export function extracto(texto: string): string {
   const t = texto.trim();
   return t.length > 120 ? `${t.slice(0, 117)}…` : t;
+}
+
+// Destino de una notificación: según el estado ACTUAL del crédito (no el que tenía al avisar). En
+// las bandejas de análisis y chequeo el parámetro `abrir` hace que entren directo al detalle.
+export function rutaNotificacion(estadoActual: EstadoCredito): string {
+  const ruta = rutaParaEstado(estadoActual);
+  return ruta === "/" ? ruta : `${ruta}?abrir=${Date.now()}`;
 }
 
 export function rutaParaEstado(estado: EstadoCredito): "/" | "/analisis" | "/chequeo" {

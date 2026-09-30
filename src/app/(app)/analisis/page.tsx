@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { useRol } from "@/lib/rol-context";
@@ -12,9 +12,9 @@ import { formatARS } from "@/lib/format";
 import { bancosDe } from "@/lib/campos-post-oferta";
 import { ESTADOS_FIRMA, firmaAprobada, modalidadFirma } from "@/lib/firma";
 import { FirmaPanel } from "@/components/analisis/FirmaPanel";
-import { HiloObservacion } from "@/components/analisis/HiloObservacion";
 import { LegajoVirtualModal } from "@/components/analisis/LegajoVirtualModal";
 import { ListaComentarios } from "@/components/bandeja/ModalesBandeja";
+import { BotonDerivarSup } from "@/components/analisis/DerivarSupModal";
 import { HistorialCredito } from "@/components/HistorialCredito";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -65,7 +65,14 @@ export default function AnalisisPage() {
   const [obsReabierto, setObsReabierto] = useState(false);
   const [procesando, setProcesando] = useState(false);
   // La bandeja abre en la lista; "Abrir" entra al detalle de la solicitud.
-  const [abierta, setAbierta] = useState(false);
+  const [abierta, setAbierta] = useState(useSearchParams().get("abrir") !== null);
+  // Una notificación navega con ?abrir=<sello>: entra directo al detalle del crédito cargado.
+  const abrirParam = useSearchParams().get("abrir");
+  const [abrirVisto, setAbrirVisto] = useState(abrirParam);
+  if (abrirParam !== abrirVisto) {
+    setAbrirVisto(abrirParam);
+    if (abrirParam) setAbierta(true);
+  }
 
   // La oferta la cambió el analista (oferta o datos financieros): la tiene que ver
   // el vendedor, así que se redirige a su bandeja en vez de quedarse en la del analista.
@@ -187,7 +194,7 @@ export default function AnalisisPage() {
   const supAnalisis = app.estado === "SUPERIOR" && app.aprobacionSuperior?.origen === "ANALISIS";
   const cofeSuperior = app.estado === "SUPERIOR" && !firmaAprobada(app.firmas) && !supAnalisis;
   // En posesión del superior: los demás roles ven el crédito en modo consulta (creditonet-114).
-  const soloLectura = soloLecturaPorSup(app.estado, rol);
+  const soloLectura = soloLecturaPorSup(app.estado, rol, app.aprobacionSuperior?.responsable);
 
   if (app.estado === "CAMBIO_OFERTA" || cofeSuperior) {
     // Confirmar oferta: el vendedor aceptó la del analista o eligió una menor. Confirmar
@@ -213,7 +220,7 @@ export default function AnalisisPage() {
             </h1>
             <p className="mt-1 text-sm text-ink-500">
               {cofeSuperior && app.aprobacionSuperior
-                ? `Caso especial tomado por el superior (pedido por ${app.aprobacionSuperior.enviadaPor} el ${app.aprobacionSuperior.fechaEnvio}). Al confirmar, el crédito queda aprobado (APR) y desde ahí se pasa a firma.`
+                ? `Caso especial tomado por el superior${app.aprobacionSuperior.responsable ? ` ${app.aprobacionSuperior.responsable}` : ""} (pedido por ${app.aprobacionSuperior.enviadaPor} el ${app.aprobacionSuperior.fechaEnvio}${(app.aprobacionSuperior.derivaciones ?? []).map((d) => `; derivado por ${d.de} a ${d.a} el ${d.fecha}`).join("")}). Al confirmar, el crédito queda aprobado (APR) y desde ahí se pasa a firma.`
                 : "El canal de venta respondió al cambio de oferta. Al confirmar, el crédito queda aprobado (APR) y desde ahí se pasa a firma."}
             </p>
           </div>
@@ -221,7 +228,7 @@ export default function AnalisisPage() {
         </div>
 
         <div className="mt-6 space-y-5">
-          {soloLectura && <BannerPosesionSup />}
+          {soloLectura && <BannerPosesionSup responsable={app.aprobacionSuperior?.responsable} />}
           {/* Los comentarios van primero: dan el contexto antes de comparar las ofertas. */}
           {app.comentarios.length > 0 && (
             <Card className="px-5 pb-5 pt-1">
@@ -272,7 +279,9 @@ export default function AnalisisPage() {
                   <Button variant="outline" onClick={() => setObservarOferta(true)}>
                     Observar
                   </Button>
-                  {!cofeSuperior && (
+                  {cofeSuperior ? (
+                    <BotonDerivarSup onDerivado={() => setAbierta(false)} />
+                  ) : (
                     <Button variant="outline" onClick={() => setSupAbierto(true)}>
                       Enviar a SUP
                     </Button>
@@ -321,7 +330,7 @@ export default function AnalisisPage() {
             </div>
           }
         >
-          <HiloObservacion />
+          <HistorialCredito />
         </Modal>
         <LegajoVirtualModal open={legajoAbierto} onClose={() => setLegajoAbierto(false)} />
         <ObservarOfertaModal open={observarOferta} onClose={() => setObservarOferta(false)} />
@@ -552,7 +561,7 @@ export default function AnalisisPage() {
       </div>
 
       <div className="mt-6 space-y-5">
-        {soloLectura && <BannerPosesionSup />}
+        {soloLectura && <BannerPosesionSup responsable={app.aprobacionSuperior?.responsable} />}
 
         {ESTADOS_FIRMA.includes(app.estado) && !supAnalisis && (
           <FirmaPanel onRechazar={rechazarCredito} soloLectura={soloLectura} />
@@ -564,6 +573,11 @@ export default function AnalisisPage() {
             {app.aprobacionSuperior.motivo ? ` · Motivo: ${app.aprobacionSuperior.motivo}` : ""}
             {app.aprobacionSuperior.nota ? ` — ${app.aprobacionSuperior.nota.replace(/\.+$/, "")}` : ""}. El superior
             puede aprobarla, observarla o rechazarla.
+            {!soloLectura && (
+              <span className="mt-2 block">
+                <BotonDerivarSup onDerivado={() => setAbierta(false)} />
+              </span>
+            )}
           </Banner>
         )}
 

@@ -7,7 +7,8 @@ import { NOTIFICACIONES } from "@/lib/mocks";
 import {
   marcarLeida,
   marcarTodasLeidas,
-  rutaParaEstado,
+  paraRol,
+  rutaNotificacion,
   useNotificaciones,
   type ComentarioNotificacion,
 } from "@/lib/notificaciones";
@@ -35,10 +36,11 @@ function tituloRuta(pathname: string) {
 
 function Notificaciones() {
   const router = useRouter();
-  const { cargarCreditoDeDB } = useApplication();
+  const { cargarCreditoDeDB, creditosDB } = useApplication();
   const [abierto, setAbierto] = useState(false);
   const [leidas, setLeidas] = useState<string[]>([]);
-  const dinamicas = useNotificaciones();
+  const { rol } = useRol();
+  const dinamicas = useNotificaciones().filter((n) => paraRol(n, rol));
   const noLeidas =
     dinamicas.filter((n) => !n.leida).length +
     NOTIFICACIONES.filter((n) => !leidas.includes(n.id)).length;
@@ -46,7 +48,8 @@ function Notificaciones() {
   function abrirNotificacion(n: ComentarioNotificacion) {
     marcarLeida(n.id);
     if (n.creditoId) cargarCreditoDeDB(n.creditoId);
-    router.push(rutaParaEstado(n.estado));
+    const actual = creditosDB.find((c) => c._id === n.creditoId)?.estado ?? n.estado;
+    router.push(rutaNotificacion(actual));
     setAbierto(false);
   }
 
