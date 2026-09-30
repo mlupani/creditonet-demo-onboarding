@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { fijarRolActivo } from "./actor";
 import { ROL_POR_DEFECTO, parseRol, type Rol } from "./roles";
 
 interface RolContextValue {
@@ -21,6 +22,10 @@ export function RolProvider({ children }: { children: React.ReactNode }) {
   const [rol, setRol] = useState<Rol>(delParam ?? ROL_POR_DEFECTO);
 
   if (delParam && delParam !== rol) setRol(delParam);
+
+  useEffect(() => {
+    fijarRolActivo(rol);
+  }, [rol]);
 
   const conRol = useCallback(
     (r: Rol) => {
