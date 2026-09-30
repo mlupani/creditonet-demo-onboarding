@@ -31,8 +31,11 @@ const METODO_LABEL = { ELECTRONICA: "Electrónica", FISICA: "Manual" } as const;
 // volver a FEL por una firma inconsistente.
 export function FirmaPanel({
   onRechazar,
+  soloLectura = false,
 }: {
   onRechazar: (codigo: string, motivo: string, observacion: string) => void;
+  // Crédito en posesión del superior visto por otro rol (creditonet-114): sin acciones.
+  soloLectura?: boolean;
 }) {
   const {
     app,
@@ -155,22 +158,24 @@ export function FirmaPanel({
             : {app.chequeoTelefonico?.comentario} Lo común es rechazar y cerrar el crédito; como
             excepción se puede devolver a chequeo o aprobar a liquidación.
           </Banner>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="danger" onClick={abrirRechazo}>
-                <IconX width={16} height={16} />
-                Rechazar y cerrar
-              </Button>
-              <Button variant="outline" onClick={devolverChequeo}>
-                <IconRefresh width={16} height={16} />
-                Devolver a chequeo
+          {!soloLectura && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="danger" onClick={abrirRechazo}>
+                  <IconX width={16} height={16} />
+                  Rechazar y cerrar
+                </Button>
+                <Button variant="outline" onClick={devolverChequeo}>
+                  <IconRefresh width={16} height={16} />
+                  Devolver a chequeo
+                </Button>
+              </div>
+              <Button variant="success" onClick={aprobarSuperior}>
+                <IconCheck width={16} height={16} />
+                Aprobar a LIQ (excepción) · {SESION_SUPERVISOR.nombre}
               </Button>
             </div>
-            <Button variant="success" onClick={aprobarSuperior}>
-              <IconCheck width={16} height={16} />
-              Aprobar a LIQ (excepción) · {SESION_SUPERVISOR.nombre}
-            </Button>
-          </div>
+          )}
         </Card>
       )}
 
@@ -184,16 +189,18 @@ export function FirmaPanel({
             {app.aprobacionSuperior &&
               ` Pedida por ${app.aprobacionSuperior.enviadaPor} (${app.aprobacionSuperior.fechaEnvio}).`}
           </Banner>
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-            <Button variant="danger" onClick={abrirRechazo}>
-              <IconX width={16} height={16} />
-              Rechazar
-            </Button>
-            <Button variant="success" onClick={aprobarSuperior}>
-              <IconCheck width={16} height={16} />
-              Aprobar como superior · {SESION_SUPERVISOR.nombre}
-            </Button>
-          </div>
+          {!soloLectura && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+              <Button variant="danger" onClick={abrirRechazo}>
+                <IconX width={16} height={16} />
+                Rechazar
+              </Button>
+              <Button variant="success" onClick={aprobarSuperior}>
+                <IconCheck width={16} height={16} />
+                Aprobar como superior · {SESION_SUPERVISOR.nombre}
+              </Button>
+            </div>
+          )}
         </Card>
       )}
 

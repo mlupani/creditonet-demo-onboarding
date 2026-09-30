@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
+import { useRol } from "@/lib/rol-context";
+import { soloLecturaPorSup } from "@/lib/posesion-sup";
 import {
   RESULTADO_LABEL,
   MAX_CAMBIOS_OFERTA,
@@ -179,6 +181,7 @@ export function AnalisisCredito({
     confirmarObservacion,
   } = useApplication();
   const router = useRouter();
+  const { rol } = useRol();
   const [modal, setModal] = useState<"observar" | "rechazar" | "anular" | null>(null);
   const [consulta, setConsulta] = useState<
     "posicion" | "buro" | "renovar" | "reglas" | "personales" | "laborales" | "comentario" | "soltar" | null
@@ -238,6 +241,8 @@ export function AnalisisCredito({
   // Aprobado (APR) se sigue operando desde el análisis: no hace falta volver a tomarlo.
   const aprobado = app.estado === "APROBADO";
   const puedeOperar = app.analista.tomado || aprobado;
+  // En posesión del superior (creditonet-114): los demás roles consultan sin poder accionar.
+  const soloLectura = soloLecturaPorSup(app.estado, rol);
   // Paso siguiente de un aprobado, según la firma del producto (creditonet-100): si requiere firma
   // electrónica (Electrónica/Ambas) sólo se ofrece FEL; con firma física la firma ya está en el
   // legajo y sólo se ofrece LIQ, o chequeo telefónico si el producto lo pide.
@@ -267,12 +272,12 @@ export function AnalisisCredito({
     app.analista.reenviada &&
     app.analista.observacion !== null &&
     !app.analista.observacionConfirmada;
-  const observacionPendiente = puedeOperar && requiereLectura;
+  const observacionPendiente = puedeOperar && !soloLectura && requiereLectura;
   // Reglas de verificación del motor sin revisar: bloquean los cambios de estado.
   const verificadas = app.analista.reglasVerificadas ?? [];
   const verificacionDe = (r: RiskRule) => verificadas.find((v) => v.id === r.id);
   const reglasPendientes = marcadas.filter((r) => !verificacionDe(r));
-  const bloqueado = observacionPendiente || (puedeOperar && reglasPendientes.length > 0);
+  const bloqueado = soloLectura || observacionPendiente || (puedeOperar && reglasPendientes.length > 0);
   // Antes de tomar el análisis: hay algo para chequear (reglas del motor u observación reenviada).
   const hayPorVerificar = reglasPendientes.length > 0 || requiereLectura;
   const cfgEfectiva = configEfectiva(app.configuracion);
@@ -416,25 +421,27 @@ export function AnalisisCredito({
             </p>
           ))}
           <p className="mt-1 text-xs text-warning-700/80">Nota: {derivacion.nota}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={() => resolverDerivacionCambioFinanciero("RECHAZAR")}
-            >
-              Confirmar rechazo como supervisor
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => resolverDerivacionCambioFinanciero("DEVOLVER")}
-            >
-              Devolver al analista
-            </Button>
-            <span className="text-[11px] text-warning-700/80">
-              Simulación de la demo: en producción lo hace el supervisor desde su sesión.
-            </span>
-          </div>
+          {!soloLectura && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => resolverDerivacionCambioFinanciero("RECHAZAR")}
+              >
+                Confirmar rechazo como supervisor
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => resolverDerivacionCambioFinanciero("DEVOLVER")}
+              >
+                Devolver al analista
+              </Button>
+              <span className="text-[11px] text-warning-700/80">
+                Simulación de la demo: en producción lo hace el supervisor desde su sesión.
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -464,7 +471,9 @@ export function AnalisisCredito({
           <p className={`mt-1 text-sm ${reglasPendientes.length > 0 ? "text-warning-700" : "text-success-700"}`}>
             {reglasPendientes.length > 0
               ? "No frenaron la solicitud, pero hasta verificarlas no podés cambiar el estado del crédito (aprobar, observar, cambiar la oferta, anular ni rechazar)."
-              : "Ya podés decidir sobre la solicitud."}
+              : soloLectura
+                ? "La decisión sobre la solicitud es del superior."
+                : "Ya podés decidir sobre la solicitud."}
           </p>
           <ul className="mt-3 space-y-2">
             {marcadas.map((r) => (
@@ -1014,6 +1023,7 @@ export function AnalisisCredito({
         (APR), desde donde se pasa a firma (FEL/AFEL) y, si el producto lo pide, a chequeo telefónico antes de liquidar.
       </Banner>
 
+      {!soloLectura && (
       <Card className="space-y-3 p-4 sm:p-5">
         {!puedeOperar ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
@@ -1125,6 +1135,7 @@ export function AnalisisCredito({
           </>
         )}
       </Card>
+      )}
 
       <Modal
         open={lecturaAbierta}
@@ -1238,7 +1249,7 @@ export function AnalisisCredito({
             <Button variant="outline" onClick={() => setReglaObs(null)}>
               Cerrar
             </Button>
-            {reglaObs && puedeOperar && !verificacionDe(reglaObs) && (
+            {reglaObs && puedeOperar && !soloLectura && !verificacionDe(reglaObs) && (
               <Button
                 variant="success"
                 onClick={() => {

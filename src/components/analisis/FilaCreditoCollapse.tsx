@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { fechaVisibleAnalista } from "@/lib/creditos-db";
 import { CANALES, ORGANISMOS, PRODUCTOS, SESION_ANALISTA, VENDEDORES, nombreOpcion } from "@/lib/config";
 import { formatARS, formatDNI } from "@/lib/format";
+import { LEYENDA_POSESION_SUP, enPosesionSup } from "@/lib/posesion-sup";
 import type { CreditApplication } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { EstadoBadgeCorto } from "@/components/ui/StatusBadge";
@@ -60,12 +61,15 @@ export function FilaCreditoCollapse({
     credito.analista.reenviada && credito.estado === "PREAPROBADO" ? "OBSERVADO" : credito.estado;
   const analista =
     credito.estado === "OBSERVADO" || !credito.analista.tomado ? "Sin asignar" : SESION_ANALISTA.nombre;
+  const posesionSup = enPosesionSup(credito.estado);
   const idPanel = `fila-${credito.numeroCredito ?? cli.dni}`;
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl border bg-white shadow-card ${
-        enCurso ? "border-brand-200" : "border-ink-200"
+      className={`overflow-hidden rounded-2xl border shadow-card ${
+        posesionSup
+          ? "border-violet-300 bg-violet-50/70"
+          : `bg-white ${enCurso ? "border-brand-200" : "border-ink-200"}`
       }`}
     >
       <div
@@ -111,8 +115,11 @@ export function FilaCreditoCollapse({
           <p className="mt-1 text-xs text-ink-400">Organismo</p>
           <p className="truncate text-sm font-semibold text-ink-800" title={organismo}>{organismo}</p>
         </div>
-        <div className="flex w-40 shrink-0 justify-center">
+        <div className="flex w-40 shrink-0 flex-col items-center">
           <EstadoBadgeCorto estado={estadoVisible} />
+          {posesionSup && (
+            <p className="mt-1 text-center text-[11px] font-semibold text-violet-700">{LEYENDA_POSESION_SUP}</p>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <Button
