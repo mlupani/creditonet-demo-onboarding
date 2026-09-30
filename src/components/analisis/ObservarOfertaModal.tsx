@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { pantallasVisibles } from "@/lib/config";
 import type { PantallaPostOfertaId } from "@/lib/types";
-import { MOTIVOS_OBSERVACION } from "@/lib/validation";
+import { useMotivosObservacion } from "@/lib/motivos-observacion";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
@@ -16,6 +16,7 @@ import { AreaTexto, PANTALLAS_OBSERVABLES } from "./AnalisisCredito";
 // campos, así que alcanza con motivo, pantallas y nota.
 export function ObservarOfertaModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { app, observarCredito } = useApplication();
+  const motivosObservacion = useMotivosObservacion();
   const [motivo, setMotivo] = useState("");
   const [pantallas, setPantallas] = useState<PantallaPostOfertaId[]>([]);
   const [texto, setTexto] = useState("");
@@ -67,7 +68,7 @@ export function ObservarOfertaModal({ open, onClose }: { open: boolean; onClose:
           required
           value={motivo}
           onChange={setMotivo}
-          options={MOTIVOS_OBSERVACION.map((m) => ({ value: m, label: m }))}
+          options={motivosObservacion.map((m) => ({ value: m.nombre, label: m.nombre }))}
           error={intentado && !motivo ? "Seleccioná un motivo." : undefined}
         />
       </div>

@@ -33,7 +33,8 @@ import {
   type PantallaConCampos,
 } from "@/lib/campos-post-oferta";
 import type { PantallaPostOfertaId, RiskRule } from "@/lib/types";
-import { MOTIVOS_OBSERVACION, MOTIVOS_RECHAZO } from "@/lib/validation";
+import { MOTIVOS_RECHAZO } from "@/lib/validation";
+import { useMotivosObservacion } from "@/lib/motivos-observacion";
 import { TERMINOS } from "@/lib/terminologia";
 import {
   formatARS,
@@ -201,6 +202,7 @@ export function AnalisisCredito({
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [desarrolloAbierto, setDesarrolloAbierto] = useState(false);
   const [logAbierto, setLogAbierto] = useState(false);
+  const motivosObservacion = useMotivosObservacion();
   const [motivo, setMotivo] = useState("");
   const [texto, setTexto] = useState("");
   const [intentado, setIntentado] = useState(false);
@@ -1412,7 +1414,7 @@ export function AnalisisCredito({
               onChange={setMotivo}
               options={
                 modal === "observar"
-                  ? MOTIVOS_OBSERVACION.map((m) => ({ value: m, label: m }))
+                  ? motivosObservacion.map((m) => ({ value: m.nombre, label: m.nombre }))
                   : MOTIVOS_RECHAZO.map((m) => ({
                       value: m.codigo,
                       label: `${m.codigo} · ${m.label}`,
