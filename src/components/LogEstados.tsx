@@ -5,8 +5,8 @@ import type { EstadoLog } from "@/lib/types";
 import { EstadoBadgeCorto, StatusBadge } from "@/components/ui/StatusBadge";
 
 function EstadoLogBadge({ estado }: { estado: EstadoLog | null }) {
-  if (estado === null) return <span className="text-ink-400">—</span>;
-  if (estado === "PENDIENTE") return <StatusBadge tone="neutral">Pendiente</StatusBadge>;
+  // Estado cero: antes de PRE la solicitud está pendiente (PEN).
+  if (estado === null || estado === "PENDIENTE") return <StatusBadge tone="neutral">PEN</StatusBadge>;
   return <EstadoBadgeCorto estado={estado} />;
 }
 
