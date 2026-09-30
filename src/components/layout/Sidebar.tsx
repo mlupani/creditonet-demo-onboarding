@@ -47,7 +47,7 @@ const NAV: NavItem[] = [
   { label: "Créditos", icon: IconCreditCard },
   { label: "Motor de riesgo", href: "/motor-riesgo", icon: IconShieldCheck, disponible: true },
   { label: "Reportes", icon: IconBarChart },
-  { label: "Parámetros", icon: IconSettings },
+  { label: "Parámetros", href: "/parametros", icon: IconSettings, disponible: true },
 ];
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {

@@ -43,12 +43,6 @@ export const MOTIVOS_RECHAZO = [
 // Rechazo de la oferta al confirmarla (COFE): da de baja el crédito. No se elige en los
 // rechazos generales, así que va fuera de MOTIVOS_RECHAZO.
 export const MOTIVO_RECHAZO_OFERTA = { codigo: "RA-05", label: "Oferta rechazada al confirmar" };
-export const MOTIVOS_OBSERVACION = [
-  "Documentación ilegible",
-  "Datos inconsistentes",
-  "Falta documentación",
-  "Otro",
-];
 
 // --- Pre-oferta: datos laborales y financieros mínimos ---
 
