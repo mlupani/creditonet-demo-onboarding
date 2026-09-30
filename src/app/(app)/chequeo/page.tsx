@@ -69,7 +69,7 @@ export default function ChequeoPage() {
   if (aprobado || rechazado) {
     const ok = aprobado;
     return (
-      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
         {volver}
         <Card className="animate-fade-up overflow-hidden">
           <div className={`px-6 py-10 text-center ${ok ? "bg-success-50" : "bg-danger-50"}`}>
@@ -101,13 +101,12 @@ export default function ChequeoPage() {
             </p>
           </div>
           <div className="p-6">
-            <Banner
-              tone={ok ? "success" : "error"}
-              title={ok ? "Comentario del chequeador" : `${app.rechazo?.codigos.join(", ")} · ${app.rechazo?.motivo}`}
-            >
-              {chequeo?.comentario}
-            </Banner>
-            <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+            {!ok && (
+              <Banner tone="error" title={`${app.rechazo?.codigos.join(", ")} · ${app.rechazo?.motivo}`}>
+                {chequeo?.comentario}
+              </Banner>
+            )}
+            <div className={`${ok ? "" : "mt-6 "}flex flex-col justify-center gap-2 sm:flex-row`}>
               <Button onClick={() => setAbierta(false)}>Volver a la bandeja de chequeo</Button>
               <Button variant="outline" onClick={() => router.push("/")}>
                 Bandeja del canal de venta
@@ -115,6 +114,9 @@ export default function ChequeoPage() {
             </div>
           </div>
         </Card>
+        <div className="mt-5">
+          <ChequeoCredito finalizado onSalir={() => setAbierta(false)} />
+        </div>
       </div>
     );
   }

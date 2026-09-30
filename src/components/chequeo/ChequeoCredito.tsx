@@ -12,7 +12,7 @@ import {
   valorCampoDisplay,
 } from "@/lib/campos-post-oferta";
 import { intentoActual } from "@/lib/firma";
-import { intentosChequeo } from "@/lib/historial";
+import { interaccionesCredito, intentosChequeo } from "@/lib/historial";
 import { formatARS, formatDNI } from "@/lib/format";
 import { TERMINOS } from "@/lib/terminologia";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
@@ -70,7 +70,8 @@ function Telefono({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   );
 }
 
-export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
+// `finalizado`: chequeo ya resuelto (correcto / no correcto): sólo consulta, sin acciones.
+export function ChequeoCredito({ onSalir, finalizado = false }: { onSalir: () => void; finalizado?: boolean }) {
   const { app, tomarChequeo, soltarChequeo, finalizarChequeo, enviarChequeoASuperior, agregarComentario } = useApplication();
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [comentario, setComentario] = useState("");
@@ -116,6 +117,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
 
   return (
     <div className="space-y-5">
+      {!finalizado && (
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-lg font-bold tracking-tight text-ink-900">Chequeo telefónico</h2>
@@ -125,6 +127,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
         </div>
         <EstadoBadge estado={app.estado} />
       </div>
+      )}
 
       {intentos.length > 0 && (
         <Card className="overflow-hidden">
@@ -141,7 +144,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
         </Card>
       )}
 
-      {!tomado && (
+      {!tomado && !finalizado && (
         <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
             <p className="text-sm font-semibold text-ink-900">Crédito pendiente de chequeo</p>
@@ -154,7 +157,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
               Volver
             </Button>
             <Button variant="outline" onClick={() => setVerMensajes("mensajes")}>
-              Ver observaciones
+              Ver comentarios ({interaccionesCredito(app).length})
             </Button>
             <Button
               onClick={() => {
@@ -168,7 +171,7 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
         </Card>
       )}
 
-      {tomado && (
+      {(tomado || finalizado) && (
         <>
           <Card className="overflow-hidden">
             <div className="flex items-center gap-2 border-b border-ink-100 px-5 py-3">
@@ -266,13 +269,19 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
                 <IconEye width={15} height={15} />
                 Legajo virtual
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setVerMensajes("comentarios")}>
+              <Button variant="outline" size="sm" onClick={() => setVerMensajes(finalizado ? "mensajes" : "comentarios")}>
                 <IconEye width={15} height={15} />
-                Ver comentarios{app.comentarios.length > 0 ? ` (${app.comentarios.length})` : ""}
+                Ver comentarios
+                {finalizado
+                  ? ` (${interaccionesCredito(app).length})`
+                  : app.comentarios.length > 0
+                    ? ` (${app.comentarios.length})`
+                    : ""}
               </Button>
             </div>
           </Card>
 
+          {!finalizado && (
           <Card className="space-y-4 p-4 sm:p-5">
             <div>
               <h3 className="text-sm font-semibold text-ink-900">Resultado del chequeo</h3>
@@ -360,10 +369,11 @@ export function ChequeoCredito({ onSalir }: { onSalir: () => void }) {
               )}
             </div>
           </Card>
+          )}
         </>
       )}
 
-      {!tomado && (
+      {!tomado && !finalizado && (
         <Banner tone="info">
           {SESION_CHEQUEADOR.nombre}: al tomar el chequeo el crédito queda asignado a vos hasta
           que lo finalices o lo sueltes.
