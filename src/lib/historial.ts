@@ -61,6 +61,18 @@ export type PerfilInteraccion = "VENTA" | "ANALISTA" | "SUPERVISOR" | "CHEQUEO";
 // chequeador) del otro.
 export const LADO_BACKOFFICE: PerfilInteraccion[] = ["ANALISTA", "SUPERVISOR", "CHEQUEO"];
 
+// Lado de cada mensaje de una conversación, como en un chat: los mensajes seguidos de un mismo
+// perfil van del mismo lado y cuando responde otro perfil pasa al lado contrario. El primero va a
+// la derecha si es del canal de venta y a la izquierda si no. true = derecha.
+export function ladosDeChat(perfiles: PerfilInteraccion[]): boolean[] {
+  let derecha = false;
+  return perfiles.map((p, i) => {
+    if (i === 0) derecha = !LADO_BACKOFFICE.includes(p);
+    else if (p !== perfiles[i - 1]) derecha = !derecha;
+    return derecha;
+  });
+}
+
 export const PERFIL_ETIQUETA: Record<PerfilInteraccion, string> = {
   VENTA: "Canal de venta",
   ANALISTA: "Analista de riesgo",

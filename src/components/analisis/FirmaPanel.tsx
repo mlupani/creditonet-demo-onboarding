@@ -45,7 +45,6 @@ export function FirmaPanel({
     solicitarRefirma,
     enviarASuperior,
     aprobarSuperior,
-    devolverChequeo,
   } = useApplication();
   const [modal, setModal] = useState<"refirma" | "rechazo" | "verFirma" | "superior" | null>(null);
   const [motivo, setMotivo] = useState("");
@@ -156,7 +155,7 @@ export function FirmaPanel({
             {app.aprobacionSuperior &&
               ` (enviado por ${app.aprobacionSuperior.enviadaPor} el ${app.aprobacionSuperior.fechaEnvio})`}
             : {app.chequeoTelefonico?.comentario} Lo común es rechazar y cerrar el crédito; como
-            excepción se puede devolver a chequeo o aprobar a liquidación.
+            excepción se puede aprobar a liquidación.
           </Banner>
           {!soloLectura && (
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
@@ -164,10 +163,6 @@ export function FirmaPanel({
                 <Button variant="danger" onClick={abrirRechazo}>
                   <IconX width={16} height={16} />
                   Rechazar y cerrar
-                </Button>
-                <Button variant="outline" onClick={devolverChequeo}>
-                  <IconRefresh width={16} height={16} />
-                  Devolver a chequeo
                 </Button>
               </div>
               <Button variant="success" onClick={aprobarSuperior}>

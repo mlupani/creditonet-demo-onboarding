@@ -12,7 +12,7 @@ import {
 import { pantallasVisibles } from "@/lib/config";
 import { formatARS, formatDNI } from "@/lib/format";
 import { SESION_CHEQUEADOR } from "@/lib/config";
-import { historialCredito, perfilDeAutor, textoChequeo } from "@/lib/historial";
+import { historialCredito, ladosDeChat, perfilDeAutor, textoChequeo } from "@/lib/historial";
 import { BurbujaChat } from "@/components/ui/BurbujaChat";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -223,11 +223,12 @@ export function EstadoSolicitudModal({ open, onClose }: ModalProps) {
 
 export function ListaComentarios({ titulo }: { titulo: string }) {
   const { app } = useApplication();
+  const lados = ladosDeChat(app.comentarios.map((cm) => perfilDeAutor(cm.autor)));
   return (
     <Seccion titulo={titulo}>
       <ul className="space-y-2">
-        {app.comentarios.map((cm) => (
-          <BurbujaChat key={cm.id} perfil={perfilDeAutor(cm.autor)} usuario={cm.autor} fecha={cm.fecha}>
+        {app.comentarios.map((cm, i) => (
+          <BurbujaChat key={cm.id} perfil={perfilDeAutor(cm.autor)} usuario={cm.autor} fecha={cm.fecha} derecha={lados[i]}>
             {cm.texto}
           </BurbujaChat>
         ))}
@@ -453,6 +454,7 @@ export function ComentariosChequeoModal({ open, onClose }: ModalProps) {
       : []),
     ...app.comentarios,
   ];
+  const ladosMensajes = ladosDeChat(mensajes.map((m) => perfilDeAutor(m.autor)));
 
   function cerrar() {
     setTexto("");
@@ -492,8 +494,8 @@ export function ComentariosChequeoModal({ open, onClose }: ModalProps) {
         </p>
       ) : (
         <ul className="mt-4 space-y-2">
-          {mensajes.map((m) => (
-            <BurbujaChat key={m.id} perfil={perfilDeAutor(m.autor)} usuario={m.autor} fecha={m.fecha}>
+          {mensajes.map((m, i) => (
+            <BurbujaChat key={m.id} perfil={perfilDeAutor(m.autor)} usuario={m.autor} fecha={m.fecha} derecha={ladosMensajes[i]}>
               {m.texto}
             </BurbujaChat>
           ))}

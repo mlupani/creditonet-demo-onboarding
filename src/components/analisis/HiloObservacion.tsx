@@ -2,7 +2,7 @@
 
 import { useApplication } from "@/lib/application-context";
 import { pantallasVisibles } from "@/lib/config";
-import { interaccionesCredito } from "@/lib/historial";
+import { interaccionesCredito, ladosDeChat } from "@/lib/historial";
 import { BurbujaChat } from "@/components/ui/BurbujaChat";
 
 /**
@@ -15,14 +15,15 @@ export function HiloObservacion() {
     pantallasVisibles(app.configuracion).find((p) => p.id === id)?.label ?? id;
 
   const mensajes = interaccionesCredito(app);
+  const lados = ladosDeChat(mensajes.map((m) => m.perfil));
 
   if (mensajes.length === 0)
     return <p className="text-sm text-ink-500">Todavía no hay mensajes entre el canal de venta y el analista.</p>;
 
   return (
     <ol className="space-y-2.5" aria-label="Historial de interacciones del crédito">
-      {mensajes.map((m) => (
-        <BurbujaChat key={m.clave} perfil={m.perfil} usuario={m.usuario} fecha={m.fecha} tema={m.tema}>
+      {mensajes.map((m, i) => (
+        <BurbujaChat key={m.clave} perfil={m.perfil} usuario={m.usuario} fecha={m.fecha} tema={m.tema} derecha={lados[i]}>
           {m.texto}
           {m.pantallas && m.pantallas.length > 0 && (
             <span className="mt-2 block text-xs text-ink-600">
