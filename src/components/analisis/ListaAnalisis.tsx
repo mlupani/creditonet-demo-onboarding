@@ -196,14 +196,18 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
 
   const fechaApp = fechaVisibleAnalista(app);
 
-  useEffect(() => {
+  const claveReset = `${busqueda}|${canal}|${perfil}|${activa.id}`;
+  const [claveResetPrev, setClaveResetPrev] = useState(claveReset);
+  if (claveResetPrev !== claveReset) {
+    setClaveResetPrev(claveReset);
     setPagina((prev) => ({ ...prev, [activa.id]: 1 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busqueda, canal, perfil, activa.id]);
+  }
 
-  useEffect(() => {
+  const [activaPrev, setActivaPrev] = useState(activa.id);
+  if (activaPrev !== activa.id) {
+    setActivaPrev(activa.id);
     setColapsado(false);
-  }, [activa.id]);
+  }
 
   function cargarCreditoDB(c: (typeof creditosDB)[number]) {
     cargarCreditoDeDB(c._id);

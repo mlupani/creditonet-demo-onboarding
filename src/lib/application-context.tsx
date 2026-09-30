@@ -510,11 +510,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         const raw = sessionStorage.getItem(STORAGE_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw) as Partial<EstadoPersistido> & { app: any };
+          const parsed = JSON.parse(raw) as Partial<EstadoPersistido> & { app: unknown };
           if (parsed.app) {
             const appPersistida = parsed.app as CreditApplication & {
               laboral?: Record<string, unknown>;
             };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const lab: any = appPersistida.laboral;
             if (lab && !Array.isArray(lab.empleadores)) {
               const bancos: string[] = Array.isArray(lab.bancosCobro) ? lab.bancosCobro : [];
@@ -529,7 +530,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               delete lab.bancosCobro;
               delete lab.cuitsEmpleador;
             } else if (lab && Array.isArray(lab.empleadores)) {
-              lab.empleadores = lab.empleadores.map((e: any) => ({
+              lab.empleadores = lab.empleadores.map((e: Record<string, string | undefined>) => ({
                 banco: e.banco ?? "",
                 cuit: e.cuit ?? "",
                 razonSocial: e.razonSocial ?? "",

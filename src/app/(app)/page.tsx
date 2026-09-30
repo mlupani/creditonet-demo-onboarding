@@ -197,9 +197,12 @@ export default function BandejaCanalVentaPage() {
 
   const q = busqueda.trim();
 
-  useEffect(() => {
+  const claveFiltros = `${q}|${subestado}`;
+  const [claveFiltrosPrev, setClaveFiltrosPrev] = useState(claveFiltros);
+  if (claveFiltrosPrev !== claveFiltros) {
+    setClaveFiltrosPrev(claveFiltros);
     setPagina({ TRAMITE: 1, OBSERVADAS: 1, ANALISIS: 1, FIRMA: 1, CHEQUEO: 1, PAGO: 1, RESUELTAS: 1 });
-  }, [q, subestado]);
+  }
 
   function toggleColapso(g: Grupo) {
     setColapsados((prev) => ({ ...prev, [g]: !prev[g] }));
