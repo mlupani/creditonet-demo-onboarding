@@ -383,7 +383,7 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                               Abrir
                             </Button>
                           )}
-                          <LuzNotificaciones cantidad={sinLeerDe(c._id)} />
+                          {pestana !== "PEND" && <LuzNotificaciones cantidad={sinLeerDe(c._id)} />}
                         </div>
                       </td>
                     </tr>
