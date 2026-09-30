@@ -1654,7 +1654,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const nota = "No concretado: el canal de venta no respondió el aviso del chequeo telefónico.";
     const fecha = fechaHoy();
     setCreditosDBBase(creditosDBRef.current);
-    setApp({
+    setApp(() => ({
       ...sinMeta(registro),
       estado: "ANULADO",
       chequeoTelefonico: { ...registro.chequeoTelefonico, tomado: false, noConcretado: { nota, fecha } },
@@ -1665,7 +1665,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         derivacionCambioFinanciero: null,
         observacion: { motivo: "No concretado", nota, fecha, pantallas: [] },
       },
-    });
+    }) as CreditApplication);
     setAppDbId(creditoId);
   }, []);
 
