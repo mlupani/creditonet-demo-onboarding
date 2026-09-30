@@ -41,7 +41,7 @@ import {
   formatPct,
 } from "@/lib/format";
 import { textoUltimoPago, vectorPago } from "@/lib/historial-pagos";
-import { historialCredito } from "@/lib/historial";
+import { LogEstados } from "@/components/LogEstados";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -282,7 +282,6 @@ export function AnalisisCredito({
   const sueldoNetoRecalculado = app.laboral.ingresoNeto - app.laboral.debitosNoRemunerativos;
   const vector = vectorPago(o.creditosActivos);
   const creditoConPagos = o.creditosActivos.find((c) => c.cuotasAbonadas > 0);
-  const logEstados = historialCredito(app).map((e) => ({ estado: e.etiqueta, fecha: e.fecha }));
   // Campos post-oferta visibles para el analista (respeta excepciones por organismo).
   const personalesVisibles = camposDe("personales", undefined, po.personales).filter((c) =>
     campoVisible(app, c)
@@ -829,23 +828,12 @@ export function AnalisisCredito({
             <div className="mt-3 space-y-4 border-t border-ink-100 pt-3">
               <div>
                 <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-400">Estados</p>
-                <ul className="space-y-1.5">
-                  {logEstados.length === 0 ? (
-                    <li className="text-sm text-ink-500">Sin movimientos registrados.</li>
-                  ) : (
-                    logEstados.map((e) => (
-                      <li key={e.estado} className="flex items-baseline justify-between gap-4 text-sm">
-                        <span className="text-ink-500">{e.estado}</span>
-                        <span className="font-semibold tabular-nums text-ink-900">{e.fecha}</span>
-                      </li>
-                    ))
-                  )}
-                </ul>
+                <LogEstados />
               </div>
-              {/* Además de los estados, la conversación entre analista y vendedor. */}
+              {/* Además de los estados, la conversación entre vendedor, analista y chequeador. */}
               <div>
                 <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-400">
-                  Comentarios del analista y del vendedor
+                  Historial de interacciones
                 </p>
                 <HiloObservacion />
               </div>

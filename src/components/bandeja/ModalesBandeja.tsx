@@ -12,7 +12,8 @@ import {
 import { pantallasVisibles } from "@/lib/config";
 import { formatARS, formatDNI } from "@/lib/format";
 import { SESION_CHEQUEADOR } from "@/lib/config";
-import { historialCredito, textoChequeo } from "@/lib/historial";
+import { historialCredito, perfilDeAutor, textoChequeo } from "@/lib/historial";
+import { BurbujaChat } from "@/components/ui/BurbujaChat";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
@@ -226,12 +227,9 @@ export function ListaComentarios({ titulo }: { titulo: string }) {
     <Seccion titulo={titulo}>
       <ul className="space-y-2">
         {app.comentarios.map((cm) => (
-          <li key={cm.id} className="rounded-xl border border-ink-200 px-4 py-2.5">
-            <p className="text-sm text-ink-800">{cm.texto}</p>
-            <p className="mt-1 text-[11px] text-ink-400">
-              {cm.autor} · {cm.fecha}
-            </p>
-          </li>
+          <BurbujaChat key={cm.id} perfil={perfilDeAutor(cm.autor)} usuario={cm.autor} fecha={cm.fecha}>
+            {cm.texto}
+          </BurbujaChat>
         ))}
       </ul>
     </Seccion>
@@ -455,7 +453,6 @@ export function ComentariosChequeoModal({ open, onClose }: ModalProps) {
       : []),
     ...app.comentarios,
   ];
-  const esChequeador = (autor: string) => autor.startsWith(SESION_CHEQUEADOR.nombre);
 
   function cerrar() {
     setTexto("");
@@ -496,23 +493,9 @@ export function ComentariosChequeoModal({ open, onClose }: ModalProps) {
       ) : (
         <ul className="mt-4 space-y-2">
           {mensajes.map((m) => (
-            <li
-              key={m.id}
-              className={`rounded-xl border px-4 py-2.5 ${
-                esChequeador(m.autor)
-                  ? "mr-6 border-warning-200 bg-warning-50"
-                  : "ml-6 border-brand-200 bg-brand-50/60"
-              }`}
-            >
-              <p
-                className={`text-[11px] font-bold uppercase tracking-wider ${
-                  esChequeador(m.autor) ? "text-warning-700" : "text-brand-700"
-                }`}
-              >
-                {esChequeador(m.autor) ? "Chequeo telefónico" : "Canal de venta"} · {m.autor} · {m.fecha}
-              </p>
-              <p className="mt-1 whitespace-pre-line text-sm text-ink-800">{m.texto}</p>
-            </li>
+            <BurbujaChat key={m.id} perfil={perfilDeAutor(m.autor)} usuario={m.autor} fecha={m.fecha}>
+              {m.texto}
+            </BurbujaChat>
           ))}
         </ul>
       )}

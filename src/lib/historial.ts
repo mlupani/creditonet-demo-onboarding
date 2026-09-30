@@ -1,13 +1,168 @@
 // Historial general del crédito: lo que ven el canal de venta y el analista, incluida la etapa
 // de firma y de chequeo telefónico (que gestiona el chequeador).
 
-import { formatARS, parseFecha } from "./format";
-import type { ChequeoTelefonico, CreditApplication } from "./types";
+import { actorActivo } from "./actor";
+import { CANALES, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_SUPERVISOR, nombreOpcion } from "./config";
+import { observacionesDe } from "./credit";
+import { fechaHora, formatARS, instante, parseFecha } from "./format";
+import type {
+  CambioEstadoLog,
+  ChequeoTelefonico,
+  CreditApplication,
+  EstadoLog,
+} from "./types";
 
 export interface EventoHistorial {
   etiqueta: string;
   fecha: string;
   detalle?: string;
+}
+
+// --- Log de estados (creditonet-112) ---
+
+function registroLog(
+  app: Pick<CreditApplication, "configuracion">,
+  anterior: EstadoLog | null,
+  siguiente: EstadoLog
+): CambioEstadoLog {
+  return {
+    anterior,
+    siguiente,
+    fecha: fechaHora(),
+    ...actorActivo(),
+    canal: nombreOpcion(CANALES, app.configuracion.canalId),
+  };
+}
+
+// Deja asentado el cambio de estado que hay entre `prev` y `next` (si lo hay), firmado por quien
+// opera la pestaña. El "Pendiente" no se registra acá: arranca al elegir la oferta
+// (`conPendienteIniciado`), no al crear la solicitud, y termina con el primer cambio de estado.
+export function conCambioEstadoRegistrado(prev: CreditApplication, next: CreditApplication): CreditApplication {
+  if (next.estado === prev.estado || next.estado === "EN_TRAMITE") return next;
+  const log = next.logEstados ?? [];
+  const pendienteAbierto = prev.estado === "EN_TRAMITE" && log.some((c) => c.siguiente === "PENDIENTE");
+  const anterior: EstadoLog | null = prev.estado === "EN_TRAMITE" ? (pendienteAbierto ? "PENDIENTE" : null) : prev.estado;
+  return { ...next, logEstados: [...log, registroLog(next, anterior, next.estado)] };
+}
+
+// Primer registro del log: el vendedor eligió la oferta y la solicitud queda Pendiente hasta
+// que pase a análisis.
+export function conPendienteIniciado(app: CreditApplication): CreditApplication {
+  const log = app.logEstados ?? [];
+  if (app.estado !== "EN_TRAMITE" || log.some((c) => c.siguiente === "PENDIENTE")) return app;
+  return { ...app, logEstados: [...log, registroLog(app, null, "PENDIENTE")] };
+}
+
+// --- Historial de interacciones (creditonet-112) ---
+
+export type PerfilInteraccion = "VENTA" | "ANALISTA" | "SUPERVISOR" | "CHEQUEO";
+
+// El canal de venta va de un lado del chat y el resto de los perfiles (analista, supervisor,
+// chequeador) del otro.
+export const LADO_BACKOFFICE: PerfilInteraccion[] = ["ANALISTA", "SUPERVISOR", "CHEQUEO"];
+
+export const PERFIL_ETIQUETA: Record<PerfilInteraccion, string> = {
+  VENTA: "Canal de venta",
+  ANALISTA: "Analista de riesgo",
+  SUPERVISOR: "Supervisor de riesgo",
+  CHEQUEO: "Chequeador telefónico",
+};
+
+export interface Interaccion {
+  clave: string;
+  perfil: PerfilInteraccion;
+  usuario: string;
+  fecha: string;
+  // Tema de una observación del analista; los comentarios no lo tienen.
+  tema?: string;
+  texto: string;
+  // Pantallas observadas (ids); el llamador les pone la etiqueta.
+  pantallas?: string[];
+}
+
+export function perfilDeAutor(autor: string): PerfilInteraccion {
+  if (autor.startsWith(SESION_ANALISTA.nombre)) return "ANALISTA";
+  if (autor.startsWith(SESION_SUPERVISOR.nombre)) return "SUPERVISOR";
+  if (autor.startsWith(SESION_CHEQUEADOR.nombre)) return "CHEQUEO";
+  return "VENTA";
+}
+
+/**
+ * Todo lo que se dijeron el vendedor, el analista y el chequeador, en orden cronológico: las
+ * observaciones del analista (que abren un tema), los comentarios de cualquiera de los tres y lo
+ * que dejó el chequeador al observar o finalizar el chequeo. A igual fecha el tema del analista va
+ * antes que las respuestas.
+ */
+export function interaccionesCredito(
+  app: Pick<CreditApplication, "analista" | "comentarios" | "chequeoTelefonico" | "rechazo">
+): Interaccion[] {
+  const observaciones = [...observacionesDe(app)];
+  const anulada = app.analista.observacion;
+  if (anulada?.motivo === "Anulada" && !observaciones.includes(anulada)) observaciones.push(anulada);
+
+  const ch = app.chequeoTelefonico;
+  const chequeador = SESION_CHEQUEADOR.nombre;
+  const interacciones: Interaccion[] = [
+    ...observaciones.map(
+      (o, i): Interaccion => ({
+        clave: `obs-${i}`,
+        perfil: "ANALISTA",
+        usuario: SESION_ANALISTA.nombre,
+        fecha: o.fecha,
+        tema: o.motivo,
+        texto: o.nota,
+        pantallas: o.pantallas,
+      })
+    ),
+    ...app.comentarios.map(
+      (c): Interaccion => ({
+        clave: c.id,
+        perfil: perfilDeAutor(c.autor),
+        usuario: c.autor,
+        fecha: c.fecha,
+        texto: c.texto,
+      })
+    ),
+    ...intentosChequeo(ch).map(
+      (it, i): Interaccion => ({
+        clave: `intento-${i}`,
+        perfil: it.nota.startsWith("Devuelto por el superior") ? "SUPERVISOR" : "CHEQUEO",
+        usuario: it.nota.startsWith("Devuelto por el superior") ? SESION_SUPERVISOR.nombre : chequeador,
+        fecha: it.fecha,
+        tema: "Chequeo telefónico sin completar",
+        texto: it.nota,
+      })
+    ),
+    ...(ch?.resultado && ch.comentario && ch.fecha
+      ? [
+          {
+            clave: "chequeo-final",
+            perfil: "CHEQUEO" as const,
+            usuario: chequeador,
+            fecha: ch.fecha,
+            tema: ch.resultado === "OK" ? "Chequeo telefónico correcto" : "Chequeo telefónico no correcto",
+            texto: ch.comentario,
+          },
+        ]
+      : []),
+    ...(app.rechazo && (app.rechazo.origen === "ANALISTA" || app.rechazo.origen === "SUPERIOR") && app.rechazo.observacion
+      ? [
+          {
+            clave: "rechazo",
+            perfil: app.rechazo.origen === "SUPERIOR" ? ("SUPERVISOR" as const) : ("ANALISTA" as const),
+            usuario: app.rechazo.origen === "SUPERIOR" ? SESION_SUPERVISOR.nombre : SESION_ANALISTA.nombre,
+            fecha: app.rechazo.fecha,
+            tema: `Rechazada · ${app.rechazo.motivo}`,
+            texto: app.rechazo.observacion,
+          },
+        ]
+      : []),
+  ];
+
+  return interacciones
+    .map((m, i) => ({ m, i, t: instante(m.fecha) }))
+    .sort((a, b) => a.t - b.t || Number(!!b.m.tema) - Number(!!a.m.tema) || a.i - b.i)
+    .map(({ m }) => m);
 }
 
 const METODO = { ELECTRONICA: "electrónica", FISICA: "manual" } as const;

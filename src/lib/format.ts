@@ -140,6 +140,22 @@ export function fechaHoy(): string {
   return aTexto(new Date());
 }
 
+// Fecha y hora completas ("dd/mm/aaaa HH:MM"): a diferencia de `selloTiempo` no se vuelve
+// ambigua al día siguiente, por eso la usa el log de estados.
+export function fechaHora(): string {
+  return `${fechaHoy()} ${selloTiempo().slice("Hoy ".length)}`;
+}
+
+// Instante de un sello de la demo: "Hoy HH:MM", "dd/mm/aaaa HH:MM" o "dd/mm/aaaa" (0 si no se lee).
+export function instante(fecha: string): number {
+  const conHora = /^(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}):(\d{2})$/.exec(fecha.trim());
+  if (!conHora) return parseFecha(fecha)?.getTime() ?? 0;
+  const dia = parseFecha(conHora[1]);
+  if (!dia) return 0;
+  dia.setHours(Number(conHora[2]), Number(conHora[3]));
+  return dia.getTime();
+}
+
 export function sumarDias(fecha: string, dias: number): string {
   const base = parseFecha(fecha) ?? new Date();
   base.setDate(base.getDate() + dias);
