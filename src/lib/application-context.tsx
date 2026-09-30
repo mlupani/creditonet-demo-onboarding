@@ -334,6 +334,7 @@ interface ApplicationContextValue {
     campos: Partial<Record<PantallaPostOfertaId, string[]>>
   ) => void;
   anularCredito: (nota: string) => void;
+  cerrarNoConcretado: (creditoId: string) => void;
   agregarComentario: (texto: string, autor?: string) => void;
   soltarAnalisis: () => void;
   retomarObservada: () => void;
@@ -1623,6 +1624,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Chequeo telefónico: el canal de venta no contestó el aviso. Cierra el crédito de la DB (no
+  // hace falta tenerlo abierto) como anulado / no concretado y lo deja como crédito en curso.
+  const cerrarNoConcretado = useCallback((creditoId: string) => {
+    const registro = creditosDBRef.current.find((c) => c._id === creditoId);
+    if (!registro || registro.estado !== "CHEQUEO_TELEFONICO" || !registro.chequeoTelefonico) return;
+    const nota = "No concretado: el canal de venta no respondió el aviso del chequeo telefónico.";
+    const fecha = fechaHoy();
+    setCreditosDBBase(creditosDBRef.current);
+    setApp({
+      ...sinMeta(registro),
+      estado: "ANULADO",
+      chequeoTelefonico: { ...registro.chequeoTelefonico, tomado: false, noConcretado: { nota, fecha } },
+      analista: {
+        ...registro.analista,
+        tomado: false,
+        cambioOfertaPendiente: null,
+        derivacionCambioFinanciero: null,
+        observacion: { motivo: "No concretado", nota, fecha, pantallas: [] },
+      },
+    });
+    setAppDbId(creditoId);
+  }, []);
+
   // Soltar análisis: el analista devuelve la solicitud a la bandeja para que otro la tome.
   const soltarAnalisis = useCallback(() => {
     setAppOperativo((prev) => ({
@@ -2088,6 +2112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verificarReglaMotor,
       observarCredito,
       anularCredito,
+      cerrarNoConcretado,
       agregarComentario,
       soltarAnalisis,
       retomarObservada,
@@ -2169,6 +2194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verificarReglaMotor,
       observarCredito,
       anularCredito,
+      cerrarNoConcretado,
       agregarComentario,
       soltarAnalisis,
       retomarObservada,
