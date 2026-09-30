@@ -4,16 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import { CANALES, ORGANISMOS, PRODUCTOS, nombreOpcion } from "@/lib/config";
-import { marcarLeida, quitarNotificacion, rutaParaEstado, useNotificaciones, type ComentarioNotificacion } from "@/lib/notificaciones";
+import {
+  estaPendiente,
+  estaRespondida,
+  marcarLeida,
+  quitarNotificacion,
+  rutaParaEstado,
+  sinRespuestaDesdeAyer,
+  useNotificaciones,
+  type ComentarioNotificacion,
+} from "@/lib/notificaciones";
 import { intentoActual } from "@/lib/firma";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
 import type { CreditoDB } from "@/lib/creditos-db";
+import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
-import { IconFileStack, IconSearch, IconX } from "@/components/icons";
+import { IconCheck, IconFileStack, IconSearch, IconX } from "@/components/icons";
 
-type Pestana = "PEND" | "CURSO" | "FIN" | "NOTIF";
+// Flujo (creditonet-110): Pendientes → En chequeo → Notif. pendientes → Notif. respondidas →
+// Finalizados. Las dos pestañas de notificaciones listan avisos, no créditos.
+type Pestana = "PEND" | "CURSO" | "NOTIF_PEND" | "NOTIF_RESP" | "FIN";
 
 const PESTANAS: {
   id: Pestana;
@@ -34,17 +46,22 @@ const PESTANAS: {
     incluye: (c) => c.estado === "CHEQUEO_TELEFONICO" && c.chequeoTelefonico?.tomado === true,
   },
   {
+    id: "NOTIF_PEND",
+    titulo: "Notif. pendientes",
+    vacio: "No hay notificaciones esperando respuesta del canal de venta.",
+    incluye: () => false,
+  },
+  {
+    id: "NOTIF_RESP",
+    titulo: "Notif. respondidas",
+    vacio: "No hay notificaciones respondidas para tratar.",
+    incluye: () => false,
+  },
+  {
     id: "FIN",
     titulo: "Finalizados",
     vacio: "Todavía no hay chequeos finalizados.",
-    incluye: (c) => c.chequeoTelefonico?.resultado != null,
-  },
-  {
-    id: "NOTIF",
-    titulo: "Notificaciones",
-    vacio: "No hay notificaciones pendientes de lectura.",
-    // Pestaña de avisos, no de créditos: el contenido y el contador van aparte.
-    incluye: () => false,
+    incluye: (c) => c.chequeoTelefonico?.resultado != null || c.chequeoTelefonico?.noConcretado != null,
   },
 ];
 
@@ -74,29 +91,36 @@ function LuzNotificaciones({ cantidad }: { cantidad: number }) {
 
 export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
   const router = useRouter();
-  const { creditosDB, cargarCreditoDeDB } = useApplication();
+  const { creditosDB, cargarCreditoDeDB, cerrarNoConcretado } = useApplication();
   const [pestana, setPestana] = useState<Pestana>("PEND");
   const [busqueda, setBusqueda] = useState("");
   const [canal, setCanal] = useState("");
+  const [porCerrar, setPorCerrar] = useState<ComentarioNotificacion | null>(null);
   const notificaciones = useNotificaciones();
 
-  // Avisos sobre créditos en chequeo: de cualquier autor (ventas, analistas y el
-  // propio chequeador), con crédito en la DB. Se siguen viendo mientras el crédito
-  // siga en chequeo telefónico (las leídas, atenuadas); al salir de chequeo desaparecen.
+  // Avisos sobre créditos en chequeo, con crédito en la DB. Se siguen viendo mientras el crédito
+  // siga en chequeo telefónico; al salir de chequeo desaparecen.
+  // - Pendientes: los que dejó el chequeador y esperan respuesta del canal de venta.
+  // - Respondidas: lo que contestó el canal de venta (u otro rol) y el chequeador debe tratar.
   const creditoDe = (n: ComentarioNotificacion) =>
     creditosDB.find((c) => c._id === n.creditoId);
   const avisos = notificaciones.filter(
     (n) => creditoDe(n)?.estado === "CHEQUEO_TELEFONICO"
   );
-  const pendientes = avisos.filter((n) => !n.leida).length;
+  const respondidas = avisos.filter(estaRespondida);
   const sinLeerDe = (creditoId: string) =>
-    avisos.filter((n) => !n.leida && n.creditoId === creditoId).length;
-  const avisosFiltrados = avisos.filter((n) => {
-    const c = creditoDe(n)!;
-    if (canal && c.configuracion.canalId !== canal) return false;
-    if (busqueda.trim() && !(c.cliente && coincideCliente(c.cliente, busqueda))) return false;
-    return true;
-  });
+    respondidas.filter((n) => !n.leida && n.creditoId === creditoId).length;
+  const avisosDe = (id: Pestana) =>
+    avisos
+      .filter(id === "NOTIF_PEND" ? estaPendiente : estaRespondida)
+      .filter((n) => {
+        const c = creditoDe(n)!;
+        if (canal && c.configuracion.canalId !== canal) return false;
+        if (busqueda.trim() && !(c.cliente && coincideCliente(c.cliente, busqueda))) return false;
+        return true;
+      });
+  const esNotif = pestana === "NOTIF_PEND" || pestana === "NOTIF_RESP";
+  const avisosFiltrados = esNotif ? avisosDe(pestana) : [];
 
   const enPestana = (p: (typeof PESTANAS)[number]) =>
     creditosDB.filter((c) => {
@@ -166,14 +190,15 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
       <div role="tablist" aria-label="Estados del chequeo" className="flex flex-wrap gap-2">
         {PESTANAS.map((p) => {
           const seleccionada = p.id === pestana;
-          const cantidad = p.id === "NOTIF" ? pendientes : enPestana(p).length;
+          const cantidad =
+            p.id === "NOTIF_PEND" || p.id === "NOTIF_RESP" ? avisosDe(p.id).length : enPestana(p).length;
           return (
             <button
               key={p.id}
               role="tab"
               aria-selected={seleccionada}
               onClick={() => setPestana(p.id)}
-              title={p.id === "NOTIF" ? "Notificaciones del canal de venta aún no leídas" : p.titulo}
+              title={p.titulo}
               className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-bold tracking-wide transition ${
                 seleccionada
                   ? "border-brand-600 bg-brand-600 text-white shadow-sm"
@@ -194,13 +219,13 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
       </div>
 
       <Card className="overflow-hidden">
-        {pestana === "NOTIF" ? (
+        {esNotif ? (
           avisosFiltrados.length === 0 ? (
             <p className="flex items-center justify-center gap-2 px-5 py-8 text-center text-sm text-ink-400">
               <IconFileStack width={15} height={15} />
               {busqueda.trim() || canal
                 ? "Ningún aviso coincide con la búsqueda o el filtro."
-                : "No hay notificaciones pendientes de lectura."}
+                : activa.vacio}
             </p>
           ) : (
             <ul className="divide-y divide-ink-100">
@@ -211,7 +236,7 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                   <li
                     key={n.id}
                     className={`flex cursor-pointer flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 transition hover:bg-ink-25 ${
-                      n.leida ? "opacity-60" : ""
+                      estaRespondida(n) && n.leida ? "opacity-60" : ""
                     }`}
                     onClick={() => abrirAviso(n)}
                   >
@@ -232,6 +257,13 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                         {n.autor} · {n.fecha}
                       </p>
                       <p className="mt-0.5 line-clamp-2 text-sm text-ink-700">{n.texto}</p>
+                      {estaPendiente(n) && (
+                        <p className="mt-1 text-[11px] font-semibold text-warning-600">
+                          {sinRespuestaDesdeAyer(n)
+                            ? "Sin respuesta desde ayer: ya se puede cerrar como no concretado."
+                            : "Esperando respuesta del canal de venta."}
+                        </p>
+                      )}
                     </div>
                     <div className="shrink-0">
                       <EstadoBadge estado={c.estado} />
@@ -240,19 +272,36 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                       <Button size="sm" variant="outline" onClick={() => abrirAviso(n)}>
                         Abrir
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          quitarNotificacion(n.id);
-                        }}
-                        aria-label={`Descartar aviso de ${n.numeroCredito ?? "la solicitud"}`}
-                      >
-                        <IconX width={14} height={14} />
-                        Descartar
-                      </Button>
-                      {!n.leida && <LuzNotificaciones cantidad={sinLeerDe(c._id)} />}
+                      {estaRespondida(n) ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            quitarNotificacion(n.id);
+                          }}
+                          aria-label={`Marcar como tratada la respuesta de ${n.numeroCredito ?? "la solicitud"}`}
+                        >
+                          <IconCheck width={14} height={14} />
+                          Marcar tratada
+                        </Button>
+                      ) : (
+                        sinRespuestaDesdeAyer(n) && (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPorCerrar(n);
+                            }}
+                            aria-label={`Cerrar como no concretado ${n.numeroCredito ?? "la solicitud"}`}
+                          >
+                            <IconX width={14} height={14} />
+                            Cerrar como no concretado
+                          </Button>
+                        )
+                      )}
+                      {estaRespondida(n) && !n.leida && <LuzNotificaciones cantidad={sinLeerDe(c._id)} />}
                     </div>
                   </li>
                 );
@@ -281,11 +330,13 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                 {lista.map((c) => {
                   const cli = c.cliente!;
                   const resultado = c.chequeoTelefonico?.resultado;
+                  // Un crédito cerrado como no concretado ya no tiene pantalla de chequeo.
+                  const abrible = !c.chequeoTelefonico?.noConcretado;
                   return (
                     <tr
                       key={c._id}
-                      className="cursor-pointer align-middle transition hover:bg-ink-25"
-                      onClick={() => abrir(c)}
+                      className={`align-middle transition hover:bg-ink-25 ${abrible ? "cursor-pointer" : ""}`}
+                      onClick={abrible ? () => abrir(c) : undefined}
                     >
                       <td className="px-3 py-3">
                         <p className="font-semibold text-ink-900">
@@ -313,7 +364,9 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                         <EstadoBadge estado={c.estado} />
                       </td>
                       <td className="px-3 py-3 text-ink-700">
-                        {resultado === "OK"
+                        {c.chequeoTelefonico?.noConcretado
+                          ? "No concretado"
+                          : resultado === "OK"
                           ? "Correcto"
                           : resultado === "NO_OK"
                             ? "No correcto"
@@ -323,9 +376,11 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                       </td>
                       <td className="px-3 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button size="sm" variant="outline" onClick={() => abrir(c)}>
-                            Abrir
-                          </Button>
+                          {abrible && (
+                            <Button size="sm" variant="outline" onClick={() => abrir(c)}>
+                              Abrir
+                            </Button>
+                          )}
                           <LuzNotificaciones cantidad={sinLeerDe(c._id)} />
                         </div>
                       </td>
@@ -337,6 +392,22 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
           </div>
         )}
       </Card>
+      <ConfirmationModal
+        open={porCerrar !== null}
+        title="Cerrar como no concretado"
+        descripcion="El canal de venta no respondió el aviso. El crédito se anula y el chequeo pasa a Finalizados como no concretado."
+        rows={[
+          { label: "ID de Crédito", value: porCerrar?.numeroCredito ?? "—" },
+          { label: "Aviso", value: porCerrar?.texto ?? "—" },
+        ]}
+        confirmLabel="Cerrar como no concretado"
+        tone="danger"
+        onConfirm={() => {
+          if (porCerrar?.creditoId) cerrarNoConcretado(porCerrar.creditoId);
+          setPorCerrar(null);
+        }}
+        onCancel={() => setPorCerrar(null)}
+      />
     </div>
   );
 }
