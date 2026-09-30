@@ -16,11 +16,14 @@ import {
   type ComentarioNotificacion,
 } from "@/lib/notificaciones";
 import { intentoActual } from "@/lib/firma";
+import { interaccionesCredito } from "@/lib/historial";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
 import type { CreditoDB } from "@/lib/creditos-db";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { HiloObservacion } from "@/components/analisis/HiloObservacion";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { IconCheck, IconFileStack, IconSearch, IconX } from "@/components/icons";
 
@@ -96,6 +99,7 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
   const [pestana, setPestana] = useState<Pestana>("PEND");
   const [busqueda, setBusqueda] = useState("");
   const [canal, setCanal] = useState("");
+  const [verComentarios, setVerComentarios] = useState(false);
   const [porCerrar, setPorCerrar] = useState<ComentarioNotificacion | null>(null);
   const notificaciones = useNotificaciones();
 
@@ -137,6 +141,12 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
   function abrir(c: CreditoDB) {
     cargarCreditoDeDB(c._id);
     onAbrir();
+  }
+
+  // Comentarios del crédito de la fila: se carga en la sesión (como "Abrir") y se ve el hilo en un modal.
+  function verComentariosDe(c: CreditoDB) {
+    cargarCreditoDeDB(c._id);
+    setVerComentarios(true);
   }
 
   function abrirAviso(n: ComentarioNotificacion) {
@@ -378,6 +388,16 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
                       </td>
                       <td className="px-3 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              verComentariosDe(c);
+                            }}
+                          >
+                            Ver comentarios ({interaccionesCredito(c).length})
+                          </Button>
                           {abrible && (
                             <Button size="sm" variant="outline" onClick={() => abrir(c)}>
                               Abrir
@@ -394,6 +414,21 @@ export function ListaChequeo({ onAbrir }: { onAbrir: () => void }) {
           </div>
         )}
       </Card>
+      <Modal
+        open={verComentarios}
+        onClose={() => setVerComentarios(false)}
+        title="Mensajes entre vendedor y analista"
+        maxWidth="max-w-2xl"
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setVerComentarios(false)}>
+              Cerrar
+            </Button>
+          </div>
+        }
+      >
+        <HiloObservacion />
+      </Modal>
       <ConfirmationModal
         open={porCerrar !== null}
         title="Cerrar como no concretado"
