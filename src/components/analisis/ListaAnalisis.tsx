@@ -5,6 +5,7 @@ import { useApplication } from "@/lib/application-context";
 import { fechaVisibleAnalista, ordenarPorFechaVisibleAnalista } from "@/lib/creditos-db";
 import { CANALES, ORGANISMOS, PRODUCTOS, SESION_ANALISTA, VENDEDORES, nombreOpcion } from "@/lib/config";
 import { coincideCliente, formatARS, formatDNI } from "@/lib/format";
+import { CLASE_FILA_POSESION_SUP, LEYENDA_POSESION_SUP, enPosesionSup } from "@/lib/posesion-sup";
 import type { EstadoCredito } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -121,6 +122,10 @@ const COLUMNAS = [
   "Fecha",
   "Analista",
 ];
+
+function LeyendaPosesionSup() {
+  return <p className="mt-1 text-[11px] font-semibold text-violet-700">{LEYENDA_POSESION_SUP}</p>;
+}
 
 export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
   const { app, creditosDB, cargarCreditoDeDB } = useApplication();
@@ -376,7 +381,9 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                       return (
                         <tr
                           key={c.numeroCredito ?? cli.dni}
-                          className="cursor-pointer align-middle transition hover:bg-ink-25"
+                          className={`cursor-pointer align-middle transition hover:bg-ink-25 ${
+                            enPosesionSup(c.estado) ? CLASE_FILA_POSESION_SUP : ""
+                          }`}
                           onClick={() => cargarCreditoDB(c)}
                           title={c._descripcion}
                         >
@@ -398,6 +405,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                           <td className="px-3 py-3 tabular-nums text-ink-700">{c.oferta.plazo}</td>
                           <td className="px-3 py-3">
                             <EstadoBadgeCorto estado={estadoVisible} />
+                            {enPosesionSup(c.estado) && <LeyendaPosesionSup />}
                           </td>
                           <td className="px-3 py-3 text-ink-700">{fecha ?? "—"}</td>
                           <td className="px-3 py-3 text-ink-700">
@@ -412,7 +420,12 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                       );
                     })}
                     {visible && propiaEn(activa.id) && !creditosDB.some((c) => c.numeroCredito === app.numeroCredito) && cliente && paginaActual === 1 && (
-                      <tr className="cursor-pointer align-middle bg-brand-50/50 transition hover:bg-ink-25" onClick={onAbrir}>
+                      <tr
+                        className={`cursor-pointer align-middle transition hover:bg-ink-25 ${
+                          enPosesionSup(app.estado) ? CLASE_FILA_POSESION_SUP : "bg-brand-50/50"
+                        }`}
+                        onClick={onAbrir}
+                      >
                         <td className="px-3 py-3">
                           <p className="font-semibold text-ink-900">
                             {cliente.nombre} {cliente.apellido} <span className="ml-1 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] text-white">En curso</span>
@@ -435,6 +448,7 @@ export function ListaAnalisis({ onAbrir }: { onAbrir: () => void }) {
                                 : app.estado
                             }
                           />
+                          {enPosesionSup(app.estado) && <LeyendaPosesionSup />}
                         </td>
                         <td className="px-3 py-3 text-ink-700">{fechaApp ?? "—"}</td>
                         <td className="px-3 py-3 text-ink-700">
