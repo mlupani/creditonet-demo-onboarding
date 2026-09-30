@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { SESION_CHEQUEADOR } from "./config";
 import type { EstadoCredito } from "./types";
 
 export interface ComentarioNotificacion {
@@ -10,6 +11,10 @@ export interface ComentarioNotificacion {
   fecha: string;
   estado: EstadoCredito;
   leida: boolean;
+  // Instante de creación (ms): "selloTiempo" sólo dice "Hoy", no alcanza para saber si pasó un día.
+  creadaEn: number;
+  // Sólo en avisos del chequeador: el canal de venta ya contestó sobre este crédito.
+  respondida: boolean;
 }
 
 const CLAVE = "creditonet.notificaciones.v1";
@@ -31,7 +36,10 @@ function suscribir(f: () => void) {
   return () => oyentes.delete(f);
 }
 
-function esValida(r: unknown): r is ComentarioNotificacion {
+type Guardada = Omit<ComentarioNotificacion, "creadaEn" | "respondida"> &
+  Partial<Pick<ComentarioNotificacion, "creadaEn" | "respondida">>;
+
+function esValida(r: unknown): r is Guardada {
   const o = r as Record<string, unknown>;
   return (
     !!o &&
@@ -51,14 +59,42 @@ export function hidratarNotificaciones() {
     const raw = sessionStorage.getItem(CLAVE);
     if (!raw) return;
     const guardado = JSON.parse(raw) as unknown;
-    if (Array.isArray(guardado) && guardado.every(esValida)) commit(guardado);
+    if (Array.isArray(guardado) && guardado.every(esValida)) {
+      // Los avisos guardados antes de creditonet-110 no traen creadaEn ni respondida.
+      commit(guardado.map((r) => ({ ...r, creadaEn: r.creadaEn ?? Date.now(), respondida: r.respondida ?? false })));
+    }
   } catch {
     /* si el guardado está dañado se arranca vacío */
   }
 }
 
-export function agregarNotificacion(n: Omit<ComentarioNotificacion, "id" | "leida">) {
-  commit([{ ...n, id: `notif-${Date.now()}`, leida: false }, ...registros]);
+export function esDelChequeador(n: Pick<ComentarioNotificacion, "autor">): boolean {
+  return n.autor === SESION_CHEQUEADOR.nombre;
+}
+
+// Un aviso del chequeador espera respuesta del canal de venta hasta que otro autor comenta el
+// mismo crédito: ahí pasa de "pendiente" a "respondida" (y la respuesta es el aviso nuevo).
+export function agregarNotificacion(
+  n: Omit<ComentarioNotificacion, "id" | "leida" | "creadaEn" | "respondida">
+) {
+  const respondeAlChequeador = !esDelChequeador(n) && n.creditoId !== null;
+  const previas = respondeAlChequeador
+    ? registros.map((r) =>
+        esDelChequeador(r) && r.creditoId === n.creditoId ? { ...r, respondida: true } : r
+      )
+    : registros;
+  const ahora = Date.now();
+  commit([{ ...n, id: `notif-${ahora}`, leida: false, creadaEn: ahora, respondida: false }, ...previas]);
+}
+
+// Avisos que esperan respuesta del canal de venta / respuestas que el chequeador debe tratar.
+export const estaPendiente = (n: ComentarioNotificacion) => esDelChequeador(n) && !n.respondida;
+export const estaRespondida = (n: ComentarioNotificacion) => !esDelChequeador(n);
+
+// A partir del día calendario siguiente sin respuesta se puede cerrar como no concretado.
+export function sinRespuestaDesdeAyer(n: ComentarioNotificacion, ahora = new Date()): boolean {
+  const inicioHoy = new Date(ahora).setHours(0, 0, 0, 0);
+  return estaPendiente(n) && n.creadaEn < inicioHoy;
 }
 
 export function marcarLeida(id: string) {

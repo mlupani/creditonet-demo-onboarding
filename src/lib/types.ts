@@ -69,6 +69,9 @@ export interface ChequeoTelefonico {
   // Registro de cada intento que no se pudo completar (creditonet-82). El chequeador no rechaza:
   // deja el intento asentado y el crédito sigue en su bandeja; el rechazo lo decide el analista.
   intentos?: { nota: string; fecha: string }[];
+  // Cierre sin respuesta del canal de venta (creditonet-110): el crédito se anula y el chequeo
+  // queda en Finalizados como "No concretado".
+  noConcretado?: { nota: string; fecha: string } | null;
 }
 
 export const CHEQUEO_PENDIENTE: ChequeoTelefonico = {
