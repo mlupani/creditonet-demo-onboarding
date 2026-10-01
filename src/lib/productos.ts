@@ -26,6 +26,7 @@ import {
 } from "./config";
 import { fechaHoy, parseFecha } from "./format";
 import { getTipoDocumento } from "./parametros";
+import type { Domicilio } from "./types";
 
 // --- Catálogos de las listas del ABM ---
 
@@ -90,8 +91,25 @@ export interface SeleccionLista {
 export interface GestionPrestamos {
   activa: boolean;
   razonSocial: string;
-  domicilio: string;
+  domicilio: Domicilio;
   cuit: string;
+}
+
+export const DOMICILIO_VACIO: Domicilio = {
+  calle: "",
+  numero: "",
+  piso: "",
+  departamento: "",
+  provincia: "",
+  localidad: "",
+  codigoPostal: "",
+};
+
+// Guardados anteriores tenían el domicilio como un único texto: pasa a la calle.
+export function normalizarGestion(g: GestionPrestamos): GestionPrestamos {
+  const d: unknown = g.domicilio;
+  if (d && typeof d === "object") return { ...g, domicilio: { ...DOMICILIO_VACIO, ...(d as Domicilio) } };
+  return { ...g, domicilio: { ...DOMICILIO_VACIO, calle: typeof d === "string" ? d : "" } };
 }
 
 // Datos financieros: qué conceptos intervienen en el recálculo del sueldo neto.
@@ -201,7 +219,7 @@ const EXTRAS_BASE: ExtrasProducto = {
   seContabiliza: true,
   centroCostos: "CC-100 · Créditos personales",
   visibleDashboard: true,
-  gestionPrestamos: { activa: false, razonSocial: "", domicilio: "", cuit: "" },
+  gestionPrestamos: { activa: false, razonSocial: "", domicilio: { ...DOMICILIO_VACIO }, cuit: "" },
   recalculoNeto: {
     disponible: true,
     saldoDiaAcreditacion: true,
@@ -315,7 +333,13 @@ export function hidratarProductos() {
     if (!raw) return;
     const guardado = JSON.parse(raw) as ProductoAbm[];
     if (Array.isArray(guardado) && guardado.length > 0 && guardado.every((r) => r?.config?.id))
-      commit(guardado);
+      commit(
+        guardado.map((r) =>
+          r.extras?.gestionPrestamos
+            ? { ...r, extras: { ...r.extras, gestionPrestamos: normalizarGestion(r.extras.gestionPrestamos) } }
+            : r
+        )
+      );
   } catch {
     /* si el guardado está dañado se queda con los valores de ejemplo */
   }

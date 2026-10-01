@@ -14,13 +14,20 @@ import {
   esObligatorio,
 } from "@/lib/campos-config";
 import { CONDICIONES_LABORALES, useMotores } from "@/lib/motores";
-import { PROVEEDORES_TOKENIZACION, TIPOS_DOCUMENTO } from "@/lib/parametros";
-import type { PantallaPostOfertaId } from "@/lib/types";
+import {
+  PROVEEDORES_TOKENIZACION,
+  PROVINCIAS,
+  TIPOS_DOCUMENTO,
+  localidadesDe,
+} from "@/lib/parametros";
+import { aplicarCambioDomicilio, sanitizarCampoDomicilio } from "@/lib/campos-post-oferta";
+import type { Domicilio, PantallaPostOfertaId } from "@/lib/types";
 import { PERFILES_INTERNOS, ROTULO_BCRA, ROTULO_PERFIL, SITUACIONES_BCRA } from "@/lib/planes";
 import {
   CANALES_NOTIFICACION,
   ESTADOS_NOTIFICACION_ONBOARDING,
   MAX_TRAMOS_PUNITORIOS,
+  normalizarGestion,
   type GestionPrestamos,
   type NotificacionesProducto,
   type RecalculoNeto,
@@ -486,6 +493,12 @@ export function EditorGestion({
   onChange: (valor: GestionPrestamos) => void;
   errores?: { razonSocial?: string; cuit?: string };
 }) {
+  const dom = normalizarGestion(valor).domicilio;
+  const setDom = (campo: keyof Domicilio, v: string) =>
+    onChange({
+      ...valor,
+      domicilio: aplicarCambioDomicilio(dom, campo, sanitizarCampoDomicilio(campo, v)),
+    });
   return (
     <div className="space-y-4">
       <Checkbox
@@ -513,12 +526,56 @@ export function EditorGestion({
             placeholder="30-12345678-9"
             error={errores?.cuit}
           />
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-400 sm:col-span-2">
+            Domicilio
+          </p>
           <FormField
-            id={`${idBase}-domicilio`}
-            label="Domicilio"
-            value={valor.domicilio}
-            onChange={(v) => onChange({ ...valor, domicilio: v })}
-            className="sm:col-span-2"
+            id={`${idBase}-dom-calle`}
+            label="Calle"
+            value={dom.calle}
+            onChange={(v) => setDom("calle", v)}
+          />
+          <FormField
+            id={`${idBase}-dom-numero`}
+            label="Número"
+            inputMode="numeric"
+            value={dom.numero}
+            onChange={(v) => setDom("numero", v)}
+          />
+          <FormField
+            id={`${idBase}-dom-piso`}
+            label="Piso"
+            value={dom.piso}
+            onChange={(v) => setDom("piso", v)}
+          />
+          <FormField
+            id={`${idBase}-dom-departamento`}
+            label="Departamento"
+            value={dom.departamento}
+            onChange={(v) => setDom("departamento", v)}
+          />
+          <SelectField
+            id={`${idBase}-dom-provincia`}
+            label="Provincia"
+            value={dom.provincia}
+            onChange={(v) => setDom("provincia", v)}
+            options={PROVINCIAS.map((v) => ({ value: v, label: v }))}
+          />
+          <SelectField
+            id={`${idBase}-dom-localidad`}
+            label="Localidad"
+            value={dom.localidad}
+            onChange={(v) => setDom("localidad", v)}
+            options={localidadesDe(dom.provincia).map((l) => ({ value: l.nombre, label: l.nombre }))}
+            hint="Provincia y localidad salen de Parámetros."
+          />
+          <FormField
+            id={`${idBase}-dom-cp`}
+            label="Código postal"
+            inputMode="numeric"
+            value={dom.codigoPostal}
+            onChange={(v) => setDom("codigoPostal", v)}
+            hint="Se completa al elegir la localidad; se puede editar."
           />
         </div>
       )}
