@@ -384,7 +384,7 @@ export function EditorCamposObligatorios({
             <div className="border-t border-ink-100 px-4 py-4">
               {pantalla === "legajo" && (
                 <p className="text-xs text-ink-500">
-                  Los ítems del legajo se configuran en la sección Legajo: cada documento define si
+                  Los ítems del legajo se configuran en el bloque Legajo de esta sección: cada documento define si
                   es obligatorio y su cantidad mínima y máxima.
                 </p>
               )}

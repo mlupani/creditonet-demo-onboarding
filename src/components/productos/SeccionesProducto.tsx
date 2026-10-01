@@ -550,6 +550,20 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
         />
       </div>
 
+      <div className="space-y-3">
+        <Subtitulo>Legajo</Subtitulo>
+        <p className="text-xs text-ink-500">
+          Documentos que forman el legajo virtual, obligatoriedad y cantidad mínima y máxima por
+          ítem (Producto §7 bis). El organismo puede reemplazar esta lista con su propia
+          documentación.
+        </p>
+        <EditorDocumentos
+          docs={ob.documentos}
+          onChange={(documentos) => setOb({ documentos })}
+          error={ver ? errores.documentos : undefined}
+        />
+      </div>
+
       <div className="space-y-4">
         <Subtitulo>Permisos de operación</Subtitulo>
         <Checkbox
@@ -633,27 +647,6 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
   );
 }
 
-// --- 9. Legajo ---
-
-function Legajo({ p, set, errores, ver }: SeccionProps) {
-  const { cf } = useEditores(set);
-  const ob = p.config.onboarding;
-  return (
-    <Panel
-      titulo="Legajo"
-      descripcion="Documentos que forman el legajo virtual, obligatoriedad y cantidad mínima y máxima por ítem (Producto §7 bis)."
-      vivo
-      nota="El organismo puede reemplazar esta lista con su propia documentación."
-    >
-      <EditorDocumentos
-        docs={ob.documentos}
-        onChange={(documentos) => cf({ onboarding: { ...ob, documentos } })}
-        error={ver ? errores.documentos : undefined}
-      />
-    </Panel>
-  );
-}
-
 // --- 10. Motor de riesgo ---
 
 function Motor({ p, set }: SeccionProps) {
@@ -705,7 +698,6 @@ export const SECCIONES: {
   { id: "cobro", label: "Cobro, canales y vendedores", vivo: true, Componente: Cobro },
   { id: "punitorios", label: "Intereses punitorios", vivo: false, Componente: Punitorios },
   { id: "onboarding", label: "Configuración del onboarding", vivo: true, Componente: Onboarding },
-  { id: "legajo", label: "Legajo", vivo: true, Componente: Legajo },
   { id: "motor", label: "Motor de riesgo", vivo: true, Componente: Motor },
   { id: "notificaciones", label: "Notificaciones", vivo: false, Componente: Notificaciones },
 ];
@@ -726,7 +718,7 @@ export const SECCION_DE_ERROR: Record<string, string> = {
   referencias: "onboarding",
   garantes: "onboarding",
   tokenizacion: "onboarding",
-  documentos: "legajo",
+  documentos: "onboarding",
   renovacionMinCuotasPagas: "onboarding",
   renovacionMinPctPagado: "onboarding",
 };
