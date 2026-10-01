@@ -71,7 +71,7 @@ export function ListaMotores() {
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <Button onClick={() => router.push("/motor-riesgo/nuevo")}>
           <IconPlus width={16} height={16} />
-          Nuevo
+          Nuevo grupo de reglas
         </Button>
         <div className="relative w-full sm:w-72">
           <IconSearch
@@ -115,72 +115,75 @@ export function ListaMotores() {
         </Button>
       </div>
 
-      <Card className="mt-5 overflow-hidden">
-        {!hidratado ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">Cargando…</p>
-        ) : filas.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">
+      {!hidratado ? (
+        <p className="mt-5 px-5 py-8 text-center text-sm text-ink-400">Cargando…</p>
+      ) : filas.length === 0 ? (
+        <Card className="mt-5 px-5 py-8 text-center">
+          <p className="text-sm text-ink-400">
             {q
               ? "Ningún grupo coincide con la búsqueda."
               : `No hay grupos ${ESTADO_PRODUCTO_META[estado].grupo.toLowerCase()}.`}
           </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[52rem] table-fixed text-left text-sm">
-              <thead>
-                <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                  <th className="w-16 px-3 py-2.5">ID</th>
-                  <th className="px-3 py-2.5">Descripción</th>
-                  <th className="w-56 px-3 py-2.5">Vigencia</th>
-                  <th className="w-28 px-3 py-2.5">Estado</th>
-                  <th className="w-48 px-3 py-2.5">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {filas.map((m) => {
-                  const vencido = vigenciaMotor(m) !== "VIGENTE";
-                  const siguiente = motores.find((r) => r.id === m.concatenarCon);
-                  return (
-                    <tr key={m.id} onClick={() => abrir(m)} className="cursor-pointer transition hover:bg-ink-25">
-                      <td className="px-3 py-3 font-mono text-xs font-bold text-brand-700">{m.codigo}</td>
-                      <td className="px-3 py-3">
-                        <p className="font-semibold text-ink-900">{m.nombre}</p>
-                        <p className="text-xs text-ink-500">
-                          {m.reglas.length} regla{m.reglas.length === 1 ? "" : "s"} ·{" "}
-                          {m.fuentes.join(", ")}
-                          {siguiente && ` · concatena con ${siguiente.codigo} ${siguiente.nombre}`}
-                        </p>
-                      </td>
-                      <td className={`px-3 py-3 ${vencido ? "font-semibold text-warning-700" : "text-ink-700"}`}>
-                        {textoVigenciaMotor(m)}
-                      </td>
-                      <td className="px-3 py-3">
-                        <StatusBadge tone={ESTADO_PRODUCTO_META[m.estado].tone}>
-                          {ESTADO_PRODUCTO_META[m.estado].label}
-                        </StatusBadge>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <Button size="sm" variant="outline" onClick={() => abrir(m, true)}>
-                            Modificar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => router.push(`/motor-riesgo/nuevo?de=${m.id}`)}
-                          >
-                            Copiar
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+          {!q && estado === "ACTIVO" && (
+            <Button className="mt-4" onClick={() => router.push("/motor-riesgo/nuevo")}>
+              <IconPlus width={16} height={16} />
+              Nuevo grupo de reglas
+            </Button>
+          )}
+        </Card>
+      ) : (
+        <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filas.map((m) => {
+            const vencido = vigenciaMotor(m) !== "VIGENTE";
+            const siguiente = motores.find((r) => r.id === m.concatenarCon);
+            return (
+              <li key={m.id}>
+                <Card className="h-full transition hover:border-brand-300 hover:shadow-md">
+                  <div className="flex h-full cursor-pointer flex-col gap-3 p-4" onClick={() => abrir(m)}>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="rounded-md bg-brand-50 px-2 py-0.5 font-mono text-xs font-bold text-brand-700">
+                        {m.codigo}
+                      </span>
+                      <StatusBadge tone={ESTADO_PRODUCTO_META[m.estado].tone}>
+                        {ESTADO_PRODUCTO_META[m.estado].label}
+                      </StatusBadge>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-ink-900">{m.nombre}</p>
+                      <p className="mt-1 text-xs text-ink-500">
+                        {m.reglas.length} regla{m.reglas.length === 1 ? "" : "s"} · {m.fuentes.join(", ")}
+                        {siguiente && ` · concatena con ${siguiente.codigo} ${siguiente.nombre}`}
+                      </p>
+                      <p className={`mt-2 text-xs ${vencido ? "font-semibold text-warning-700" : "text-ink-600"}`}>
+                        Vigencia: {textoVigenciaMotor(m)}
+                      </p>
+                      <p className="mt-1 text-xs text-ink-400">
+                        Creado por {m.creado?.usuario ?? "—"}
+                        {m.creado && ` · ${m.creado.fecha}`}
+                        <br />
+                        Modificado por {m.modificado?.usuario ?? "—"}
+                        {m.modificado && ` · ${m.modificado.fecha}`}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5 border-t border-ink-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                      <Button size="sm" variant="outline" onClick={() => abrir(m, true)}>
+                        Modificar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => router.push(`/motor-riesgo/nuevo?de=${m.id}`)}
+                      >
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

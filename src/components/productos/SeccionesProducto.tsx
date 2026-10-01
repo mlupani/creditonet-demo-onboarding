@@ -686,7 +686,7 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
 
 // --- 10. Motor de riesgo ---
 
-function Motor({ p, set }: SeccionProps) {
+function Motor({ p, set, errores, ver }: SeccionProps) {
   const { cf } = useEditores(set);
   return (
     <Panel
@@ -695,7 +695,13 @@ function Motor({ p, set }: SeccionProps) {
       vivo
       nota="El producto no ejecuta reglas de riesgo: sólo indica qué motor corresponde. Si el organismo define su propia asignación, pisa a la del producto."
     >
-      <EditorMotor idBase="p-motor" valor={p.config.motor} onChange={(motor) => cf({ motor })} />
+      <EditorMotor
+        idBase="p-motor"
+        valor={p.config.motor}
+        onChange={(motor) => cf({ motor })}
+        error={errores.motor}
+        mostrarError={ver}
+      />
     </Panel>
   );
 }
@@ -751,6 +757,7 @@ export const SECCION_DE_ERROR: Record<string, string> = {
   gestionRazonSocial: "gestion",
   gestionCuit: "gestion",
   canales: "cobro",
+  motor: "motor",
   tramos: "punitorios",
   pantallas: "onboarding",
   referencias: "onboarding",

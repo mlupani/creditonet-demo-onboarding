@@ -438,7 +438,7 @@ function describirAsignacion(a: AsignacionMotor | null): string {
   return partes.join(" · ");
 }
 
-function Motor({ o, p, productos, set }: SeccionOrgProps) {
+function Motor({ o, p, productos, set, errores, ver }: SeccionOrgProps) {
   const { cf } = useEditores(set);
   const motorOrg = o.config.motor;
   const condicion = o.config.condicionLaboral;
@@ -470,6 +470,8 @@ function Motor({ o, p, productos, set }: SeccionOrgProps) {
               valor={motorOrg}
               onChange={(motor) => cf({ motor })}
               placeholderGeneral="Sin motor general propio"
+              error={errores.motor}
+              mostrarError={ver}
             />
           ) : null
         }
@@ -1025,5 +1027,6 @@ export const SECCION_DE_ERROR_ORG: Record<string, string> = {
   tokenizacion: "onboarding",
   documentos: "formulario",
   canales: "canales",
+  motor: "motor",
 };
 

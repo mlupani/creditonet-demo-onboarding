@@ -542,6 +542,19 @@ export function asignacionMotorVacia(motorId: string | null = null): AsignacionM
   };
 }
 
+// Con "Distinguir cliente nuevo / existente" tildado hacen falta los dos grupos de reglas: si
+// falta alguno, la asignación está incompleta y no se puede guardar (creditonet-119).
+export function errorAsignacionMotor(a: AsignacionMotor | null | undefined): string | undefined {
+  if (!a?.distingueTipoCliente) return undefined;
+  const faltan = [
+    !a.porTipoCliente.NUEVO && "cliente nuevo",
+    !a.porTipoCliente.EXISTENTE && "cliente existente",
+  ].filter(Boolean);
+  return faltan.length > 0
+    ? `Completá el grupo de reglas para ${faltan.join(" y ")} o destildá “Distinguir cliente nuevo / existente”.`
+    : undefined;
+}
+
 export function motorAsignado(
   a: AsignacionMotor,
   condicionLaboral: string,
