@@ -23,16 +23,20 @@ import { IconArrowDown, IconChevronDown, IconPlus, IconSearch } from "@/componen
 
 type Campo = "codigo" | "nombre" | "estado" | "vigencia";
 
-export const ESTADO_PRODUCTO_META: Record<
-  EstadoProductoAbm,
-  { label: string; grupo: string; tone: "success" | "warning" | "neutral" }
-> = {
-  BORRADOR: { label: "Borrador", grupo: "Borradores", tone: "neutral" },
+type MetaEstado = { label: string; grupo: string; tone: "success" | "warning" | "neutral" };
+
+// Estados compartidos con planes, organismos y motores.
+export const ESTADO_PRODUCTO_META: Record<EstadoProducto, MetaEstado> = {
   ACTIVO: { label: "Activo", grupo: "Activos", tone: "success" },
   SUSPENDIDO: { label: "Suspendido", grupo: "Suspendidos", tone: "warning" },
   ELIMINADO: { label: "Eliminado", grupo: "Eliminados", tone: "neutral" },
 };
 
+// El producto además puede estar en borrador (todavía no activado).
+export const ESTADO_PRODUCTO_ABM_META: Record<EstadoProductoAbm, MetaEstado> = {
+  BORRADOR: { label: "Borrador", grupo: "Borradores", tone: "neutral" },
+  ...ESTADO_PRODUCTO_META,
+};
 const ORDEN_ESTADOS: EstadoProductoAbm[] = ["BORRADOR", "ACTIVO", "SUSPENDIDO", "ELIMINADO"];
 
 // Anchos fijos para que las columnas queden alineadas entre los tres grupos.
@@ -65,11 +69,11 @@ function comparar(a: ProductoAbm, b: ProductoAbm, campo: Campo): number {
   }
 }
 
-type Accion = { id: string; estado: EstadoProducto };
+type Accion = { id: string; estado: EstadoProductoAbm };
 
 // Sólo las acciones que piden confirmación: activar y restaurar se aplican directo.
 export const TEXTO_ACCION: Partial<
-  Record<EstadoProducto, { titulo: string; descripcion: string; boton: string }>
+  Record<EstadoProductoAbm, { titulo: string; descripcion: string; boton: string }>
 > = {
   SUSPENDIDO: {
     titulo: "¿Suspender el producto?",
@@ -132,7 +136,7 @@ export function ListaProductos() {
   }
 
   const abrir = (p: ProductoAbm) => router.push(`/productos/${p.config.id}`);
-  const cambiar = (p: ProductoAbm, estado: EstadoProducto) => {
+  const cambiar = (p: ProductoAbm, estado: EstadoProductoAbm) => {
     if (estado === "ACTIVO" || (estado === "SUSPENDIDO" && p.config.estado === "ELIMINADO")) {
       const r = cambiarEstadoProducto(p.config.id, estado);
       setErrorEstado(r.ok ? null : `${p.config.nombre}: ${r.error}`);
@@ -183,7 +187,7 @@ export function ListaProductos() {
           <option value="">Estado: todos</option>
           {ORDEN_ESTADOS.map((e) => (
             <option key={e} value={e}>
-              {ESTADO_PRODUCTO_META[e].label}
+              {ESTADO_PRODUCTO_ABM_META[e].label}
             </option>
           ))}
         </select>
@@ -217,7 +221,7 @@ export function ListaProductos() {
                   className={`text-ink-400 transition-transform ${abierto ? "" : "-rotate-90"}`}
                 />
                 <h2 className="text-xs font-bold uppercase tracking-widest text-ink-700">
-                  {ESTADO_PRODUCTO_META[estado].grupo}
+                  {ESTADO_PRODUCTO_ABM_META[estado].grupo}
                 </h2>
                 <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">
                   {q || filtro ? `${filas.length} de ${total}` : total}
@@ -229,7 +233,7 @@ export function ListaProductos() {
                     <p className="px-5 py-6 text-center text-sm text-ink-400">
                       {q
                         ? "Ningún producto coincide con la búsqueda."
-                        : `No hay productos ${ESTADO_PRODUCTO_META[estado].grupo.toLowerCase()}.`}
+                        : `No hay productos ${ESTADO_PRODUCTO_ABM_META[estado].grupo.toLowerCase()}.`}
                     </p>
                   ) : (
                     <table className="w-full min-w-[62rem] table-fixed text-left text-sm">
@@ -282,8 +286,8 @@ export function ListaProductos() {
                                 </p>
                               </td>
                               <td className="px-4 py-3">
-                                <StatusBadge tone={ESTADO_PRODUCTO_META[p.config.estado].tone}>
-                                  {ESTADO_PRODUCTO_META[p.config.estado].label}
+                                <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[p.config.estado].tone}>
+                                  {ESTADO_PRODUCTO_ABM_META[p.config.estado].label}
                                 </StatusBadge>
                               </td>
                               <td className="whitespace-nowrap px-4 py-3 text-ink-700">

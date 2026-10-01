@@ -84,7 +84,7 @@ export const EXTRAS_POR_SECCION = {
     "permiteCambioPrimerVencimiento",
   ],
   financieros: ["recalculoNeto"],
-  punitorios: ["tramosPunitorios", "modificarCarteraActiva", "modalidadesCobro"],
+  punitorios: ["tramosPunitorios", "modificarCarteraActiva", "modalidadCobro"],
   firma: ["modalidadFirma"],
   vendedores: ["vendedores"],
   notificaciones: ["notificaciones"],

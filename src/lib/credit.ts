@@ -392,14 +392,19 @@ export function calcularLimites(
       detalle: `${LIMITE_SUELDOS_BRUTOS} sueldos brutos de ${formatARS(bruto)}`,
       monto: bruto * LIMITE_SUELDOS_BRUTOS,
     },
-    {
-      id: "producto",
-      label: "Límite por producto",
-      detalle: cfg.overrides.capitalMaximo
-        ? `${cfg.producto.nombre} · excepción del organismo`
-        : cfg.producto.nombre,
-      monto: cfg.capitalMaximo,
-    },
+    // Sin capital máximo en el producto (ni excepción del organismo) no hay tope por producto.
+    ...(cfg.capitalMaximo === null
+      ? []
+      : [
+          {
+            id: "producto",
+            label: "Límite por producto",
+            detalle: cfg.overrides.capitalMaximo
+              ? `${cfg.producto.nombre} · excepción del organismo`
+              : cfg.producto.nombre,
+            monto: cfg.capitalMaximo,
+          },
+        ]),
     {
       id: "plan",
       label: "Límite por plan de cuotas",
