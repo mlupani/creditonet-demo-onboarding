@@ -16,7 +16,7 @@ import {
   esObligatorio,
 } from "@/lib/campos-config";
 import { getMotor } from "@/lib/motores";
-import { RUBROS, getTipoDocumento, nombreProveedor } from "@/lib/parametros";
+import { RUBROS, tipoDeDocumento, nombreProveedor } from "@/lib/parametros";
 import type { PantallaPostOfertaId } from "@/lib/types";
 import {
   MODALIDADES_COBRO,
@@ -318,8 +318,8 @@ const CAMPOS_VENCIMIENTO: CampoExtra[] = [
     tipo: "select",
     opciones: MOVIMIENTOS_MES,
   },
-  { clave: "diasValidezCondiciones", etiqueta: "Validez de las condiciones", tipo: "num", sufijo: "días hábiles (inclusive)" },
-  { clave: "diasPlazoObservacion", etiqueta: "Plazo para corregir una observación", tipo: "num", sufijo: "días hábiles (inclusive)" },
+  { clave: "diasValidezCondiciones", etiqueta: "Plazo maximo para finalizacion de carga de onboarding (canal de venta)", tipo: "num", sufijo: "días hábiles (inclusive)" },
+  { clave: "diasPlazoObservacion", etiqueta: "Plazo maximo dias habiles (inclusive) OBS / COFE", tipo: "num", sufijo: "días hábiles (inclusive)" },
 ];
 
 function Vencimiento(props: SeccionOrgProps) {
@@ -349,7 +349,11 @@ const CAMPOS_PERMISOS: CampoExtra[] = [
   { clave: "renovacionMinCuotasPagas", etiqueta: "Cuotas pagadas mínimas para renovar", tipo: "num" },
   { clave: "permiteCancelacionAnticipada", etiqueta: "Cancelación anticipada", tipo: "bool" },
   { clave: "cargoCancelacionPct", etiqueta: "Cargos de cancelación anticipada", tipo: "num", sufijo: "%", step: 0.1 },
+  { clave: "condicionCancelacion", etiqueta: "Condición mínima para cancelar", tipo: "select", opciones: CONDICIONES_RENOVACION },
+  { clave: "cancelacionMinPctPagado", etiqueta: "Porcentaje mínimo pagado para cancelar", tipo: "num", sufijo: "%" },
+  { clave: "cancelacionMinCuotasPagas", etiqueta: "Cuotas pagadas mínimas para cancelar", tipo: "num" },
   { clave: "permiteCambioPrimerVencimiento", etiqueta: "Cambio del primer vencimiento", tipo: "bool" },
+  { clave: "permiteCorrimientoDesarrollo", etiqueta: "Corrimiento del desarrollo del préstamo", tipo: "bool" },
 ];
 
 function Permisos(props: SeccionOrgProps) {
@@ -591,7 +595,7 @@ function Formulario({ o, p, set, errores, ver }: SeccionOrgProps) {
           <ul className="space-y-0.5">
             {docsProducto.map((d) => (
               <li key={d.tipoId}>
-                {getTipoDocumento(d.tipoId).nombre}
+                {tipoDeDocumento(d).nombre}
                 <span className="text-xs text-ink-500">
                   {d.obligatorio ? " · obligatorio" : " · opcional"}
                   {` · ${d.obligatorio ? `mín. ${minimoDocumento(d)} · ` : ""}máx. ${d.maximo}`}

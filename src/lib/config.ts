@@ -413,6 +413,9 @@ export interface CantidadConfig {
 export interface DocumentoConfig {
   // Tipo de documento definido en Parámetros.
   tipoId: string;
+  // Sólo en los ítems creados a mano desde el legajo del producto (los del catálogo no los llevan).
+  nombre?: string;
+  categoria?: string;
   obligatorio: boolean;
   // Cantidad de imágenes: el mínimo sólo se exige si el documento es obligatorio (al menos 1);
   // el máximo (≥ 1, ≥ mínimo) limita cuántas se pueden adjuntar.
@@ -433,8 +436,20 @@ export interface BloqueTokenizacion {
   maximo: number;
 }
 
+export type TipoTarjeta = "DEBITO" | "CREDITO" | "PRECARGABLE";
+
+export const TIPOS_TARJETA: { value: TipoTarjeta; label: string }[] = [
+  { value: "DEBITO", label: "Débito" },
+  { value: "CREDITO", label: "Crédito" },
+  { value: "PRECARGABLE", label: "Precargable" },
+];
+
 export interface TokenizacionConfig {
   proveedores: BloqueTokenizacion[];
+  // Tipo de tarjeta que se tokeniza. Sin definir: débito.
+  tipoTarjeta?: TipoTarjeta;
+  // false: el código de seguridad deja de ser obligatorio. Sin definir: se pide.
+  pedirCodigoSeguridad?: boolean;
 }
 
 // Producto: navegación entre las pantallas del onboarding. Libre: en cualquier orden.

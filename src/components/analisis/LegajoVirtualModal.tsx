@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva, minimoDocumento } from "@/lib/config";
-import { getTipoDocumento } from "@/lib/parametros";
+import { tipoDeDocumento } from "@/lib/parametros";
 import type { ArchivoLegajo } from "@/lib/types";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -61,7 +61,7 @@ export function LegajoVirtualModal({
         <p className="text-xs font-bold uppercase tracking-wider text-ink-400">Documentos del titular</p>
         <ul className="space-y-2">
           {cfg.documentos.map((d) => {
-            const tipo = getTipoDocumento(d.tipoId);
+            const tipo = tipoDeDocumento(d);
             const lista = po.legajo[d.tipoId] ?? [];
             return (
               <li key={d.tipoId} className="rounded-lg border border-ink-200 bg-white px-3 py-2.5">

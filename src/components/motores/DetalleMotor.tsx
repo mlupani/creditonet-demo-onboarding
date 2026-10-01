@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import type { EstadoProducto } from "@/lib/config";
 import { OPERADORES, arbolDeExpresion } from "@/lib/expresiones";
+import { fechaAIso, isoAFecha } from "@/lib/format";
 import {
   ACCIONES,
   borradorMotor,
@@ -24,18 +25,20 @@ import {
   vigenciaMotor,
   type FirmaMotor,
   type MotorRiesgo,
+  type VariableMotor,
   type ReglaMotor,
 } from "@/lib/motores";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { ConstructorCondicion } from "./ConstructorCondicion";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { Panel } from "@/components/productos/campos";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
 import {
   IconArrowLeft,
@@ -100,6 +103,24 @@ export function DetalleMotor({ id }: { id: string }) {
   );
 }
 
+type SeccionId = "cabecera" | "fuentes" | "reglas" | "concatenacion" | "auditoria";
+
+const SECCIONES: { id: SeccionId; label: string }[] = [
+  { id: "cabecera", label: "Cabecera" },
+  { id: "fuentes", label: "Fuentes de variables" },
+  { id: "reglas", label: "Reglas del grupo" },
+  { id: "concatenacion", label: "Concatenación" },
+  { id: "auditoria", label: "Auditoría" },
+];
+
+// Sección donde se muestra cada error de validación.
+function seccionDeError(clave: string): SeccionId {
+  if (clave === "nombre" || clave === "vigencia") return "cabecera";
+  if (clave === "fuentes") return "fuentes";
+  if (clave === "concatenarCon") return "concatenacion";
+  return "reglas";
+}
+
 type ModoVigencia = "SIN" | "DIAS" | "FECHA";
 
 function Formulario({
@@ -119,14 +140,14 @@ function Formulario({
   const [intentado, setIntentado] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [pendiente, setPendiente] = useState<EstadoProducto | null>(null);
+  const [seccion, setSeccion] = useState<SeccionId>("cabecera");
   const [reglaActiva, setReglaActiva] = useState<string | null>(null);
   // Reglas que se editan de a una, sin pasar todo el grupo a edición.
   const [reglasEditando, setReglasEditando] = useState<string[]>([]);
   const algunaEdicion = editando || reglasEditando.length > 0;
-  const [busquedaVariable, setBusquedaVariable] = useState("");
+  const [verVariables, setVerVariables] = useState(false);
 
   const errores = validarMotor(borrador, todos);
-  const cantErrores = Object.keys(errores).length;
   const ver = (clave: string) => (intentado ? errores[clave] : undefined);
   const meta = ESTADO_PRODUCTO_META[registro.estado];
   const vigencia = vigenciaMotor(registro);
@@ -160,7 +181,11 @@ function Formulario({
 
   function grabar() {
     setIntentado(true);
-    if (cantErrores > 0) return;
+    const primero = Object.keys(errores)[0];
+    if (primero) {
+      setSeccion(seccionDeError(primero));
+      return;
+    }
     if (nuevo) {
       const id = crearMotor(borrador);
       router.replace(`/motor-riesgo/${id}`);
@@ -195,17 +220,17 @@ function Formulario({
     .map((m) => ({ value: m.id, label: `${m.codigo} · ${m.nombre}` }));
   const cadena = cadenaMotores(borrador, todos.map((m) => (m.id === borrador.id ? borrador : m)));
   const texto = pendiente ? TEXTO_ESTADO[pendiente] : undefined;
-  const variablesFiltradas = filtrarVariables(variablesDeFuentes(borrador.fuentes), busquedaVariable);
+  const variablesDisponibles = variablesDeFuentes(borrador.fuentes);
   // Lista legible de lo que impide grabar, para mostrarla junto al botón.
   const listaErrores = Object.entries(errores).map(([clave, msg]) => {
     const m = /^regla-(.+)-(nombre|expresion)$/.exec(clave);
     const n = m ? borrador.reglas.findIndex((r) => r.id === m[1]) + 1 : 0;
     return n > 0 ? `Regla ${n}: ${msg}` : msg;
   });
-  const spanReglas = algunaEdicion ? "" : "lg:col-span-2";
+  const seccionesConError = new Set(Object.keys(errores).map(seccionDeError));
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push("/motor-riesgo")}>
         <IconArrowLeft width={15} height={15} />
         Retornar a la lista de grupos
@@ -288,10 +313,35 @@ function Formulario({
         </Banner>
       )}
 
-      <div className="mt-6 space-y-5">
-        <Card>
-          <CardHeader title="Cabecera" description="Identificación y vigencia del grupo." />
-          <div className="grid gap-4 px-6 py-5 sm:grid-cols-[6rem_minmax(0,1fr)]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[14.5rem_minmax(0,1fr)]">
+        <nav aria-label="Secciones del grupo" className="lg:sticky lg:top-20 lg:self-start">
+          <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+            {SECCIONES.filter((x) => x.id !== "auditoria" || !nuevo).map((x) => {
+              const seleccionada = x.id === seccion;
+              const conError = intentado && seccionesConError.has(x.id);
+              return (
+                <li key={x.id} className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSeccion(x.id)}
+                    aria-current={seleccionada ? "page" : undefined}
+                    className={`flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                      seleccionada ? "bg-brand-50 text-brand-700" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+                    }`}
+                  >
+                    <span className="flex-1">{x.label}</span>
+                    {conError && <span className="h-2 w-2 rounded-full bg-danger-500" title="Tiene errores" />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <div className="min-w-0">
+          {seccion === "cabecera" && (
+        <Panel titulo="Cabecera" descripcion="Identificación y vigencia del grupo." vivo>
+          <div className="grid gap-4 sm:grid-cols-[6rem_minmax(0,1fr)]">
             <FormField id="motor-id" label="ID" value={borrador.codigo} onChange={() => {}} disabled hint="Automático" />
             <FormField
               id="motor-nombre"
@@ -305,8 +355,8 @@ function Formulario({
             />
             <div className="sm:col-span-2">
               <p className="mb-1.5 text-sm font-medium text-ink-700">Vigencia</p>
-              <div className="flex flex-wrap items-start gap-3">
-                <div className="flex rounded-lg border border-ink-200 bg-ink-50 p-0.5">
+              <div className="space-y-3">
+                <div className="inline-flex rounded-lg border border-ink-200 bg-ink-50 p-0.5">
                   {(
                     [
                       ["SIN", "Sin vencimiento"],
@@ -352,9 +402,9 @@ function Formulario({
                     id="motor-vigencia-fecha"
                     label="Fecha de vencimiento"
                     className="w-56"
-                    value={borrador.vigenciaHasta ?? ""}
-                    onChange={(v) => editar((m) => ({ ...m, vigenciaHasta: v }))}
-                    placeholder="dd/mm/aaaa"
+                    type="date"
+                    value={fechaAIso(borrador.vigenciaHasta)}
+                    onChange={(v) => editar((m) => ({ ...m, vigenciaHasta: isoAFecha(v) }))}
                     disabled={!editando}
                     error={ver("vigencia")}
                     hint="Desde ese día el grupo deja de estar disponible."
@@ -363,14 +413,11 @@ function Formulario({
               </div>
             </div>
           </div>
-        </Card>
-
-        <Card>
-          <CardHeader
-            title="Fuentes de variables"
-            description="Habilitan las variables que pueden usar las reglas. El prefijo de 4 letras identifica su origen."
-          />
-          <div className="space-y-4 px-6 py-5">
+        </Panel>
+          )}
+          {seccion === "fuentes" && (
+        <Panel titulo="Fuentes de variables" descripcion="Habilitan las variables que pueden usar las reglas. El prefijo de 4 letras identifica su origen." vivo>
+          <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-3">
               {FUENTES.map((f) => (
                 <Checkbox
@@ -389,101 +436,109 @@ function Formulario({
               ))}
             </div>
             {ver("fuentes") && <p className="text-sm text-danger-600">{ver("fuentes")}</p>}
-            <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">Variables disponibles</p>
-                <BuscadorVariables valor={busquedaVariable} onChange={setBusquedaVariable} />
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {variablesFiltradas.map((v) => (
-                  <Tooltip key={v.nombre} label={v.detalle} side="top">
-                    <button
-                      type="button"
-                      disabled={!algunaEdicion || borrador.reglas.length === 0}
-                      onClick={() => agregarVariable(v.nombre)}
-                      className="rounded-md border border-ink-200 bg-ink-25 px-2 py-1 font-mono text-xs text-ink-700 transition enabled:hover:border-brand-300 enabled:hover:bg-brand-50 disabled:cursor-default"
-                    >
-                      {v.nombre}
-                    </button>
-                  </Tooltip>
-                ))}
-                {variablesFiltradas.length === 0 && (
-                  <p className="text-sm text-ink-400">Ninguna variable coincide con la búsqueda.</p>
-                )}
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3">
+              <p className="text-sm text-ink-600">
+                <strong className="text-ink-900">{variablesDisponibles.length}</strong> variables disponibles con las fuentes habilitadas.
+              </p>
+              <Button size="sm" variant="outline" onClick={() => setVerVariables(true)}>
+                Ver variables
+              </Button>
             </div>
           </div>
-        </Card>
-
-        <Card>
-          <CardHeader
-            title="Reglas del grupo"
-            description="Si la expresión es verdadera, la regla aplica su acción: Rechazar rechaza el crédito; Verificar lo marca para la revisión del analista."
-            action={
-              <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={nuevaRegla}>
-                <IconPlus width={14} height={14} />
-                Nueva regla
-              </Button>
-            }
-          />
-          <div className={`grid grid-cols-1 gap-3 px-6 py-5 ${algunaEdicion ? "" : "lg:grid-cols-2"}`}>
-            {borrador.reglas.length === 0 && (
-              <p className={`rounded-lg border border-dashed px-4 py-6 text-center text-sm ${spanReglas} ${ver("reglas") ? "border-danger-300 text-danger-600" : "border-ink-200 text-ink-400"}`}>
-                {ver("reglas") ?? "El grupo todavía no tiene reglas."}
-              </p>
-            )}
-            {borrador.reglas.map((r, i) => (
-              <ReglaEditor
-                key={r.id}
-                numero={i + 1}
-                regla={r}
-                fuentes={borrador.fuentes}
-                editando={editando || reglasEditando.includes(r.id)}
-                onEditar={() => setReglasEditando((ids) => [...ids, r.id])}
-                pie={
-                  !editando && reglasEditando.includes(r.id) ? (
-                    <BarraGuardar
-                      errores={intentado ? listaErrores : []}
-                      onGuardar={grabar}
-                      onCancelar={cancelar}
-                    />
-                  ) : undefined
-                }
-                errorNombre={ver(`regla-${r.id}-nombre`)}
-                errorExpresion={
-                  intentado || r.expresion.trim() ? errores[`regla-${r.id}-expresion`] : undefined
-                }
-                onChange={(c) => editarRegla(r.id, c)}
-                onActivar={() => setReglaActiva(r.id)}
-                onCopiar={() => {
-                  const copiaId = nuevaReglaId(borrador.reglas);
-                  setReglasEditando((ids) => [...ids, copiaId]);
-                  editar((m) => {
-                    const idx = m.reglas.findIndex((x) => x.id === r.id);
-                    const copia = { ...r, id: copiaId, nombre: `${r.nombre} (copia)` };
-                    return { ...m, reglas: [...m.reglas.slice(0, idx + 1), copia, ...m.reglas.slice(idx + 1)] };
-                  });
-                }}
-                onEliminar={() => editar((m) => ({ ...m, reglas: m.reglas.filter((x) => x.id !== r.id) }))}
-              />
-            ))}
-            {editando && borrador.reglas.length > 0 && (
-              <BarraGuardar
-                className={`border-t border-ink-100 pt-4 ${spanReglas}`}
-                errores={intentado ? listaErrores : []}
-                onGuardar={grabar}
-                onCancelar={cancelar}
-              />
-            )}
-          </div>
-        </Card>
-
-        <Card>
-          <CardHeader
-            title="Concatenación"
-            description="Al terminar este grupo, la evaluación pasa automáticamente al grupo concatenado. Sin concatenación, termina con sus propias reglas."
-          />
-          <div className="space-y-4 px-6 py-5">
+        </Panel>
+          )}
+          {seccion === "reglas" && (
+        <Panel
+          titulo="Reglas del grupo"
+          descripcion="Si la condición se cumple, la regla aplica su acción: Rechazar rechaza el crédito; Verificar lo marca para la revisión del analista."
+          vivo
+          accion={
+            <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={nuevaRegla}>
+              <IconPlus width={14} height={14} />
+              Nueva regla
+            </Button>
+          }
+        >
+          {borrador.reglas.length === 0 ? (
+            <p className={`rounded-lg border border-dashed px-4 py-6 text-center text-sm ${ver("reglas") ? "border-danger-300 text-danger-600" : "border-ink-200 text-ink-400"}`}>
+              {ver("reglas") ?? "El grupo todavía no tiene reglas."}
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-ink-200">
+              <table className="w-full text-sm">
+                <thead className="bg-ink-25 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                  <tr>
+                    <th className="w-12 px-4 py-2.5">N°</th>
+                    <th className="px-4 py-2.5">Nombre</th>
+                    <th className="px-4 py-2.5">Acción</th>
+                    <th className="px-4 py-2.5">
+                      <span className="sr-only">Editar</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-100">
+                  {borrador.reglas.map((r, i) =>
+                    reglasEditando.includes(r.id) ? (
+                      <tr key={r.id}>
+                        <td colSpan={4} className="bg-ink-25 p-3">
+                          <ReglaEditor
+                            numero={i + 1}
+                            regla={r}
+                            fuentes={borrador.fuentes}
+                            pie={
+                              <BarraGuardar
+                                errores={intentado ? listaErrores : []}
+                                onGuardar={grabar}
+                                onCancelar={cancelar}
+                              />
+                            }
+                            errorNombre={ver(`regla-${r.id}-nombre`)}
+                            errorExpresion={
+                              intentado || r.expresion.trim() ? errores[`regla-${r.id}-expresion`] : undefined
+                            }
+                            onChange={(c) => editarRegla(r.id, c)}
+                            onActivar={() => setReglaActiva(r.id)}
+                            onCopiar={() => {
+                              const copiaId = nuevaReglaId(borrador.reglas);
+                              setReglasEditando((ids) => [...ids, copiaId]);
+                              editar((m) => {
+                                const idx = m.reglas.findIndex((x) => x.id === r.id);
+                                const copia = { ...r, id: copiaId, nombre: `${r.nombre} (copia)` };
+                                return { ...m, reglas: [...m.reglas.slice(0, idx + 1), copia, ...m.reglas.slice(idx + 1)] };
+                              });
+                            }}
+                            onEliminar={() => editar((m) => ({ ...m, reglas: m.reglas.filter((x) => x.id !== r.id) }))}
+                          />
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={r.id} className="hover:bg-ink-25">
+                        <td className="px-4 py-2.5 tabular-nums text-ink-400">{i + 1}</td>
+                        <td className="px-4 py-2.5 font-medium text-ink-900" title={r.expresion}>
+                          {r.nombre || "Sin nombre"}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <StatusBadge tone={r.accion === "RECHAZAR" ? "danger" : "warning"}>
+                            {ACCIONES.find((a) => a.id === r.accion)?.label}
+                          </StatusBadge>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                          <Button size="sm" variant="ghost" onClick={() => setReglasEditando((ids) => [...ids, r.id])}>
+                            Editar
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+          )}
+          {seccion === "concatenacion" && (
+        <Panel titulo="Concatenación" descripcion="Al terminar este grupo, la evaluación pasa automáticamente al grupo concatenado. Sin concatenación, termina con sus propias reglas." vivo>
+          <div className="space-y-4">
             <SelectField
               id="motor-concatenar"
               label="Concatenar con grupo"
@@ -520,10 +575,25 @@ function Formulario({
                 </p>
               )}
           </div>
-        </Card>
-
-        {!nuevo && <Auditoria registro={registro} />}
+        </Panel>
+          )}
+          {seccion === "auditoria" && !nuevo && <Auditoria registro={registro} />}
+        </div>
       </div>
+
+      <ModalVariables
+        open={verVariables}
+        onClose={() => setVerVariables(false)}
+        variables={variablesDisponibles}
+        onElegir={
+          algunaEdicion && borrador.reglas.length > 0
+            ? (nombre) => {
+                agregarVariable(nombre);
+                setVerVariables(false);
+              }
+            : undefined
+        }
+      />
 
       <ConfirmationModal
         open={pendiente !== null && texto !== undefined}
@@ -553,12 +623,10 @@ function ReglaEditor({
   numero,
   regla,
   fuentes,
-  editando,
   errorNombre,
   errorExpresion,
   onChange,
   onActivar,
-  onEditar,
   pie,
   onCopiar,
   onEliminar,
@@ -566,12 +634,10 @@ function ReglaEditor({
   numero: number;
   regla: ReglaMotor;
   fuentes: MotorRiesgo["fuentes"];
-  editando: boolean;
   errorNombre?: string;
   errorExpresion?: string;
   onChange: (c: Partial<ReglaMotor>) => void;
   onActivar: () => void;
-  onEditar: () => void;
   pie?: React.ReactNode;
   onCopiar: () => void;
   onEliminar: () => void;
@@ -589,12 +655,7 @@ function ReglaEditor({
     <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-xs" onFocusCapture={onActivar}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-bold uppercase tracking-widest text-ink-500">Regla {numero}</p>
-        {!editando && (
-          <Button size="sm" variant="ghost" onClick={onEditar}>
-            Editar regla
-          </Button>
-        )}
-        {editando && (
+        {(
           <div className="flex gap-1.5">
             <Button size="sm" variant="ghost" onClick={onCopiar}>
               Copiar regla
@@ -607,7 +668,7 @@ function ReglaEditor({
         )}
       </div>
 
-      {editando ? (
+      {(
         <div className="mt-3 space-y-3">
           <FormField
             id={`regla-${regla.id}-nombre`}
@@ -778,21 +839,6 @@ function ReglaEditor({
           </div>
           {pie}
         </div>
-      ) : (
-        <div className="mt-2 space-y-2">
-          <p className="font-semibold text-ink-900">{regla.nombre || "Sin nombre"}</p>
-          <code className="block rounded-lg bg-ink-25 px-3 py-2 font-mono text-sm text-ink-800">
-            {regla.expresion || "—"}
-          </code>
-          <p className="text-sm text-ink-600">
-            Acción:{" "}
-            <StatusBadge tone={regla.accion === "RECHAZAR" ? "danger" : "warning"}>{accion.label}</StatusBadge>{" "}
-            <span className="text-ink-500">{accion.detalle}</span>
-          </p>
-          <p className="text-xs text-ink-500">
-            Creada: {textoFirma(regla.creada)} · Última modificación: {textoFirma(regla.modificada)}
-          </p>
-        </div>
       )}
     </div>
   );
@@ -837,7 +883,78 @@ function BarraGuardar({
   );
 }
 
-const textoFirma = (f?: FirmaMotor) => (f ? `${f.usuario} (${f.perfil}) · ${f.fecha}` : "sin registro");
+// Catálogo de variables de las fuentes habilitadas: puede ser muy largo, por eso va en un modal
+// con buscador. Con una regla en edición, un clic agrega la variable a su condición.
+function ModalVariables({
+  open,
+  onClose,
+  variables,
+  onElegir,
+}: {
+  open: boolean;
+  onClose: () => void;
+  variables: VariableMotor[];
+  onElegir?: (nombre: string) => void;
+}) {
+  const [busqueda, setBusqueda] = useState("");
+  const filtradas = filtrarVariables(variables, busqueda);
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Variables disponibles"
+      maxWidth="max-w-2xl"
+      footer={
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <BuscadorVariables valor={busqueda} onChange={setBusqueda} />
+        <p className="text-xs text-ink-500">
+          {onElegir
+            ? "Hacé clic en una variable para agregarla a la regla que estás editando."
+            : "Editá una regla para poder agregar variables con un clic."}
+        </p>
+        <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-ink-200">
+          {FUENTES.map((f) => {
+            const delaFuente = filtradas.filter((v) => v.fuente === f.id);
+            if (delaFuente.length === 0) return null;
+            return (
+              <div key={f.id}>
+                <p className="sticky top-0 border-b border-ink-100 bg-ink-25 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                  {f.label} · {delaFuente.length}
+                </p>
+                <ul className="divide-y divide-ink-100">
+                  {delaFuente.map((v) => (
+                    <li key={v.nombre}>
+                      <button
+                        type="button"
+                        disabled={!onElegir}
+                        onClick={() => onElegir?.(v.nombre)}
+                        className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-2 text-left transition enabled:hover:bg-brand-50 disabled:cursor-default"
+                      >
+                        <span className="font-mono text-xs text-ink-800">{v.nombre}</span>
+                        <span className="text-[11px] uppercase text-ink-400">{v.tipo === "numero" ? "número" : "texto"}</span>
+                        <span className="min-w-0 flex-1 basis-48 text-xs text-ink-500">{v.detalle}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+          {filtradas.length === 0 && (
+            <p className="px-4 py-6 text-center text-sm text-ink-400">Ninguna variable coincide con la búsqueda.</p>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function BuscadorVariables({
   valor,
@@ -878,12 +995,12 @@ function Auditoria({ registro }: { registro: MotorRiesgo }) {
     </div>
   );
   return (
-    <Card>
-      <CardHeader
-        title="Auditoría"
-        description="Quién creó y modificó el grupo y sus reglas, con fecha, y cada cambio de estado."
-      />
-      <div className="space-y-4 px-6 py-5">
+    <Panel
+      titulo="Auditoría"
+      descripcion="Quién creó y modificó el grupo y sus reglas, con fecha, y cada cambio de estado."
+      vivo
+    >
+      <div className="space-y-4">
         <dl className="grid gap-4 sm:grid-cols-2">
           {fila("Creado por", registro.creado)}
           {fila("Última modificación", registro.modificado)}
@@ -912,6 +1029,6 @@ function Auditoria({ registro }: { registro: MotorRiesgo }) {
           )}
         </div>
       </div>
-    </Card>
+    </Panel>
   );
 }

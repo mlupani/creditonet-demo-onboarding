@@ -6,7 +6,9 @@ import type {
   BloqueTokenizacion,
   DocumentoConfig,
   TokenizacionConfig,
+  TipoTarjeta,
 } from "@/lib/config";
+import { TIPOS_TARJETA } from "@/lib/config";
 import {
   TITULO_PANTALLA_CAMPOS,
   camposConfigurablesDe,
@@ -19,6 +21,7 @@ import {
   PROVINCIAS,
   TIPOS_DOCUMENTO,
   localidadesDe,
+  tipoDeDocumento,
 } from "@/lib/parametros";
 import { aplicarCambioDomicilio, sanitizarCampoDomicilio } from "@/lib/campos-post-oferta";
 import type { Domicilio, PantallaPostOfertaId } from "@/lib/types";
@@ -42,7 +45,7 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
-import { CampoNumero } from "./campos";
+import { CampoNumero, Subtitulo } from "./campos";
 import { IconPlus, IconTrash } from "@/components/icons";
 
 // Editores compartidos por el ABM de Productos y el de Organismos (que hace excepciones sobre
@@ -201,6 +204,9 @@ export function EditorNotificaciones({
 }
 
 // --- Documentos del legajo ---
+//
+// Lista de ítems del legajo con un desplegable para agregar los del catálogo de Parámetros y la
+// posibilidad de crear ítems nuevos sobre la marcha (se guardan en la misma lista del producto).
 
 export function EditorDocumentos({
   docs,
@@ -211,44 +217,79 @@ export function EditorDocumentos({
   onChange: (docs: DocumentoConfig[]) => void;
   error?: string;
 }) {
-  // Se conserva el orden del catálogo de Parámetros.
-  const guardar = (lista: DocumentoConfig[]) =>
-    onChange(
-      [...lista].sort(
-        (a, b) =>
-          TIPOS_DOCUMENTO.findIndex((t) => t.id === a.tipoId) -
-          TIPOS_DOCUMENTO.findIndex((t) => t.id === b.tipoId)
-      )
-    );
+  const [elegido, setElegido] = useState("");
+  const [creando, setCreando] = useState(false);
+  const [nuevo, setNuevo] = useState({ nombre: "", categoria: "" });
+  const [errorNuevo, setErrorNuevo] = useState<string | null>(null);
+
+  const disponibles = TIPOS_DOCUMENTO.filter((t) => !docs.some((d) => d.tipoId === t.id));
+  const categorias = [
+    ...new Set([...TIPOS_DOCUMENTO.map((t) => t.categoria), ...docs.flatMap((d) => (d.categoria ? [d.categoria] : []))]),
+  ];
   const cambiar = (tipoId: string, patch: Partial<DocumentoConfig>) =>
-    guardar(docs.map((x) => (x.tipoId === tipoId ? { ...x, ...patch } : x)));
+    onChange(docs.map((x) => (x.tipoId === tipoId ? { ...x, ...patch } : x)));
+
+  function agregar() {
+    if (!elegido) return;
+    onChange([...docs, { tipoId: elegido, obligatorio: false, minimo: 0, maximo: 1 }]);
+    setElegido("");
+  }
+
+  function crear() {
+    const nombre = nuevo.nombre.trim();
+    if (!nombre) {
+      setErrorNuevo("Ingresá el nombre del ítem.");
+      return;
+    }
+    const existentes = [...TIPOS_DOCUMENTO.map((t) => t.nombre), ...docs.map((d) => d.nombre ?? "")];
+    if (existentes.some((n) => n.toLowerCase() === nombre.toLowerCase())) {
+      setErrorNuevo("Ya existe un ítem con ese nombre.");
+      return;
+    }
+    onChange([
+      ...docs,
+      {
+        tipoId: `custom-${Date.now().toString(36)}`,
+        nombre,
+        categoria: nuevo.categoria || "Otros",
+        obligatorio: false,
+        minimo: 0,
+        maximo: 1,
+      },
+    ]);
+    setNuevo({ nombre: "", categoria: "" });
+    setErrorNuevo(null);
+    setCreando(false);
+  }
+
   return (
-    <div className="space-y-2">
-      <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200 bg-white">
-        {TIPOS_DOCUMENTO.map((t) => {
-          const d = docs.find((x) => x.tipoId === t.id);
-          return (
-            <li key={t.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-              <div className="min-w-0 flex-1 basis-56">
-                <Checkbox
-                  checked={!!d}
-                  onChange={(v) =>
-                    guardar(
-                      v
-                        ? [...docs, { tipoId: t.id, obligatorio: false, minimo: 0, maximo: 1 }]
-                        : docs.filter((x) => x.tipoId !== t.id)
-                    )
-                  }
-                  label={t.nombre}
-                  description={t.categoria}
-                />
-              </div>
-              {d && (
+    <div className="space-y-3">
+      {docs.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-ink-200 px-4 py-5 text-center text-sm text-ink-400">
+          El legajo todavía no tiene ítems: agregá uno desde el desplegable.
+        </p>
+      ) : (
+        <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200 bg-white">
+          {docs.map((d) => {
+            const t = tipoDeDocumento(d);
+            return (
+              <li key={d.tipoId} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+                <div className="min-w-0 flex-1 basis-56">
+                  <p className="text-sm font-medium text-ink-900">
+                    {t.nombre}
+                    {d.nombre && (
+                      <span className="ml-2 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700">
+                        Nuevo
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs text-ink-500">{t.categoria}</p>
+                </div>
                 <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
                   <Checkbox
                     checked={d.obligatorio}
                     onChange={(v) =>
-                      cambiar(t.id, {
+                      cambiar(d.tipoId, {
                         obligatorio: v,
                         minimo: v ? Math.max(d.minimo, 1) : 0,
                         maximo: v ? Math.max(d.maximo, 1) : d.maximo,
@@ -257,28 +298,90 @@ export function EditorDocumentos({
                     label="Obligatorio"
                   />
                   <CampoNumero
-                    id={`doc-${t.id}-min`}
+                    id={`doc-${d.tipoId}-min`}
                     label="Mínimo"
                     min={d.obligatorio ? 1 : 0}
                     value={d.minimo}
                     disabled={!d.obligatorio}
-                    onChange={(v) => cambiar(t.id, { minimo: v })}
+                    onChange={(v) => cambiar(d.tipoId, { minimo: v })}
                     className="w-24"
                   />
                   <CampoNumero
-                    id={`doc-${t.id}-max`}
+                    id={`doc-${d.tipoId}-max`}
                     label="Máximo"
                     min={1}
                     value={d.maximo}
-                    onChange={(v) => cambiar(t.id, { maximo: v })}
+                    onChange={(v) => cambiar(d.tipoId, { maximo: v })}
                     className="w-24"
                   />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Quitar ${t.nombre}`}
+                    onClick={() => onChange(docs.filter((x) => x.tipoId !== d.tipoId))}
+                  >
+                    <IconTrash width={14} height={14} />
+                    Quitar
+                  </Button>
                 </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2">
+        <SelectField
+          id="doc-agregar"
+          label="Agregar ítem al legajo"
+          value={elegido}
+          onChange={setElegido}
+          placeholder={disponibles.length === 0 ? "No quedan ítems del catálogo" : "Elegí un ítem…"}
+          options={disponibles.map((t) => ({ value: t.id, label: `${t.nombre} · ${t.categoria}` }))}
+          disabled={disponibles.length === 0}
+          className="min-w-64 flex-1 sm:max-w-md"
+        />
+        <Button onClick={agregar} disabled={!elegido}>
+          <IconPlus width={14} height={14} />
+          Agregar
+        </Button>
+        <Button variant="outline" onClick={() => setCreando((v) => !v)} aria-expanded={creando}>
+          {creando ? "Cancelar" : "Crear ítem nuevo"}
+        </Button>
+      </div>
+
+      {creando && (
+        <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/40 p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField
+              id="doc-nuevo-nombre"
+              label="Nombre del ítem"
+              required
+              value={nuevo.nombre}
+              onChange={(v) => {
+                setNuevo((n) => ({ ...n, nombre: v }));
+                setErrorNuevo(null);
+              }}
+              placeholder="Ej.: Constancia de CBU"
+              error={errorNuevo ?? undefined}
+            />
+            <SelectField
+              id="doc-nuevo-categoria"
+              label="Categoría"
+              value={nuevo.categoria}
+              onChange={(v) => setNuevo((n) => ({ ...n, categoria: v }))}
+              placeholder="Otros"
+              options={categorias.map((c) => ({ value: c, label: c }))}
+            />
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={crear}>
+              <IconPlus width={14} height={14} />
+              Crear y agregar
+            </Button>
+          </div>
+        </div>
+      )}
       {error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
     </div>
   );
@@ -371,33 +474,74 @@ export function EditorCamposObligatorios({
   obligatorios,
   onChange,
   habilitadas,
+  tokenizacion,
+  onTokenizacion,
+  errorTokenizacion,
 }: {
   obligatorios: Partial<Record<string, boolean>>;
   onChange: (obligatorios: Partial<Record<string, boolean>>) => void;
+  tokenizacion: TokenizacionConfig;
+  onTokenizacion: (valor: TokenizacionConfig) => void;
+  errorTokenizacion?: string;
   // Pantallas habilitadas del producto: las deshabilitadas se indican pero siguen editables.
   habilitadas: PantallaPostOfertaId[];
 }) {
   return (
     <div className="space-y-3">
-      {(Object.keys(TITULO_PANTALLA_CAMPOS) as PantallaPostOfertaId[]).map((pantalla) => {
-        const campos = camposConfigurablesDe(pantalla);
+      {(Object.keys(TITULO_PANTALLA_CAMPOS) as PantallaPostOfertaId[])
+        // Legajo e impresión no tienen campos para completar: se configuran en su propio bloque.
+        .filter((pantalla) => pantalla !== "legajo" && pantalla !== "impresion")
+        .map((pantalla) => {
+        // En tokenización los campos de la tarjeta siempre se piden (los exige el proveedor): no se
+        // listan. El código de seguridad tiene su propio check, más abajo.
+        const campos = camposConfigurablesDe(pantalla).filter(
+          (c) => !(pantalla === "tokenizacion" && (c.fijo || c.id === "tarjeta.codigo"))
+        );
         const titulo = TITULO_PANTALLA_CAMPOS[pantalla];
         const estado = habilitadas.includes(pantalla) ? "" : " · deshabilitada";
         return (
-          <details key={pantalla} className="rounded-xl border border-ink-200 bg-white">
+          <details
+            key={pantalla}
+            open={pantalla === "tokenizacion" && errorTokenizacion ? true : undefined}
+            className="rounded-xl border border-ink-200 bg-white"
+          >
             <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink-800">
-              {titulo} · {campos.length} campo{campos.length === 1 ? "" : "s"}
+              {titulo}
+              {campos.length > 0 && ` · ${campos.length} campo${campos.length === 1 ? "" : "s"}`}
               {estado}
             </summary>
             <div className="border-t border-ink-100 px-4 py-4">
-              {pantalla === "legajo" && (
-                <p className="text-xs text-ink-500">
-                  Los ítems del legajo se configuran en el bloque Legajo de esta sección: cada documento define si
-                  es obligatorio y su cantidad mínima y máxima.
-                </p>
+              {pantalla === "tokenizacion" && (
+                <div className="mb-4 grid gap-x-6 gap-y-4 border-b border-ink-100 pb-4 sm:grid-cols-2">
+                  <SelectField
+                    id="p-tok-tipo-tarjeta"
+                    label="Tipo de tarjeta"
+                    value={tokenizacion.tipoTarjeta ?? "DEBITO"}
+                    onChange={(v) => onTokenizacion({ ...tokenizacion, tipoTarjeta: v as TipoTarjeta })}
+                    options={TIPOS_TARJETA}
+                  />
+                  <Checkbox
+                    checked={tokenizacion.pedirCodigoSeguridad !== false}
+                    onChange={(v) => onTokenizacion({ ...tokenizacion, pedirCodigoSeguridad: v })}
+                    label="Código de seguridad"
+                    description="Si está deshabilitado, no es obligatorio pedirlo."
+                  />
+                </div>
               )}
-              {pantalla === "impresion" && (
-                <p className="text-xs text-ink-500">Esta pantalla no tiene campos para completar.</p>
+              {pantalla === "tokenizacion" && (
+                <div className="mb-4 space-y-3 border-b border-ink-100 pb-4">
+                  <Subtitulo>Mínimo de tarjetas por proveedor</Subtitulo>
+                  <p className="text-xs text-ink-500">
+                    Repetí el bloque para pedir un mínimo por proveedor: por ejemplo, 1 de A y 2 de B.
+                    El onboarding valida cada mínimo por separado.
+                  </p>
+                  <EditorTokenizacion
+                    idBase="p-tok"
+                    valor={tokenizacion}
+                    onChange={onTokenizacion}
+                    error={errorTokenizacion}
+                  />
+                </div>
               )}
               {campos.length > 0 && (
                 <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -635,6 +779,126 @@ export function EditorRecalculoNeto({
   );
 }
 
+// Asignación de un grupo de reglas a varias claves a la vez (situaciones, condiciones laborales):
+// un desplegable para el motor y un multiselect con las claves. Se guarda como clave → motor,
+// así que cada clave tiene un solo motor y las que ya tienen otro no se ofrecen en esta fila.
+function AsignacionPorSituacion({
+  idBase,
+  titulo,
+  claves,
+  rotulo,
+  etiquetaClaves,
+  textoVacio,
+  valor,
+  onChange,
+  opcionesMotor,
+}: {
+  idBase: string;
+  titulo: string;
+  claves: string[];
+  rotulo: (clave: string) => string;
+  etiquetaClaves: string;
+  textoVacio: string;
+  valor: Record<string, string>;
+  onChange: (valor: Record<string, string>) => void;
+  opcionesMotor: { value: string; label: string }[];
+}) {
+  const [nueva, setNueva] = useState<{ motorId: string; sits: string[] } | null>(null);
+  // Una fila por motor, con sus situaciones.
+  const grupos = [...new Set(Object.values(valor))].map((motorId) => ({
+    motorId,
+    sits: claves.filter((n) => valor[n] === motorId),
+  }));
+  const asignadasA = (motorId: string) => (n: string) => !valor[n] || valor[n] === motorId;
+  const aRotulos = (sits: string[]) => sits.map((n) => rotulo(n));
+  const aClaves = (rotulos: string[]) => claves.filter((n) => rotulos.includes(rotulo(n)));
+  const sinMotor = (motorId: string) =>
+    Object.fromEntries(Object.entries(valor).filter(([, id]) => id !== motorId));
+
+  function cambiarClaves(motorId: string, sits: string[]) {
+    const resto = Object.fromEntries(Object.entries(valor).filter(([, id]) => id !== motorId));
+    onChange({ ...resto, ...Object.fromEntries(sits.map((n) => [n, motorId])) });
+  }
+  function cambiarMotor(anterior: string, motorId: string) {
+    if (!motorId) return;
+    onChange(Object.fromEntries(Object.entries(valor).map(([n, id]) => [n, id === anterior ? motorId : id])));
+  }
+  // La fila nueva se arma completa (motor y situaciones) y recién entra con "Agregar".
+  function confirmarNueva() {
+    if (!nueva?.motorId || nueva.sits.length === 0) return;
+    // Sólo se ofrecen situaciones libres: se suman a lo que ya tenía ese motor.
+    onChange({ ...valor, ...Object.fromEntries(nueva.sits.map((n) => [n, nueva.motorId])) });
+    setNueva(null);
+  }
+  const libresNueva = claves.filter((n) => !valor[n]);
+
+  return (
+    <div className="space-y-3">
+      <Subtitulo>{titulo}</Subtitulo>
+      {grupos.length === 0 && !nueva && (
+        <p className="text-sm text-ink-500">{textoVacio}</p>
+      )}
+      {grupos.map((g, i) => (
+        <div key={g.motorId} className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
+          <SelectField
+            id={`${idBase}-motor-${i}`}
+            label="Grupo de reglas"
+            value={g.motorId}
+            onChange={(v) => cambiarMotor(g.motorId, v)}
+            options={opcionesMotor}
+          />
+          <MultiSelectField
+            id={`${idBase}-sits-${i}`}
+            label={etiquetaClaves}
+            values={aRotulos(g.sits)}
+            onChange={(r) => cambiarClaves(g.motorId, aClaves(r))}
+            options={aRotulos(claves.filter(asignadasA(g.motorId)))}
+            placeholder={`Elegí ${etiquetaClaves.toLowerCase()}…`}
+          />
+          <Button size="sm" variant="ghost" onClick={() => onChange(sinMotor(g.motorId))} aria-label="Quitar asignación">
+            <IconTrash width={14} height={14} />
+            Quitar
+          </Button>
+        </div>
+      ))}
+      {nueva && (
+        <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
+          <SelectField
+            id={`${idBase}-motor-nueva`}
+            label="Grupo de reglas"
+            value={nueva.motorId}
+            onChange={(v) => setNueva({ ...nueva, motorId: v })}
+            placeholder="Elegí el grupo…"
+            options={opcionesMotor}
+          />
+          <MultiSelectField
+            id={`${idBase}-sits-nueva`}
+            label={etiquetaClaves}
+            values={aRotulos(nueva.sits)}
+            onChange={(r) => setNueva({ ...nueva, sits: aClaves(r) })}
+            options={aRotulos(libresNueva)}
+            placeholder={`Elegí ${etiquetaClaves.toLowerCase()}…`}
+          />
+          <div className="flex gap-1.5">
+            <Button size="sm" onClick={confirmarNueva} disabled={!nueva.motorId || nueva.sits.length === 0}>
+              Agregar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setNueva(null)}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+      {!nueva && libresNueva.length > 0 && (
+        <Button size="sm" variant="outline" onClick={() => setNueva({ motorId: "", sits: [] })}>
+          <IconPlus width={14} height={14} />
+          Agregar asignación
+        </Button>
+      )}
+    </div>
+  );
+}
+
 // --- Motor de riesgo: asignación por tipo de cliente, condición laboral, situación BCRA y buró interno ---
 
 export function EditorMotor({
@@ -658,45 +922,6 @@ export function EditorMotor({
     value: m.id,
     label: m.estado === "ACTIVO" ? m.nombre : `${m.nombre} (${m.estado.toLowerCase()})`,
   }));
-  // Condición laboral → grupo de reglas: se elige la condición en un desplegable y después su
-  // grupo. La fila nueva se arma en `nueva` y recién entra a la asignación cuando está completa.
-  const [nueva, setNueva] = useState<{ condicion: string; motorId: string } | null>(null);
-  const asignadas = Object.entries(valor.porCondicionLaboral);
-  const libres = (actual?: string) =>
-    CONDICIONES_LABORALES.filter((c) => c === actual || !(c in valor.porCondicionLaboral)).map((c) => ({
-      value: c,
-      label: c,
-    }));
-  const cambiarCondicion = (anterior: string, condicion: string) =>
-    onChange({
-      ...valor,
-      porCondicionLaboral: Object.fromEntries(
-        asignadas.map(([c, id]) => (c === anterior ? [condicion, id] : [c, id]))
-      ),
-    });
-  const asignarCondicion = (condicion: string, motorId: string) =>
-    onChange({ ...valor, porCondicionLaboral: { ...valor.porCondicionLaboral, [condicion]: motorId } });
-  const quitarCondicion = (condicion: string) => {
-    const { [condicion]: _quitada, ...resto } = valor.porCondicionLaboral;
-    void _quitada;
-    onChange({ ...valor, porCondicionLaboral: resto });
-  };
-  const completarNueva = (cambio: Partial<{ condicion: string; motorId: string }>) => {
-    const fila = { ...nueva!, ...cambio };
-    if (fila.condicion && fila.motorId) {
-      asignarCondicion(fila.condicion, fila.motorId);
-      setNueva(null);
-    } else setNueva(fila);
-  };
-  const asignarSituacion = (
-    campo: "porSituacionBcra" | "porSituacionInterna",
-    situacion: number,
-    motorId: string
-  ) => {
-    const { [situacion]: _quitada, ...resto } = valor[campo] ?? {};
-    void _quitada;
-    onChange({ ...valor, [campo]: motorId ? { ...resto, [situacion]: motorId } : resto });
-  };
   return (
     <div className="space-y-4">
       <SelectField
@@ -746,101 +971,39 @@ export function EditorMotor({
         )}
         {mostrarError && error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
       </div>
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-          Grupo de reglas por condición laboral
-        </p>
-        {asignadas.length === 0 && !nueva && (
-          <p className="text-sm text-ink-500">Sin asignaciones: todas las condiciones usan el motor general.</p>
-        )}
-        {asignadas.map(([c, motorId], i) => (
-          <div key={c} className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-            <SelectField
-              id={`${idBase}-cond-${i}`}
-              label="Condición laboral"
-              value={c}
-              onChange={(v) => cambiarCondicion(c, v)}
-              options={libres(c)}
-            />
-            <SelectField
-              id={`${idBase}-cond-motor-${i}`}
-              label="Grupo de reglas"
-              value={motorId}
-              onChange={(v) => asignarCondicion(c, v)}
-              options={OPCIONES_MOTOR}
-            />
-            <Button size="sm" variant="ghost" onClick={() => quitarCondicion(c)} aria-label={`Quitar ${c}`}>
-              <IconTrash width={14} height={14} />
-              Quitar
-            </Button>
-          </div>
-        ))}
-        {nueva && (
-          <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-            <SelectField
-              id={`${idBase}-cond-nueva`}
-              label="Condición laboral"
-              value={nueva.condicion}
-              onChange={(v) => completarNueva({ condicion: v })}
-              placeholder="Elegí la condición…"
-              options={libres()}
-            />
-            <SelectField
-              id={`${idBase}-cond-nueva-motor`}
-              label="Grupo de reglas"
-              value={nueva.motorId}
-              onChange={(v) => completarNueva({ motorId: v })}
-              placeholder="Elegí el grupo…"
-              options={OPCIONES_MOTOR}
-            />
-            <Button size="sm" variant="ghost" onClick={() => setNueva(null)}>
-              Cancelar
-            </Button>
-          </div>
-        )}
-        {!nueva && libres().length > 0 && (
-          <Button size="sm" variant="outline" onClick={() => setNueva({ condicion: "", motorId: "" })}>
-            <IconPlus width={14} height={14} />
-            Agregar condición laboral
-          </Button>
-        )}
-      </div>
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-          Grupo de reglas por situación BCRA
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {SITUACIONES_BCRA.map((n) => (
-            <SelectField
-              key={n}
-              id={`${idBase}-bcra-${n}`}
-              label={ROTULO_BCRA[n]}
-              value={valor.porSituacionBcra?.[n] ?? ""}
-              onChange={(v) => asignarSituacion("porSituacionBcra", n, v)}
-              placeholder="Usa el motor general"
-              options={OPCIONES_MOTOR}
-            />
-          ))}
-        </div>
-      </div>
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-          Grupo de reglas por situación en buró interno
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {PERFILES_INTERNOS.map((n) => (
-            <SelectField
-              key={n}
-              id={`${idBase}-interna-${n}`}
-              label={ROTULO_PERFIL[n]}
-              value={valor.porSituacionInterna?.[n] ?? ""}
-              onChange={(v) => asignarSituacion("porSituacionInterna", n, v)}
-              placeholder="Usa el motor general"
-              options={OPCIONES_MOTOR}
-            />
-          ))}
-        </div>
-      </div>
+      <AsignacionPorSituacion
+        idBase={`${idBase}-cond`}
+        titulo="Grupo de reglas por condición laboral"
+        claves={CONDICIONES_LABORALES}
+        rotulo={(c) => c}
+        etiquetaClaves="Condiciones laborales"
+        textoVacio="Sin asignaciones: todas las condiciones usan el motor general."
+        valor={valor.porCondicionLaboral}
+        onChange={(porCondicionLaboral) => onChange({ ...valor, porCondicionLaboral })}
+        opcionesMotor={OPCIONES_MOTOR}
+      />
+      <AsignacionPorSituacion
+        idBase={`${idBase}-bcra`}
+        titulo="Grupo de reglas por situación BCRA"
+        claves={SITUACIONES_BCRA.map(String)}
+        rotulo={(n) => ROTULO_BCRA[Number(n)]}
+        etiquetaClaves="Situaciones"
+        textoVacio="Sin asignaciones: todas las situaciones usan el motor general."
+        valor={valor.porSituacionBcra ?? {}}
+        onChange={(porSituacionBcra) => onChange({ ...valor, porSituacionBcra })}
+        opcionesMotor={OPCIONES_MOTOR}
+      />
+      <AsignacionPorSituacion
+        idBase={`${idBase}-interna`}
+        titulo="Grupo de reglas por situación en buró interno"
+        claves={PERFILES_INTERNOS.map(String)}
+        rotulo={(n) => ROTULO_PERFIL[Number(n)]}
+        etiquetaClaves="Situaciones"
+        textoVacio="Sin asignaciones: todas las situaciones usan el motor general."
+        valor={valor.porSituacionInterna ?? {}}
+        onChange={(porSituacionInterna) => onChange({ ...valor, porSituacionInterna })}
+        opcionesMotor={OPCIONES_MOTOR}
+      />
     </div>
   );
 }

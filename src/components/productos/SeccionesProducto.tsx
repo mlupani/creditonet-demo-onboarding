@@ -30,7 +30,6 @@ import {
   EditorNotificaciones,
   EditorRecalculoNeto,
   EditorSeleccion,
-  EditorTokenizacion,
   EditorTramos,
 } from "./editores";
 import { ESTADO_PRODUCTO_ABM_META } from "./ListaProductos";
@@ -222,7 +221,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
         <Grilla>
           <CampoNumero
             id="p-dias-condiciones"
-            label="Validez de las condiciones"
+            label="Plazo maximo para finalizacion de carga de onboarding (canal de venta)"
             sufijo="días hábiles (inclusive)"
             value={p.extras.diasValidezCondiciones}
             onChange={(v) => ex({ diasValidezCondiciones: v })}
@@ -230,7 +229,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
           />
           <CampoNumero
             id="p-dias-observacion"
-            label="Plazo para corregir una observación"
+            label="Plazo maximo dias habiles (inclusive) OBS / COFE"
             sufijo="días hábiles (inclusive)"
             value={p.extras.diasPlazoObservacion}
             onChange={(v) => ex({ diasPlazoObservacion: v })}
@@ -513,12 +512,13 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
                 <p className="text-sm font-semibold text-ink-900">{s.label}</p>
                 <p className="text-xs text-ink-500">{s.descripcion}</p>
               </div>
-              <Checkbox
-                checked={s.visible}
-                onChange={(v) => cambiarPantalla(s.id, { visible: v })}
-                label="Habilitada"
-                description="Una pantalla habilitada es obligatoria."
-              />
+              <div className="ml-auto w-32 shrink-0" title="Una pantalla habilitada es obligatoria.">
+                <Checkbox
+                  checked={s.visible}
+                  onChange={(v) => cambiarPantalla(s.id, { visible: v })}
+                  label="Habilitada"
+                />
+              </div>
             </li>
           ))}
         </ul>
@@ -541,6 +541,9 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
           obligatorios={ob.camposObligatorios}
           onChange={(camposObligatorios) => setOb({ camposObligatorios })}
           habilitadas={pantallas.filter((s) => s.visible).map((s) => s.id)}
+          tokenizacion={ob.tokenizacion}
+          onTokenizacion={(tokenizacion) => setOb({ tokenizacion })}
+          errorTokenizacion={ver ? errores.tokenizacion : undefined}
         />
       </div>
 
@@ -574,17 +577,6 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
             onChange={(v) => setOb({ garantes: { ...ob.garantes, maximo: v } })}
           />
         </Grilla>
-        <Subtitulo>Tokenización · mínimo de tarjetas por proveedor</Subtitulo>
-        <p className="text-xs text-ink-500">
-          Repetí el bloque para pedir un mínimo por proveedor: por ejemplo, 1 de A y 2 de B. El
-          onboarding valida cada mínimo por separado.
-        </p>
-        <EditorTokenizacion
-          idBase="p-tok"
-          valor={ob.tokenizacion}
-          onChange={(tokenizacion) => setOb({ tokenizacion })}
-          error={ver ? errores.tokenizacion : undefined}
-        />
       </div>
 
       <div className="space-y-3">
@@ -607,19 +599,7 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
           checked={p.extras.permiteRenovacion}
           onChange={(v) => ex({ permiteRenovacion: v })}
           label="Permite renovación"
-          description="La renovación cobra cargos de renovación."
         />
-        {p.extras.permiteRenovacion && (
-          <CampoNumero
-            id="p-cargo-renov"
-            label="Cargos de renovación"
-            sufijo="%"
-            step={0.1}
-            value={p.extras.cargoRenovacionPct}
-            onChange={(v) => ex({ cargoRenovacionPct: v })}
-            className="sm:max-w-xs"
-          />
-        )}
         {p.extras.permiteRenovacion && (
           <Grilla>
             <SelectField
@@ -655,23 +635,47 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
           checked={p.extras.permiteCancelacionAnticipada}
           onChange={(v) => ex({ permiteCancelacionAnticipada: v })}
           label="Permite cancelación anticipada"
-          description="La cancelación anticipada cobra cargos."
         />
         {p.extras.permiteCancelacionAnticipada && (
-          <CampoNumero
-            id="p-cargo-cancel"
-            label="Cargos de cancelación anticipada"
-            sufijo="%"
-            step={0.1}
-            value={p.extras.cargoCancelacionPct}
-            onChange={(v) => ex({ cargoCancelacionPct: v })}
-            className="sm:max-w-xs"
-          />
+          <Grilla>
+            <SelectField
+              id="p-cond-cancel"
+              label="Condición mínima para cancelar"
+              value={p.extras.condicionCancelacion}
+              onChange={(v) => ex({ condicionCancelacion: v as ExtrasProducto["condicionCancelacion"] })}
+              options={CONDICIONES_RENOVACION}
+            />
+            {p.extras.condicionCancelacion === "CUOTAS" ? (
+              <CampoNumero
+                id="p-cancel-min-cuotas"
+                label="Cuotas pagadas mínimas"
+                min={1}
+                value={p.extras.cancelacionMinCuotasPagas}
+                onChange={(v) => ex({ cancelacionMinCuotasPagas: v })}
+                error={ver ? errores.cancelacionMinCuotasPagas : undefined}
+              />
+            ) : (
+              <CampoNumero
+                id="p-cancel-min-pct"
+                label="Porcentaje mínimo pagado"
+                sufijo="%"
+                min={0}
+                value={p.extras.cancelacionMinPctPagado}
+                onChange={(v) => ex({ cancelacionMinPctPagado: v })}
+                error={ver ? errores.cancelacionMinPctPagado : undefined}
+              />
+            )}
+          </Grilla>
         )}
         <Checkbox
           checked={p.extras.permiteCambioPrimerVencimiento}
           onChange={(v) => ex({ permiteCambioPrimerVencimiento: v })}
           label="Permite cambio del primer vencimiento"
+        />
+        <Checkbox
+          checked={p.extras.permiteCorrimientoDesarrollo}
+          onChange={(v) => ex({ permiteCorrimientoDesarrollo: v })}
+          label="Permite corrimiento del desarrollo del préstamo"
         />
         <Checkbox
           checked={p.config.permiteDeudaTerceros}
@@ -766,4 +770,6 @@ export const SECCION_DE_ERROR: Record<string, string> = {
   documentos: "onboarding",
   renovacionMinCuotasPagas: "onboarding",
   renovacionMinPctPagado: "onboarding",
+  cancelacionMinCuotasPagas: "onboarding",
+  cancelacionMinPctPagado: "onboarding",
 };

@@ -75,6 +75,13 @@ export const TIPOS_DOCUMENTO: TipoDocumento[] = [
   { id: "otros", nombre: "Otros", categoria: "Otros" },
 ];
 
+// Tipo de un ítem del legajo: los del catálogo salen de Parámetros; los creados a mano llevan
+// su propio nombre y categoría.
+export function tipoDeDocumento(d: { tipoId: string; nombre?: string; categoria?: string }): TipoDocumento {
+  const t = TIPOS_DOCUMENTO.find((x) => x.id === d.tipoId);
+  return t ?? { id: d.tipoId, nombre: d.nombre ?? d.tipoId, categoria: d.categoria ?? "Otros" };
+}
+
 export function getTipoDocumento(id: string): TipoDocumento {
   return TIPOS_DOCUMENTO.find((t) => t.id === id) ?? { id, nombre: id, categoria: "Otros" };
 }

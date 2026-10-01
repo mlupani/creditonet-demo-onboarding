@@ -16,7 +16,7 @@ import {
   valorCampoDisplay,
   type PantallaConCampos,
 } from "@/lib/campos-post-oferta";
-import { getTipoDocumento } from "@/lib/parametros";
+import { tipoDeDocumento } from "@/lib/parametros";
 import { netoAAcreditar, planDeSolicitud } from "@/lib/credit";
 import { formatARS, nombreApellido } from "@/lib/format";
 import { TERMINOS } from "@/lib/terminologia";
@@ -156,7 +156,7 @@ export function DocumentoLegajo() {
           return (
             <Fila
               key={d.tipoId}
-              label={getTipoDocumento(d.tipoId).nombre}
+              label={tipoDeDocumento(d).nombre}
               value={n > 0 ? `${n} archivo${n === 1 ? "" : "s"}` : "Pendiente"}
             />
           );

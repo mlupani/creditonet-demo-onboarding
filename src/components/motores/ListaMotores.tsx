@@ -15,9 +15,20 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
-import { IconArrowDown, IconPlus, IconSearch } from "@/components/icons";
+import { IconArrowDown, IconChevronDown, IconPlus, IconSearch } from "@/components/icons";
+
+type Campo = "codigo" | "nombre" | "estado" | "reglas";
 
 const ESTADOS: EstadoProducto[] = ["ACTIVO", "SUSPENDIDO", "ELIMINADO"];
+
+// Anchos fijos para que las columnas queden alineadas entre los grupos.
+const COLUMNAS: { campo: Campo | null; label: string; ancho: string }[] = [
+  { campo: "codigo", label: "ID", ancho: "w-20" },
+  { campo: "nombre", label: "Nombre", ancho: "" },
+  { campo: "estado", label: "Estado", ancho: "w-28" },
+  { campo: "reglas", label: "Reglas", ancho: "w-20" },
+  { campo: null, label: "Vigencia", ancho: "w-56" },
+];
 
 const sinAcentos = (s: string) =>
   s
@@ -25,22 +36,53 @@ const sinAcentos = (s: string) =>
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 
-// Motor de Riesgo v1 §1: inventario de grupos de reglas con filtro por estado, búsqueda por ID
+function comparar(a: MotorRiesgo, b: MotorRiesgo, campo: Campo): number {
+  switch (campo) {
+    case "codigo":
+      return a.codigo.localeCompare(b.codigo);
+    case "nombre":
+      return a.nombre.localeCompare(b.nombre, "es");
+    case "estado":
+      return ESTADOS.indexOf(a.estado) - ESTADOS.indexOf(b.estado);
+    case "reglas":
+      return a.reglas.length - b.reglas.length;
+  }
+}
+
+// Motor de Riesgo v1 §1: inventario de grupos de reglas agrupado por estado, con búsqueda por ID
 // o nombre, alta, copia y exportación.
 export function ListaMotores() {
   const router = useRouter();
   const { hidratado } = useApplication();
   const motores = useMotores();
   const [busqueda, setBusqueda] = useState("");
-  const [estado, setEstado] = useState<EstadoProducto>("ACTIVO");
+  const [filtro, setFiltro] = useState<EstadoProducto | "">("");
+  const [orden, setOrden] = useState<{ campo: Campo; asc: boolean }>({ campo: "codigo", asc: true });
+  const [abiertos, setAbiertos] = useState<Record<EstadoProducto, boolean>>({
+    ACTIVO: true,
+    SUSPENDIDO: false,
+    ELIMINADO: false,
+  });
 
   const q = sinAcentos(busqueda.trim());
-  const filas = motores
-    .filter((m) => m.estado === estado && (!q || sinAcentos(`${m.codigo} ${m.nombre}`).includes(q)))
-    .sort((a, b) => a.codigo.localeCompare(b.codigo));
+  const coincide = (m: MotorRiesgo) => !q || sinAcentos(`${m.codigo} ${m.nombre}`).includes(q);
+
+  const grupos = ESTADOS.filter((e) => !filtro || filtro === e).map((estado) => {
+    const filas = motores
+      .filter((m) => m.estado === estado && coincide(m))
+      .sort((a, b) => (orden.asc ? 1 : -1) * comparar(a, b, orden.campo));
+    const total = motores.filter((m) => m.estado === estado).length;
+    const abierto = abiertos[estado] || filtro === estado || (q !== "" && filas.length > 0);
+    return { estado, filas, total, abierto };
+  });
+  const visibles = grupos.flatMap((g) => g.filas);
+
+  function ordenarPor(campo: Campo) {
+    setOrden((o) => ({ campo, asc: o.campo === campo ? !o.asc : true }));
+  }
 
   function exportar() {
-    const blob = new Blob([motoresACsv(motores)], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([motoresACsv(visibles)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -88,102 +130,155 @@ export function ListaMotores() {
             className="h-10 w-full rounded-lg border border-ink-300 bg-white pl-9 pr-3 text-sm shadow-xs outline-none transition placeholder:text-ink-400 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
         </div>
-        <div role="tablist" aria-label="Filtrar por estado" className="flex rounded-lg border border-ink-200 bg-ink-50 p-0.5">
-          {ESTADOS.map((e) => {
-            const total = motores.filter((m) => m.estado === e).length;
-            return (
-              <button
-                key={e}
-                type="button"
-                role="tab"
-                aria-selected={estado === e}
-                onClick={() => setEstado(e)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  estado === e ? "bg-white text-ink-900 shadow-xs" : "text-ink-500 hover:text-ink-800"
-                }`}
-              >
-                {ESTADO_PRODUCTO_META[e].grupo}
-                <span className="ml-1.5 text-xs tabular-nums text-ink-400">{total}</span>
-              </button>
-            );
-          })}
-        </div>
+        <select
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value as EstadoProducto | "")}
+          aria-label="Filtrar por estado"
+          className="h-10 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-700 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+        >
+          <option value="">Estado: todos</option>
+          {ESTADOS.map((e) => (
+            <option key={e} value={e}>
+              {ESTADO_PRODUCTO_META[e].label}
+            </option>
+          ))}
+        </select>
         <div className="flex-1" />
-        <Button variant="outline" onClick={exportar} disabled={motores.length === 0}>
+        <Button variant="outline" onClick={exportar} disabled={visibles.length === 0}>
           <IconArrowDown width={16} height={16} />
           Exportar a Excel
         </Button>
       </div>
 
-      {!hidratado ? (
-        <p className="mt-5 px-5 py-8 text-center text-sm text-ink-400">Cargando…</p>
-      ) : filas.length === 0 ? (
-        <Card className="mt-5 px-5 py-8 text-center">
-          <p className="text-sm text-ink-400">
-            {q
-              ? "Ningún grupo coincide con la búsqueda."
-              : `No hay grupos ${ESTADO_PRODUCTO_META[estado].grupo.toLowerCase()}.`}
-          </p>
-          {!q && estado === "ACTIVO" && (
-            <Button className="mt-4" onClick={() => router.push("/motor-riesgo/nuevo")}>
-              <IconPlus width={16} height={16} />
-              Nuevo grupo de reglas
-            </Button>
-          )}
-        </Card>
-      ) : (
-        <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filas.map((m) => {
-            const vencido = vigenciaMotor(m) !== "VIGENTE";
-            const siguiente = motores.find((r) => r.id === m.concatenarCon);
-            return (
-              <li key={m.id}>
-                <Card className="h-full transition hover:border-brand-300 hover:shadow-md">
-                  <div className="flex h-full cursor-pointer flex-col gap-3 p-4" onClick={() => abrir(m)}>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="rounded-md bg-brand-50 px-2 py-0.5 font-mono text-xs font-bold text-brand-700">
-                        {m.codigo}
-                      </span>
-                      <StatusBadge tone={ESTADO_PRODUCTO_META[m.estado].tone}>
-                        {ESTADO_PRODUCTO_META[m.estado].label}
-                      </StatusBadge>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-ink-900">{m.nombre}</p>
-                      <p className="mt-1 text-xs text-ink-500">
-                        {m.reglas.length} regla{m.reglas.length === 1 ? "" : "s"} · {m.fuentes.join(", ")}
-                        {siguiente && ` · concatena con ${siguiente.codigo} ${siguiente.nombre}`}
-                      </p>
-                      <p className={`mt-2 text-xs ${vencido ? "font-semibold text-warning-700" : "text-ink-600"}`}>
-                        Vigencia: {textoVigenciaMotor(m)}
-                      </p>
-                      <p className="mt-1 text-xs text-ink-400">
-                        Creado por {m.creado?.usuario ?? "—"}
-                        {m.creado && ` · ${m.creado.fecha}`}
-                        <br />
-                        Modificado por {m.modificado?.usuario ?? "—"}
-                        {m.modificado && ` · ${m.modificado.fecha}`}
-                      </p>
-                    </div>
-                    <div className="flex gap-1.5 border-t border-ink-100 pt-3" onClick={(e) => e.stopPropagation()}>
-                      <Button size="sm" variant="outline" onClick={() => abrir(m, true)}>
-                        Modificar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => router.push(`/motor-riesgo/nuevo?de=${m.id}`)}
-                      >
-                        Copiar
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div className="mt-5 space-y-4">
+        {!hidratado ? (
+          <Card className="px-5 py-8 text-center text-sm text-ink-400">Cargando…</Card>
+        ) : (
+          grupos.map(({ estado, filas, total, abierto }) => (
+            <Card key={estado} className="overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAbiertos((a) => ({ ...a, [estado]: !a[estado] }))}
+                aria-expanded={abierto}
+                className="flex w-full items-center gap-2 px-5 py-3.5 text-left transition hover:bg-ink-25"
+              >
+                <IconChevronDown
+                  width={16}
+                  height={16}
+                  className={`text-ink-400 transition-transform ${abierto ? "" : "-rotate-90"}`}
+                />
+                <h2 className="text-xs font-bold uppercase tracking-widest text-ink-700">
+                  {ESTADO_PRODUCTO_META[estado].grupo}
+                </h2>
+                <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">
+                  {q || filtro ? `${filas.length} de ${total}` : total}
+                </span>
+              </button>
+              {abierto && (
+                <div className="overflow-x-auto border-t border-ink-100">
+                  {filas.length === 0 ? (
+                    <p className="px-5 py-6 text-center text-sm text-ink-400">
+                      {q
+                        ? "Ningún grupo coincide con la búsqueda."
+                        : `No hay grupos ${ESTADO_PRODUCTO_META[estado].grupo.toLowerCase()}.`}
+                    </p>
+                  ) : (
+                    <table className="w-full min-w-[56rem] table-fixed text-left text-sm">
+                      <thead>
+                        <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                          {COLUMNAS.map((c) => (
+                            <th
+                              key={c.label}
+                              aria-sort={
+                                c.campo && orden.campo === c.campo
+                                  ? orden.asc
+                                    ? "ascending"
+                                    : "descending"
+                                  : "none"
+                              }
+                              className={`px-4 py-2.5 ${c.ancho}`}
+                            >
+                              {c.campo ? (
+                                <button
+                                  type="button"
+                                  onClick={() => ordenarPor(c.campo!)}
+                                  className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-ink-700"
+                                >
+                                  {c.label}
+                                  {orden.campo === c.campo && (
+                                    <span aria-hidden>{orden.asc ? "↑" : "↓"}</span>
+                                  )}
+                                </button>
+                              ) : (
+                                c.label
+                              )}
+                            </th>
+                          ))}
+                          <th className="w-48 px-4 py-2.5" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-ink-100">
+                        {filas.map((m) => {
+                          const vencido = vigenciaMotor(m) !== "VIGENTE";
+                          const siguiente = motores.find((r) => r.id === m.concatenarCon);
+                          return (
+                            <tr
+                              key={m.id}
+                              onClick={() => abrir(m)}
+                              className="cursor-pointer transition hover:bg-ink-25"
+                            >
+                              <td className="px-4 py-3 font-mono text-xs font-bold text-brand-700">
+                                {m.codigo}
+                              </td>
+                              <td className="px-4 py-3">
+                                <p className="font-semibold text-ink-900">{m.nombre}</p>
+                                <p className="text-xs text-ink-500">
+                                  {m.fuentes.join(", ")}
+                                  {siguiente && ` · concatena con ${siguiente.codigo} ${siguiente.nombre}`}
+                                </p>
+                              </td>
+                              <td className="px-4 py-3">
+                                <StatusBadge tone={ESTADO_PRODUCTO_META[m.estado].tone}>
+                                  {ESTADO_PRODUCTO_META[m.estado].label}
+                                </StatusBadge>
+                              </td>
+                              <td className="px-4 py-3 tabular-nums text-ink-700">{m.reglas.length}</td>
+                              <td
+                                className={`whitespace-nowrap px-4 py-3 ${
+                                  vencido ? "font-semibold text-warning-700" : "text-ink-700"
+                                }`}
+                              >
+                                {textoVigenciaMotor(m)}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                  <Button size="sm" variant="outline" onClick={() => abrir(m)}>
+                                    Abrir
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => abrir(m, true)}>
+                                    Modificar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => router.push(`/motor-riesgo/nuevo?de=${m.id}`)}
+                                  >
+                                    Copiar
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }

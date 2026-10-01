@@ -25,7 +25,7 @@ import {
   type TokenizacionConfig,
 } from "./config";
 import { fechaHoy, parseFecha } from "./format";
-import { getTipoDocumento } from "./parametros";
+import { tipoDeDocumento } from "./parametros";
 import type { Domicilio } from "./types";
 
 // --- Catálogos de las listas del ABM ---
@@ -189,7 +189,13 @@ export interface ExtrasProducto {
   renovacionMinCuotasPagas: number;
   permiteCancelacionAnticipada: boolean;
   cargoCancelacionPct: number;
+  // Condición mínima para habilitar una cancelación anticipada (misma lógica que la renovación).
+  condicionCancelacion: CondicionRenovacion;
+  cancelacionMinPctPagado: number;
+  cancelacionMinCuotasPagas: number;
   permiteCambioPrimerVencimiento: boolean;
+  // Permite correr el cronograma (desarrollo) del préstamo.
+  permiteCorrimientoDesarrollo: boolean;
   // Notificaciones
   notificaciones: NotificacionesProducto;
 }
@@ -245,7 +251,11 @@ const EXTRAS_BASE: ExtrasProducto = {
   renovacionMinCuotasPagas: 6,
   permiteCancelacionAnticipada: true,
   cargoCancelacionPct: 2,
+  condicionCancelacion: "PORCENTAJE",
+  cancelacionMinPctPagado: 0,
+  cancelacionMinCuotasPagas: 1,
   permiteCambioPrimerVencimiento: true,
+  permiteCorrimientoDesarrollo: true,
   notificaciones: {
     onboarding: {
       EN_TRAMITE: false,
@@ -334,11 +344,19 @@ export function hidratarProductos() {
     const guardado = JSON.parse(raw) as ProductoAbm[];
     if (Array.isArray(guardado) && guardado.length > 0 && guardado.every((r) => r?.config?.id))
       commit(
-        guardado.map((r) =>
-          r.extras?.gestionPrestamos
-            ? { ...r, extras: { ...r.extras, gestionPrestamos: normalizarGestion(r.extras.gestionPrestamos) } }
-            : r
-        )
+        guardado.map((r) => {
+          const extras = { ...r.extras };
+          extras.permiteCorrimientoDesarrollo ??= EXTRAS_BASE.permiteCorrimientoDesarrollo;
+          extras.condicionCancelacion ??= EXTRAS_BASE.condicionCancelacion;
+          extras.cancelacionMinPctPagado ??= EXTRAS_BASE.cancelacionMinPctPagado;
+          extras.cancelacionMinCuotasPagas ??= EXTRAS_BASE.cancelacionMinCuotasPagas;
+          return {
+            ...r,
+            extras: extras.gestionPrestamos
+              ? { ...extras, gestionPrestamos: normalizarGestion(extras.gestionPrestamos) }
+              : extras,
+          };
+        })
       );
   } catch {
     /* si el guardado está dañado se queda con los valores de ejemplo */
@@ -528,7 +546,7 @@ export function errorTokenizacion(t: TokenizacionConfig): string | null {
 // Documentos del legajo: obligatorio ⇒ mínimo ≥ 1; máximo ≥ 1 y ≥ mínimo.
 export function errorDocumentos(docs: DocumentoConfig[]): string | null {
   for (const d of docs) {
-    const nombre = getTipoDocumento(d.tipoId).nombre;
+    const nombre = tipoDeDocumento(d).nombre;
     if (!Number.isInteger(d.maximo) || d.maximo < 1) return `${nombre}: el máximo es 1 o más.`;
     if (!Number.isInteger(d.minimo) || d.minimo < 0) return `${nombre}: el mínimo no puede ser negativo.`;
     if (d.obligatorio && d.minimo < 1) return `${nombre}: si es obligatorio el mínimo es 1 o más.`;
@@ -589,6 +607,13 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
         e.renovacionMinCuotasPagas = "Ingresá una cantidad de cuotas entera, de 1 en adelante.";
     } else if (x.renovacionMinPctPagado < 0 || x.renovacionMinPctPagado > 100)
       e.renovacionMinPctPagado = "El porcentaje mínimo va de 0 a 100.";
+  }
+  if (x.permiteCancelacionAnticipada) {
+    if (x.condicionCancelacion === "CUOTAS") {
+      if (!Number.isInteger(x.cancelacionMinCuotasPagas) || x.cancelacionMinCuotasPagas < 1)
+        e.cancelacionMinCuotasPagas = "Ingresá una cantidad de cuotas entera, de 1 en adelante.";
+    } else if (x.cancelacionMinPctPagado < 0 || x.cancelacionMinPctPagado > 100)
+      e.cancelacionMinPctPagado = "El porcentaje mínimo va de 0 a 100.";
   }
   if (x.gestionPrestamos.activa) {
     if (!x.gestionPrestamos.razonSocial.trim()) e.gestionRazonSocial = "Ingresá la razón social.";

@@ -75,6 +75,7 @@ export function Panel({
   descripcion,
   vivo = false,
   nota,
+  accion,
   children,
 }: {
   titulo: string;
@@ -82,6 +83,7 @@ export function Panel({
   // true: alimenta el flujo real de la demo. false: valores de ejemplo que sólo se guardan.
   vivo?: boolean;
   nota?: string;
+  accion?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -91,6 +93,8 @@ export function Panel({
           <h2 className="text-base font-semibold tracking-tight text-ink-900">{titulo}</h2>
           <p className="mt-0.5 text-sm text-ink-500">{descripcion}</p>
         </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
+        {accion}
         <span
           className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
             vivo
@@ -100,6 +104,7 @@ export function Panel({
         >
           {vivo ? "Conectado al flujo" : "Valores de ejemplo"}
         </span>
+        </div>
       </div>
       <div className="space-y-5 p-5 sm:p-6">
         {nota && <p className="rounded-lg bg-ink-25 px-3 py-2 text-xs text-ink-500">{nota}</p>}
@@ -111,6 +116,6 @@ export function Panel({
 
 export function Subtitulo({ children }: { children: ReactNode }) {
   return (
-    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">{children}</h3>
+    <h3 className="text-xs font-bold uppercase tracking-wider text-ink-800">{children}</h3>
   );
 }

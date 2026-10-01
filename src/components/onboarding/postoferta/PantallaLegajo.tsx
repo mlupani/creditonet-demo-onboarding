@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva, minimoDocumento } from "@/lib/config";
-import { getTipoDocumento } from "@/lib/parametros";
+import { tipoDeDocumento } from "@/lib/parametros";
 import type { ArchivoLegajo } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -138,7 +138,7 @@ export function PantallaLegajo() {
         />
         <ul className="space-y-2.5 p-5 sm:p-6">
           {docs.map((d) => {
-            const tipo = getTipoDocumento(d.tipoId);
+            const tipo = tipoDeDocumento(d);
             const lista = archivos[d.tipoId] ?? [];
             const minimo = minimoDocumento(d);
             // Cargado = alcanzó el mínimo; sin mínimo (opcional), con al menos un archivo.
@@ -453,7 +453,7 @@ export function PantallaLegajo() {
               </p>
               <ul className="space-y-2">
                 {docs.map((d) => {
-                  const tipo = getTipoDocumento(d.tipoId);
+                  const tipo = tipoDeDocumento(d);
                   const lista = archivos[d.tipoId] ?? [];
                   if (lista.length === 0) return null;
                   return (
