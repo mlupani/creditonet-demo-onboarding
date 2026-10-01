@@ -84,7 +84,7 @@ export function getCreditoById(numeroCredito: string | null): CreditoDB | undefi
 // --- Bandeja del canal de venta (page.tsx) agrupa por GRUPO_POR_ESTADO ---
 export type GrupoVendedor = "TRAMITE" | "OBSERVADAS" | "ANALISIS" | "FIRMA" | "RESUELTAS";
 
-const GRUPO_POR_ESTADO: Record<EstadoCredito, GrupoVendedor> = {
+export const GRUPO_POR_ESTADO: Record<EstadoCredito, GrupoVendedor> = {
   BORRADOR: "TRAMITE",
   EN_TRAMITE: "TRAMITE",
   OBSERVADO: "OBSERVADAS",

@@ -15,6 +15,8 @@ import {
 } from "@/lib/config";
 import { evaluarInstitucionales, institucionalesBloquean } from "@/lib/reglas-institucionales";
 import { formatDNI } from "@/lib/format";
+import { creditoSimultaneoEnOtroCanal } from "@/lib/simultaneidad";
+import type { CreditoDB } from "@/lib/creditos-db";
 import type { Rechazo } from "@/lib/types";
 import { Stepper } from "@/components/ui/Stepper";
 import { Button } from "@/components/ui/Button";
@@ -43,7 +45,7 @@ const RAZON_RECHAZO: Record<Rechazo["origen"], string> = {
   SUPERIOR: "La solicitud fue rechazada por el superior de riesgo.",
 };
 
-function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
+function gate(paso: number, app: App, creditosDB: CreditoDB[]): { ok: boolean; razon: string | null } {
   switch (paso) {
     case 1:
       if (app.tipoPersona === "JURIDICA")
@@ -65,6 +67,15 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
         return {
           ok: false,
           razon: "El organismo elegido está suspendido o eliminado: elegí otro.",
+        };
+      if (
+        app.cliente &&
+        creditoSimultaneoEnOtroCanal(creditosDB, app.cliente.dni, app.configuracion.canalId, app.numeroCredito)
+      )
+        return {
+          ok: false,
+          razon:
+            "El cliente ya tiene un crédito en trámite en otro canal. Se libera si ese crédito se anula.",
         };
       return productoHabilitadoEnCanal(
         app.configuracion.productoId,
@@ -107,13 +118,13 @@ function gate(paso: number, app: App): { ok: boolean; razon: string | null } {
 }
 
 export function OriginacionWizard() {
-  const { app, paso, pasoMaximo, setPaso, anularCredito, reiniciarDemo } = useApplication();
+  const { app, creditosDB, paso, pasoMaximo, setPaso, anularYSoltarSolicitud } = useApplication();
   const total = STEPS_ORIGINACION.length;
   // Oferta cambiada por el analista: el vendedor sólo ve la pantalla de oferta y nada más se edita.
   const restringido = !!ofertaAnalistaDe(app);
   const pasoActual = restringido ? total : Math.min(Math.max(paso, 1), total);
   const meta = STEPS_ORIGINACION[pasoActual - 1];
-  const g = useMemo(() => gate(pasoActual, app), [pasoActual, app]);
+  const g = useMemo(() => gate(pasoActual, app, creditosDB), [pasoActual, app, creditosDB]);
   const avance = Math.max(pasoMaximo, pasoActual);
   const progreso = Math.round(((avance - 1) / (total - 1)) * 100);
   const [resumenAbierto, setResumenAbierto] = useState(false);
@@ -158,8 +169,7 @@ export function OriginacionWizard() {
   }
 
   function confirmarAnulacion() {
-    anularCredito("Anulado por el usuario en el canal de venta");
-    reiniciarDemo();
+    anularYSoltarSolicitud("Anulado por el usuario en el canal de venta");
     setAnularAbierto(false);
   }
 
