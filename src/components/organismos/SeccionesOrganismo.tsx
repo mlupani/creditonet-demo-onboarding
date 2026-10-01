@@ -296,7 +296,7 @@ const CAMPOS_VENCIMIENTO: CampoExtra[] = [
   { clave: "diaCorte", etiqueta: "Día de corte del mes inclusive", tipo: "num" },
   {
     clave: "tipoVencimiento",
-    etiqueta: "Vencimiento de la primer cuota o cuota 1",
+    etiqueta: "Vencimiento de la primer cuota",
     tipo: "select",
     opciones: TIPOS_VENCIMIENTO,
   },

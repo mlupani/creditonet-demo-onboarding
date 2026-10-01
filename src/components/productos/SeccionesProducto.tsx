@@ -182,7 +182,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
       <Grilla>
         <SelectField
           id="p-tipo-venc"
-          label="Vencimiento de la primer cuota o cuota 1"
+          label="Vencimiento de la primer cuota"
           value={p.extras.tipoVencimiento}
           onChange={(v) => ex({ tipoVencimiento: v as ExtrasProducto["tipoVencimiento"] })}
           options={TIPOS_VENCIMIENTO}
@@ -190,7 +190,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
         {p.extras.tipoVencimiento === "PERSONALIZADO" && (
           <CampoNumero
             id="p-dias-primer-venc"
-            label="Días hasta el vencimiento de la cuota 1"
+            label="Días hasta el vencimiento de la primer cuota"
             sufijo="días"
             min={1}
             value={p.extras.diasPrimerVencimiento}
