@@ -15,6 +15,7 @@ import { useSyncExternalStore } from "react";
 import {
   ORGANISMOS,
   PRODUCTOS,
+  errorAsignacionMotor,
   excepcionesDe,
   PRODUCTOS_CONFIG,
   VENDEDORES,
@@ -444,6 +445,8 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
     e.nombre = "Ya existe otro producto con ese nombre.";
   if (c.capitalMaximo <= 0) e.capitalMaximo = "El capital máximo debe ser mayor a cero.";
   if (c.canales.length === 0) e.canales = "Habilitá al menos un canal.";
+  const errorMotor = errorAsignacionMotor(c.motor);
+  if (errorMotor) e.motor = errorMotor;
 
   const desde = parseFecha(c.vigenciaDesde);
   if (!desde) e.vigenciaDesde = "Ingresá la fecha de inicio de la vigencia.";

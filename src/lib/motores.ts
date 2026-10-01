@@ -26,7 +26,8 @@ import {
   PRODUCTOS,
   type EstadoProducto,
 } from "./config";
-import { calcularEdad, fechaHoy, formatNumber, parseFecha, sumarDias } from "./format";
+import { actorActivo } from "./actor";
+import { calcularEdad, fechaHoy, fechaHora, formatNumber, parseFecha, sumarDias } from "./format";
 import {
   evaluarExpresion,
   validarExpresion,
@@ -222,6 +223,19 @@ export function tiposVariables(fuentes: FuenteVariable[]): Record<string, "numer
   return Object.fromEntries(variablesDeFuentes(fuentes).map((v) => [v.nombre, v.tipo]));
 }
 
+const normalizar = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+
+/** Buscador del selector de variables: por nombre o descripción, sin acentos ni mayúsculas. */
+export function filtrarVariables(variables: VariableMotor[], busqueda: string): VariableMotor[] {
+  const q = normalizar(busqueda.trim());
+  if (!q) return variables;
+  return variables.filter((v) => normalizar(`${v.nombre} ${v.detalle}`).includes(q));
+}
+
 // --- Grupos de reglas (v1 §2–§5) ---
 
 export type AccionRegla = "RECHAZAR" | "VERIFICAR";
@@ -235,11 +249,26 @@ export const ACCIONES: { id: AccionRegla; label: string; detalle: string }[] = [
   },
 ];
 
+// Auditoría (creditonet-119): quién hizo el cambio, con qué perfil y cuándo ("dd/mm/aaaa HH:MM").
+export interface FirmaMotor {
+  usuario: string;
+  perfil: string;
+  fecha: string;
+}
+
+export interface CambioEstadoMotor extends FirmaMotor {
+  anterior: EstadoProducto | null;
+  estado: EstadoProducto;
+}
+
 export interface ReglaMotor {
   id: string;
   nombre: string;
   expresion: string;
   accion: AccionRegla;
+  // Opcionales: lo guardado antes de la auditoría no las tiene (se muestran como "sin registro").
+  creada?: FirmaMotor;
+  modificada?: FirmaMotor;
 }
 
 export interface MotorRiesgo {
@@ -260,6 +289,9 @@ export interface MotorRiesgo {
   // Condiciones laborales para las que se asigna este motor dentro del producto
   // (reunión 11/09, 02:11: "para fijo va el motor 1 y para contratado el 2").
   condicionesLaborales: string[];
+  creado?: FirmaMotor;
+  modificado?: FirmaMotor;
+  historialEstados?: CambioEstadoMotor[];
 }
 
 // Reglas de segmento de los motores de ejemplo: rango de edad, antigüedad e ingreso mínimo.
@@ -293,6 +325,7 @@ function grupo(
   datos: Pick<MotorRiesgo, "id" | "codigo" | "nombre" | "reglas" | "condicionesLaborales"> &
     Partial<MotorRiesgo>
 ): MotorRiesgo {
+  const alta: FirmaMotor = { usuario: "Sistema", perfil: "Carga inicial", fecha: "01/07/2026 09:00" };
   return {
     estado: "ACTIVO",
     vigenciaDias: null,
@@ -300,7 +333,11 @@ function grupo(
     activadoEl: "01/07/2026",
     fuentes: ["CNET"],
     concatenarCon: "motor-politicas",
+    creado: alta,
+    modificado: alta,
+    historialEstados: [{ ...alta, anterior: null, estado: datos.estado ?? "ACTIVO" }],
     ...datos,
+    reglas: datos.reglas.map((r) => ({ ...r, creada: alta, modificada: alta })),
   };
 }
 
@@ -463,23 +500,73 @@ const store = crearStoreAbm<MotorRiesgo>({
 export const useMotores = store.useLista;
 export const hidratarMotores = store.hidratar;
 
-export function guardarMotor(m: MotorRiesgo) {
-  const lista = store.get();
-  store.commit(
-    lista.some((r) => r.id === m.id) ? lista.map((r) => (r.id === m.id ? m : r)) : [...lista, m]
-  );
+const firmaActual = (): FirmaMotor => ({ ...actorActivo(), fecha: fechaHora() });
+
+// Contenido de una regla sin la auditoría: sirve para detectar si el guardado la modificó.
+const contenidoRegla = (r: ReglaMotor) => JSON.stringify([r.nombre, r.expresion, r.accion]);
+
+function contenidoMotor(m: MotorRiesgo): string {
+  const { creado, modificado, historialEstados, reglas, ...resto } = m;
+  void creado;
+  void modificado;
+  void historialEstados;
+  return JSON.stringify([resto, reglas.map(contenidoRegla)]);
 }
 
-// Al reactivar un grupo vuelve a correr su vigencia en días.
+/**
+ * Auditoría del guardado (creditonet-119): un grupo nuevo registra quién lo creó y su primer
+ * estado; uno existente registra quién lo modificó sólo si algo cambió, y cada regla creada o
+ * cambiada queda firmada. El historial de estados y la firma de alta no los pisa el borrador.
+ */
+export function auditarGuardado(
+  m: MotorRiesgo,
+  previo: MotorRiesgo | undefined,
+  firma: FirmaMotor
+): MotorRiesgo {
+  if (!previo)
+    return {
+      ...m,
+      creado: firma,
+      modificado: firma,
+      historialEstados: [{ ...firma, anterior: null, estado: m.estado }],
+      reglas: m.reglas.map((r) => ({ ...r, creada: firma, modificada: firma })),
+    };
+  const reglas = m.reglas.map((r) => {
+    const antes = previo.reglas.find((x) => x.id === r.id);
+    if (!antes) return { ...r, creada: firma, modificada: firma };
+    if (contenidoRegla(antes) === contenidoRegla(r)) return { ...r, creada: antes.creada, modificada: antes.modificada };
+    return { ...r, creada: antes.creada, modificada: firma };
+  });
+  const siguiente = { ...m, reglas };
+  return {
+    ...siguiente,
+    creado: previo.creado,
+    historialEstados: previo.historialEstados,
+    modificado: contenidoMotor(siguiente) === contenidoMotor(previo) ? previo.modificado : firma,
+  };
+}
+
+export function guardarMotor(m: MotorRiesgo) {
+  const lista = store.get();
+  const previo = lista.find((r) => r.id === m.id);
+  const guardado = auditarGuardado(m, previo, firmaActual());
+  store.commit(previo ? lista.map((r) => (r.id === m.id ? guardado : r)) : [...lista, guardado]);
+}
+
+// Al reactivar un grupo vuelve a correr su vigencia en días. Cada cambio de estado queda en el
+// historial del grupo con quién lo hizo y cuándo.
 export function cambiarEstadoMotor(id: string, estado: EstadoProducto) {
+  const firma = firmaActual();
   store.commit(
     store.get().map((r) =>
-      r.id !== id
+      r.id !== id || r.estado === estado
         ? r
         : {
             ...r,
             estado,
-            activadoEl: estado === "ACTIVO" && r.estado !== "ACTIVO" ? fechaHoy() : r.activadoEl,
+            activadoEl: estado === "ACTIVO" ? fechaHoy() : r.activadoEl,
+            modificado: firma,
+            historialEstados: [...(r.historialEstados ?? []), { ...firma, anterior: r.estado, estado }],
           }
     )
   );
@@ -513,7 +600,19 @@ export function borradorMotor(copiarDeId: string | null): MotorRiesgo {
     estado: "ACTIVO" as const,
     activadoEl: fechaHoy(),
   };
-  if (base) return { ...structuredClone(base), ...comun, nombre: `${base.nombre} (copia)` };
+  // La copia es un grupo nuevo: no hereda la auditoría del original (se firma al grabar).
+  if (base) {
+    const copia = structuredClone(base);
+    return {
+      ...copia,
+      ...comun,
+      nombre: `${base.nombre} (copia)`,
+      creado: undefined,
+      modificado: undefined,
+      historialEstados: undefined,
+      reglas: copia.reglas.map((r) => ({ ...r, creada: undefined, modificada: undefined })),
+    };
+  }
   return {
     ...comun,
     nombre: "",

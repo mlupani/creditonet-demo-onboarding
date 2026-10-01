@@ -16,6 +16,7 @@ import {
   ORGANISMOS,
   SESION_PARAMETROS,
   SESION_SUPERVISOR,
+  errorAsignacionMotor,
   excepcionesVacias,
   type EstadoProducto,
   type ExcepcionesOrganismo,
@@ -487,6 +488,8 @@ export function validarOrganismo(o: OrganismoAbm, todos: OrganismoAbm[]): Record
       e[`garantes@${productoId}`] = "El mínimo de garantes supera al máximo.";
     if (exc.canales && exc.canales.length === 0)
       e[`canales@${productoId}`] = "Habilitá al menos un canal o volvé a heredar los del producto.";
+    const errorMotor = errorAsignacionMotor(exc.motor);
+    if (errorMotor) e[`motor@${productoId}`] = errorMotor;
   }
   return e;
 }

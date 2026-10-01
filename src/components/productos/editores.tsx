@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { AsignacionMotor, DocumentoConfig } from "@/lib/config";
 import { CONDICIONES_LABORALES, useMotores } from "@/lib/motores";
 import { TIPOS_DOCUMENTO } from "@/lib/parametros";
@@ -21,6 +22,7 @@ import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
+import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { CampoNumero } from "./campos";
 import { IconPlus, IconTrash } from "@/components/icons";
 
@@ -408,24 +410,51 @@ export function EditorMotor({
   valor,
   onChange,
   placeholderGeneral = "Sin motor asignado",
+  error,
+  mostrarError = true,
 }: {
   idBase: string;
   valor: AsignacionMotor;
   onChange: (valor: AsignacionMotor) => void;
   placeholderGeneral?: string;
+  // Asignación incompleta (ver `errorAsignacionMotor`): se muestra junto a "Distinguir".
+  error?: string;
+  mostrarError?: boolean;
 }) {
   // Los grupos de reglas salen del ABM del Motor de riesgo: los no activos se rotulan.
   const OPCIONES_MOTOR = useMotores().map((m) => ({
     value: m.id,
     label: m.estado === "ACTIVO" ? m.nombre : `${m.nombre} (${m.estado.toLowerCase()})`,
   }));
-  const asignarCondicion = (condicion: string, motorId: string) => {
-    const { [condicion]: _quitada, ...resto } = valor.porCondicionLaboral;
-    void _quitada;
+  // Condición laboral → grupo de reglas: se elige la condición en un desplegable y después su
+  // grupo. La fila nueva se arma en `nueva` y recién entra a la asignación cuando está completa.
+  const [nueva, setNueva] = useState<{ condicion: string; motorId: string } | null>(null);
+  const asignadas = Object.entries(valor.porCondicionLaboral);
+  const libres = (actual?: string) =>
+    CONDICIONES_LABORALES.filter((c) => c === actual || !(c in valor.porCondicionLaboral)).map((c) => ({
+      value: c,
+      label: c,
+    }));
+  const cambiarCondicion = (anterior: string, condicion: string) =>
     onChange({
       ...valor,
-      porCondicionLaboral: motorId ? { ...resto, [condicion]: motorId } : resto,
+      porCondicionLaboral: Object.fromEntries(
+        asignadas.map(([c, id]) => (c === anterior ? [condicion, id] : [c, id]))
+      ),
     });
+  const asignarCondicion = (condicion: string, motorId: string) =>
+    onChange({ ...valor, porCondicionLaboral: { ...valor.porCondicionLaboral, [condicion]: motorId } });
+  const quitarCondicion = (condicion: string) => {
+    const { [condicion]: _quitada, ...resto } = valor.porCondicionLaboral;
+    void _quitada;
+    onChange({ ...valor, porCondicionLaboral: resto });
+  };
+  const completarNueva = (cambio: Partial<{ condicion: string; motorId: string }>) => {
+    const fila = { ...nueva!, ...cambio };
+    if (fila.condicion && fila.motorId) {
+      asignarCondicion(fila.condicion, fila.motorId);
+      setNueva(null);
+    } else setNueva(fila);
   };
   const asignarSituacion = (
     campo: "porSituacionBcra" | "porSituacionInterna",
@@ -463,8 +492,9 @@ export function EditorMotor({
               onChange={(v) =>
                 onChange({ ...valor, porTipoCliente: { ...valor.porTipoCliente, NUEVO: v || null } })
               }
-              placeholder="Usa la condición laboral"
+              placeholder="Elegí el grupo de reglas…"
               options={OPCIONES_MOTOR}
+              error={mostrarError && error && !valor.porTipoCliente.NUEVO ? "Obligatorio" : undefined}
             />
             <SelectField
               id={`${idBase}-existente`}
@@ -476,29 +506,72 @@ export function EditorMotor({
                   porTipoCliente: { ...valor.porTipoCliente, EXISTENTE: v || null },
                 })
               }
-              placeholder="Usa la condición laboral"
+              placeholder="Elegí el grupo de reglas…"
               options={OPCIONES_MOTOR}
+              error={mostrarError && error && !valor.porTipoCliente.EXISTENTE ? "Obligatorio" : undefined}
             />
           </div>
         )}
+        {mostrarError && error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
       </div>
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
           Grupo de reglas por condición laboral
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {CONDICIONES_LABORALES.map((c, i) => (
+        {asignadas.length === 0 && !nueva && (
+          <p className="text-sm text-ink-500">Sin asignaciones: todas las condiciones usan el motor general.</p>
+        )}
+        {asignadas.map(([c, motorId], i) => (
+          <div key={c} className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <SelectField
-              key={c}
               id={`${idBase}-cond-${i}`}
-              label={c}
-              value={valor.porCondicionLaboral[c] ?? ""}
+              label="Condición laboral"
+              value={c}
+              onChange={(v) => cambiarCondicion(c, v)}
+              options={libres(c)}
+            />
+            <SelectField
+              id={`${idBase}-cond-motor-${i}`}
+              label="Grupo de reglas"
+              value={motorId}
               onChange={(v) => asignarCondicion(c, v)}
-              placeholder="Usa el motor general"
               options={OPCIONES_MOTOR}
             />
-          ))}
-        </div>
+            <Button size="sm" variant="ghost" onClick={() => quitarCondicion(c)} aria-label={`Quitar ${c}`}>
+              <IconTrash width={14} height={14} />
+              Quitar
+            </Button>
+          </div>
+        ))}
+        {nueva && (
+          <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <SelectField
+              id={`${idBase}-cond-nueva`}
+              label="Condición laboral"
+              value={nueva.condicion}
+              onChange={(v) => completarNueva({ condicion: v })}
+              placeholder="Elegí la condición…"
+              options={libres()}
+            />
+            <SelectField
+              id={`${idBase}-cond-nueva-motor`}
+              label="Grupo de reglas"
+              value={nueva.motorId}
+              onChange={(v) => completarNueva({ motorId: v })}
+              placeholder="Elegí el grupo…"
+              options={OPCIONES_MOTOR}
+            />
+            <Button size="sm" variant="ghost" onClick={() => setNueva(null)}>
+              Cancelar
+            </Button>
+          </div>
+        )}
+        {!nueva && libres().length > 0 && (
+          <Button size="sm" variant="outline" onClick={() => setNueva({ condicion: "", motorId: "" })}>
+            <IconPlus width={14} height={14} />
+            Agregar condición laboral
+          </Button>
+        )}
       </div>
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">

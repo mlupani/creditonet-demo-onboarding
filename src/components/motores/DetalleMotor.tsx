@@ -11,6 +11,7 @@ import {
   cadenaMotores,
   cambiarEstadoMotor,
   crearMotor,
+  filtrarVariables,
   FUENTES,
   guardarMotor,
   motorDisponible,
@@ -21,6 +22,7 @@ import {
   variablesDeFuentes,
   vencimientoMotor,
   vigenciaMotor,
+  type FirmaMotor,
   type MotorRiesgo,
   type ReglaMotor,
 } from "@/lib/motores";
@@ -34,7 +36,14 @@ import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
-import { IconArrowLeft, IconCheckCircle, IconLoader, IconPlus, IconTrash } from "@/components/icons";
+import {
+  IconArrowLeft,
+  IconCheckCircle,
+  IconLoader,
+  IconPlus,
+  IconSearch,
+  IconTrash,
+} from "@/components/icons";
 
 const TEXTO_ESTADO: Partial<Record<EstadoProducto, { titulo: string; descripcion: string; boton: string }>> = {
   SUSPENDIDO: {
@@ -110,6 +119,7 @@ function Formulario({
   const [guardado, setGuardado] = useState(false);
   const [pendiente, setPendiente] = useState<EstadoProducto | null>(null);
   const [reglaActiva, setReglaActiva] = useState<string | null>(null);
+  const [busquedaVariable, setBusquedaVariable] = useState("");
 
   const errores = validarMotor(borrador, todos);
   const cantErrores = Object.keys(errores).length;
@@ -131,6 +141,15 @@ function Formulario({
     const destino = borrador.reglas.find((r) => r.id === reglaActiva) ?? borrador.reglas.at(-1);
     if (!destino) return;
     editarRegla(destino.id, { expresion: `${destino.expresion.trimEnd()} ${nombre}`.trimStart() });
+  }
+
+  // Desde la vista de sólo lectura también se puede cargar una regla: pasa a edición.
+  function nuevaRegla() {
+    setEditando(true);
+    editar((m) => ({
+      ...m,
+      reglas: [...m.reglas, { id: nuevaReglaId(m.reglas), nombre: "", expresion: "", accion: "RECHAZAR" }],
+    }));
   }
 
   function grabar() {
@@ -168,6 +187,7 @@ function Formulario({
     .map((m) => ({ value: m.id, label: `${m.codigo} · ${m.nombre}` }));
   const cadena = cadenaMotores(borrador, todos.map((m) => (m.id === borrador.id ? borrador : m)));
   const texto = pendiente ? TEXTO_ESTADO[pendiente] : undefined;
+  const variablesFiltradas = filtrarVariables(variablesDeFuentes(borrador.fuentes), busquedaVariable);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -360,9 +380,12 @@ function Formulario({
             </div>
             {ver("fuentes") && <p className="text-sm text-danger-600">{ver("fuentes")}</p>}
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-400">Variables disponibles</p>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">Variables disponibles</p>
+                <BuscadorVariables valor={busquedaVariable} onChange={setBusquedaVariable} />
+              </div>
               <div className="flex flex-wrap gap-1.5">
-                {variablesDeFuentes(borrador.fuentes).map((v) => (
+                {variablesFiltradas.map((v) => (
                   <Tooltip key={v.nombre} label={v.detalle} side="top">
                     <button
                       type="button"
@@ -374,6 +397,9 @@ function Formulario({
                     </button>
                   </Tooltip>
                 ))}
+                {variablesFiltradas.length === 0 && (
+                  <p className="text-sm text-ink-400">Ninguna variable coincide con la búsqueda.</p>
+                )}
               </div>
             </div>
           </div>
@@ -384,26 +410,15 @@ function Formulario({
             title="Reglas del grupo"
             description="Si la expresión es verdadera, la regla aplica su acción: Rechazar rechaza el crédito; Verificar lo marca para la revisión del analista."
             action={
-              editando ? (
-                <Button
-                  size="sm"
-                  className="shrink-0 whitespace-nowrap"
-                  onClick={() =>
-                    editar((m) => ({
-                      ...m,
-                      reglas: [...m.reglas, { id: nuevaReglaId(m.reglas), nombre: "", expresion: "", accion: "RECHAZAR" }],
-                    }))
-                  }
-                >
-                  <IconPlus width={14} height={14} />
-                  Nueva regla
-                </Button>
-              ) : undefined
+              <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={nuevaRegla}>
+                <IconPlus width={14} height={14} />
+                Nueva regla
+              </Button>
             }
           />
-          <div className="space-y-3 px-6 py-5">
+          <div className={`grid grid-cols-1 gap-3 px-6 py-5 ${editando ? "" : "lg:grid-cols-2"}`}>
             {borrador.reglas.length === 0 && (
-              <p className={`rounded-lg border border-dashed px-4 py-6 text-center text-sm ${ver("reglas") ? "border-danger-300 text-danger-600" : "border-ink-200 text-ink-400"}`}>
+              <p className={`rounded-lg border border-dashed px-4 py-6 text-center text-sm lg:col-span-2 ${ver("reglas") ? "border-danger-300 text-danger-600" : "border-ink-200 text-ink-400"}`}>
                 {ver("reglas") ?? "El grupo todavía no tiene reglas."}
               </p>
             )}
@@ -431,7 +446,7 @@ function Formulario({
               />
             ))}
             {editando && borrador.reglas.length > 0 && (
-              <div className="flex justify-end border-t border-ink-100 pt-4">
+              <div className="flex justify-end border-t border-ink-100 pt-4 lg:col-span-2">
                 <Button onClick={grabar}>
                   <IconCheckCircle width={15} height={15} />
                   Guardar regla
@@ -484,6 +499,8 @@ function Formulario({
               )}
           </div>
         </Card>
+
+        {!nuevo && <Auditoria registro={registro} />}
       </div>
 
       <ConfirmationModal
@@ -535,12 +552,13 @@ function ReglaEditor({
 }) {
   const [variable, setVariable] = useState("");
   const [valor, setValor] = useState("");
+  const [filtro, setFiltro] = useState("");
   const agregar = (pieza: string) =>
     onChange({ expresion: `${regla.expresion.trimEnd()} ${pieza}`.trimStart() });
   const accion = ACCIONES.find((a) => a.id === regla.accion)!;
 
   return (
-    <div className="rounded-xl border border-ink-200 p-4" onFocusCapture={onActivar}>
+    <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-xs" onFocusCapture={onActivar}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-bold uppercase tracking-widest text-ink-500">Regla {numero}</p>
         {editando && (
@@ -615,6 +633,7 @@ function ReglaEditor({
 
           {/* Se arma seleccionando elementos en secuencia (v1 §3). */}
           <div className="flex flex-wrap items-center gap-2 rounded-lg bg-ink-25 p-2.5">
+            <BuscadorVariables valor={filtro} onChange={setFiltro} compacto />
             <select
               value={variable}
               onChange={(e) => {
@@ -625,7 +644,7 @@ function ReglaEditor({
               className="h-8 rounded-lg border border-ink-300 bg-white px-2 font-mono text-xs text-ink-700"
             >
               <option value="">+ Variable…</option>
-              {variablesDeFuentes(fuentes).map((v) => (
+              {filtrarVariables(variablesDeFuentes(fuentes), filtro).map((v) => (
                 <option key={v.nombre} value={v.nombre}>
                   {v.nombre}
                 </option>
@@ -686,8 +705,90 @@ function ReglaEditor({
             <StatusBadge tone={regla.accion === "RECHAZAR" ? "danger" : "warning"}>{accion.label}</StatusBadge>{" "}
             <span className="text-ink-500">{accion.detalle}</span>
           </p>
+          <p className="text-xs text-ink-500">
+            Creada: {textoFirma(regla.creada)} · Última modificación: {textoFirma(regla.modificada)}
+          </p>
         </div>
       )}
     </div>
+  );
+}
+
+const textoFirma = (f?: FirmaMotor) => (f ? `${f.usuario} (${f.perfil}) · ${f.fecha}` : "sin registro");
+
+function BuscadorVariables({
+  valor,
+  onChange,
+  compacto = false,
+}: {
+  valor: string;
+  onChange: (v: string) => void;
+  compacto?: boolean;
+}) {
+  return (
+    <div className={`relative ${compacto ? "w-40" : "w-full sm:w-64"}`}>
+      <IconSearch
+        width={13}
+        height={13}
+        className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400"
+      />
+      <input
+        type="search"
+        value={valor}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Buscar variable…"
+        aria-label="Buscar variable"
+        className={`w-full rounded-lg border border-ink-300 bg-white pl-8 pr-2 text-xs outline-none transition placeholder:text-ink-400 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 ${compacto ? "h-8" : "h-9"}`}
+      />
+    </div>
+  );
+}
+
+// Auditoría (creditonet-119): quién creó y modificó el grupo y cada cambio de estado.
+function Auditoria({ registro }: { registro: MotorRiesgo }) {
+  const historial = [...(registro.historialEstados ?? [])].reverse();
+  const fila = (etiqueta: string, f?: FirmaMotor) => (
+    <div>
+      <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">{etiqueta}</dt>
+      <dd className="mt-0.5 text-sm text-ink-800">{f ? `${f.usuario} (${f.perfil})` : "Sin registro"}</dd>
+      {f && <dd className="text-xs text-ink-500">{f.fecha}</dd>}
+    </div>
+  );
+  return (
+    <Card>
+      <CardHeader
+        title="Auditoría"
+        description="Quién creó y modificó el grupo y sus reglas, con fecha, y cada cambio de estado."
+      />
+      <div className="space-y-4 px-6 py-5">
+        <dl className="grid gap-4 sm:grid-cols-2">
+          {fila("Creado por", registro.creado)}
+          {fila("Última modificación", registro.modificado)}
+        </dl>
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+            Historial de estados
+          </p>
+          {historial.length === 0 ? (
+            <p className="text-sm text-ink-400">Sin cambios de estado registrados.</p>
+          ) : (
+            <ol className="divide-y divide-ink-100 rounded-xl border border-ink-200">
+              {historial.map((c, i) => (
+                <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
+                  <span className="text-ink-500">{c.fecha}</span>
+                  <span className="text-ink-800">
+                    {c.anterior ? `${ESTADO_PRODUCTO_META[c.anterior].label} → ` : "Alta → "}
+                    <strong>{ESTADO_PRODUCTO_META[c.estado].label}</strong>
+                  </span>
+                  <span className="text-ink-500">
+                    por {c.usuario} ({c.perfil})
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
