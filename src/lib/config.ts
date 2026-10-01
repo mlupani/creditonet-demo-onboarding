@@ -484,6 +484,8 @@ function pantallas(cambios: CambiosPantalla = {}): PantallaPostOfertaConfig[] {
 // Alta, baja y suspensión lógicas: un producto eliminado se conserva para las solicitudes que
 // ya lo usaron, pero deja de ofrecerse.
 export type EstadoProducto = "ACTIVO" | "SUSPENDIDO" | "ELIMINADO";
+// El producto nace en borrador y se ofrece recién cuando se lo activa.
+export type EstadoProductoAbm = EstadoProducto | "BORRADOR";
 
 // Motor §9: qué motor (grupo de reglas) corresponde según el cliente. Prioridad: tipo de cliente
 // (si se lo distingue) → condición laboral → situación BCRA → situación en buró interno →
@@ -527,7 +529,7 @@ export function motorAsignado(
 export interface ProductoConfig {
   id: string;
   nombre: string;
-  estado: EstadoProducto;
+  estado: EstadoProductoAbm;
   // Vigencia comercial (dd/mm/aaaa). Fuera de este rango el producto no se ofrece.
   vigenciaDesde: string;
   vigenciaHasta: string | null;
@@ -535,8 +537,8 @@ export interface ProductoConfig {
   motor: AsignacionMotor;
   permiteDeudaTerceros: boolean;
   // Premisa general del producto (Producto §4): tope de capital antes de aplicar
-  // los límites del riesgo, del plan y del salario.
-  capitalMaximo: number;
+  // los límites del riesgo, del plan y del salario. null: el producto no tiene capital máximo.
+  capitalMaximo: number | null;
   // Canales en los que se ofrece el producto (Producto §3).
   canales: string[];
   onboarding: OnboardingConfig;
