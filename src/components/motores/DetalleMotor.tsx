@@ -119,6 +119,9 @@ function Formulario({
   const [guardado, setGuardado] = useState(false);
   const [pendiente, setPendiente] = useState<EstadoProducto | null>(null);
   const [reglaActiva, setReglaActiva] = useState<string | null>(null);
+  // Reglas que se editan de a una, sin pasar todo el grupo a edición.
+  const [reglasEditando, setReglasEditando] = useState<string[]>([]);
+  const algunaEdicion = editando || reglasEditando.length > 0;
   const [busquedaVariable, setBusquedaVariable] = useState("");
 
   const errores = validarMotor(borrador, todos);
@@ -143,12 +146,14 @@ function Formulario({
     editarRegla(destino.id, { expresion: `${destino.expresion.trimEnd()} ${nombre}`.trimStart() });
   }
 
-  // Desde la vista de sólo lectura también se puede cargar una regla: pasa a edición.
+  // Desde la vista de sólo lectura también se puede cargar una regla: sólo la nueva pasa a edición.
   function nuevaRegla() {
-    setEditando(true);
+    const id = nuevaReglaId(borrador.reglas);
+    setReglasEditando((ids) => [...ids, id]);
+    setReglaActiva(id);
     editar((m) => ({
       ...m,
-      reglas: [...m.reglas, { id: nuevaReglaId(m.reglas), nombre: "", expresion: "", accion: "RECHAZAR" }],
+      reglas: [{ id, nombre: "", expresion: "", accion: "RECHAZAR" }, ...m.reglas],
     }));
   }
 
@@ -164,6 +169,7 @@ function Formulario({
     setGuardado(true);
     setIntentado(false);
     setEditando(false);
+    setReglasEditando([]);
   }
 
   function cancelar() {
@@ -174,6 +180,7 @@ function Formulario({
     setBorrador(structuredClone(registro));
     setIntentado(false);
     setEditando(false);
+    setReglasEditando([]);
   }
 
   function aplicarEstado(estado: EstadoProducto) {
@@ -188,6 +195,13 @@ function Formulario({
   const cadena = cadenaMotores(borrador, todos.map((m) => (m.id === borrador.id ? borrador : m)));
   const texto = pendiente ? TEXTO_ESTADO[pendiente] : undefined;
   const variablesFiltradas = filtrarVariables(variablesDeFuentes(borrador.fuentes), busquedaVariable);
+  // Lista legible de lo que impide grabar, para mostrarla junto al botón.
+  const listaErrores = Object.entries(errores).map(([clave, msg]) => {
+    const m = /^regla-(.+)-(nombre|expresion)$/.exec(clave);
+    const n = m ? borrador.reglas.findIndex((r) => r.id === m[1]) + 1 : 0;
+    return n > 0 ? `Regla ${n}: ${msg}` : msg;
+  });
+  const spanReglas = algunaEdicion ? "" : "lg:col-span-2";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -270,11 +284,6 @@ function Formulario({
       {guardado && !editando && (
         <Banner tone="success" className="mt-4">
           Cambios grabados. Ya rigen en la evaluación de las solicitudes de la demo.
-        </Banner>
-      )}
-      {intentado && cantErrores > 0 && (
-        <Banner tone="error" className="mt-4">
-          Hay {cantErrores} error{cantErrores === 1 ? "" : "es"} para corregir antes de grabar.
         </Banner>
       )}
 
@@ -389,7 +398,7 @@ function Formulario({
                   <Tooltip key={v.nombre} label={v.detalle} side="top">
                     <button
                       type="button"
-                      disabled={!editando || borrador.reglas.length === 0}
+                      disabled={!algunaEdicion || borrador.reglas.length === 0}
                       onClick={() => agregarVariable(v.nombre)}
                       className="rounded-md border border-ink-200 bg-ink-25 px-2 py-1 font-mono text-xs text-ink-700 transition enabled:hover:border-brand-300 enabled:hover:bg-brand-50 disabled:cursor-default"
                     >
@@ -416,9 +425,9 @@ function Formulario({
               </Button>
             }
           />
-          <div className={`grid grid-cols-1 gap-3 px-6 py-5 ${editando ? "" : "lg:grid-cols-2"}`}>
+          <div className={`grid grid-cols-1 gap-3 px-6 py-5 ${algunaEdicion ? "" : "lg:grid-cols-2"}`}>
             {borrador.reglas.length === 0 && (
-              <p className={`rounded-lg border border-dashed px-4 py-6 text-center text-sm lg:col-span-2 ${ver("reglas") ? "border-danger-300 text-danger-600" : "border-ink-200 text-ink-400"}`}>
+              <p className={`rounded-lg border border-dashed px-4 py-6 text-center text-sm ${spanReglas} ${ver("reglas") ? "border-danger-300 text-danger-600" : "border-ink-200 text-ink-400"}`}>
                 {ver("reglas") ?? "El grupo todavía no tiene reglas."}
               </p>
             )}
@@ -428,30 +437,42 @@ function Formulario({
                 numero={i + 1}
                 regla={r}
                 fuentes={borrador.fuentes}
-                editando={editando}
+                editando={editando || reglasEditando.includes(r.id)}
+                onEditar={() => setReglasEditando((ids) => [...ids, r.id])}
+                pie={
+                  !editando && reglasEditando.includes(r.id) ? (
+                    <BarraGuardar
+                      errores={intentado ? listaErrores : []}
+                      onGuardar={grabar}
+                      onCancelar={cancelar}
+                    />
+                  ) : undefined
+                }
                 errorNombre={ver(`regla-${r.id}-nombre`)}
                 errorExpresion={
                   intentado || r.expresion.trim() ? errores[`regla-${r.id}-expresion`] : undefined
                 }
                 onChange={(c) => editarRegla(r.id, c)}
                 onActivar={() => setReglaActiva(r.id)}
-                onCopiar={() =>
+                onCopiar={() => {
+                  const copiaId = nuevaReglaId(borrador.reglas);
+                  setReglasEditando((ids) => [...ids, copiaId]);
                   editar((m) => {
                     const idx = m.reglas.findIndex((x) => x.id === r.id);
-                    const copia = { ...r, id: nuevaReglaId(m.reglas), nombre: `${r.nombre} (copia)` };
+                    const copia = { ...r, id: copiaId, nombre: `${r.nombre} (copia)` };
                     return { ...m, reglas: [...m.reglas.slice(0, idx + 1), copia, ...m.reglas.slice(idx + 1)] };
-                  })
-                }
+                  });
+                }}
                 onEliminar={() => editar((m) => ({ ...m, reglas: m.reglas.filter((x) => x.id !== r.id) }))}
               />
             ))}
             {editando && borrador.reglas.length > 0 && (
-              <div className="flex justify-end border-t border-ink-100 pt-4 lg:col-span-2">
-                <Button onClick={grabar}>
-                  <IconCheckCircle width={15} height={15} />
-                  Guardar regla
-                </Button>
-              </div>
+              <BarraGuardar
+                className={`border-t border-ink-100 pt-4 ${spanReglas}`}
+                errores={intentado ? listaErrores : []}
+                onGuardar={grabar}
+                onCancelar={cancelar}
+              />
             )}
           </div>
         </Card>
@@ -536,6 +557,8 @@ function ReglaEditor({
   errorExpresion,
   onChange,
   onActivar,
+  onEditar,
+  pie,
   onCopiar,
   onEliminar,
 }: {
@@ -547,6 +570,8 @@ function ReglaEditor({
   errorExpresion?: string;
   onChange: (c: Partial<ReglaMotor>) => void;
   onActivar: () => void;
+  onEditar: () => void;
+  pie?: React.ReactNode;
   onCopiar: () => void;
   onEliminar: () => void;
 }) {
@@ -561,6 +586,11 @@ function ReglaEditor({
     <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-xs" onFocusCapture={onActivar}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-bold uppercase tracking-widest text-ink-500">Regla {numero}</p>
+        {!editando && (
+          <Button size="sm" variant="ghost" onClick={onEditar}>
+            Editar regla
+          </Button>
+        )}
         {editando && (
           <div className="flex gap-1.5">
             <Button size="sm" variant="ghost" onClick={onCopiar}>
@@ -693,6 +723,7 @@ function ReglaEditor({
               ⌫ Quitar último
             </Button>
           </div>
+          {pie}
         </div>
       ) : (
         <div className="mt-2 space-y-2">
@@ -710,6 +741,45 @@ function ReglaEditor({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// Errores que impiden grabar + Cancelar / Guardar regla, juntos para no salir de la regla.
+function BarraGuardar({
+  errores,
+  onGuardar,
+  onCancelar,
+  className = "",
+}: {
+  errores: string[];
+  onGuardar: () => void;
+  onCancelar: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={`space-y-3 ${className}`}>
+      {errores.length > 0 && (
+        <Banner
+          tone="error"
+          title={`Hay ${errores.length} error${errores.length === 1 ? "" : "es"} para corregir antes de grabar`}
+        >
+          <ul className="list-disc space-y-0.5 pl-5">
+            {errores.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
+        </Banner>
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" onClick={onCancelar}>
+          Cancelar
+        </Button>
+        <Button onClick={onGuardar}>
+          <IconCheckCircle width={15} height={15} />
+          Guardar regla
+        </Button>
+      </div>
     </div>
   );
 }
