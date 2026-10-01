@@ -496,6 +496,20 @@ export interface CambioEstadoLog {
   canal: string;
 }
 
+export type UnidadCorrimiento = "DIAS" | "MESES";
+
+// Corrimiento del cronograma hecho por un supervisor (creditonet-120): auditoría de quién, cuándo,
+// cuánto y en qué unidad, con la fecha de la cuota 1 antes y después.
+export interface CorrimientoCronograma {
+  // "dd/mm/aaaa HH:MM".
+  fecha: string;
+  usuario: string;
+  cantidad: number;
+  unidad: UnidadCorrimiento;
+  vencimientoAnterior: string;
+  vencimientoNuevo: string;
+}
+
 // Aprobación de un superior (SUP): quién la pidió y, cuando llega, quién la dio.
 export interface AprobacionSuperior {
   enviadaPor: string;
@@ -616,6 +630,8 @@ export interface CreditApplication {
   comentarios: ComentarioSolicitud[];
   // Ausente en los créditos anteriores al registro (creditonet-112).
   logEstados?: CambioEstadoLog[];
+  // Ausente si el supervisor nunca corrió el cronograma (creditonet-120).
+  corrimientos?: CorrimientoCronograma[];
 
   fechaSolicitud: string | null;
   fechaPreaprobacion: string | null;
