@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import type { EstadoProducto } from "@/lib/config";
-import { OPERADORES } from "@/lib/expresiones";
+import { OPERADORES, arbolDeExpresion } from "@/lib/expresiones";
 import {
   ACCIONES,
   borradorMotor,
@@ -27,6 +27,7 @@ import {
   type ReglaMotor,
 } from "@/lib/motores";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { ConstructorCondicion } from "./ConstructorCondicion";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -578,6 +579,8 @@ function ReglaEditor({
   const [variable, setVariable] = useState("");
   const [valor, setValor] = useState("");
   const [filtro, setFiltro] = useState("");
+  const puedeVisual = arbolDeExpresion(regla.expresion) !== null;
+  const [modo, setModo] = useState<"visual" | "texto">(puedeVisual ? "visual" : "texto");
   const agregar = (pieza: string) =>
     onChange({ expresion: `${regla.expresion.trimEnd()} ${pieza}`.trimStart() });
   const accion = ACCIONES.find((a) => a.id === regla.accion)!;
@@ -606,18 +609,150 @@ function ReglaEditor({
 
       {editando ? (
         <div className="mt-3 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <FormField
-              id={`regla-${regla.id}-nombre`}
-              label="Nombre"
-              required
-              value={regla.nombre}
-              onChange={(v) => onChange({ nombre: v })}
-              placeholder="Ej.: Morosos 30 días"
-              error={errorNombre}
-            />
-            <div>
-              <p className="mb-1.5 text-sm font-medium text-ink-700">Acción</p>
+          <FormField
+            id={`regla-${regla.id}-nombre`}
+            label="Nombre"
+            required
+            value={regla.nombre}
+            onChange={(v) => onChange({ nombre: v })}
+            placeholder="Ej.: Morosos 30 días"
+            error={errorNombre}
+          />
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-ink-800">
+                Si: <span className="text-danger-500">*</span>
+              </p>
+              <div className="flex rounded-lg border border-ink-200 bg-ink-50 p-0.5">
+                {(
+                  [
+                    ["visual", "Constructor"],
+                    ["texto", "Texto"],
+                  ] as const
+                ).map(([m, label]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={modo === m}
+                    disabled={m === "visual" && !puedeVisual}
+                    title={
+                      m === "visual" && !puedeVisual
+                        ? "La expresión tiene cálculos o está incompleta: se edita como texto."
+                        : undefined
+                    }
+                    onClick={() => setModo(m)}
+                    className={`rounded-md px-3 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                      modo === m ? "bg-white text-ink-900 shadow-xs" : "text-ink-500 enabled:hover:text-ink-800"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {modo === "visual" ? (
+              <>
+                <ConstructorCondicion
+                  key={`${regla.id}-visual`}
+                  idBase={`regla-${regla.id}`}
+                  valor={regla.expresion}
+                  fuentes={fuentes}
+                  onChange={(expresion) => onChange({ expresion })}
+                />
+                {errorExpresion && <p className="text-sm text-danger-600">{errorExpresion}</p>}
+              </>
+            ) : (
+              <>
+              <div>
+                <label htmlFor={`regla-${regla.id}-expresion`} className="mb-1.5 block text-sm font-medium text-ink-700">
+                  Expresión <span className="text-danger-500">*</span>
+                </label>
+                <input
+                  id={`regla-${regla.id}-expresion`}
+                  value={regla.expresion}
+                  onChange={(e) => onChange({ expresion: e.target.value })}
+                  placeholder="Ej.: CNET-días_atraso > 0 AND CNET-días_atraso < 30"
+                  spellCheck={false}
+                  aria-invalid={!!errorExpresion}
+                  className={`h-10 w-full rounded-lg border bg-white px-3 font-mono text-sm shadow-xs outline-none transition placeholder:font-sans placeholder:text-ink-400 ${
+                    errorExpresion
+                      ? "border-danger-400 focus:ring-2 focus:ring-danger-100"
+                      : "border-ink-300 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                  }`}
+                />
+                {errorExpresion && <p className="mt-1.5 text-sm text-danger-600">{errorExpresion}</p>}
+              </div>
+
+              {/* Se arma seleccionando elementos en secuencia (v1 §3). */}
+              <div className="flex flex-wrap items-center gap-2 rounded-lg bg-ink-25 p-2.5">
+                <BuscadorVariables valor={filtro} onChange={setFiltro} compacto />
+                <select
+                  value={variable}
+                  onChange={(e) => {
+                    if (e.target.value) agregar(e.target.value);
+                    setVariable("");
+                  }}
+                  aria-label="Agregar variable"
+                  className="h-8 rounded-lg border border-ink-300 bg-white px-2 font-mono text-xs text-ink-700"
+                >
+                  <option value="">+ Variable…</option>
+                  {filtrarVariables(variablesDeFuentes(fuentes), filtro).map((v) => (
+                    <option key={v.nombre} value={v.nombre}>
+                      {v.nombre}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex flex-wrap gap-1">
+                  {OPERADORES.map((op) => (
+                    <button
+                      key={op}
+                      type="button"
+                      onClick={() => agregar(op)}
+                      aria-label={`Agregar operador ${op}`}
+                      className="h-8 min-w-8 rounded-md border border-ink-200 bg-white px-2 font-mono text-xs font-semibold text-ink-700 transition hover:border-brand-300 hover:bg-brand-50"
+                    >
+                      {op}
+                    </button>
+                  ))}
+                </div>
+                <form
+                  className="flex gap-1"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const v = valor.trim();
+                    if (!v) return;
+                    agregar(/^\d+(\.\d+)?$/.test(v) ? v : `"${v.replace(/"/g, "")}"`);
+                    setValor("");
+                  }}
+                >
+                  <input
+                    value={valor}
+                    onChange={(e) => setValor(e.target.value)}
+                    placeholder="Valor"
+                    aria-label="Valor a agregar"
+                    className="h-8 w-28 rounded-lg border border-ink-300 bg-white px-2 text-xs"
+                  />
+                  <Button size="sm" variant="outline" type="submit">
+                    Agregar
+                  </Button>
+                </form>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={!regla.expresion.trim()}
+                  onClick={() => onChange({ expresion: regla.expresion.replace(RE_ULTIMO, "") })}
+                >
+                  ⌫ Quitar último
+                </Button>
+              </div>
+              </>
+            )}
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-semibold text-ink-800">Entonces:</p>
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex rounded-lg border border-ink-200 bg-ink-50 p-0.5">
                 {ACCIONES.map((a) => (
                   <button
@@ -638,90 +773,8 @@ function ReglaEditor({
                   </button>
                 ))}
               </div>
+              <p className="min-w-0 flex-1 basis-56 text-xs text-ink-500">{accion.detalle}</p>
             </div>
-          </div>
-
-          <div>
-            <label htmlFor={`regla-${regla.id}-expresion`} className="mb-1.5 block text-sm font-medium text-ink-700">
-              Expresión <span className="text-danger-500">*</span>
-            </label>
-            <input
-              id={`regla-${regla.id}-expresion`}
-              value={regla.expresion}
-              onChange={(e) => onChange({ expresion: e.target.value })}
-              placeholder="Ej.: CNET-días_atraso > 0 AND CNET-días_atraso < 30"
-              spellCheck={false}
-              aria-invalid={!!errorExpresion}
-              className={`h-10 w-full rounded-lg border bg-white px-3 font-mono text-sm shadow-xs outline-none transition placeholder:font-sans placeholder:text-ink-400 ${
-                errorExpresion
-                  ? "border-danger-400 focus:ring-2 focus:ring-danger-100"
-                  : "border-ink-300 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              }`}
-            />
-            {errorExpresion && <p className="mt-1.5 text-sm text-danger-600">{errorExpresion}</p>}
-          </div>
-
-          {/* Se arma seleccionando elementos en secuencia (v1 §3). */}
-          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-ink-25 p-2.5">
-            <BuscadorVariables valor={filtro} onChange={setFiltro} compacto />
-            <select
-              value={variable}
-              onChange={(e) => {
-                if (e.target.value) agregar(e.target.value);
-                setVariable("");
-              }}
-              aria-label="Agregar variable"
-              className="h-8 rounded-lg border border-ink-300 bg-white px-2 font-mono text-xs text-ink-700"
-            >
-              <option value="">+ Variable…</option>
-              {filtrarVariables(variablesDeFuentes(fuentes), filtro).map((v) => (
-                <option key={v.nombre} value={v.nombre}>
-                  {v.nombre}
-                </option>
-              ))}
-            </select>
-            <div className="flex flex-wrap gap-1">
-              {OPERADORES.map((op) => (
-                <button
-                  key={op}
-                  type="button"
-                  onClick={() => agregar(op)}
-                  aria-label={`Agregar operador ${op}`}
-                  className="h-8 min-w-8 rounded-md border border-ink-200 bg-white px-2 font-mono text-xs font-semibold text-ink-700 transition hover:border-brand-300 hover:bg-brand-50"
-                >
-                  {op}
-                </button>
-              ))}
-            </div>
-            <form
-              className="flex gap-1"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const v = valor.trim();
-                if (!v) return;
-                agregar(/^\d+(\.\d+)?$/.test(v) ? v : `"${v.replace(/"/g, "")}"`);
-                setValor("");
-              }}
-            >
-              <input
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                placeholder="Valor"
-                aria-label="Valor a agregar"
-                className="h-8 w-28 rounded-lg border border-ink-300 bg-white px-2 text-xs"
-              />
-              <Button size="sm" variant="outline" type="submit">
-                Agregar
-              </Button>
-            </form>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={!regla.expresion.trim()}
-              onClick={() => onChange({ expresion: regla.expresion.replace(RE_ULTIMO, "") })}
-            >
-              ⌫ Quitar último
-            </Button>
           </div>
           {pie}
         </div>

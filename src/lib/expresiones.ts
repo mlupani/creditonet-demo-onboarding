@@ -1,7 +1,7 @@
 // Expresiones de las reglas del Motor de riesgo interno (doc Motor de Riesgo v1 · 27/09/2026 §3).
 //
 // Una expresión combina variables con prefijo de origen (CNET-, BCRA-, BURO-), valores y los
-// operadores ( ) * / + - = ≠ < <= > >= AND. Tiene que resolver a verdadero / falso: si es
+// operadores ( ) * / + - = ≠ < <= > >= AND OR NOT (precedencia: NOT, AND, OR). Tiene que resolver a verdadero / falso: si es
 // verdadera, la regla dispara su acción (Rechazar o Verificar).
 
 export type ValorVariable = number | string;
@@ -17,11 +17,12 @@ type Nodo =
   | { k: "str"; v: string }
   | { k: "var"; v: string }
   | { k: "neg"; a: Nodo }
+  | { k: "not"; a: Nodo }
   | { k: "bin"; op: string; a: Nodo; b: Nodo };
 
-type Tipo = "numero" | "texto" | "booleano";
+export type Tipo = "numero" | "texto" | "booleano";
 
-export const OPERADORES = ["(", ")", "*", "/", "+", "-", "=", "≠", "<", "<=", ">", ">=", "AND"];
+export const OPERADORES = ["(", ")", "*", "/", "+", "-", "=", "≠", "<", "<=", ">", ">=", "AND", "OR", "NOT"];
 
 const COMPARADORES = new Set(["=", "≠", "<", "<=", ">", ">="]);
 const RE_VARIABLE = /^(?:CNET|BCRA|BURO)-[\p{L}\d_]+/u;
@@ -55,9 +56,10 @@ function tokenizar(texto: string): Token[] {
       i += fin + 1;
       continue;
     }
-    const conector = /^(?:AND|Y|I)(?![\p{L}\d_-])/iu.exec(resto);
+    const conector = /^(?:AND|Y|I|OR|O|NOT|NO)(?![\p{L}\d_-])/iu.exec(resto);
     if (conector) {
-      tokens.push({ t: "op", v: "AND" });
+      const w = conector[0].toUpperCase();
+      tokens.push({ t: "op", v: w === "AND" || w === "Y" || w === "I" ? "AND" : w === "OR" || w === "O" ? "OR" : "NOT" });
       i += conector[0].length;
       continue;
     }
@@ -82,13 +84,28 @@ function parsear(tokens: Token[]): Nodo {
   const ver = () => tokens[pos];
   const esOp = (v: string) => ver()?.t === "op" && ver().v === v;
 
-  function conjuncion(): Nodo {
-    let a = comparacion();
-    while (esOp("AND")) {
+  function disyuncion(): Nodo {
+    let a = conjuncion();
+    while (esOp("OR")) {
       pos++;
-      a = { k: "bin", op: "AND", a, b: comparacion() };
+      a = { k: "bin", op: "OR", a, b: conjuncion() };
     }
     return a;
+  }
+  function conjuncion(): Nodo {
+    let a = negacion();
+    while (esOp("AND")) {
+      pos++;
+      a = { k: "bin", op: "AND", a, b: negacion() };
+    }
+    return a;
+  }
+  function negacion(): Nodo {
+    if (esOp("NOT")) {
+      pos++;
+      return { k: "not", a: negacion() };
+    }
+    return comparacion();
   }
   function comparacion(): Nodo {
     const a = suma();
@@ -129,7 +146,7 @@ function parsear(tokens: Token[]): Nodo {
     if (t.t === "str") return { k: "str", v: t.v };
     if (t.t === "var") return { k: "var", v: t.v };
     if (t.v === "(") {
-      const n = conjuncion();
+      const n = disyuncion();
       if (!esOp(")")) throw new Error("Falta cerrar un paréntesis.");
       pos++;
       return n;
@@ -138,7 +155,7 @@ function parsear(tokens: Token[]): Nodo {
   }
 
   if (tokens.length === 0) throw new Error("Armá la expresión de la regla.");
-  const raiz = conjuncion();
+  const raiz = disyuncion();
   if (pos < tokens.length) {
     const t = tokens[pos];
     throw new Error(
@@ -164,12 +181,16 @@ function tipar(n: Nodo, tipos: Record<string, Tipo>): Tipo {
     case "neg":
       if (tipar(n.a, tipos) !== "numero") throw new Error("El signo menos sólo aplica a números.");
       return "numero";
+    case "not":
+      if (tipar(n.a, tipos) !== "booleano")
+        throw new Error("NOT niega una condición (comparación), no un valor suelto.");
+      return "booleano";
     case "bin": {
       const a = tipar(n.a, tipos);
       const b = tipar(n.b, tipos);
-      if (n.op === "AND") {
+      if (n.op === "AND" || n.op === "OR") {
         if (a !== "booleano" || b !== "booleano")
-          throw new Error("AND une dos condiciones (comparaciones), no valores sueltos.");
+          throw new Error(`${n.op} une dos condiciones (comparaciones), no valores sueltos.`);
         return "booleano";
       }
       if (COMPARADORES.has(n.op)) {
@@ -198,9 +219,14 @@ function evaluar(n: Nodo, valores: Record<string, ValorVariable | null>): ValorV
       const a = evaluar(n.a, valores);
       return a === null ? null : -(a as number);
     }
+    case "not": {
+      const a = evaluar(n.a, valores);
+      return a === null ? null : a !== true;
+    }
     case "bin": {
       const a = evaluar(n.a, valores);
       const b = evaluar(n.b, valores);
+      if (n.op === "OR") return a === true || b === true ? true : a === null || b === null ? null : false;
       if (n.op === "AND") return a === null || b === null ? null : a === true && b === true;
       if (a === null || b === null) return null;
       switch (n.op) {
@@ -232,7 +258,7 @@ function evaluar(n: Nodo, valores: Record<string, ValorVariable | null>): ValorV
 
 function variablesDe(n: Nodo, acc: string[] = []): string[] {
   if (n.k === "var" && !acc.includes(n.v)) acc.push(n.v);
-  if (n.k === "neg") variablesDe(n.a, acc);
+  if (n.k === "neg" || n.k === "not") variablesDe(n.a, acc);
   if (n.k === "bin") {
     variablesDe(n.a, acc);
     variablesDe(n.b, acc);
@@ -277,4 +303,102 @@ export function evaluarExpresion(
   } catch {
     return null;
   }
+}
+
+// --- Constructor visual de condiciones ---
+//
+// La condición se arma como un árbol de grupos (Y / O, con NO opcional) y filas
+// "variable · operador · valor". Se guarda siempre como la expresión de texto de arriba.
+
+export type CondFila = { id: string; tipo: "cond"; variable: string; op: string; valor: string };
+export type CondGrupo = {
+  id: string;
+  tipo: "grupo";
+  conector: "AND" | "OR";
+  negado: boolean;
+  hijos: CondNodo[];
+};
+export type CondNodo = CondFila | CondGrupo;
+
+let secuenciaCond = 0;
+export const idCond = () => `c${++secuenciaCond}`;
+
+export const grupoVacio = (): CondGrupo => ({
+  id: idCond(),
+  tipo: "grupo",
+  conector: "AND",
+  negado: false,
+  hijos: [],
+});
+export const filaVacia = (): CondFila => ({ id: idCond(), tipo: "cond", variable: "", op: "=", valor: "" });
+
+function aCond(n: Nodo): CondNodo | null {
+  if (n.k === "not") {
+    const i = aCond(n.a);
+    if (!i) return null;
+    if (i.tipo === "grupo") return { ...i, negado: !i.negado };
+    return { ...grupoVacio(), negado: true, hijos: [i] };
+  }
+  if (n.k === "bin" && (n.op === "AND" || n.op === "OR")) {
+    const conector = n.op;
+    const hijos: CondNodo[] = [];
+    for (const lado of [n.a, n.b]) {
+      const h = aCond(lado);
+      if (!h) return null;
+      if (h.tipo === "grupo" && !h.negado && h.conector === conector) hijos.push(...h.hijos);
+      else hijos.push(h);
+    }
+    return { ...grupoVacio(), conector, hijos };
+  }
+  if (
+    n.k === "bin" &&
+    COMPARADORES.has(n.op) &&
+    n.a.k === "var" &&
+    (n.b.k === "num" || n.b.k === "str" || n.b.k === "var")
+  )
+    return {
+      id: idCond(),
+      tipo: "cond",
+      variable: n.a.v,
+      op: n.op,
+      valor: n.b.k === "num" ? String(n.b.v) : n.b.v,
+    };
+  return null;
+}
+
+/** Árbol editable de la expresión, o null si usa algo que el constructor no representa (cuentas, etc.). */
+export function arbolDeExpresion(texto: string): CondGrupo | null {
+  if (!texto.trim()) return grupoVacio();
+  let raiz: Nodo;
+  try {
+    raiz = parsear(tokenizar(texto));
+  } catch {
+    return null;
+  }
+  const n = aCond(raiz);
+  if (!n) return null;
+  return n.tipo === "grupo" ? n : { ...grupoVacio(), hijos: [n] };
+}
+
+const RE_NUMERO = /^\d+(?:\.\d+)?$/;
+
+function valorATexto(v: string, tipo?: Tipo): string {
+  const t = v.trim();
+  if (!t) return "";
+  if (RE_VARIABLE.exec(t)?.[0] === t) return t;
+  if (tipo !== "texto" && RE_NUMERO.test(t)) return t;
+  return `"${t.replace(/"/g, "")}"`;
+}
+
+/** Expresión de texto del árbol. Una fila incompleta sale incompleta, para que la validación la marque. */
+export function condicionATexto(n: CondNodo, tipos: Record<string, Tipo> = {}, anidado = false): string {
+  if (n.tipo === "cond") {
+    if (!n.variable && !n.valor.trim()) return "";
+    return [n.variable, n.op, valorATexto(n.valor, tipos[n.variable])].filter(Boolean).join(" ");
+  }
+  const partes = n.hijos.map((h) => condicionATexto(h, tipos, true)).filter(Boolean);
+  if (partes.length === 0) return "";
+  const cuerpo = partes.join(` ${n.conector} `);
+  if (n.negado) return `NOT (${cuerpo})`;
+  return anidado && partes.length > 1 ? `(${cuerpo})` : cuerpo;
 }
