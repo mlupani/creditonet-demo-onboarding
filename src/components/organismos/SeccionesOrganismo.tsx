@@ -3,13 +3,21 @@
 import {
   CANALES,
   SISTEMAS_AMORTIZACION,
+  minimoDocumento,
   motorAsignado,
   type AsignacionMotor,
   type OverridesOrganismo,
 } from "@/lib/config";
-import { CAMPOS_POST_OFERTA, getCampo, obligatorioEfectivo } from "@/lib/campos-post-oferta";
+import { CAMPOS_POST_OFERTA, getCampo } from "@/lib/campos-post-oferta";
+import {
+  TITULO_PANTALLA_CAMPOS,
+  campoConfigurable,
+  camposConfigurablesDe,
+  esObligatorio,
+} from "@/lib/campos-config";
 import { getMotor } from "@/lib/motores";
-import { PROVEEDORES_TOKENIZACION, RUBROS, getTipoDocumento } from "@/lib/parametros";
+import { RUBROS, getTipoDocumento, nombreProveedor } from "@/lib/parametros";
+import type { PantallaPostOfertaId } from "@/lib/types";
 import {
   MODALIDADES_COBRO,
   CONDICIONES_RENOVACION,
@@ -31,7 +39,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CampoNumero, Panel, Subtitulo } from "@/components/productos/campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
-import { EditorDocumentos, EditorMotor } from "@/components/productos/editores";
+import { EditorDocumentos, EditorMotor, EditorTokenizacion } from "@/components/productos/editores";
 import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
 import { FilaExtra, FilaHerencia, Si, type CampoExtra } from "./herencia";
 
@@ -522,7 +530,7 @@ function Punitorios(props: SeccionOrgProps) {
 
 // --- 8. Formulario / legajo ---
 
-function Formulario({ o, p, set }: SeccionOrgProps) {
+function Formulario({ o, p, set, errores, ver }: SeccionOrgProps) {
   const { ov, quitarOv } = useEditores(set);
   const ovs = o.config.overrides;
   const docsProducto = p.config.onboarding.documentos;
@@ -536,9 +544,13 @@ function Formulario({ o, p, set }: SeccionOrgProps) {
     void _quitado;
     ov({ camposObligatorios: resto });
   };
-  const disponibles = CAMPOS_POST_OFERTA.filter(
-    (c) => c.origen !== "NO_MODIFICABLE" && ovs.camposObligatorios?.[c.plantilla ?? c.id] === undefined
+  // Campos de todas las pantallas del onboarding (los que exige el proveedor no se pueden relajar).
+  const disponibles = (Object.keys(TITULO_PANTALLA_CAMPOS) as PantallaPostOfertaId[]).flatMap((pantalla) =>
+    camposConfigurablesDe(pantalla)
+      .filter((c) => !c.fijo && ovs.camposObligatorios?.[c.id] === undefined)
+      .map((c) => ({ ...c, pantalla }))
   );
+  const baseObligatorios = p.config.onboarding.camposObligatorios;
 
   return (
     <Panel
@@ -558,7 +570,7 @@ function Formulario({ o, p, set }: SeccionOrgProps) {
                 {getTipoDocumento(d.tipoId).nombre}
                 <span className="text-xs text-ink-500">
                   {d.obligatorio ? " · obligatorio" : " · opcional"}
-                  {d.multiple ? " · varias imágenes" : ""}
+                  {` · ${d.obligatorio ? `mín. ${minimoDocumento(d)} · ` : ""}máx. ${d.maximo}`}
                 </span>
               </li>
             ))}
@@ -566,7 +578,11 @@ function Formulario({ o, p, set }: SeccionOrgProps) {
         }
         editor={
           ovs.documentos ? (
-            <EditorDocumentos docs={ovs.documentos} onChange={(documentos) => ov({ documentos })} />
+            <EditorDocumentos
+              docs={ovs.documentos}
+              onChange={(documentos) => ov({ documentos })}
+              error={ver ? errores.documentos : undefined}
+            />
           ) : null
         }
         onCrear={() => ov({ documentos: structuredClone(docsProducto) })}
@@ -576,14 +592,16 @@ function Formulario({ o, p, set }: SeccionOrgProps) {
       <div className="space-y-3">
         <Subtitulo>Campos obligatorios</Subtitulo>
         {camposEx.map(([id, valor]) => {
-          const campo = getCampo(id);
-          const base = campo
-            ? obligatorioEfectivo(campo, p.config.onboarding.camposObligatorios)
-            : false;
+          const encontrado = campoConfigurable(id);
+          const base = encontrado ? esObligatorio(encontrado.campo, baseObligatorios) : false;
           return (
             <FilaHerencia
               key={id}
-              etiqueta={campo?.label ?? id}
+              etiqueta={
+                encontrado
+                  ? `${encontrado.campo.label} (${TITULO_PANTALLA_CAMPOS[encontrado.pantalla].toLowerCase()})`
+                  : id
+              }
               productoNombre={p.config.nombre}
               heredado={base ? "Obligatorio" : "Opcional"}
               editor={
@@ -651,12 +669,12 @@ function Formulario({ o, p, set }: SeccionOrgProps) {
           value=""
           placeholder="Elegí un campo del formulario…"
           onChange={(id) => {
-            const c = getCampo(id);
-            if (c) setCampo(id, !obligatorioEfectivo(c, p.config.onboarding.camposObligatorios));
+            const c = campoConfigurable(id);
+            if (c) setCampo(id, !esObligatorio(c.campo, baseObligatorios));
           }}
           options={disponibles.map((c) => ({
             value: c.id,
-            label: `${c.label} (${c.pantalla === "personales" ? "personales" : "laborales"})`,
+            label: `${c.label} (${TITULO_PANTALLA_CAMPOS[c.pantalla].toLowerCase()})`,
           }))}
         />
       </div>
@@ -672,7 +690,7 @@ function Onboarding({ o, p, set, errores, ver }: SeccionOrgProps) {
   const ob = p.config.onboarding;
   const pantallas = [...ob.pantallas].sort((a, b) => a.orden - b.orden);
 
-  const setPantalla = (id: string, patch: { visible?: boolean; obligatoria?: boolean }) =>
+  const setPantalla = (id: string, patch: { visible?: boolean }) =>
     ov({
       pantallas: {
         ...ovs.pantallas,
@@ -719,7 +737,6 @@ function Onboarding({ o, p, set, errores, ver }: SeccionOrgProps) {
         {pantallas.map((s) => {
           const propio = ovs.pantallas?.[s.id];
           const visible = propio?.visible ?? s.visible;
-          const obligatoria = propio?.obligatoria ?? s.obligatoria;
           return (
             <FilaHerencia
               key={s.id}
@@ -727,27 +744,20 @@ function Onboarding({ o, p, set, errores, ver }: SeccionOrgProps) {
               productoNombre={p.config.nombre}
               heredado={
                 <span>
-                  Habilitada <Si valor={s.visible} /> · Obligatoria <Si valor={s.obligatoria} />
+                  Habilitada <Si valor={s.visible} />
                 </span>
               }
               editor={
                 propio ? (
-                  <div className="flex flex-wrap gap-5">
-                    <Checkbox
-                      checked={visible}
-                      onChange={(v) => setPantalla(s.id, { visible: v })}
-                      label="Habilitada"
-                    />
-                    <Checkbox
-                      checked={obligatoria}
-                      disabled={!visible}
-                      onChange={(v) => setPantalla(s.id, { obligatoria: v })}
-                      label="Obligatoria"
-                    />
-                  </div>
+                  <Checkbox
+                    checked={visible}
+                    onChange={(v) => setPantalla(s.id, { visible: v })}
+                    label="Habilitada"
+                    description="Una pantalla habilitada es obligatoria."
+                  />
                 ) : null
               }
-              onCrear={() => setPantalla(s.id, { visible: s.visible, obligatoria: s.obligatoria })}
+              onCrear={() => setPantalla(s.id, { visible: s.visible })}
               onQuitar={() => quitarPantalla(s.id)}
             />
           );
@@ -815,29 +825,28 @@ function Onboarding({ o, p, set, errores, ver }: SeccionOrgProps) {
         <FilaHerencia
           etiqueta="Tokenización"
           productoNombre={p.config.nombre}
-          heredado={`Hasta ${ob.tokenizacion.maximoTarjetas} tarjeta${ob.tokenizacion.maximoTarjetas === 1 ? "" : "s"} · ${
-            PROVEEDORES_TOKENIZACION.find((x) => x.id === ob.tokenizacion.proveedorId)?.nombre ?? ob.tokenizacion.proveedorId
-          }`}
+          ayuda="Con excepción, esta lista de proveedores reemplaza a la del producto."
+          heredado={
+            ob.tokenizacion.proveedores.length === 0
+              ? "Sin proveedores"
+              : ob.tokenizacion.proveedores
+                  .map(
+                    (b) =>
+                      `${nombreProveedor(b.proveedorId)}: mín. ${b.minimo} · máx. ${b.maximo}`
+                  )
+                  .join(" · ")
+          }
+          error={ver ? errores.tokenizacion : undefined}
           editor={
             ovs.tokenizacion ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <CampoNumero
-                  id="o-tok-max"
-                  label="Máximo de tarjetas"
-                  value={ovs.tokenizacion.maximoTarjetas ?? ob.tokenizacion.maximoTarjetas}
-                  onChange={(v) => ov({ tokenizacion: { ...ovs.tokenizacion, maximoTarjetas: v } })}
-                />
-                <SelectField
-                  id="o-tok-prov"
-                  label="Proveedor"
-                  value={ovs.tokenizacion.proveedorId ?? ob.tokenizacion.proveedorId}
-                  onChange={(v) => ov({ tokenizacion: { ...ovs.tokenizacion, proveedorId: v } })}
-                  options={PROVEEDORES_TOKENIZACION.map((x) => ({ value: x.id, label: x.nombre }))}
-                />
-              </div>
+              <EditorTokenizacion
+                idBase="o-tok"
+                valor={ovs.tokenizacion}
+                onChange={(tokenizacion) => ov({ tokenizacion })}
+              />
             ) : null
           }
-          onCrear={() => ov({ tokenizacion: { ...ob.tokenizacion } })}
+          onCrear={() => ov({ tokenizacion: structuredClone(ob.tokenizacion) })}
           onQuitar={() => quitarOv("tokenizacion")}
         />
       </div>
@@ -991,6 +1000,8 @@ export const SECCION_DE_ERROR_ORG: Record<string, string> = {
   capitalMaximo: "permisos",
   referencias: "onboarding",
   garantes: "onboarding",
+  tokenizacion: "onboarding",
+  documentos: "formulario",
   canales: "canales",
 };
 

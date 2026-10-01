@@ -1,8 +1,6 @@
 "use client";
 
 import { CANALES, ORGANISMOS, VENDEDORES, type ProductoConfig } from "@/lib/config";
-import { CAMPOS_POST_OFERTA, obligatorioEfectivo } from "@/lib/campos-post-oferta";
-import { PROVEEDORES_TOKENIZACION } from "@/lib/parametros";
 import {
   CATEGORIAS_PRODUCTO,
   CONDICIONES_RENOVACION,
@@ -24,12 +22,14 @@ import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { CampoNumero, Panel, Subtitulo } from "./campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
 import {
+  EditorCamposObligatorios,
   EditorDocumentos,
   EditorGestion,
   EditorMotor,
   EditorNotificaciones,
   EditorRecalculoNeto,
   EditorSeleccion,
+  EditorTokenizacion,
   EditorTramos,
 } from "./editores";
 import { ESTADO_PRODUCTO_META } from "./ListaProductos";
@@ -432,13 +432,6 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
     });
   }
 
-  function cambiarCampo(id: string, obligatorio: boolean, porDefecto: boolean) {
-    const mapa = { ...ob.camposObligatorios };
-    if (obligatorio === porDefecto) delete mapa[id];
-    else mapa[id] = obligatorio;
-    setOb({ camposObligatorios: mapa });
-  }
-
   return (
     <Panel
       titulo="Configuración del onboarding"
@@ -483,19 +476,12 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
                 <p className="text-sm font-semibold text-ink-900">{s.label}</p>
                 <p className="text-xs text-ink-500">{s.descripcion}</p>
               </div>
-              <div className="flex gap-5">
-                <Checkbox
-                  checked={s.visible}
-                  onChange={(v) => cambiarPantalla(s.id, { visible: v })}
-                  label="Habilitada"
-                />
-                <Checkbox
-                  checked={s.obligatoria}
-                  disabled={!s.visible}
-                  onChange={(v) => cambiarPantalla(s.id, { obligatoria: v })}
-                  label="Obligatoria"
-                />
-              </div>
+              <Checkbox
+                checked={s.visible}
+                onChange={(v) => cambiarPantalla(s.id, { visible: v })}
+                label="Habilitada"
+                description="Una pantalla habilitada es obligatoria."
+              />
             </li>
           ))}
         </ul>
@@ -514,29 +500,11 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
         <p className="text-xs text-ink-500">
           Marcado = obligatorio. Sólo se guardan los campos que se apartan del valor por defecto.
         </p>
-        {(["personales", "laboral"] as const).map((pantalla) => {
-          const campos = CAMPOS_POST_OFERTA.filter(
-            (c) => c.pantalla === pantalla && c.origen !== "NO_MODIFICABLE"
-          );
-          return (
-            <details key={pantalla} className="rounded-xl border border-ink-200 bg-white">
-              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink-800">
-                {pantalla === "personales" ? "Datos personales" : "Datos laborales"} ·{" "}
-                {campos.length} campos
-              </summary>
-              <div className="grid gap-x-6 gap-y-3 border-t border-ink-100 px-4 py-4 sm:grid-cols-2">
-                {campos.map((c) => (
-                  <Checkbox
-                    key={c.id}
-                    checked={obligatorioEfectivo(c, ob.camposObligatorios)}
-                    onChange={(v) => cambiarCampo(c.id, v, c.obligatorio)}
-                    label={c.label}
-                  />
-                ))}
-              </div>
-            </details>
-          );
-        })}
+        <EditorCamposObligatorios
+          obligatorios={ob.camposObligatorios}
+          onChange={(camposObligatorios) => setOb({ camposObligatorios })}
+          habilitadas={pantallas.filter((s) => s.visible).map((s) => s.id)}
+        />
       </div>
 
       <div className="space-y-3">
@@ -568,21 +536,18 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
             value={ob.garantes.maximo}
             onChange={(v) => setOb({ garantes: { ...ob.garantes, maximo: v } })}
           />
-          <CampoNumero
-            id="p-tok-max"
-            label="Tarjetas tokenizadas · máximo"
-            value={ob.tokenizacion.maximoTarjetas}
-            onChange={(v) => setOb({ tokenizacion: { ...ob.tokenizacion, maximoTarjetas: v } })}
-            error={ver ? errores.tokenizacion : undefined}
-          />
-          <SelectField
-            id="p-tok-proveedor"
-            label="Proveedor de tokenización"
-            value={ob.tokenizacion.proveedorId}
-            onChange={(v) => setOb({ tokenizacion: { ...ob.tokenizacion, proveedorId: v } })}
-            options={PROVEEDORES_TOKENIZACION.map((x) => ({ value: x.id, label: x.nombre }))}
-          />
         </Grilla>
+        <Subtitulo>Tokenización · mínimo de tarjetas por proveedor</Subtitulo>
+        <p className="text-xs text-ink-500">
+          Repetí el bloque para pedir un mínimo por proveedor: por ejemplo, 1 de A y 2 de B. El
+          onboarding valida cada mínimo por separado.
+        </p>
+        <EditorTokenizacion
+          idBase="p-tok"
+          valor={ob.tokenizacion}
+          onChange={(tokenizacion) => setOb({ tokenizacion })}
+          error={ver ? errores.tokenizacion : undefined}
+        />
       </div>
 
       <div className="space-y-4">
@@ -670,19 +635,20 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
 
 // --- 9. Legajo ---
 
-function Legajo({ p, set }: SeccionProps) {
+function Legajo({ p, set, errores, ver }: SeccionProps) {
   const { cf } = useEditores(set);
   const ob = p.config.onboarding;
   return (
     <Panel
       titulo="Legajo"
-      descripcion="Documentos que forman el legajo virtual, obligatoriedad y carga múltiple (Producto §7 bis)."
+      descripcion="Documentos que forman el legajo virtual, obligatoriedad y cantidad mínima y máxima por ítem (Producto §7 bis)."
       vivo
       nota="El organismo puede reemplazar esta lista con su propia documentación."
     >
       <EditorDocumentos
         docs={ob.documentos}
         onChange={(documentos) => cf({ onboarding: { ...ob, documentos } })}
+        error={ver ? errores.documentos : undefined}
       />
     </Panel>
   );
@@ -760,6 +726,7 @@ export const SECCION_DE_ERROR: Record<string, string> = {
   referencias: "onboarding",
   garantes: "onboarding",
   tokenizacion: "onboarding",
+  documentos: "legajo",
   renovacionMinCuotasPagas: "onboarding",
   renovacionMinPctPagado: "onboarding",
 };

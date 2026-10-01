@@ -18,10 +18,13 @@ import {
   excepcionesDe,
   PRODUCTOS_CONFIG,
   VENDEDORES,
+  type DocumentoConfig,
   type EstadoProducto,
   type ProductoConfig,
+  type TokenizacionConfig,
 } from "./config";
 import { fechaHoy, parseFecha } from "./format";
+import { getTipoDocumento } from "./parametros";
 
 // --- Catálogos de las listas del ABM ---
 
@@ -266,7 +269,7 @@ function estadoInicial(): ProductoAbm[] {
 
 // --- Store ---
 
-const CLAVE = "creditonet.productos.v6";
+const CLAVE = "creditonet.productos.v7";
 const INICIAL = estadoInicial();
 let registros: ProductoAbm[] = INICIAL;
 const oyentes = new Set<() => void>();
@@ -433,6 +436,33 @@ export function textoVigencia(c: { vigenciaDesde: string; vigenciaHasta: string 
 
 // --- Validación (por campo) ---
 
+// Bloques de tokenización: proveedores sin repetir, mínimo ≥ 0 y máximo ≥ 1 y ≥ mínimo.
+// Lo usan el ABM de Productos y el de Organismos (excepción).
+export function errorTokenizacion(t: TokenizacionConfig): string | null {
+  const ids = new Set<string>();
+  for (const b of t.proveedores) {
+    if (!b.proveedorId) return "Elegí el proveedor de cada bloque.";
+    if (ids.has(b.proveedorId)) return "No se puede repetir un proveedor: unificá sus mínimos en un solo bloque.";
+    ids.add(b.proveedorId);
+    if (!Number.isInteger(b.minimo) || b.minimo < 0) return "El mínimo de tarjetas no puede ser negativo.";
+    if (!Number.isInteger(b.maximo) || b.maximo < 1) return "El máximo de tarjetas por proveedor es 1 o más.";
+    if (b.minimo > b.maximo) return "El mínimo de tarjetas supera al máximo.";
+  }
+  return null;
+}
+
+// Documentos del legajo: obligatorio ⇒ mínimo ≥ 1; máximo ≥ 1 y ≥ mínimo.
+export function errorDocumentos(docs: DocumentoConfig[]): string | null {
+  for (const d of docs) {
+    const nombre = getTipoDocumento(d.tipoId).nombre;
+    if (!Number.isInteger(d.maximo) || d.maximo < 1) return `${nombre}: el máximo es 1 o más.`;
+    if (!Number.isInteger(d.minimo) || d.minimo < 0) return `${nombre}: el mínimo no puede ser negativo.`;
+    if (d.obligatorio && d.minimo < 1) return `${nombre}: si es obligatorio el mínimo es 1 o más.`;
+    if (d.minimo > d.maximo) return `${nombre}: el mínimo supera al máximo.`;
+  }
+  return null;
+}
+
 export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<string, string> {
   const e: Record<string, string> = {};
   const c = p.config;
@@ -457,7 +487,15 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
   if (ob.referencias.minimo > ob.referencias.maximo)
     e.referencias = "El mínimo de referencias supera al máximo.";
   if (ob.garantes.minimo > ob.garantes.maximo) e.garantes = "El mínimo de garantes supera al máximo.";
-  if (ob.tokenizacion.maximoTarjetas < 0) e.tokenizacion = "El máximo de tarjetas no puede ser negativo.";
+  const tokenizacionHabilitada = ob.pantallas.some((s) => s.id === "tokenizacion" && s.visible);
+  const tok =
+    errorTokenizacion(ob.tokenizacion) ??
+    (tokenizacionHabilitada && ob.tokenizacion.proveedores.length === 0
+      ? "Agregá al menos un proveedor o deshabilitá la pantalla de tokenización."
+      : null);
+  if (tok) e.tokenizacion = tok;
+  const doc = errorDocumentos(ob.documentos);
+  if (doc) e.documentos = doc;
   if (!ob.pantallas.some((s) => s.visible))
     e.pantallas = "Al menos una pantalla de onboarding tiene que estar habilitada.";
 

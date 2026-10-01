@@ -21,7 +21,7 @@ import {
   CAPITAL_MAXIMO_CON_PRECANCELACION,
   recalcularOferta,
 } from "./credit";
-import { configEfectiva } from "./config";
+import { configEfectiva, minimoDocumento } from "./config";
 import { bancosDe, camposDe, unirBancos } from "./campos-post-oferta";
 import { maskCuit, maskDNI, onlyDigits } from "./format";
 
@@ -911,6 +911,7 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
             id: "tarjeta-precargada",
             via: "BASE_INTERNA",
             estado: "TOKENIZADA",
+            proveedorId: configEfectiva(app.configuracion).tokenizacion.proveedores[0]?.proveedorId,
             verificada: false,
             enviadoA: null,
             tipo: tg.tipo,
@@ -975,7 +976,11 @@ export function precargarPostOferta(app: CreditApplication): PostOferta {
       .filter((d) => d.obligatorio && !PENDIENTES.has(d.tipoId))
       .map((d) => [
         d.tipoId,
-        [{ id: `${d.tipoId}-1`, nombre: `${d.tipoId.replace(/-/g, "_")}_1.jpg`, detalle: "1.1 MB · Hoy" }],
+        Array.from({ length: minimoDocumento(d) }, (_, i) => ({
+          id: `${d.tipoId}-${i + 1}`,
+          nombre: `${d.tipoId.replace(/-/g, "_")}_${i + 1}.jpg`,
+          detalle: "1.1 MB · Hoy",
+        })),
       ])
   );
   const conGarantias = cfg.pantallas.some((p) => p.id === "garantias" && p.visible);

@@ -293,9 +293,10 @@ interface ApplicationContextValue {
   irAPostOferta: () => void;
 
   setCampo: (pantalla: PantallaConCampos, campoId: string, valor: string) => void;
-  enviarLinkWhatsApp: () => void;
+  enviarLinkWhatsApp: (proveedorId: string) => void;
   simularCompletaCliente: (tarjetaId: string) => void;
   tokenizarPresencial: (datos: {
+    proveedorId: string;
     tipo: TipoTarjeta;
     marca: string;
     numero: string;
@@ -1200,13 +1201,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // El link del formulario se comparte por WhatsApp al celular precargado: WhatsApp no es una
   // integración del flujo, sólo el medio para compartirlo.
-  const enviarLinkWhatsApp = useCallback(() => {
+  const enviarLinkWhatsApp = useCallback((proveedorId: string) => {
     setApp((prev) => {
       const p = prev.postOferta.personales;
       const tarjeta: TarjetaTokenizada = {
         id: `tarjeta-${Date.now()}`,
         via: "WHATSAPP",
         estado: "ESPERANDO_CLIENTE",
+        proveedorId,
         enviadoA: formatTelefono(
           p["telefono.pais"] ?? "",
           p["telefono.caracteristica"] ?? "",
@@ -1260,6 +1262,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const tokenizarPresencial = useCallback(
     (datos: {
+      proveedorId: string;
       tipo: TipoTarjeta;
       marca: string;
       numero: string;
@@ -1274,6 +1277,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id,
           via: "PRESENCIAL",
           estado: "TOKENIZADA",
+          proveedorId: datos.proveedorId,
           enviadoA: null,
           tipo: datos.tipo,
           marca: datos.marca,

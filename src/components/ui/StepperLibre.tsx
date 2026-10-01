@@ -8,13 +8,12 @@ export interface PasoLibre {
   id: PantallaPostOfertaId;
   numero: number;
   label: string;
-  obligatoria: boolean;
   estado: EstadoVisualPantalla;
   // El analista observó justamente esta pantalla: se resalta para ir derecho a ella.
   observada?: boolean;
   // Corrección puntual: sólo se puede entrar a las pantallas observadas, el resto se bloquea.
   bloqueada?: boolean;
-  // Reemplaza el detalle por defecto ("Completa · Obligatoria", etc.) bajo el nombre.
+  // Reemplaza el detalle por defecto ("Completa", etc.) bajo el nombre.
   detalle?: string;
 }
 
@@ -116,8 +115,7 @@ export function StepperLibre({
                       ? "Bloqueada"
                       : paso.observada
                         ? "A corregir"
-                        : (paso.detalle ??
-                          `${DETALLE[paso.estado]} · ${paso.obligatoria ? "Obligatoria" : "Opcional"}`)}
+                        : (paso.detalle ?? DETALLE[paso.estado])}
                   </span>
                 </span>
               </button>

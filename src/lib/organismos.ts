@@ -24,6 +24,8 @@ import {
 import {
   alCambiarProductos,
   asignarProductosAOrganismo,
+  errorDocumentos,
+  errorTokenizacion,
   getProductos,
   type ExtrasProducto,
 } from "./productos";
@@ -190,7 +192,7 @@ function productosDe(organismoId: string): string[] {
 }
 
 const store = crearStoreAbm<OrganismoAbm>({
-  clave: "creditonet.organismos.v5",
+  clave: "creditonet.organismos.v6",
   inicial: estadoInicial(),
   valido: (r) => !!r?.config?.id && !!r.config.excepciones && !!r.extras,
   aplicar: (lista) => {
@@ -485,6 +487,10 @@ export function validarOrganismo(o: OrganismoAbm, todos: OrganismoAbm[]): Record
       e[`referencias@${productoId}`] = "El mínimo de referencias supera al máximo.";
     if (ov.garantes && (ov.garantes.minimo ?? 0) > (ov.garantes.maximo ?? Infinity))
       e[`garantes@${productoId}`] = "El mínimo de garantes supera al máximo.";
+    const errorTok = ov.tokenizacion && errorTokenizacion(ov.tokenizacion);
+    if (errorTok) e[`tokenizacion@${productoId}`] = errorTok;
+    const errorDocs = ov.documentos && errorDocumentos(ov.documentos);
+    if (errorDocs) e[`documentos@${productoId}`] = errorDocs;
     if (exc.canales && exc.canales.length === 0)
       e[`canales@${productoId}`] = "Habilitá al menos un canal o volvé a heredar los del producto.";
   }
