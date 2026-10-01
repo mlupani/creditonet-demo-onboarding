@@ -183,12 +183,14 @@ function DatosGenerales({ o, set, errores, ver }: SeccionOrgProps) {
 function Productos({ o, productos, set }: SeccionOrgProps) {
   const { cf } = useEditores(set);
   const habilitados = o.config.productos;
+  // Los borradores también se vinculan acá: es la única forma de poder activarlos.
+  const vinculable = (p: ProductoAbm) => p.config.estado === "ACTIVO" || p.config.estado === "BORRADOR";
   return (
     <Panel
       titulo="Productos habilitados"
       descripcion="Qué productos ofrece este organismo a su colectivo (Producto §5)."
       vivo
-      nota="Sólo se pueden vincular productos activos. Las excepciones se definen después, producto por producto."
+      nota="Sólo se pueden vincular productos activos o en borrador (un borrador necesita al menos un organismo para activarse). Las excepciones se definen después, producto por producto."
     >
       {habilitados.length === 0 && (
         <Banner tone="warning" title="El organismo no ofrece ningún producto">
@@ -197,13 +199,13 @@ function Productos({ o, productos, set }: SeccionOrgProps) {
       )}
       <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200">
         {productos
-          .filter((p) => p.config.estado === "ACTIVO" || habilitados.includes(p.config.id))
+          .filter((p) => vinculable(p) || habilitados.includes(p.config.id))
           .map((p) => (
             <li key={p.config.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1 basis-56">
                 <Checkbox
                   checked={habilitados.includes(p.config.id)}
-                  disabled={p.config.estado !== "ACTIVO" && !habilitados.includes(p.config.id)}
+                  disabled={!vinculable(p) && !habilitados.includes(p.config.id)}
                   onChange={(v) =>
                     cf({
                       productos: v

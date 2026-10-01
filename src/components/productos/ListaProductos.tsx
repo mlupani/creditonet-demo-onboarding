@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import type { EstadoProducto } from "@/lib/config";
+import type { EstadoProducto, EstadoProductoAbm } from "@/lib/config";
 import { parseFecha } from "@/lib/format";
 import {
   cambiarEstadoProducto,
@@ -14,6 +14,7 @@ import {
   type ProductoAbm,
 } from "@/lib/productos";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -23,15 +24,16 @@ import { IconArrowDown, IconChevronDown, IconPlus, IconSearch } from "@/componen
 type Campo = "codigo" | "nombre" | "estado" | "vigencia";
 
 export const ESTADO_PRODUCTO_META: Record<
-  EstadoProducto,
+  EstadoProductoAbm,
   { label: string; grupo: string; tone: "success" | "warning" | "neutral" }
 > = {
+  BORRADOR: { label: "Borrador", grupo: "Borradores", tone: "neutral" },
   ACTIVO: { label: "Activo", grupo: "Activos", tone: "success" },
   SUSPENDIDO: { label: "Suspendido", grupo: "Suspendidos", tone: "warning" },
   ELIMINADO: { label: "Eliminado", grupo: "Eliminados", tone: "neutral" },
 };
 
-const ORDEN_ESTADOS: EstadoProducto[] = ["ACTIVO", "SUSPENDIDO", "ELIMINADO"];
+const ORDEN_ESTADOS: EstadoProductoAbm[] = ["BORRADOR", "ACTIVO", "SUSPENDIDO", "ELIMINADO"];
 
 // Anchos fijos para que las columnas queden alineadas entre los tres grupos.
 const COLUMNAS: { campo: Campo; label: string; ancho: string }[] = [
@@ -88,9 +90,11 @@ export function ListaProductos() {
   const { hidratado } = useApplication();
   const productos = useProductos();
   const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState<EstadoProducto | "">("");
+  const [filtro, setFiltro] = useState<EstadoProductoAbm | "">("");
   const [orden, setOrden] = useState<{ campo: Campo; asc: boolean }>({ campo: "codigo", asc: true });
-  const [abiertos, setAbiertos] = useState<Record<EstadoProducto, boolean>>({
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
+  const [abiertos, setAbiertos] = useState<Record<EstadoProductoAbm, boolean>>({
+    BORRADOR: true,
     ACTIVO: true,
     SUSPENDIDO: false,
     ELIMINADO: false,
@@ -129,9 +133,10 @@ export function ListaProductos() {
 
   const abrir = (p: ProductoAbm) => router.push(`/productos/${p.config.id}`);
   const cambiar = (p: ProductoAbm, estado: EstadoProducto) => {
-    if (estado === "ACTIVO" || (estado === "SUSPENDIDO" && p.config.estado === "ELIMINADO"))
-      cambiarEstadoProducto(p.config.id, estado);
-    else setPendiente({ id: p.config.id, estado });
+    if (estado === "ACTIVO" || (estado === "SUSPENDIDO" && p.config.estado === "ELIMINADO")) {
+      const r = cambiarEstadoProducto(p.config.id, estado);
+      setErrorEstado(r.ok ? null : `${p.config.nombre}: ${r.error}`);
+    } else setPendiente({ id: p.config.id, estado });
   };
   const productoPendiente = productos.find((p) => p.config.id === pendiente?.id);
   const textoPendiente = pendiente ? (TEXTO_ACCION[pendiente.estado] ?? null) : null;
@@ -171,7 +176,7 @@ export function ListaProductos() {
         </div>
         <select
           value={filtro}
-          onChange={(e) => setFiltro(e.target.value as EstadoProducto | "")}
+          onChange={(e) => setFiltro(e.target.value as EstadoProductoAbm | "")}
           aria-label="Filtrar por estado"
           className="h-10 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-700 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         >
@@ -190,6 +195,11 @@ export function ListaProductos() {
       </div>
 
       <div className="mt-5 space-y-4">
+        {errorEstado && (
+          <Banner tone="error" title="No se pudo activar el producto">
+            {errorEstado}
+          </Banner>
+        )}
         {!hidratado ? (
           <Card className="px-5 py-8 text-center text-sm text-ink-400">Cargando…</Card>
         ) : (
@@ -301,7 +311,7 @@ export function ListaProductos() {
                                       Suspender
                                     </Button>
                                   )}
-                                  {p.config.estado === "SUSPENDIDO" && (
+                                  {(p.config.estado === "SUSPENDIDO" || p.config.estado === "BORRADOR") && (
                                     <Button size="sm" variant="ghost" onClick={() => cambiar(p, "ACTIVO")}>
                                       Activar
                                     </Button>

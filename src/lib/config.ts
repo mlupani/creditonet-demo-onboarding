@@ -67,10 +67,30 @@ export const CANALES: OpcionCatalogo[] = [
   { id: "digital", nombre: "Canal digital", detalle: "Solicitud iniciada desde la web o la app" },
 ];
 
-export const VENDEDORES: OpcionCatalogo[] = [
-  { id: "juan-perez", nombre: "Juan Pérez", detalle: "Legajo V-118 · CreditoNet Casa Central" },
-  { id: "ana-torres", nombre: "Ana Torres", detalle: "Legajo V-142 · CreditoNet Casa Central" },
-  { id: "carlos-ruiz", nombre: "Carlos Ruiz", detalle: "Legajo V-097 · Sucursal Nueva Córdoba" },
+// Cada vendedor está vinculado a los canales en los que opera.
+export interface Vendedor extends OpcionCatalogo {
+  canales: string[];
+}
+
+export const VENDEDORES: Vendedor[] = [
+  {
+    id: "juan-perez",
+    nombre: "Juan Pérez",
+    detalle: "Legajo V-118 · CreditoNet Casa Central",
+    canales: ["sucursal"],
+  },
+  {
+    id: "ana-torres",
+    nombre: "Ana Torres",
+    detalle: "Legajo V-142 · CreditoNet Casa Central",
+    canales: ["digital"],
+  },
+  {
+    id: "carlos-ruiz",
+    nombre: "Carlos Ruiz",
+    detalle: "Legajo V-097 · Sucursal Nueva Córdoba",
+    canales: ["sucursal"],
+  },
 ];
 
 // --- Plan de cuotas / Línea (§2.3) ---
@@ -484,6 +504,8 @@ function pantallas(cambios: CambiosPantalla = {}): PantallaPostOfertaConfig[] {
 // Alta, baja y suspensión lógicas: un producto eliminado se conserva para las solicitudes que
 // ya lo usaron, pero deja de ofrecerse.
 export type EstadoProducto = "ACTIVO" | "SUSPENDIDO" | "ELIMINADO";
+// El producto además puede estar en borrador: se arma sin ofrecerse hasta activarlo.
+export type EstadoProductoAbm = EstadoProducto | "BORRADOR";
 
 // Motor §9: qué motor (grupo de reglas) corresponde según el cliente. Prioridad: tipo de cliente
 // (si se lo distingue) → condición laboral → situación BCRA → situación en buró interno →
@@ -527,7 +549,7 @@ export function motorAsignado(
 export interface ProductoConfig {
   id: string;
   nombre: string;
-  estado: EstadoProducto;
+  estado: EstadoProductoAbm;
   // Vigencia comercial (dd/mm/aaaa). Fuera de este rango el producto no se ofrece.
   vigenciaDesde: string;
   vigenciaHasta: string | null;

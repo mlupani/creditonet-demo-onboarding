@@ -62,6 +62,7 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
   const [intentado, setIntentado] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [pendiente, setPendiente] = useState<EstadoProducto | null>(null);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
 
   const errores = validarProducto(borrador, todos);
   const seccionesConError = new Set(Object.keys(errores).map((k) => SECCION_DE_ERROR[k]));
@@ -94,8 +95,9 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
 
   // El estado se aplica directo: no forma parte de los cambios pendientes de guardar.
   function aplicarEstado(estado: EstadoProducto) {
-    cambiarEstadoProducto(registro.config.id, estado);
-    setBorrador((b) => ({ ...b, config: { ...b.config, estado } }));
+    const r = cambiarEstadoProducto(registro.config.id, estado);
+    setErrorEstado(r.ok ? null : r.error);
+    if (r.ok) setBorrador((b) => ({ ...b, config: { ...b.config, estado } }));
   }
 
   function pedirEstado(estado: EstadoProducto) {
@@ -132,7 +134,7 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
               Suspender
             </Button>
           )}
-          {registro.config.estado === "SUSPENDIDO" && (
+          {(registro.config.estado === "SUSPENDIDO" || registro.config.estado === "BORRADOR") && (
             <Button variant="outline" onClick={() => pedirEstado("ACTIVO")}>
               Activar
             </Button>
@@ -149,7 +151,17 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
         </div>
       </div>
 
-      {registro.config.estado !== "ACTIVO" ? (
+      {errorEstado && (
+        <Banner tone="error" title="No se pudo activar el producto" className="mb-3">
+          {errorEstado}
+        </Banner>
+      )}
+      {registro.config.estado === "BORRADOR" ? (
+        <Banner tone="warning" title="Producto en borrador">
+          No se ofrece en Solicitar crédito. Para activarlo tiene que estar vinculado al menos a un
+          organismo.
+        </Banner>
+      ) : registro.config.estado !== "ACTIVO" ? (
         <Banner
           tone="warning"
           title={registro.config.estado === "ELIMINADO" ? "Producto eliminado" : "Producto suspendido"}
