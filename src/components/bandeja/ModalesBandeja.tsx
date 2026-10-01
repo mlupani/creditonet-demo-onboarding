@@ -10,6 +10,10 @@ import {
   planDeSolicitud,
 } from "@/lib/credit";
 import { pantallasVisibles } from "@/lib/config";
+import { useRol } from "@/lib/rol-context";
+import { esSuperior } from "@/lib/roles";
+import { correrFecha, etiquetaCorrimiento } from "@/lib/corrimiento";
+import type { UnidadCorrimiento } from "@/lib/types";
 import { formatARS, formatDNI } from "@/lib/format";
 import { SESION_CHEQUEADOR } from "@/lib/config";
 import { historialCredito, ladosDeChat, perfilDeAutor, textoChequeo } from "@/lib/historial";
@@ -57,9 +61,78 @@ export function CerrarFooter({ onClose }: { onClose: () => void }) {
   );
 }
 
+// Corrimiento del cronograma (creditonet-120): sólo lo ve y ejecuta el supervisor.
+function CorrerCronograma() {
+  const { app, correrCronograma } = useApplication();
+  const [cantidad, setCantidad] = useState("");
+  const [unidad, setUnidad] = useState<UnidadCorrimiento>("DIAS");
+  const n = Number(cantidad);
+  const valido = Number.isInteger(n) && n !== 0;
+  const nuevo = valido ? correrFecha(app.oferta.primeraCuotaVencimiento, n, unidad) : null;
+  const corrimientos = app.corrimientos ?? [];
+
+  return (
+    <Seccion titulo="Correr cronograma (supervisor)">
+      <div className="rounded-xl border border-ink-200 px-4 py-3">
+        <p className="text-xs text-ink-500">
+          Desplaza la fecha de la cuota 1 y el resto del desarrollo del préstamo. Usá un valor negativo para
+          adelantar. Primer vencimiento actual:{" "}
+          <strong className="text-ink-900">{app.oferta.primeraCuotaVencimiento || "—"}</strong>
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="text-xs text-ink-500">
+            Cantidad
+            <input
+              type="number"
+              step={1}
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+              className="mt-1 block h-10 w-28 rounded-lg border border-ink-300 px-3 text-sm text-ink-900"
+            />
+          </label>
+          <label className="text-xs text-ink-500">
+            Unidad
+            <select
+              value={unidad}
+              onChange={(e) => setUnidad(e.target.value as UnidadCorrimiento)}
+              className="mt-1 block h-10 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-900"
+            >
+              <option value="DIAS">Días</option>
+              <option value="MESES">Meses</option>
+            </select>
+          </label>
+          <Button
+            variant="primary"
+            disabled={!nuevo}
+            onClick={() => correrCronograma(n, unidad) && setCantidad("")}
+          >
+            Aplicar corrimiento
+          </Button>
+        </div>
+        {nuevo && (
+          <p className="mt-2 text-xs text-ink-600">
+            La cuota 1 pasa del {app.oferta.primeraCuotaVencimiento} al <strong>{nuevo}</strong>.
+          </p>
+        )}
+        {corrimientos.length > 0 && (
+          <ul className="mt-3 space-y-1 border-t border-ink-100 pt-3 text-xs text-ink-600">
+            {corrimientos.map((c, i) => (
+              <li key={i}>
+                {c.fecha} · {c.usuario} · {etiquetaCorrimiento(c.cantidad, c.unidad)} ·{" "}
+                {c.vencimientoAnterior} → {c.vencimientoNuevo}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Seccion>
+  );
+}
+
 // Posición del cliente: quién es, cómo está frente a la financiera y qué exposición tiene.
 export function PosicionClienteModal({ open, onClose }: ModalProps) {
   const { app } = useApplication();
+  const { rol } = useRol();
   const c = app.cliente;
   if (!c) return null;
   const { creditosActivos, deudaTerceros } = app.oferta;
@@ -136,6 +209,8 @@ export function PosicionClienteModal({ open, onClose }: ModalProps) {
           ]}
         />
       </Seccion>
+
+      {esSuperior(rol) && <CorrerCronograma />}
     </Modal>
   );
 }

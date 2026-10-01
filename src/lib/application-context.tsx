@@ -40,6 +40,7 @@ import type {
   TipoPersona,
   TipoPersonaVinculada,
   TipoTarjeta,
+  UnidadCorrimiento,
 } from "./types";
 import {
   crearAplicacionInicial,
@@ -72,7 +73,8 @@ import {
   sanitizarCampoDomicilio,
   type PantallaConCampos,
 } from "./campos-post-oferta";
-import { fechaHoy, onlyDigits, selloTiempo } from "./format";
+import { fechaHora, fechaHoy, onlyDigits, selloTiempo } from "./format";
+import { correrFecha } from "./corrimiento";
 import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
 import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_SUPERVISOR, seleccionarLinea } from "./config";
@@ -282,6 +284,9 @@ interface ApplicationContextValue {
   // Recálculo que no pasa (creditonet-97): en lugar de rechazar, el analista puede derivar el
   // caso al supervisor, que confirma el rechazo o lo devuelve sin aplicar nada.
   derivarCambioDatosFinancieros: (cambio: CambioDatosFinancieros, motivo: string) => void;
+  // Supervisor: corre la fecha de la cuota 1 (y con ella el cronograma) y lo deja auditado
+  // (creditonet-120). Devuelve false si la cantidad no es válida.
+  correrCronograma: (cantidad: number, unidad: UnidadCorrimiento) => boolean;
   // SUP → otro SUP: pasa la solicitud a otro superior (creditonet-115).
   derivarASuperior: (destino: string) => void;
   resolverDerivacionCambioFinanciero: (decision: "RECHAZAR" | "DEVOLVER") => void;
@@ -916,6 +921,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
     });
   }, []);
+
+  const correrCronograma = useCallback(
+    (cantidad: number, unidad: UnidadCorrimiento) => {
+      const nuevo = correrFecha(app.oferta.primeraCuotaVencimiento, cantidad, unidad);
+      if (!nuevo) return false;
+      setApp((prev) => ({
+        ...prev,
+        oferta: { ...prev.oferta, primeraCuotaVencimiento: nuevo },
+        corrimientos: [
+          ...(prev.corrimientos ?? []),
+          {
+            fecha: fechaHora(),
+            usuario: actorActivo().usuario,
+            cantidad,
+            unidad,
+            vencimientoAnterior: prev.oferta.primeraCuotaVencimiento,
+            vencimientoNuevo: nuevo,
+          },
+        ],
+      }));
+      return true;
+    },
+    [app.oferta.primeraCuotaVencimiento]
+  );
 
   const autorizarExcepcionCambioOferta = useCallback(() => {
     setAppOperativo((prev) => ({
@@ -2172,6 +2201,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       solicitar,
       finalizarRiesgo,
       aplicarCambioOferta,
+      correrCronograma,
       autorizarExcepcionCambioOferta,
       aplicarCambioDatosFinancieros,
       derivarCambioDatosFinancieros,
@@ -2255,6 +2285,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       solicitar,
       finalizarRiesgo,
       aplicarCambioOferta,
+      correrCronograma,
       autorizarExcepcionCambioOferta,
       aplicarCambioDatosFinancieros,
       derivarCambioDatosFinancieros,
