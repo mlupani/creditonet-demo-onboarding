@@ -139,7 +139,8 @@ export type CampoExtra = {
 
 const ETIQUETAS_NETO: Record<keyof RecalculoNeto, string> = {
   disponible: TERMINOS.disponible,
-  extraccionesTransferencias: `${TERMINOS.saldoDiaAcreditacion} y ${TERMINOS.transferenciasExtracciones.toLowerCase()}`,
+  saldoDiaAcreditacion: TERMINOS.saldoDiaAcreditacion,
+  extraccionesTransferencias: TERMINOS.transferenciasExtracciones,
   cuotasBuroExterno: "Cuotas de buró externo",
   noRemunerativosHorasExtra: `${TERMINOS.conceptosNoRemunerativos} / horas extra`,
 };

@@ -19,7 +19,7 @@ import {
   PRODUCTOS_CONFIG,
   VENDEDORES,
   type DocumentoConfig,
-  type EstadoProducto,
+  type EstadoProductoAbm,
   type ProductoConfig,
   type TokenizacionConfig,
 } from "./config";
@@ -52,8 +52,11 @@ export const MODALIDADES_FIRMA = [
 export const TIPOS_VENCIMIENTO = [
   { value: "FIJO", label: "Fijo (día del mes)" },
   { value: "A_30_DIAS", label: "A 30 días del alta" },
+  { value: "A_60_DIAS", label: "A 60 días del alta" },
+  { value: "A_90_DIAS", label: "A 90 días del alta" },
+  { value: "PERSONALIZADO", label: "Cantidad de días personalizada" },
 ];
-// Supuesto a confirmar con Cristian: el resumen sólo dice "Movimiento por mes".
+// Corrimiento del día de vencimiento de la cuota; se mantienen las tres opciones.
 export const MOVIMIENTOS_MES = [
   { value: "MISMO_DIA", label: "Se mantiene el día" },
   { value: "HABIL_SIGUIENTE", label: "Corre al día hábil siguiente" },
@@ -71,7 +74,7 @@ export const ESTADOS_NOTIFICACION_ONBOARDING = [
 // --- Modelo ---
 
 export type ModalidadFirma = "ELECTRONICA" | "FISICA" | "AMBAS";
-export type TipoVencimiento = "FIJO" | "A_30_DIAS";
+export type TipoVencimiento = "FIJO" | "A_30_DIAS" | "A_60_DIAS" | "A_90_DIAS" | "PERSONALIZADO";
 export type MovimientoMes = "MISMO_DIA" | "HABIL_SIGUIENTE" | "HABIL_ANTERIOR";
 export type CondicionRenovacion = "PORCENTAJE" | "CUOTAS";
 export type EstadoNotificacionOnboarding = (typeof ESTADOS_NOTIFICACION_ONBOARDING)[number]["id"];
@@ -93,6 +96,8 @@ export interface GestionPrestamos {
 // Datos financieros: qué conceptos intervienen en el recálculo del sueldo neto.
 export interface RecalculoNeto {
   disponible: boolean;
+  // Saldo del día de acreditación y transferencias/extracciones del día: dos conceptos distintos.
+  saldoDiaAcreditacion: boolean;
   extraccionesTransferencias: boolean;
   cuotasBuroExterno: boolean;
   noRemunerativosHorasExtra: boolean;
@@ -130,6 +135,8 @@ export interface ExtrasProducto {
   diaCorte: number;
   tipoVencimiento: TipoVencimiento;
   diaVencimientoFijo: number;
+  // Días hasta el vencimiento de la cuota 1 cuando el tipo es "PERSONALIZADO".
+  diasPrimerVencimiento: number;
   movimientoMes: MovimientoMes;
   // Plazos del flujo (30 días de condiciones, 15 para corregir una observación).
   diasValidezCondiciones: number;
@@ -146,8 +153,8 @@ export interface ExtrasProducto {
   gestionPrestamos: GestionPrestamos;
   // Datos financieros
   recalculoNeto: RecalculoNeto;
-  // Modalidades de cobro, canales y vendedores (los canales están en `config.canales`).
-  modalidadesCobro: string[];
+  // Modalidad de cobro (una sola), canales y vendedores (los canales están en `config.canales`).
+  modalidadCobro: string;
   canalesTodos: boolean;
   vendedores: SeleccionLista;
   // Intereses punitorios
@@ -183,6 +190,7 @@ const EXTRAS_BASE: ExtrasProducto = {
   diaCorte: 20,
   tipoVencimiento: "A_30_DIAS",
   diaVencimientoFijo: 10,
+  diasPrimerVencimiento: 45,
   movimientoMes: "HABIL_SIGUIENTE",
   diasValidezCondiciones: 30,
   diasPlazoObservacion: 15,
@@ -195,11 +203,12 @@ const EXTRAS_BASE: ExtrasProducto = {
   gestionPrestamos: { activa: false, razonSocial: "", domicilio: "", cuit: "" },
   recalculoNeto: {
     disponible: true,
+    saldoDiaAcreditacion: true,
     extraccionesTransferencias: true,
     cuotasBuroExterno: true,
     noRemunerativosHorasExtra: false,
   },
-  modalidadesCobro: ["Descuento por haberes", "Débito en cuenta (CBU)"],
+  modalidadCobro: "Descuento por haberes",
   canalesTodos: true,
   vendedores: { todos: true, ids: VENDEDORES.map((v) => v.id) },
   tramosPunitorios: [
@@ -246,7 +255,6 @@ const EXTRAS_POR_PRODUCTO: Record<string, Partial<ExtrasProducto>> = {
   },
   "adelanto-sueldo": {
     categoria: "Adelanto",
-    modalidadesCobro: ["Descuento por haberes"],
     permiteRenovacion: false,
     centroCostos: "CC-300 · Adelantos",
   },
@@ -357,14 +365,51 @@ export function useProductos(): ProductoAbm[] {
   );
 }
 
+// Vendedores habilitables según los canales tildados: los vinculados a alguno de ellos.
+export function vendedoresDeCanales(canales: string[]) {
+  return VENDEDORES.filter((v) => v.canales.some((c) => canales.includes(c)));
+}
+
+// Deja la selección de vendedores acotada a los que corresponden a los canales tildados.
+export function ajustarVendedores(sel: SeleccionLista, canales: string[]): SeleccionLista {
+  const visibles = vendedoresDeCanales(canales).map((v) => v.id);
+  return sel.todos
+    ? { todos: true, ids: visibles }
+    : { todos: false, ids: sel.ids.filter((id) => visibles.includes(id)) };
+}
+
+// El estado y los organismos no se editan desde el formulario del producto: se conserva lo
+// vigente en el registro (el estado se cambia con las acciones; los organismos, desde el organismo).
 export function guardarProducto(p: ProductoAbm) {
-  commit(registros.map((r) => (r.config.id === p.config.id ? p : r)));
+  commit(
+    registros.map((r) =>
+      r.config.id === p.config.id
+        ? {
+            ...p,
+            config: { ...p.config, estado: r.config.estado },
+            extras: { ...p.extras, vendedores: ajustarVendedores(p.extras.vendedores, p.config.canales) },
+            organismos: r.organismos,
+          }
+        : r
+    )
+  );
 }
 
-export function cambiarEstadoProducto(id: string, estado: EstadoProducto) {
+export type ResultadoEstado = { ok: true } | { ok: false; error: string };
+
+export const ERROR_ACTIVAR_SIN_ORGANISMO =
+  "No se puede activar el producto: vinculalo al menos a un organismo desde el organismo y volvé a intentar.";
+
+// Único punto donde cambia el estado: valida acá además de en la pantalla, para que ninguna
+// vía (lista, detalle) pueda activar un borrador sin organismos vinculados.
+export function cambiarEstadoProducto(id: string, estado: EstadoProductoAbm): ResultadoEstado {
+  const actual = registros.find((r) => r.config.id === id);
+  if (!actual) return { ok: false, error: "El producto no existe." };
+  if (estado === "ACTIVO" && actual.config.estado === "BORRADOR" && actual.organismos.length === 0)
+    return { ok: false, error: ERROR_ACTIVAR_SIN_ORGANISMO };
   commit(registros.map((r) => (r.config.id === id ? { ...r, config: { ...r.config, estado } } : r)));
+  return { ok: true };
 }
-
 export function restaurarProductosDemo() {
   commit(structuredClone(INICIAL));
 }
@@ -400,11 +445,15 @@ export function crearProducto(datos: {
       ...structuredClone(base.config),
       id,
       nombre: datos.nombre,
-      estado: "ACTIVO",
+      estado: "BORRADOR",
       vigenciaDesde: fechaHoy(),
       vigenciaHasta: null,
     },
-    extras: { ...structuredClone(base.extras), categoria: datos.categoria },
+    extras: {
+      ...structuredClone(base.extras),
+      categoria: datos.categoria,
+      vendedores: ajustarVendedores(base.extras.vendedores, base.config.canales),
+    },
     // Un producto nuevo no se ofrece en ningún organismo hasta que se lo habilite.
     organismos: [],
   };
@@ -472,7 +521,8 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
     todos.some((r) => r.config.id !== c.id && r.config.nombre.trim().toLowerCase() === nombre.toLowerCase())
   )
     e.nombre = "Ya existe otro producto con ese nombre.";
-  if (c.capitalMaximo <= 0) e.capitalMaximo = "El capital máximo debe ser mayor a cero.";
+  if (c.capitalMaximo !== null && !(c.capitalMaximo > 0))
+    e.capitalMaximo = "El capital máximo debe ser mayor a cero.";
   if (c.canales.length === 0) e.canales = "Habilitá al menos un canal.";
 
   const desde = parseFecha(c.vigenciaDesde);
@@ -504,6 +554,8 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
   if (!dia(x.diaCorte)) e.diaCorte = "El día de corte va de 1 a 31.";
   if (x.tipoVencimiento === "FIJO" && !dia(x.diaVencimientoFijo))
     e.diaVencimientoFijo = "El día de vencimiento va de 1 a 31.";
+  if (x.tipoVencimiento === "PERSONALIZADO" && (!Number.isInteger(x.diasPrimerVencimiento) || x.diasPrimerVencimiento < 1))
+    e.diasPrimerVencimiento = "Ingresá una cantidad de días entera, de 1 en adelante.";
   if (x.permiteRenovacion) {
     if (x.condicionRenovacion === "CUOTAS") {
       if (!Number.isInteger(x.renovacionMinCuotasPagas) || x.renovacionMinCuotasPagas < 1)
@@ -537,7 +589,7 @@ export function productosACsv(lista: ProductoAbm[]): string {
       r.config.estado,
       r.config.vigenciaDesde,
       r.config.vigenciaHasta ?? "",
-      String(r.config.capitalMaximo),
+      r.config.capitalMaximo === null ? "" : String(r.config.capitalMaximo),
       r.config.canales.join(", "),
       r.organismos.length === 0
         ? ""

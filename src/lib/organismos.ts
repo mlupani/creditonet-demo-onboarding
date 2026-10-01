@@ -86,7 +86,7 @@ export const EXTRAS_POR_SECCION = {
     "permiteCambioPrimerVencimiento",
   ],
   financieros: ["recalculoNeto"],
-  punitorios: ["tramosPunitorios", "modificarCarteraActiva", "modalidadesCobro"],
+  punitorios: ["tramosPunitorios", "modificarCarteraActiva", "modalidadCobro"],
   firma: ["modalidadFirma"],
   vendedores: ["vendedores"],
   notificaciones: ["notificaciones"],
@@ -320,7 +320,7 @@ export function crearOrganismo(datos: {
   const base = origen ?? lista[0];
   const activos = new Set(
     getProductos()
-      .filter((p) => p.config.estado === "ACTIVO")
+      .filter((p) => p.config.estado === "ACTIVO" || p.config.estado === "BORRADOR")
       .map((p) => p.config.id)
   );
   const productos = origen ? origen.config.productos.filter((p) => activos.has(p)) : [];

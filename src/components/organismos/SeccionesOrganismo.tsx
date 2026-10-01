@@ -39,8 +39,8 @@ import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CampoNumero, Panel, Subtitulo } from "@/components/productos/campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
-import { EditorDocumentos, EditorMotor, EditorTokenizacion } from "@/components/productos/editores";
-import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
+import { EditorDocumentos, EditorTokenizacion, EditorMotor } from "@/components/productos/editores";
+import { ESTADO_PRODUCTO_ABM_META, ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
 import { FilaExtra, FilaHerencia, Si, type CampoExtra } from "./herencia";
 
 export interface SeccionOrgProps {
@@ -191,12 +191,14 @@ function DatosGenerales({ o, set, errores, ver }: SeccionOrgProps) {
 function Productos({ o, productos, set }: SeccionOrgProps) {
   const { cf } = useEditores(set);
   const habilitados = o.config.productos;
+  // Los borradores también se vinculan acá: es la única forma de poder activarlos.
+  const vinculable = (p: ProductoAbm) => p.config.estado === "ACTIVO" || p.config.estado === "BORRADOR";
   return (
     <Panel
       titulo="Productos habilitados"
       descripcion="Qué productos ofrece este organismo a su colectivo (Producto §5)."
       vivo
-      nota="Sólo se pueden vincular productos activos. Las excepciones se definen después, producto por producto."
+      nota="Sólo se pueden vincular productos activos o en borrador (un borrador necesita al menos un organismo para activarse). Las excepciones se definen después, producto por producto."
     >
       {habilitados.length === 0 && (
         <Banner tone="warning" title="El organismo no ofrece ningún producto">
@@ -205,13 +207,13 @@ function Productos({ o, productos, set }: SeccionOrgProps) {
       )}
       <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200">
         {productos
-          .filter((p) => p.config.estado === "ACTIVO" || habilitados.includes(p.config.id))
+          .filter((p) => vinculable(p) || habilitados.includes(p.config.id))
           .map((p) => (
             <li key={p.config.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1 basis-56">
                 <Checkbox
                   checked={habilitados.includes(p.config.id)}
-                  disabled={p.config.estado !== "ACTIVO" && !habilitados.includes(p.config.id)}
+                  disabled={!vinculable(p) && !habilitados.includes(p.config.id)}
                   onChange={(v) =>
                     cf({
                       productos: v
@@ -223,8 +225,8 @@ function Productos({ o, productos, set }: SeccionOrgProps) {
                   description={`${p.codigo} · ${p.extras.categoria}`}
                 />
               </div>
-              <StatusBadge tone={ESTADO_PRODUCTO_META[p.config.estado].tone}>
-                {ESTADO_PRODUCTO_META[p.config.estado].label}
+              <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[p.config.estado].tone}>
+                {ESTADO_PRODUCTO_ABM_META[p.config.estado].label}
               </StatusBadge>
             </li>
           ))}
@@ -301,12 +303,23 @@ function Planes({ o, set }: SeccionOrgProps) {
 // --- 3. Excepciones de vencimiento ---
 
 const CAMPOS_VENCIMIENTO: CampoExtra[] = [
-  { clave: "diaCorte", etiqueta: "Día de corte del mes", tipo: "num" },
-  { clave: "tipoVencimiento", etiqueta: "Vencimiento", tipo: "select", opciones: TIPOS_VENCIMIENTO },
+  { clave: "diaCorte", etiqueta: "Día de corte del mes inclusive", tipo: "num" },
+  {
+    clave: "tipoVencimiento",
+    etiqueta: "Vencimiento de la primer cuota",
+    tipo: "select",
+    opciones: TIPOS_VENCIMIENTO,
+  },
   { clave: "diaVencimientoFijo", etiqueta: "Día fijo de vencimiento", tipo: "num" },
-  { clave: "movimientoMes", etiqueta: "Movimiento por mes", tipo: "select", opciones: MOVIMIENTOS_MES },
-  { clave: "diasValidezCondiciones", etiqueta: "Validez de las condiciones", tipo: "num", sufijo: "días" },
-  { clave: "diasPlazoObservacion", etiqueta: "Plazo para corregir una observación", tipo: "num", sufijo: "días" },
+  { clave: "diasPrimerVencimiento", etiqueta: "Días hasta el vencimiento de la cuota 1", tipo: "num", sufijo: "días" },
+  {
+    clave: "movimientoMes",
+    etiqueta: "Corrimiento del día del vencimiento de la cuota",
+    tipo: "select",
+    opciones: MOVIMIENTOS_MES,
+  },
+  { clave: "diasValidezCondiciones", etiqueta: "Validez de las condiciones", tipo: "num", sufijo: "días hábiles (inclusive)" },
+  { clave: "diasPlazoObservacion", etiqueta: "Plazo para corregir una observación", tipo: "num", sufijo: "días hábiles (inclusive)" },
 ];
 
 function Vencimiento(props: SeccionOrgProps) {
@@ -378,7 +391,11 @@ function Permisos(props: SeccionOrgProps) {
       <FilaHerencia
         etiqueta="Capital máximo"
         productoNombre={p.config.nombre}
-        heredado={<span className="font-semibold tabular-nums">{formatARS(p.config.capitalMaximo)}</span>}
+        heredado={
+          <span className="font-semibold tabular-nums">
+            {p.config.capitalMaximo === null ? "Sin capital máximo" : formatARS(p.config.capitalMaximo)}
+          </span>
+        }
         error={ver ? errores.capitalMaximo : undefined}
         editor={
           ovs.capitalMaximo !== undefined ? (
@@ -390,7 +407,7 @@ function Permisos(props: SeccionOrgProps) {
             />
           ) : null
         }
-        onCrear={() => ov({ capitalMaximo: p.config.capitalMaximo })}
+        onCrear={() => ov({ capitalMaximo: p.config.capitalMaximo ?? 1_000_000 })}
         onQuitar={() => quitarOv("capitalMaximo")}
       />
       <Filas campos={CAMPOS_PERMISOS} {...props} />
@@ -513,7 +530,12 @@ function Financieros(props: SeccionOrgProps) {
 const CAMPOS_PUNITORIOS: CampoExtra[] = [
   { clave: "tramosPunitorios", etiqueta: "Punitorios", ayuda: "Hasta 5 tramos de atraso.", tipo: "tramos" },
   { clave: "modificarCarteraActiva", etiqueta: "Modificar cartera activa", tipo: "bool" },
-  { clave: "modalidadesCobro", etiqueta: "Modalidades de cobro", tipo: "multi", opciones: MODALIDADES_COBRO },
+  {
+    clave: "modalidadCobro",
+    etiqueta: "Modalidad de cobro",
+    tipo: "select",
+    opciones: MODALIDADES_COBRO.map((m) => ({ value: m, label: m })),
+  },
 ];
 
 function Punitorios(props: SeccionOrgProps) {

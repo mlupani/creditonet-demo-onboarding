@@ -97,8 +97,11 @@ export function reglasInstitucionalesCredito(app: CreditApplication): ReglaInsti
     codigo: "RI-03",
     nombre: "Capital máximo",
     posicion: capital > 0 ? `Solicita ${formatARS(capital)}` : "Sin monto solicitado",
-    regla: `Hasta ${formatARS(cfg.capitalMaximo)}${cfg.overrides.capitalMaximo !== undefined ? " (excepción del organismo)" : ""}`,
-    resultado: conCapital(capital <= cfg.capitalMaximo),
+    regla:
+      cfg.capitalMaximo === null
+        ? "Sin capital máximo"
+        : `Hasta ${formatARS(cfg.capitalMaximo)}${cfg.overrides.capitalMaximo !== undefined ? " (excepción del organismo)" : ""}`,
+    resultado: conCapital(cfg.capitalMaximo === null || capital <= cfg.capitalMaximo),
   };
   const sueldosBrutos: ReglaInstitucionalCredito = {
     codigo: "RI-04",

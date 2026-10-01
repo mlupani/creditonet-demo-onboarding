@@ -1,7 +1,9 @@
 "use client";
 
-import { CANALES, ORGANISMOS, VENDEDORES, type ProductoConfig } from "@/lib/config";
+import { CANALES, ORGANISMOS, type ProductoConfig } from "@/lib/config";
 import {
+  ajustarVendedores,
+  vendedoresDeCanales,
   CATEGORIAS_PRODUCTO,
   CONDICIONES_RENOVACION,
   MODALIDADES_COBRO,
@@ -15,7 +17,6 @@ import { Banner } from "@/components/ui/Banner";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
-import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
@@ -32,7 +33,7 @@ import {
   EditorTokenizacion,
   EditorTramos,
 } from "./editores";
-import { ESTADO_PRODUCTO_META } from "./ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "./ListaProductos";
 
 export interface SeccionProps {
   p: ProductoAbm;
@@ -51,14 +52,14 @@ function useEditores(set: SeccionProps["set"]) {
   };
 }
 
-const alternar = (lista: string[], id: string, activo: boolean) =>
-  activo ? [...lista.filter((x) => x !== id), id] : lista.filter((x) => x !== id);
-
 function Grilla({ children, cols = 2 }: { children: React.ReactNode; cols?: 2 | 3 }) {
   return (
     <div className={`grid gap-4 ${cols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>{children}</div>
   );
 }
+
+// Valor con el que arranca el capital máximo al tildar "obligatorio".
+const CAPITAL_MAXIMO_INICIAL = 1_000_000;
 
 const NOTA_APLICA_ORGANISMOS =
   "Las reglas del producto se aplican a todos los organismos vinculados; cada organismo puede hacer excepciones.";
@@ -67,7 +68,7 @@ const NOTA_APLICA_ORGANISMOS =
 
 function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
   const { cf, ex } = useEditores(set);
-  const meta = ESTADO_PRODUCTO_META[p.config.estado];
+  const meta = ESTADO_PRODUCTO_ABM_META[p.config.estado];
   return (
     <Panel
       titulo="Datos generales"
@@ -112,7 +113,7 @@ function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
           <div className="flex items-center gap-3 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2.5">
             <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
             <span className="text-xs text-ink-500">
-              Activo, suspendido o eliminado: se cambia con los botones del encabezado.
+              Borrador, activo, suspendido o eliminado: se cambia con los botones del encabezado.
             </span>
           </div>
         </div>
@@ -137,15 +138,23 @@ function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
           hint="Vacío: sin vencimiento. Fuera de la vigencia el producto no se ofrece."
         />
       </Grilla>
-      <MoneyInput
-        id="p-capital"
-        label="Capital máximo"
-        required
-        value={p.config.capitalMaximo}
-        onChange={(v) => cf({ capitalMaximo: v })}
-        error={ver ? errores.capitalMaximo : undefined}
-        hint="Tope general antes de aplicar los límites del riesgo, del plan y del salario (Producto §4)."
+      <Checkbox
+        checked={p.config.capitalMaximo !== null}
+        onChange={(v) => cf({ capitalMaximo: v ? (CAPITAL_MAXIMO_INICIAL) : null })}
+        label="Capital máximo obligatorio"
+        description="Si no se tilda, el producto no tiene capital máximo."
       />
+      {p.config.capitalMaximo !== null && (
+        <MoneyInput
+          id="p-capital"
+          label="Capital máximo"
+          required
+          value={p.config.capitalMaximo}
+          onChange={(v) => cf({ capitalMaximo: v })}
+          error={ver ? errores.capitalMaximo : undefined}
+          hint="Tope general antes de aplicar los límites del riesgo, del plan y del salario (Producto §4)."
+        />
+      )}
     </Panel>
   );
 }
@@ -162,7 +171,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
     >
       <CampoNumero
         id="p-dia-corte"
-        label="Día de corte del mes"
+        label="Día de corte del mes inclusive"
         min={1}
         value={p.extras.diaCorte}
         onChange={(v) => ex({ diaCorte: v })}
@@ -172,11 +181,22 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
       <Grilla>
         <SelectField
           id="p-tipo-venc"
-          label="Vencimiento"
+          label="Vencimiento de la primer cuota"
           value={p.extras.tipoVencimiento}
           onChange={(v) => ex({ tipoVencimiento: v as ExtrasProducto["tipoVencimiento"] })}
           options={TIPOS_VENCIMIENTO}
         />
+        {p.extras.tipoVencimiento === "PERSONALIZADO" && (
+          <CampoNumero
+            id="p-dias-primer-venc"
+            label="Días hasta el vencimiento de la primer cuota"
+            sufijo="días"
+            min={1}
+            value={p.extras.diasPrimerVencimiento}
+            onChange={(v) => ex({ diasPrimerVencimiento: v })}
+            error={ver ? errores.diasPrimerVencimiento : undefined}
+          />
+        )}
         {p.extras.tipoVencimiento === "FIJO" && (
           <CampoNumero
             id="p-dia-fijo"
@@ -190,7 +210,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
       </Grilla>
       <SelectField
         id="p-mov-mes"
-        label="Movimiento por mes"
+        label="Corrimiento del día del vencimiento de la cuota"
         value={p.extras.movimientoMes}
         onChange={(v) => ex({ movimientoMes: v as ExtrasProducto["movimientoMes"] })}
         options={MOVIMIENTOS_MES}
@@ -198,12 +218,12 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
         className="sm:max-w-md"
       />
       <div className="space-y-3">
-        <Subtitulo>Plazos del flujo</Subtitulo>
+        <Subtitulo>Plazos de onboarding</Subtitulo>
         <Grilla>
           <CampoNumero
             id="p-dias-condiciones"
             label="Validez de las condiciones"
-            sufijo="días"
+            sufijo="días hábiles (inclusive)"
             value={p.extras.diasValidezCondiciones}
             onChange={(v) => ex({ diasValidezCondiciones: v })}
             hint="Desde que se presiona Solicitar."
@@ -211,7 +231,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
           <CampoNumero
             id="p-dias-observacion"
             label="Plazo para corregir una observación"
-            sufijo="días"
+            sufijo="días hábiles (inclusive)"
             value={p.extras.diasPlazoObservacion}
             onChange={(v) => ex({ diasPlazoObservacion: v })}
           />
@@ -316,6 +336,8 @@ function Financieros({ p, set }: SeccionProps) {
 
 function Cobro({ p, set, errores, ver }: SeccionProps) {
   const { ex } = useEditores(set);
+  const vendedores = vendedoresDeCanales(p.config.canales);
+  const organismos = ORGANISMOS.filter((o) => p.organismos.includes(o.id));
   return (
     <Panel
       titulo="Modalidades de cobro, canales y vendedores"
@@ -323,12 +345,13 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
       vivo
       nota="Los canales y los organismos deciden dónde aparece el producto en Solicitar crédito. Las modalidades y los vendedores son de ejemplo: el vendedor real sale de la sesión."
     >
-      <MultiSelectField
+      <SelectField
         id="p-cobro"
-        label="Modalidades de cobro habilitadas (desde Parámetros)"
-        values={p.extras.modalidadesCobro}
-        onChange={(v) => ex({ modalidadesCobro: v })}
-        options={MODALIDADES_COBRO}
+        label="Modalidad de cobro (desde Parámetros)"
+        value={p.extras.modalidadCobro}
+        onChange={(v) => ex({ modalidadCobro: v })}
+        options={MODALIDADES_COBRO.map((m) => ({ value: m, label: m }))}
+        className="sm:max-w-md"
       />
 
       <div className="space-y-3">
@@ -340,7 +363,11 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
             set((x) => ({
               ...x,
               config: { ...x.config, canales: v.ids },
-              extras: { ...x.extras, canalesTodos: v.todos },
+              extras: {
+                ...x.extras,
+                canalesTodos: v.todos,
+                vendedores: ajustarVendedores(x.extras.vendedores, v.ids),
+              },
             }));
           }}
         />
@@ -349,29 +376,39 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
 
       <div className="space-y-3">
         <Subtitulo>Vendedores habilitados</Subtitulo>
-        <EditorSeleccion
-          opciones={VENDEDORES.map((v) => ({ value: v.id, label: v.nombre, detalle: v.detalle }))}
-          valor={p.extras.vendedores}
-          onChange={(v) => ex({ vendedores: v })}
-        />
+        {vendedores.length === 0 ? (
+          <p className="text-xs text-ink-500">
+            Tildá al menos un canal: los vendedores que se muestran son los vinculados a esos canales.
+          </p>
+        ) : (
+          <EditorSeleccion
+            opciones={vendedores.map((v) => ({ value: v.id, label: v.nombre, detalle: v.detalle }))}
+            valor={p.extras.vendedores}
+            onChange={(v) => ex({ vendedores: v })}
+          />
+        )}
       </div>
 
       <div className="space-y-3">
         <Subtitulo>Organismos que lo ofrecen</Subtitulo>
-        {p.organismos.length === 0 && (
+        {organismos.length === 0 ? (
           <Banner tone="warning" title="No se ofrece en ningún organismo">
-            Mientras no lo habilites en al menos un organismo, no aparece en Solicitar crédito.
+            Mientras no esté vinculado a al menos un organismo, no aparece en Solicitar crédito ni
+            puede activarse desde borrador.
           </Banner>
+        ) : (
+          <ul className="space-y-2" aria-label="Organismos vinculados">
+            {organismos.map((o) => (
+              <li key={o.id} className="rounded-lg border border-ink-200 bg-ink-25 px-3 py-2.5">
+                <p className="text-sm font-medium text-ink-800">{o.nombre}</p>
+                {o.detalle && <p className="text-xs text-ink-500">{o.detalle}</p>}
+              </li>
+            ))}
+          </ul>
         )}
-        {ORGANISMOS.map((o) => (
-          <Checkbox
-            key={o.id}
-            checked={p.organismos.includes(o.id)}
-            onChange={(v) => set((x) => ({ ...x, organismos: alternar(x.organismos, o.id, v) }))}
-            label={o.nombre}
-            description={o.detalle}
-          />
-        ))}
+        <p className="text-xs text-ink-500">
+          Sólo lectura: la vinculación entre producto y organismo se hace desde el organismo.
+        </p>
       </div>
     </Panel>
   );
@@ -710,6 +747,7 @@ export const SECCION_DE_ERROR: Record<string, string> = {
   vigenciaHasta: "datos",
   diaCorte: "vencimientos",
   diaVencimientoFijo: "vencimientos",
+  diasPrimerVencimiento: "vencimientos",
   gestionRazonSocial: "gestion",
   gestionCuit: "gestion",
   canales: "cobro",
