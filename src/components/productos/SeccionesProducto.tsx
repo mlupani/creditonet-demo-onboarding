@@ -1,9 +1,11 @@
 "use client";
 
-import { CANALES, ORGANISMOS, VENDEDORES, type ProductoConfig } from "@/lib/config";
+import { CANALES, ORGANISMOS, type ProductoConfig } from "@/lib/config";
 import { CAMPOS_POST_OFERTA, obligatorioEfectivo } from "@/lib/campos-post-oferta";
 import { PROVEEDORES_TOKENIZACION } from "@/lib/parametros";
 import {
+  ajustarVendedores,
+  vendedoresDeCanales,
   CATEGORIAS_PRODUCTO,
   CONDICIONES_RENOVACION,
   MODALIDADES_COBRO,
@@ -49,9 +51,6 @@ function useEditores(set: SeccionProps["set"]) {
     ex: (patch: Partial<ExtrasProducto>) => set((p) => ({ ...p, extras: { ...p.extras, ...patch } })),
   };
 }
-
-const alternar = (lista: string[], id: string, activo: boolean) =>
-  activo ? [...lista.filter((x) => x !== id), id] : lista.filter((x) => x !== id);
 
 function Grilla({ children, cols = 2 }: { children: React.ReactNode; cols?: 2 | 3 }) {
   return (
@@ -337,6 +336,8 @@ function Financieros({ p, set }: SeccionProps) {
 
 function Cobro({ p, set, errores, ver }: SeccionProps) {
   const { ex } = useEditores(set);
+  const vendedores = vendedoresDeCanales(p.config.canales);
+  const organismos = ORGANISMOS.filter((o) => p.organismos.includes(o.id));
   return (
     <Panel
       titulo="Modalidades de cobro, canales y vendedores"
@@ -362,7 +363,11 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
             set((x) => ({
               ...x,
               config: { ...x.config, canales: v.ids },
-              extras: { ...x.extras, canalesTodos: v.todos },
+              extras: {
+                ...x.extras,
+                canalesTodos: v.todos,
+                vendedores: ajustarVendedores(x.extras.vendedores, v.ids),
+              },
             }));
           }}
         />
@@ -371,29 +376,39 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
 
       <div className="space-y-3">
         <Subtitulo>Vendedores habilitados</Subtitulo>
-        <EditorSeleccion
-          opciones={VENDEDORES.map((v) => ({ value: v.id, label: v.nombre, detalle: v.detalle }))}
-          valor={p.extras.vendedores}
-          onChange={(v) => ex({ vendedores: v })}
-        />
+        {vendedores.length === 0 ? (
+          <p className="text-xs text-ink-500">
+            Tildá al menos un canal: los vendedores que se muestran son los vinculados a esos canales.
+          </p>
+        ) : (
+          <EditorSeleccion
+            opciones={vendedores.map((v) => ({ value: v.id, label: v.nombre, detalle: v.detalle }))}
+            valor={p.extras.vendedores}
+            onChange={(v) => ex({ vendedores: v })}
+          />
+        )}
       </div>
 
       <div className="space-y-3">
         <Subtitulo>Organismos que lo ofrecen</Subtitulo>
-        {p.organismos.length === 0 && (
+        {organismos.length === 0 ? (
           <Banner tone="warning" title="No se ofrece en ningún organismo">
-            Mientras no lo habilites en al menos un organismo, no aparece en Solicitar crédito.
+            Mientras no esté vinculado a al menos un organismo, no aparece en Solicitar crédito ni
+            puede activarse desde borrador.
           </Banner>
+        ) : (
+          <ul className="space-y-2" aria-label="Organismos vinculados">
+            {organismos.map((o) => (
+              <li key={o.id} className="rounded-lg border border-ink-200 bg-ink-25 px-3 py-2.5">
+                <p className="text-sm font-medium text-ink-800">{o.nombre}</p>
+                {o.detalle && <p className="text-xs text-ink-500">{o.detalle}</p>}
+              </li>
+            ))}
+          </ul>
         )}
-        {ORGANISMOS.map((o) => (
-          <Checkbox
-            key={o.id}
-            checked={p.organismos.includes(o.id)}
-            onChange={(v) => set((x) => ({ ...x, organismos: alternar(x.organismos, o.id, v) }))}
-            label={o.nombre}
-            description={o.detalle}
-          />
-        ))}
+        <p className="text-xs text-ink-500">
+          Sólo lectura: la vinculación entre producto y organismo se hace desde el organismo.
+        </p>
       </div>
     </Panel>
   );

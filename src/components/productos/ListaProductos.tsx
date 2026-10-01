@@ -14,6 +14,7 @@ import {
   type ProductoAbm,
 } from "@/lib/productos";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -36,7 +37,6 @@ export const ESTADO_PRODUCTO_ABM_META: Record<EstadoProductoAbm, MetaEstado> = {
   BORRADOR: { label: "Borrador", grupo: "Borradores", tone: "neutral" },
   ...ESTADO_PRODUCTO_META,
 };
-
 const ORDEN_ESTADOS: EstadoProductoAbm[] = ["BORRADOR", "ACTIVO", "SUSPENDIDO", "ELIMINADO"];
 
 // Anchos fijos para que las columnas queden alineadas entre los tres grupos.
@@ -96,6 +96,7 @@ export function ListaProductos() {
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<EstadoProductoAbm | "">("");
   const [orden, setOrden] = useState<{ campo: Campo; asc: boolean }>({ campo: "codigo", asc: true });
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
   const [abiertos, setAbiertos] = useState<Record<EstadoProductoAbm, boolean>>({
     BORRADOR: true,
     ACTIVO: true,
@@ -136,9 +137,10 @@ export function ListaProductos() {
 
   const abrir = (p: ProductoAbm) => router.push(`/productos/${p.config.id}`);
   const cambiar = (p: ProductoAbm, estado: EstadoProductoAbm) => {
-    if (estado === "ACTIVO" || (estado === "SUSPENDIDO" && p.config.estado === "ELIMINADO"))
-      cambiarEstadoProducto(p.config.id, estado);
-    else setPendiente({ id: p.config.id, estado });
+    if (estado === "ACTIVO" || (estado === "SUSPENDIDO" && p.config.estado === "ELIMINADO")) {
+      const r = cambiarEstadoProducto(p.config.id, estado);
+      setErrorEstado(r.ok ? null : `${p.config.nombre}: ${r.error}`);
+    } else setPendiente({ id: p.config.id, estado });
   };
   const productoPendiente = productos.find((p) => p.config.id === pendiente?.id);
   const textoPendiente = pendiente ? (TEXTO_ACCION[pendiente.estado] ?? null) : null;
@@ -197,6 +199,11 @@ export function ListaProductos() {
       </div>
 
       <div className="mt-5 space-y-4">
+        {errorEstado && (
+          <Banner tone="error" title="No se pudo activar el producto">
+            {errorEstado}
+          </Banner>
+        )}
         {!hidratado ? (
           <Card className="px-5 py-8 text-center text-sm text-ink-400">Cargando…</Card>
         ) : (
@@ -299,11 +306,6 @@ export function ListaProductos() {
                                   <Button size="sm" variant="outline" onClick={() => abrir(p)}>
                                     Abrir
                                   </Button>
-                                  {p.config.estado === "BORRADOR" && (
-                                    <Button size="sm" variant="ghost" onClick={() => cambiar(p, "ACTIVO")}>
-                                      Activar
-                                    </Button>
-                                  )}
                                   {p.config.estado === "ACTIVO" && (
                                     <Button
                                       size="sm"
@@ -313,7 +315,7 @@ export function ListaProductos() {
                                       Suspender
                                     </Button>
                                   )}
-                                  {p.config.estado === "SUSPENDIDO" && (
+                                  {(p.config.estado === "SUSPENDIDO" || p.config.estado === "BORRADOR") && (
                                     <Button size="sm" variant="ghost" onClick={() => cambiar(p, "ACTIVO")}>
                                       Activar
                                     </Button>

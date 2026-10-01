@@ -61,6 +61,7 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
   const [seccion, setSeccion] = useState(SECCIONES[0].id);
   const [intentado, setIntentado] = useState(false);
   const [guardado, setGuardado] = useState(false);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
   const [pendiente, setPendiente] = useState<EstadoProductoAbm | null>(null);
 
   const errores = validarProducto(borrador, todos);
@@ -94,7 +95,12 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
 
   // El estado se aplica directo: no forma parte de los cambios pendientes de guardar.
   function aplicarEstado(estado: EstadoProductoAbm) {
-    cambiarEstadoProducto(registro.config.id, estado);
+    const r = cambiarEstadoProducto(registro.config.id, estado);
+    if (!r.ok) {
+      setErrorEstado(r.error);
+      return;
+    }
+    setErrorEstado(null);
     setBorrador((b) => ({ ...b, config: { ...b.config, estado } }));
   }
 
@@ -121,23 +127,23 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
           <h1 className="mt-1 flex flex-wrap items-center gap-3 text-2xl font-bold tracking-tight text-ink-900">
             {registro.config.nombre}
             <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
+            {vigencia !== "VIGENTE" && (
+              <StatusBadge tone="warning">
+                {vigencia === "VENCIDA" ? "Vencida" : "Por iniciar"}
+              </StatusBadge>
+            )}
           </h1>
           <p className="mt-1 text-sm text-ink-500">
             {registro.extras.categoria} · Vigencia: {textoVigencia(registro.config)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {registro.config.estado === "BORRADOR" && (
-            <Button variant="outline" onClick={() => pedirEstado("ACTIVO")}>
-              Activar
-            </Button>
-          )}
           {registro.config.estado === "ACTIVO" && (
             <Button variant="outline" onClick={() => pedirEstado("SUSPENDIDO")}>
               Suspender
             </Button>
           )}
-          {registro.config.estado === "SUSPENDIDO" && (
+          {(registro.config.estado === "SUSPENDIDO" || registro.config.estado === "BORRADOR") && (
             <Button variant="outline" onClick={() => pedirEstado("ACTIVO")}>
               Activar
             </Button>
@@ -154,30 +160,43 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
         </div>
       </div>
 
-      {registro.config.estado !== "ACTIVO" ? (
-        <Banner
-          tone="warning"
-          title={
-            registro.config.estado === "BORRADOR"
-              ? "Producto en borrador"
-              : registro.config.estado === "ELIMINADO"
-                ? "Producto eliminado"
-                : "Producto suspendido"
-          }
-        >
-          {registro.config.estado === "BORRADOR"
-            ? "No se ofrece en Solicitar crédito hasta que se lo active."
-            : "No se ofrece en Solicitar crédito. Las solicitudes que ya lo usan conservan su configuración."}
-        </Banner>
-      ) : (
-        vigencia !== "VIGENTE" && (
-          <Banner
-            tone="warning"
-            title={vigencia === "VENCIDA" ? "Vigencia vencida" : "Vigencia por iniciar"}
-          >
-            El producto está activo, pero hoy queda fuera de su vigencia y no se ofrece.
-          </Banner>
-        )
+      {(errorEstado ||
+        registro.config.estado !== "ACTIVO" ||
+        vigencia !== "VIGENTE") && (
+        <div className="mt-4 space-y-3">
+          {errorEstado && (
+            <Banner tone="error" title="No se pudo activar el producto">
+              {errorEstado}
+            </Banner>
+          )}
+          {registro.config.estado === "BORRADOR" && (
+            <Banner tone="warning" title="Producto en borrador">
+              No se ofrece en Solicitar crédito. Para activarlo tiene que estar vinculado al menos a un
+              organismo.
+            </Banner>
+          )}
+          {(registro.config.estado === "SUSPENDIDO" || registro.config.estado === "ELIMINADO") && (
+            <Banner
+              tone="warning"
+              title={
+                registro.config.estado === "ELIMINADO" ? "Producto eliminado" : "Producto suspendido"
+              }
+            >
+              No se ofrece en Solicitar crédito. Las solicitudes que ya lo usan conservan su
+              configuración.
+            </Banner>
+          )}
+          {vigencia !== "VIGENTE" && (
+            <Banner
+              tone="warning"
+              title={vigencia === "VENCIDA" ? "Vigencia vencida" : "Vigencia por iniciar"}
+            >
+              {registro.config.estado === "ACTIVO"
+                ? "El producto está activo, pero hoy queda fuera de su vigencia y no se ofrece."
+                : "Hoy queda fuera de su vigencia: aunque se active, no se ofrecería hasta que entre en rango."}
+            </Banner>
+          )}
+        </div>
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[14.5rem_minmax(0,1fr)]">

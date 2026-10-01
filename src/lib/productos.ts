@@ -362,14 +362,51 @@ export function useProductos(): ProductoAbm[] {
   );
 }
 
+// Vendedores habilitables según los canales tildados: los vinculados a alguno de ellos.
+export function vendedoresDeCanales(canales: string[]) {
+  return VENDEDORES.filter((v) => v.canales.some((c) => canales.includes(c)));
+}
+
+// Deja la selección de vendedores acotada a los que corresponden a los canales tildados.
+export function ajustarVendedores(sel: SeleccionLista, canales: string[]): SeleccionLista {
+  const visibles = vendedoresDeCanales(canales).map((v) => v.id);
+  return sel.todos
+    ? { todos: true, ids: visibles }
+    : { todos: false, ids: sel.ids.filter((id) => visibles.includes(id)) };
+}
+
+// El estado y los organismos no se editan desde el formulario del producto: se conserva lo
+// vigente en el registro (el estado se cambia con las acciones; los organismos, desde el organismo).
 export function guardarProducto(p: ProductoAbm) {
-  commit(registros.map((r) => (r.config.id === p.config.id ? p : r)));
+  commit(
+    registros.map((r) =>
+      r.config.id === p.config.id
+        ? {
+            ...p,
+            config: { ...p.config, estado: r.config.estado },
+            extras: { ...p.extras, vendedores: ajustarVendedores(p.extras.vendedores, p.config.canales) },
+            organismos: r.organismos,
+          }
+        : r
+    )
+  );
 }
 
-export function cambiarEstadoProducto(id: string, estado: EstadoProductoAbm) {
+export type ResultadoEstado = { ok: true } | { ok: false; error: string };
+
+export const ERROR_ACTIVAR_SIN_ORGANISMO =
+  "No se puede activar el producto: vinculalo al menos a un organismo desde el organismo y volvé a intentar.";
+
+// Único punto donde cambia el estado: valida acá además de en la pantalla, para que ninguna
+// vía (lista, detalle) pueda activar un borrador sin organismos vinculados.
+export function cambiarEstadoProducto(id: string, estado: EstadoProductoAbm): ResultadoEstado {
+  const actual = registros.find((r) => r.config.id === id);
+  if (!actual) return { ok: false, error: "El producto no existe." };
+  if (estado === "ACTIVO" && actual.config.estado === "BORRADOR" && actual.organismos.length === 0)
+    return { ok: false, error: ERROR_ACTIVAR_SIN_ORGANISMO };
   commit(registros.map((r) => (r.config.id === id ? { ...r, config: { ...r.config, estado } } : r)));
+  return { ok: true };
 }
-
 export function restaurarProductosDemo() {
   commit(structuredClone(INICIAL));
 }
@@ -409,7 +446,11 @@ export function crearProducto(datos: {
       vigenciaDesde: fechaHoy(),
       vigenciaHasta: null,
     },
-    extras: { ...structuredClone(base.extras), categoria: datos.categoria },
+    extras: {
+      ...structuredClone(base.extras),
+      categoria: datos.categoria,
+      vendedores: ajustarVendedores(base.extras.vendedores, base.config.canales),
+    },
     // Un producto nuevo no se ofrece en ningún organismo hasta que se lo habilite.
     organismos: [],
   };

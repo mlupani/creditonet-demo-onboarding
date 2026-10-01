@@ -67,10 +67,30 @@ export const CANALES: OpcionCatalogo[] = [
   { id: "digital", nombre: "Canal digital", detalle: "Solicitud iniciada desde la web o la app" },
 ];
 
-export const VENDEDORES: OpcionCatalogo[] = [
-  { id: "juan-perez", nombre: "Juan Pérez", detalle: "Legajo V-118 · CreditoNet Casa Central" },
-  { id: "ana-torres", nombre: "Ana Torres", detalle: "Legajo V-142 · CreditoNet Casa Central" },
-  { id: "carlos-ruiz", nombre: "Carlos Ruiz", detalle: "Legajo V-097 · Sucursal Nueva Córdoba" },
+// Cada vendedor está vinculado a los canales en los que opera.
+export interface Vendedor extends OpcionCatalogo {
+  canales: string[];
+}
+
+export const VENDEDORES: Vendedor[] = [
+  {
+    id: "juan-perez",
+    nombre: "Juan Pérez",
+    detalle: "Legajo V-118 · CreditoNet Casa Central",
+    canales: ["sucursal"],
+  },
+  {
+    id: "ana-torres",
+    nombre: "Ana Torres",
+    detalle: "Legajo V-142 · CreditoNet Casa Central",
+    canales: ["digital"],
+  },
+  {
+    id: "carlos-ruiz",
+    nombre: "Carlos Ruiz",
+    detalle: "Legajo V-097 · Sucursal Nueva Córdoba",
+    canales: ["sucursal"],
+  },
 ];
 
 // --- Plan de cuotas / Línea (§2.3) ---
