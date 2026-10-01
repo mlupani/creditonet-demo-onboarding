@@ -401,7 +401,7 @@ export interface PantallaPostOfertaConfig {
   label: string;
   descripcion: string;
   orden: number;
-  obligatoria: boolean;
+  // Una pantalla habilitada es obligatoria: ya no se configura aparte (creditonet-117).
   visible: boolean;
 }
 
@@ -414,8 +414,27 @@ export interface DocumentoConfig {
   // Tipo de documento definido en Parámetros.
   tipoId: string;
   obligatorio: boolean;
-  // Si el concepto admite una o varias imágenes.
-  multiple: boolean;
+  // Cantidad de imágenes: el mínimo sólo se exige si el documento es obligatorio (al menos 1);
+  // el máximo (≥ 1, ≥ mínimo) limita cuántas se pueden adjuntar.
+  minimo: number;
+  maximo: number;
+}
+
+// Cantidad mínima que se exige de un documento: 0 si es opcional, al menos 1 si es obligatorio.
+export function minimoDocumento(d: DocumentoConfig): number {
+  return d.obligatorio ? Math.max(d.minimo, 1) : 0;
+}
+
+// Un proveedor de tokenización con la cantidad de tarjetas que se piden con él. El bloque se
+// repite para pedir mínimos por proveedor que coexisten (ej. mín. 1 de A y mín. 2 de B).
+export interface BloqueTokenizacion {
+  proveedorId: string;
+  minimo: number;
+  maximo: number;
+}
+
+export interface TokenizacionConfig {
+  proveedores: BloqueTokenizacion[];
 }
 
 // Producto: navegación entre las pantallas del onboarding. Libre: en cualquier orden.
@@ -429,11 +448,11 @@ export interface OnboardingConfig {
   camposObligatorios: Partial<Record<string, boolean>>;
   referencias: CantidadConfig;
   garantes: CantidadConfig;
-  tokenizacion: { maximoTarjetas: number; proveedorId: string };
+  tokenizacion: TokenizacionConfig;
   documentos: DocumentoConfig[];
 }
 
-type CambiosPantalla = Partial<Record<PantallaPostOfertaId, { visible?: boolean; obligatoria?: boolean }>>;
+type CambiosPantalla = Partial<Record<PantallaPostOfertaId, { visible?: boolean }>>;
 
 // Onboarding §3: las 7 pantallas disponibles, en el orden de la documentación.
 const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
@@ -442,7 +461,6 @@ const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
     label: "Datos personales",
     descripcion: "Identificación, domicilio particular y contacto.",
     orden: 1,
-    obligatoria: true,
     visible: true,
   },
   {
@@ -450,7 +468,6 @@ const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
     label: "Datos laborales",
     descripcion: "Empleador, domicilio y teléfono laboral.",
     orden: 2,
-    obligatoria: true,
     visible: true,
   },
   {
@@ -458,7 +475,6 @@ const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
     label: "Tokenización de tarjetas",
     descripcion: "Una o varias tarjetas, por link de WhatsApp o carga presencial.",
     orden: 3,
-    obligatoria: false,
     visible: true,
   },
   {
@@ -466,7 +482,6 @@ const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
     label: "Referencias personales",
     descripcion: "Una o varias referencias con DNI autocompletable.",
     orden: 4,
-    obligatoria: true,
     visible: true,
   },
   {
@@ -474,7 +489,6 @@ const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
     label: "Garantías",
     descripcion: "Uno o varios garantes que firman el préstamo y el pagaré.",
     orden: 5,
-    obligatoria: true,
     visible: true,
   },
   {
@@ -482,7 +496,6 @@ const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
     label: "Legajo virtual",
     descripcion: "Documentos definidos en Parámetros.",
     orden: 6,
-    obligatoria: true,
     visible: true,
   },
   {
@@ -490,7 +503,6 @@ const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
     label: "Impresión de legajo",
     descripcion: "Imprimir o visualizar el PDF completo del legajo.",
     orden: 7,
-    obligatoria: false,
     visible: true,
   },
 ];
@@ -581,13 +593,13 @@ export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
       camposObligatorios: {},
       referencias: { minimo: 1, maximo: 2 },
       garantes: { minimo: 1, maximo: 2 },
-      tokenizacion: { maximoTarjetas: 2, proveedorId: "proveedor-a" },
+      tokenizacion: { proveedores: [{ proveedorId: "proveedor-a", minimo: 0, maximo: 2 }] },
       documentos: [
-        { tipoId: "dni-frente", obligatorio: true, multiple: false },
-        { tipoId: "dni-dorso", obligatorio: true, multiple: false },
-        { tipoId: "recibo-sueldo", obligatorio: true, multiple: true },
-        { tipoId: "comprobante-servicio", obligatorio: true, multiple: false },
-        { tipoId: "otros", obligatorio: false, multiple: true },
+        { tipoId: "dni-frente", obligatorio: true, minimo: 1, maximo: 1 },
+        { tipoId: "dni-dorso", obligatorio: true, minimo: 1, maximo: 1 },
+        { tipoId: "recibo-sueldo", obligatorio: true, minimo: 1, maximo: 2 },
+        { tipoId: "comprobante-servicio", obligatorio: true, minimo: 1, maximo: 1 },
+        { tipoId: "otros", obligatorio: false, minimo: 0, maximo: 5 },
       ],
     },
   },
@@ -603,20 +615,17 @@ export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
     // Requiere presentar la sentencia y firmar la cesión de cobro en persona.
     canales: ["sucursal"],
     onboarding: {
-      pantallas: pantallas({
-        tokenizacion: { visible: false },
-        garantias: { visible: true, obligatoria: false },
-      }),
+      pantallas: pantallas({ tokenizacion: { visible: false } }),
       navegacion: "LIBRE",
       camposObligatorios: {},
       referencias: { minimo: 1, maximo: 2 },
       garantes: { minimo: 0, maximo: 0 },
-      tokenizacion: { maximoTarjetas: 1, proveedorId: "proveedor-b" },
+      tokenizacion: { proveedores: [{ proveedorId: "proveedor-b", minimo: 0, maximo: 1 }] },
       documentos: [
-        { tipoId: "dni-frente", obligatorio: true, multiple: false },
-        { tipoId: "dni-dorso", obligatorio: true, multiple: false },
-        { tipoId: "sentencia", obligatorio: true, multiple: true },
-        { tipoId: "comprobante-servicio", obligatorio: true, multiple: false },
+        { tipoId: "dni-frente", obligatorio: true, minimo: 1, maximo: 1 },
+        { tipoId: "dni-dorso", obligatorio: true, minimo: 1, maximo: 1 },
+        { tipoId: "sentencia", obligatorio: true, minimo: 1, maximo: 3 },
+        { tipoId: "comprobante-servicio", obligatorio: true, minimo: 1, maximo: 1 },
       ],
     },
   },
@@ -647,7 +656,8 @@ export interface OverridesOrganismo {
   camposQuitados?: string[];
   referencias?: Partial<CantidadConfig>;
   garantes?: Partial<CantidadConfig>;
-  tokenizacion?: Partial<OnboardingConfig["tokenizacion"]>;
+  // Lista propia de proveedores: reemplaza la del producto.
+  tokenizacion?: TokenizacionConfig;
   // Documentación propia del organismo: reemplaza la lista del producto.
   documentos?: DocumentoConfig[];
 }
@@ -734,10 +744,9 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
       "prestamo-emergencia",
     ],
     overrides: {
-      pantallas: {
-        referencias: { obligatoria: false },
-        garantias: { visible: true, obligatoria: false },
-      },
+      // Referencias y garantías opcionales: mínimo cero (la pantalla habilitada igual es obligatoria).
+      referencias: { minimo: 0 },
+      garantes: { minimo: 0 },
       // La repartición identifica la dependencia policial del cliente.
       camposObligatorios: { reparticion: true },
     },
@@ -761,17 +770,15 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
     overrides: {
       permiteDeudaTerceros: false,
       capitalMaximo: 2_000_000,
-      pantallas: {
-        tokenizacion: { obligatoria: true },
-      },
-      tokenizacion: { maximoTarjetas: 1 },
+      // Tokenización obligatoria: al menos una tarjeta, de un único proveedor.
+      tokenizacion: { proveedores: [{ proveedorId: "proveedor-a", minimo: 1, maximo: 1 }] },
       // Un pasivo no tiene cargo ni legajo de empleado.
       camposObligatorios: { cargo: false, numeroLegajo: false },
       documentos: [
-        { tipoId: "dni-frente", obligatorio: true, multiple: false },
-        { tipoId: "dni-dorso", obligatorio: true, multiple: false },
-        { tipoId: "recibo-haberes", obligatorio: true, multiple: false },
-        { tipoId: "comprobante-servicio", obligatorio: true, multiple: false },
+        { tipoId: "dni-frente", obligatorio: true, minimo: 1, maximo: 1 },
+        { tipoId: "dni-dorso", obligatorio: true, minimo: 1, maximo: 1 },
+        { tipoId: "recibo-haberes", obligatorio: true, minimo: 1, maximo: 1 },
+        { tipoId: "comprobante-servicio", obligatorio: true, minimo: 1, maximo: 1 },
       ],
     },
   },
@@ -997,7 +1004,7 @@ export function configEfectiva({ productoId, organismoId }: Seleccion) {
     camposQuitados: o.camposQuitados ?? [],
     referencias: { ...base.referencias, ...(o.referencias ?? {}) },
     garantes: { ...base.garantes, ...(o.garantes ?? {}) },
-    tokenizacion: { ...base.tokenizacion, ...(o.tokenizacion ?? {}) },
+    tokenizacion: o.tokenizacion ?? base.tokenizacion,
     documentos: o.documentos ?? base.documentos,
     cantidadExcepciones,
   };
@@ -1012,7 +1019,6 @@ export function pantallasVisibles(sel: Seleccion): PantallaPostOfertaConfig[] {
 export function resumenConfig(sel: Seleccion) {
   const cfg = configEfectiva(sel);
   const visibles = pantallasVisibles(sel);
-  const obligatorias = visibles.filter((p) => p.obligatoria).length;
   return {
     producto: cfg.producto.nombre,
     organismo: cfg.organismo.nombre,
@@ -1021,8 +1027,8 @@ export function resumenConfig(sel: Seleccion) {
         ? "Hereda 100 % del producto"
         : `${cfg.cantidadExcepciones} excepción${cfg.cantidadExcepciones === 1 ? "" : "es"} del organismo`,
     total: visibles.length,
-    obligatorias,
-    opcionales: visibles.length - obligatorias,
+    obligatorias: visibles.length,
+    opcionales: 0,
   };
 }
 

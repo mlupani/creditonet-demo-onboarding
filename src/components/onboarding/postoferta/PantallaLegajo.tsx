@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { configEfectiva } from "@/lib/config";
+import { configEfectiva, minimoDocumento } from "@/lib/config";
 import { getTipoDocumento } from "@/lib/parametros";
 import type { ArchivoLegajo } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
@@ -48,7 +48,9 @@ export function PantallaLegajo() {
   const docs = configEfectiva(app.configuracion).documentos;
   const archivos = app.postOferta.legajo;
   const obligatorios = docs.filter((d) => d.obligatorio);
-  const cargados = obligatorios.filter((d) => (archivos[d.tipoId]?.length ?? 0) > 0).length;
+  const cargados = obligatorios.filter(
+    (d) => (archivos[d.tipoId]?.length ?? 0) >= minimoDocumento(d)
+  ).length;
   const completo = cargados === obligatorios.length;
   const garantes = app.postOferta.garantes;
   const garantesCompletos = garantes.filter((g) => (g.reciboSueldo?.length ?? 0) > 0).length;
@@ -138,7 +140,9 @@ export function PantallaLegajo() {
           {docs.map((d) => {
             const tipo = getTipoDocumento(d.tipoId);
             const lista = archivos[d.tipoId] ?? [];
-            const cargado = lista.length > 0;
+            const minimo = minimoDocumento(d);
+            // Cargado = alcanzó el mínimo; sin mínimo (opcional), con al menos un archivo.
+            const cargado = lista.length >= Math.max(minimo, 1);
             const esteSubiendo = subiendo === d.tipoId;
             return (
               <li
@@ -179,27 +183,29 @@ export function PantallaLegajo() {
                         {d.obligatorio ? "Obligatorio" : "Opcional"}
                       </span>
                       <span className={`${chip} bg-brand-50 text-brand-700`}>
-                        {d.multiple ? "Varias imágenes" : "Una imagen"}
+                        {minimo > 0 ? `Mín. ${minimo} · ` : ""}Máx. {d.maximo}
                       </span>
                     </p>
                     <p className="mt-0.5 text-xs text-ink-500">
-                      {cargado
-                        ? `${lista.length} archivo${lista.length === 1 ? "" : "s"} adjunto${lista.length === 1 ? "" : "s"}`
-                        : esteSubiendo
-                          ? "Subiendo documento…"
+                      {esteSubiendo
+                        ? "Subiendo documento…"
+                        : lista.length > 0
+                          ? `${lista.length} de ${d.maximo} adjunto${d.maximo === 1 ? "" : "s"}${
+                              lista.length < minimo ? ` · faltan ${minimo - lista.length} para el mínimo` : ""
+                            }`
                           : "Pendiente de adjuntar"}
                     </p>
                   </div>
-                  {(!cargado || d.multiple) && (
+                  {lista.length < d.maximo && (
                     <Button
                       size="sm"
-                      variant={cargado ? "ghost" : "outline"}
+                      variant={lista.length > 0 ? "ghost" : "outline"}
                       onClick={() => adjuntar(d.tipoId)}
                       disabled={subiendo !== null}
                       loading={esteSubiendo}
                     >
-                      {cargado && !esteSubiendo && <IconPlus width={14} height={14} />}
-                      {cargado ? "Agregar imagen" : "Adjuntar"}
+                      {lista.length > 0 && !esteSubiendo && <IconPlus width={14} height={14} />}
+                      {lista.length > 0 ? "Agregar imagen" : "Adjuntar"}
                     </Button>
                   )}
                 </div>

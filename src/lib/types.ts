@@ -292,6 +292,9 @@ export interface TarjetaTokenizada {
   id: string;
   via: "WHATSAPP" | "PRESENCIAL" | "BASE_INTERNA";
   estado: "ESPERANDO_CLIENTE" | "TOKENIZADA";
+  // Proveedor con el que se tokeniza (Parámetros): cuenta para el mínimo de su bloque. Las
+  // tarjetas anteriores a creditonet-117 no lo tienen y cuentan para el primer bloque.
+  proveedorId?: string;
   // Sólo aplica a via "BASE_INTERNA": el vendedor tiene que comprobar que la tarjeta
   // precargada del cliente recurrente sigue siendo correcta antes de que cuente como válida.
   verificada?: boolean;

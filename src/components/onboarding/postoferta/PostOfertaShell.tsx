@@ -207,10 +207,11 @@ export function PostOfertaShell() {
   }, [puntual, restringidoALegajo, observadas, habilitadas, pantallaActual, setPantallaActual]);
 
   // Navegación secuencial (configurada en el producto o excepcionada por el organismo): no se
-  // avanza más allá de la primera pantalla obligatoria que todavía no está completa.
+  // avanza más allá de la primera pantalla que todavía no está completa (toda pantalla
+  // habilitada es obligatoria).
   const secuencial = configEfectiva(app.configuracion).navegacion === "SECUENCIAL" && !puntual && !soloLectura;
   const limiteSecuencial = secuencial
-    ? estados.findIndex((e) => e.obligatoria && e.estadoVisual !== "COMPLETA")
+    ? estados.findIndex((e) => e.estadoVisual !== "COMPLETA")
     : -1;
 
   useEffect(() => {
@@ -231,7 +232,6 @@ export function PostOfertaShell() {
       id: e.id,
       numero: e.numero,
       label: e.label,
-      obligatoria: e.obligatoria,
       estado: reimprimir ? "INICIADA" : corregida ? "COMPLETA" : e.estadoVisual,
       detalle: reimprimir ? "Reimprimir formulario" : corregida ? "Corregida" : undefined,
       observada: observadas.includes(e.id) && !corregida,

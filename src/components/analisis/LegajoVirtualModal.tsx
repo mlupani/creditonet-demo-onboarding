@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { configEfectiva } from "@/lib/config";
+import { configEfectiva, minimoDocumento } from "@/lib/config";
 import { getTipoDocumento } from "@/lib/parametros";
 import type { ArchivoLegajo } from "@/lib/types";
 import { Modal } from "@/components/ui/Modal";
@@ -24,7 +24,9 @@ export function LegajoVirtualModal({
   const cfg = configEfectiva(app.configuracion);
   const po = app.postOferta;
   const obligatorios = cfg.documentos.filter((d) => d.obligatorio);
-  const cargados = obligatorios.filter((d) => (po.legajo[d.tipoId]?.length ?? 0) > 0).length;
+  const cargados = obligatorios.filter(
+    (d) => (po.legajo[d.tipoId]?.length ?? 0) >= minimoDocumento(d)
+  ).length;
   const garantes = garanteId ? po.garantes.filter((g) => g.id === garanteId) : po.garantes;
   const soloGarante = garanteId ? garantes[0] : undefined;
   const [preview, setPreview] = useState<{ archivo: ArchivoLegajo; tipo: string } | null>(null);

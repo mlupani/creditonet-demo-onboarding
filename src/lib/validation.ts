@@ -9,9 +9,9 @@ import type {
 } from "./types";
 import { isValidCBU, isValidCUIL, isValidDNI, isValidEmail, parseFecha } from "./format";
 import { parseTelefono, validarNumero } from "./telefono";
-import { configEfectiva, pantallasVisibles } from "./config";
+import { configEfectiva, minimoDocumento, pantallasVisibles } from "./config";
 import { erroresPantalla } from "./campos-post-oferta";
-import { getTipoDocumento } from "./parametros";
+import { getTipoDocumento, nombreProveedor } from "./parametros";
 
 // --- Catálogos de la etapa pre-oferta (los de post-oferta viven en parametros.ts) ---
 
@@ -145,51 +145,107 @@ export const LABEL_PERSONA: Record<CampoPersona, string> = {
   cbu: "CBU",
 };
 
+// Campos de Referencias y Garantías cuya obligatoriedad se configura por producto (con
+// excepciones del organismo). En `camposObligatorios` se guardan como `<pantalla>.<campo>`;
+// sin configuración son obligatorios (creditonet-117).
+export type PantallaPersonas = "referencias" | "garantias";
+
+export const CAMPOS_PERSONA: { id: CampoPersona; soloGarante: boolean }[] = [
+  { id: "vinculo", soloGarante: false },
+  { id: "dni", soloGarante: false },
+  { id: "nombre", soloGarante: false },
+  { id: "apellido", soloGarante: false },
+  { id: "email", soloGarante: false },
+  { id: "telefono", soloGarante: false },
+  { id: "domicilioCalle", soloGarante: false },
+  { id: "domicilioNumero", soloGarante: false },
+  { id: "domicilioProvincia", soloGarante: false },
+  { id: "domicilioLocalidad", soloGarante: false },
+  { id: "domicilioCodigoPostal", soloGarante: false },
+  { id: "condicionLaboral", soloGarante: true },
+  { id: "ingresoBruto", soloGarante: true },
+  { id: "ingresoNeto", soloGarante: true },
+  { id: "empleadorCalle", soloGarante: true },
+  { id: "empleadorLocalidad", soloGarante: true },
+  { id: "empleadorCompaniaTelefonica", soloGarante: true },
+  { id: "empleadorTelefono", soloGarante: true },
+  { id: "banco", soloGarante: true },
+  { id: "cbu", soloGarante: true },
+];
+
+export const pantallaDePersona = (tipo: TipoPersonaVinculada): PantallaPersonas =>
+  tipo === "referencia" ? "referencias" : "garantias";
+
+export const idCampoPersona = (pantalla: PantallaPersonas, campo: CampoPersona) =>
+  `${pantalla}.${campo}`;
+
+export function obligatorioPersona(
+  obligatorios: Partial<Record<string, boolean>>,
+  pantalla: PantallaPersonas,
+  campo: CampoPersona
+): boolean {
+  return obligatorios[idCampoPersona(pantalla, campo)] ?? true;
+}
+
+// Un campo opcional vacío no se valida; si se completa, igual tiene que tener formato válido.
 export function validarPersona(
   p: PersonaVinculada,
-  tipo: TipoPersonaVinculada
+  tipo: TipoPersonaVinculada,
+  obligatorios: Partial<Record<string, boolean>> = {}
 ): Partial<Record<CampoPersona, string>> {
   const e: Partial<Record<CampoPersona, string>> = {};
-  if (!p.vinculo.trim()) e.vinculo = "Seleccioná el vínculo con el cliente.";
-  if (!p.dni.trim()) e.dni = "Ingresá el DNI.";
-  else if (!isValidDNI(p.dni)) e.dni = "El DNI debe tener 7 u 8 dígitos.";
-  if (!p.nombre.trim()) e.nombre = "Ingresá el nombre.";
-  if (!p.apellido.trim()) e.apellido = "Ingresá el apellido.";
-  if (!p.domicilio.calle.trim()) e.domicilioCalle = "Ingresá la calle.";
-  if (!p.domicilio.numero.trim()) e.domicilioNumero = "Ingresá el número.";
-  if (!p.domicilio.provincia.trim()) e.domicilioProvincia = "Seleccioná la provincia.";
-  if (!p.domicilio.localidad.trim()) e.domicilioLocalidad = "Seleccioná la localidad.";
-  if (!p.domicilio.codigoPostal.trim())
+  const pantalla = pantallaDePersona(tipo);
+  const req = (campo: CampoPersona) => obligatorioPersona(obligatorios, pantalla, campo);
+  if (!p.vinculo.trim() && req("vinculo")) e.vinculo = "Seleccioná el vínculo con el cliente.";
+  if (!p.dni.trim()) {
+    if (req("dni")) e.dni = "Ingresá el DNI.";
+  } else if (!isValidDNI(p.dni)) e.dni = "El DNI debe tener 7 u 8 dígitos.";
+  if (!p.nombre.trim() && req("nombre")) e.nombre = "Ingresá el nombre.";
+  if (!p.apellido.trim() && req("apellido")) e.apellido = "Ingresá el apellido.";
+  if (!p.domicilio.calle.trim() && req("domicilioCalle")) e.domicilioCalle = "Ingresá la calle.";
+  if (!p.domicilio.numero.trim() && req("domicilioNumero")) e.domicilioNumero = "Ingresá el número.";
+  if (!p.domicilio.provincia.trim() && req("domicilioProvincia"))
+    e.domicilioProvincia = "Seleccioná la provincia.";
+  if (!p.domicilio.localidad.trim() && req("domicilioLocalidad"))
+    e.domicilioLocalidad = "Seleccioná la localidad.";
+  if (!p.domicilio.codigoPostal.trim() && req("domicilioCodigoPostal"))
     e.domicilioCodigoPostal = "Ingresá el código postal.";
-  if (!p.email.trim()) e.email = "Ingresá el email de contacto.";
-  else if (!isValidEmail(p.email))
+  if (!p.email.trim()) {
+    if (req("email")) e.email = "Ingresá el email de contacto.";
+  } else if (!isValidEmail(p.email))
     e.email = "El formato del email no es válido. Ej.: nombre@dominio.com";
   const tel = parseTelefono(p.telefono);
-  if (!tel.numero) e.telefono = "Ingresá el teléfono de contacto.";
-  else {
+  if (!tel.numero) {
+    if (req("telefono")) e.telefono = "Ingresá el teléfono de contacto.";
+  } else {
     const errorTel = validarNumero(tel.pais, tel.caracteristica, tel.numero);
     if (errorTel) e.telefono = errorTel;
   }
   // El garante debe demostrar capacidad de pago para firmar la documentación del préstamo.
   // Nota creditonet-33: el recibo de sueldo ya no se valida acá; se exige en Legajo virtual por garante.
   if (tipo === "garante") {
-    if (!p.condicionLaboral.trim()) e.condicionLaboral = "Seleccioná la condición laboral.";
-    if (p.ingresoBruto <= 0) e.ingresoBruto = "Ingresá el ingreso bruto.";
-    if (p.ingresoNeto <= 0) e.ingresoNeto = "Ingresá el ingreso neto.";
-    if (!p.empleadorCalle.trim()) e.empleadorCalle = "Ingresá la calle del empleador.";
-    if (!p.empleadorLocalidad.trim()) e.empleadorLocalidad = "Ingresá la localidad del empleador.";
-    if (!(p.empleadorCompaniaTelefonica ?? "").trim())
+    if (!p.condicionLaboral.trim() && req("condicionLaboral"))
+      e.condicionLaboral = "Seleccioná la condición laboral.";
+    if (p.ingresoBruto <= 0 && req("ingresoBruto")) e.ingresoBruto = "Ingresá el ingreso bruto.";
+    if (p.ingresoNeto <= 0 && req("ingresoNeto")) e.ingresoNeto = "Ingresá el ingreso neto.";
+    if (!p.empleadorCalle.trim() && req("empleadorCalle"))
+      e.empleadorCalle = "Ingresá la calle del empleador.";
+    if (!p.empleadorLocalidad.trim() && req("empleadorLocalidad"))
+      e.empleadorLocalidad = "Ingresá la localidad del empleador.";
+    if (!(p.empleadorCompaniaTelefonica ?? "").trim() && req("empleadorCompaniaTelefonica"))
       e.empleadorCompaniaTelefonica = "Seleccioná la compañía telefónica.";
     const telEmpleador = parseTelefono(p.empleadorTelefono);
-    if (!telEmpleador.numero) e.empleadorTelefono = "Ingresá el teléfono del empleador.";
-    else {
+    if (!telEmpleador.numero) {
+      if (req("empleadorTelefono")) e.empleadorTelefono = "Ingresá el teléfono del empleador.";
+    } else {
       const errorTel = validarNumero(telEmpleador.pais, telEmpleador.caracteristica, telEmpleador.numero);
       if (errorTel) e.empleadorTelefono = errorTel;
     }
     // ?? "": sesiones persistidas en sessionStorage antes de este campo no lo tienen.
-    if (!(p.banco ?? "").trim()) e.banco = "Seleccioná el banco.";
-    if (!(p.cbu ?? "").trim()) e.cbu = "Ingresá el CBU.";
-    else if (!isValidCBU(p.cbu)) e.cbu = "El CBU debe tener 22 dígitos.";
+    if (!(p.banco ?? "").trim() && req("banco")) e.banco = "Seleccioná el banco.";
+    if (!(p.cbu ?? "").trim()) {
+      if (req("cbu")) e.cbu = "Ingresá el CBU.";
+    } else if (!isValidCBU(p.cbu)) e.cbu = "El CBU debe tener 22 dígitos.";
   }
   return e;
 }
@@ -211,7 +267,6 @@ export interface PantallaEstado {
   numero: number;
   label: string;
   descripcion: string;
-  obligatoria: boolean;
   completa: boolean;
   estadoVisual: EstadoVisualPantalla;
   pendientes: PendienteItem[];
@@ -224,6 +279,16 @@ const conTexto = (valores: Record<string, string>) =>
 // por el vendedor: recién ahí cuenta como una tarjeta válida para el cobro.
 export function tarjetaValida(t: TarjetaTokenizada): boolean {
   return t.estado === "TOKENIZADA" && t.verificada !== false;
+}
+
+// ¿La tarjeta cuenta para el bloque de este proveedor? Sin proveedor (datos anteriores a
+// creditonet-117) cuenta para el primer bloque.
+export function proveedorDeTarjeta(
+  t: TarjetaTokenizada,
+  esPrimerBloque: boolean,
+  proveedorId: string
+): boolean {
+  return t.proveedorId ? t.proveedorId === proveedorId : esPrimerBloque;
 }
 
 /**
@@ -251,20 +316,29 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
         break;
       }
       case "tokenizacion": {
-        const validas = po.tarjetas.filter(tarjetaValida).length;
-        if (validas === 0) {
-          const esperandoCliente = po.tarjetas.some((t) => t.estado === "ESPERANDO_CLIENTE");
-          const esperandoComprobacion = po.tarjetas.some(
-            (t) => t.estado === "TOKENIZADA" && t.verificada === false
-          );
-          push(
-            esperandoCliente
-              ? "Tarjeta esperando al cliente"
-              : esperandoComprobacion
-                ? "Tarjeta pendiente de comprobar"
-                : "Tarjeta sin tokenizar"
-          );
-        }
+        // Cada bloque proveedor/mínimo se valida por separado (creditonet-117).
+        cfg.tokenizacion.proveedores.forEach((b, i) => {
+          const delProveedor = po.tarjetas.filter((t) => proveedorDeTarjeta(t, i === 0, b.proveedorId));
+          const validas = delProveedor.filter(tarjetaValida).length;
+          const nombre = nombreProveedor(b.proveedorId);
+          if (validas < b.minimo) {
+            const esperandoCliente = delProveedor.some((t) => t.estado === "ESPERANDO_CLIENTE");
+            const esperandoComprobacion = delProveedor.some(
+              (t) => t.estado === "TOKENIZADA" && t.verificada === false
+            );
+            push(
+              `Tarjetas de ${nombre}: ${validas} de ${b.minimo}${
+                esperandoCliente
+                  ? " · esperando al cliente"
+                  : esperandoComprobacion
+                    ? " · pendiente de comprobar"
+                    : ""
+              }`
+            );
+          } else if (delProveedor.length > b.maximo) {
+            push(`Tarjetas de ${nombre}: máximo ${b.maximo}`);
+          }
+        });
         conDatos = po.tarjetas.length > 0;
         break;
       }
@@ -280,7 +354,11 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
         lista.forEach((persona, i) => {
           (
             Object.keys(
-              validarPersona(persona, esReferencia ? "referencia" : "garante")
+              validarPersona(
+                persona,
+                esReferencia ? "referencia" : "garante",
+                cfg.camposObligatorios
+              )
             ) as CampoPersona[]
           ).forEach((k) =>
             push(
@@ -294,9 +372,14 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
         break;
       }
       case "legajo": {
-        cfg.documentos
-          .filter((d) => d.obligatorio && (po.legajo[d.tipoId]?.length ?? 0) === 0)
-          .forEach((d) => push(getTipoDocumento(d.tipoId).nombre));
+        // Obligatoriedad y cantidad mínima / máxima por ítem (creditonet-117).
+        cfg.documentos.forEach((d) => {
+          const cargados = po.legajo[d.tipoId]?.length ?? 0;
+          const minimo = minimoDocumento(d);
+          const nombre = getTipoDocumento(d.tipoId).nombre;
+          if (cargados < minimo) push(minimo > 1 ? `${nombre} (${cargados} de ${minimo})` : nombre);
+          else if (cargados > d.maximo) push(`${nombre} (máximo ${d.maximo})`);
+        });
         // creditonet-33: si hay garantes, cada uno debe tener su recibo de sueldo en el legajo
         po.garantes.forEach((g, idx) => {
           if ((g.reciboSueldo?.length ?? 0) === 0) {
@@ -323,7 +406,6 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
       numero: index + 1,
       label: pantalla.label,
       descripcion: pantalla.descripcion,
-      obligatoria: pantalla.obligatoria,
       completa,
       estadoVisual: completa ? "COMPLETA" : iniciada ? "INICIADA" : "NO_INICIADA",
       pendientes,
@@ -332,8 +414,9 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
 }
 
 export function pendientesFinalizarCarga(app: CreditApplication): PendienteItem[] {
+  // Toda pantalla habilitada es obligatoria.
   return estadoPantallasPostOferta(app)
-    .filter((p) => p.obligatoria && !p.completa)
+    .filter((p) => !p.completa)
     .flatMap((p) => p.pendientes);
 }
 

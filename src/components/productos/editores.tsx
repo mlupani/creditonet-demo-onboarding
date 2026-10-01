@@ -1,8 +1,20 @@
 "use client";
 
-import type { AsignacionMotor, DocumentoConfig } from "@/lib/config";
+import type {
+  AsignacionMotor,
+  BloqueTokenizacion,
+  DocumentoConfig,
+  TokenizacionConfig,
+} from "@/lib/config";
+import {
+  TITULO_PANTALLA_CAMPOS,
+  camposConfigurablesDe,
+  conCampoObligatorio,
+  esObligatorio,
+} from "@/lib/campos-config";
 import { CONDICIONES_LABORALES, useMotores } from "@/lib/motores";
-import { TIPOS_DOCUMENTO } from "@/lib/parametros";
+import { PROVEEDORES_TOKENIZACION, TIPOS_DOCUMENTO } from "@/lib/parametros";
+import type { PantallaPostOfertaId } from "@/lib/types";
 import { PERFILES_INTERNOS, ROTULO_BCRA, ROTULO_PERFIL, SITUACIONES_BCRA } from "@/lib/planes";
 import {
   CANALES_NOTIFICACION,
@@ -21,6 +33,7 @@ import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
+import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { CampoNumero } from "./campos";
 import { IconPlus, IconTrash } from "@/components/icons";
 
@@ -184,9 +197,11 @@ export function EditorNotificaciones({
 export function EditorDocumentos({
   docs,
   onChange,
+  error,
 }: {
   docs: DocumentoConfig[];
   onChange: (docs: DocumentoConfig[]) => void;
+  error?: string;
 }) {
   // Se conserva el orden del catálogo de Parámetros.
   const guardar = (lista: DocumentoConfig[]) =>
@@ -197,48 +212,204 @@ export function EditorDocumentos({
           TIPOS_DOCUMENTO.findIndex((t) => t.id === b.tipoId)
       )
     );
+  const cambiar = (tipoId: string, patch: Partial<DocumentoConfig>) =>
+    guardar(docs.map((x) => (x.tipoId === tipoId ? { ...x, ...patch } : x)));
   return (
-    <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200 bg-white">
-      {TIPOS_DOCUMENTO.map((t) => {
-        const d = docs.find((x) => x.tipoId === t.id);
-        return (
-          <li key={t.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-            <div className="min-w-0 flex-1 basis-56">
-              <Checkbox
-                checked={!!d}
-                onChange={(v) =>
-                  guardar(
-                    v
-                      ? [...docs, { tipoId: t.id, obligatorio: false, multiple: false }]
-                      : docs.filter((x) => x.tipoId !== t.id)
-                  )
-                }
-                label={t.nombre}
-                description={t.categoria}
-              />
-            </div>
-            {d && (
-              <div className="flex gap-5">
+    <div className="space-y-2">
+      <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200 bg-white">
+        {TIPOS_DOCUMENTO.map((t) => {
+          const d = docs.find((x) => x.tipoId === t.id);
+          return (
+            <li key={t.id} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+              <div className="min-w-0 flex-1 basis-56">
                 <Checkbox
-                  checked={d.obligatorio}
+                  checked={!!d}
                   onChange={(v) =>
-                    guardar(docs.map((x) => (x.tipoId === t.id ? { ...x, obligatorio: v } : x)))
+                    guardar(
+                      v
+                        ? [...docs, { tipoId: t.id, obligatorio: false, minimo: 0, maximo: 1 }]
+                        : docs.filter((x) => x.tipoId !== t.id)
+                    )
                   }
-                  label="Obligatorio"
-                />
-                <Checkbox
-                  checked={d.multiple}
-                  onChange={(v) =>
-                    guardar(docs.map((x) => (x.tipoId === t.id ? { ...x, multiple: v } : x)))
-                  }
-                  label="Varias imágenes"
+                  label={t.nombre}
+                  description={t.categoria}
                 />
               </div>
-            )}
-          </li>
+              {d && (
+                <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
+                  <Checkbox
+                    checked={d.obligatorio}
+                    onChange={(v) =>
+                      cambiar(t.id, {
+                        obligatorio: v,
+                        minimo: v ? Math.max(d.minimo, 1) : 0,
+                        maximo: v ? Math.max(d.maximo, 1) : d.maximo,
+                      })
+                    }
+                    label="Obligatorio"
+                  />
+                  <CampoNumero
+                    id={`doc-${t.id}-min`}
+                    label="Mínimo"
+                    min={d.obligatorio ? 1 : 0}
+                    value={d.minimo}
+                    disabled={!d.obligatorio}
+                    onChange={(v) => cambiar(t.id, { minimo: v })}
+                    className="w-24"
+                  />
+                  <CampoNumero
+                    id={`doc-${t.id}-max`}
+                    label="Máximo"
+                    min={1}
+                    value={d.maximo}
+                    onChange={(v) => cambiar(t.id, { maximo: v })}
+                    className="w-24"
+                  />
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
+    </div>
+  );
+}
+
+// --- Tokenización: un bloque proveedor / mínimo / máximo por proveedor ---
+
+export function EditorTokenizacion({
+  idBase,
+  valor,
+  onChange,
+  error,
+}: {
+  idBase: string;
+  valor: TokenizacionConfig;
+  onChange: (valor: TokenizacionConfig) => void;
+  error?: string;
+}) {
+  const bloques = valor.proveedores;
+  const libres = PROVEEDORES_TOKENIZACION.filter((x) => !bloques.some((b) => b.proveedorId === x.id));
+  const cambiar = (i: number, patch: Partial<BloqueTokenizacion>) =>
+    onChange({ proveedores: bloques.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
+  return (
+    <div className="space-y-3">
+      {bloques.length === 0 && (
+        <p className="text-xs text-ink-500">Sin proveedores: no se pueden tokenizar tarjetas.</p>
+      )}
+      {bloques.map((b, i) => (
+        <div key={i} className="rounded-xl border border-ink-200 bg-white p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-ink-500">
+              Proveedor {i + 1}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Quitar el proveedor ${i + 1}`}
+              onClick={() => onChange({ proveedores: bloques.filter((_, j) => j !== i) })}
+            >
+              <IconTrash width={14} height={14} />
+            </Button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <SelectField
+              id={`${idBase}-prov-${i}`}
+              label="Proveedor"
+              value={b.proveedorId}
+              onChange={(v) => cambiar(i, { proveedorId: v })}
+              options={PROVEEDORES_TOKENIZACION.filter(
+                (x) => x.id === b.proveedorId || libres.some((l) => l.id === x.id)
+              ).map((x) => ({ value: x.id, label: x.nombre }))}
+            />
+            <CampoNumero
+              id={`${idBase}-min-${i}`}
+              label="Mínimo de tarjetas"
+              value={b.minimo}
+              onChange={(v) => cambiar(i, { minimo: v })}
+            />
+            <CampoNumero
+              id={`${idBase}-max-${i}`}
+              label="Máximo de tarjetas"
+              min={1}
+              value={b.maximo}
+              onChange={(v) => cambiar(i, { maximo: v })}
+            />
+          </div>
+        </div>
+      ))}
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={libres.length === 0}
+        onClick={() =>
+          onChange({
+            proveedores: [...bloques, { proveedorId: libres[0].id, minimo: 0, maximo: 1 }],
+          })
+        }
+      >
+        <IconPlus width={14} height={14} />
+        Agregar proveedor
+      </Button>
+      {error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
+    </div>
+  );
+}
+
+// --- Obligatoriedad por campo, en todas las pantallas del onboarding ---
+
+export function EditorCamposObligatorios({
+  obligatorios,
+  onChange,
+  habilitadas,
+}: {
+  obligatorios: Partial<Record<string, boolean>>;
+  onChange: (obligatorios: Partial<Record<string, boolean>>) => void;
+  // Pantallas habilitadas del producto: las deshabilitadas se indican pero siguen editables.
+  habilitadas: PantallaPostOfertaId[];
+}) {
+  return (
+    <div className="space-y-3">
+      {(Object.keys(TITULO_PANTALLA_CAMPOS) as PantallaPostOfertaId[]).map((pantalla) => {
+        const campos = camposConfigurablesDe(pantalla);
+        const titulo = TITULO_PANTALLA_CAMPOS[pantalla];
+        const estado = habilitadas.includes(pantalla) ? "" : " · deshabilitada";
+        return (
+          <details key={pantalla} className="rounded-xl border border-ink-200 bg-white">
+            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink-800">
+              {titulo} · {campos.length} campo{campos.length === 1 ? "" : "s"}
+              {estado}
+            </summary>
+            <div className="border-t border-ink-100 px-4 py-4">
+              {pantalla === "legajo" && (
+                <p className="text-xs text-ink-500">
+                  Los ítems del legajo se configuran en el bloque Legajo de esta sección: cada documento define si
+                  es obligatorio y su cantidad mínima y máxima.
+                </p>
+              )}
+              {pantalla === "impresion" && (
+                <p className="text-xs text-ink-500">Esta pantalla no tiene campos para completar.</p>
+              )}
+              {campos.length > 0 && (
+                <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                  {campos.map((c) => (
+                    <Checkbox
+                      key={c.id}
+                      checked={esObligatorio(c, obligatorios)}
+                      disabled={c.fijo}
+                      onChange={(v) => onChange(conCampoObligatorio(obligatorios, c, v))}
+                      label={c.label}
+                      description={c.fijo ? "Lo exige el proveedor de tokenización." : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </details>
         );
       })}
-    </ul>
+    </div>
   );
 }
 

@@ -12,7 +12,13 @@ import {
   localidadesDe,
 } from "@/lib/parametros";
 import { isValidDNI, maskDNI, onlyDigits } from "@/lib/format";
-import { CONDICIONES_LABORALES, validarPersona } from "@/lib/validation";
+import {
+  CONDICIONES_LABORALES,
+  obligatorioPersona,
+  pantallaDePersona,
+  validarPersona,
+  type CampoPersona,
+} from "@/lib/validation";
 import type { TipoPersonaVinculada } from "@/lib/types";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -63,7 +69,11 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
   const t = TEXTOS[tipo];
   const lista = tipo === "referencia" ? app.postOferta.referencias : app.postOferta.garantes;
   const { minimo, maximo } = tipo === "referencia" ? cfg.referencias : cfg.garantes;
-  const validas = lista.filter((p) => Object.keys(validarPersona(p, tipo)).length === 0).length;
+  const validas = lista.filter(
+    (p) => Object.keys(validarPersona(p, tipo, cfg.camposObligatorios)).length === 0
+  ).length;
+  const req = (campo: CampoPersona) =>
+    obligatorioPersona(cfg.camposObligatorios, pantallaDePersona(tipo), campo);
   const faltan = Math.max(minimo - lista.length, 0);
 
   function buscar(id: string) {
@@ -100,7 +110,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
       </div>
 
       {lista.map((p, i) => {
-        const err = validarPersona(p, tipo);
+        const err = validarPersona(p, tipo, cfg.camposObligatorios);
         const completa = Object.keys(err).length === 0;
         return (
           <Card key={p.id} className="p-5 sm:p-6">
@@ -130,7 +140,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
               <SelectField
                 id={`${p.id}-vinculo`}
                 label="Vínculo con el cliente"
-                required
+                required={req("vinculo")}
                 value={p.vinculo}
                 onChange={(v) => actualizarPersona(tipo, p.id, { vinculo: v })}
                 options={t.vinculos.map((v) => ({ value: v, label: v }))}
@@ -140,7 +150,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 <FormField
                   id={`${p.id}-dni`}
                   label="DNI"
-                  required
+                  required={req("dni")}
                   inputMode="numeric"
                   value={p.dni}
                   onChange={(v) =>
@@ -166,7 +176,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
               <FormField
                 id={`${p.id}-nombre`}
                 label="Nombre"
-                required
+                required={req("nombre")}
                 value={p.nombre}
                 onChange={(v) => actualizarPersona(tipo, p.id, { nombre: v })}
                 error={err.nombre}
@@ -174,7 +184,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
               <FormField
                 id={`${p.id}-apellido`}
                 label="Apellido"
-                required
+                required={req("apellido")}
                 value={p.apellido}
                 onChange={(v) => actualizarPersona(tipo, p.id, { apellido: v })}
                 error={err.apellido}
@@ -182,7 +192,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
               <FormField
                 id={`${p.id}-email`}
                 label="Email de contacto"
-                required
+                required={req("email")}
                 type="email"
                 inputMode="email"
                 value={p.email}
@@ -192,7 +202,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
               <TelefonoField
                 id={`${p.id}-telefono`}
                 label="Teléfono de contacto"
-                required
+                required={req("telefono")}
                 value={p.telefono}
                 onChange={(v) => actualizarPersona(tipo, p.id, { telefono: v })}
                 error={err.telefono}
@@ -207,7 +217,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 <FormField
                   id={`${p.id}-domicilio-calle`}
                   label="Calle"
-                  required
+                  required={req("domicilioCalle")}
                   value={p.domicilio.calle}
                   onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "calle", v)}
                   error={err.domicilioCalle}
@@ -215,7 +225,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 <FormField
                   id={`${p.id}-domicilio-numero`}
                   label="Número"
-                  required
+                  required={req("domicilioNumero")}
                   inputMode="numeric"
                   value={p.domicilio.numero}
                   onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "numero", v)}
@@ -236,7 +246,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 <SelectField
                   id={`${p.id}-domicilio-provincia`}
                   label="Provincia"
-                  required
+                  required={req("domicilioProvincia")}
                   value={p.domicilio.provincia}
                   onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "provincia", v)}
                   options={PROVINCIAS.map((v) => ({ value: v, label: v }))}
@@ -245,7 +255,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 <SelectField
                   id={`${p.id}-domicilio-localidad`}
                   label="Localidad"
-                  required
+                  required={req("domicilioLocalidad")}
                   value={p.domicilio.localidad}
                   onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "localidad", v)}
                   options={localidadesDe(p.domicilio.provincia).map((l) => ({
@@ -258,7 +268,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                 <FormField
                   id={`${p.id}-domicilio-codigo-postal`}
                   label="Código postal"
-                  required
+                  required={req("domicilioCodigoPostal")}
                   inputMode="numeric"
                   value={p.domicilio.codigoPostal}
                   onChange={(v) => actualizarDomicilioPersona(tipo, p.id, "codigoPostal", v)}
@@ -277,7 +287,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <SelectField
                     id={`${p.id}-condicion-laboral`}
                     label="Condición laboral"
-                    required
+                    required={req("condicionLaboral")}
                     value={p.condicionLaboral}
                     onChange={(v) => actualizarPersona(tipo, p.id, { condicionLaboral: v })}
                     options={CONDICIONES_LABORALES.map((c) => ({ value: c, label: c }))}
@@ -287,7 +297,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <MoneyInput
                     id={`${p.id}-ingreso-bruto`}
                     label="Ingreso bruto"
-                    required
+                    required={req("ingresoBruto")}
                     value={p.ingresoBruto}
                     onChange={(v) => actualizarPersona(tipo, p.id, { ingresoBruto: v })}
                     error={err.ingresoBruto}
@@ -295,7 +305,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <MoneyInput
                     id={`${p.id}-ingreso-neto`}
                     label="Ingreso neto"
-                    required
+                    required={req("ingresoNeto")}
                     value={p.ingresoNeto}
                     onChange={(v) => actualizarPersona(tipo, p.id, { ingresoNeto: v })}
                     error={err.ingresoNeto}
@@ -303,7 +313,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <FormField
                     id={`${p.id}-empleador-calle`}
                     label="Calle del empleador"
-                    required
+                    required={req("empleadorCalle")}
                     value={p.empleadorCalle}
                     onChange={(v) => actualizarPersona(tipo, p.id, { empleadorCalle: v })}
                     error={err.empleadorCalle}
@@ -311,7 +321,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <FormField
                     id={`${p.id}-empleador-localidad`}
                     label="Localidad del empleador"
-                    required
+                    required={req("empleadorLocalidad")}
                     value={p.empleadorLocalidad}
                     onChange={(v) => actualizarPersona(tipo, p.id, { empleadorLocalidad: v })}
                     error={err.empleadorLocalidad}
@@ -319,7 +329,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <SelectField
                     id={`${p.id}-empleador-compania-telefonica`}
                     label="Compañía telefónica"
-                    required
+                    required={req("empleadorCompaniaTelefonica")}
                     value={p.empleadorCompaniaTelefonica ?? ""}
                     onChange={(v) => actualizarPersona(tipo, p.id, { empleadorCompaniaTelefonica: v })}
                     options={COMPANIAS_TELEFONICAS.map((c) => ({ value: c, label: c }))}
@@ -328,7 +338,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <TelefonoField
                     id={`${p.id}-empleador-telefono`}
                     label="Teléfono del empleador"
-                    required
+                    required={req("empleadorTelefono")}
                     value={p.empleadorTelefono}
                     onChange={(v) => actualizarPersona(tipo, p.id, { empleadorTelefono: v })}
                     error={err.empleadorTelefono}
@@ -336,7 +346,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <SelectField
                     id={`${p.id}-banco`}
                     label="Banco"
-                    required
+                    required={req("banco")}
                     value={p.banco ?? ""}
                     onChange={(v) => actualizarPersona(tipo, p.id, { banco: v })}
                     options={BANCOS.map((b) => ({ value: b, label: b }))}
@@ -345,7 +355,7 @@ export function PersonasVinculadas({ tipo }: { tipo: TipoPersonaVinculada }) {
                   <FormField
                     id={`${p.id}-cbu`}
                     label="CBU"
-                    required
+                    required={req("cbu")}
                     inputMode="numeric"
                     maxLength={22}
                     value={p.cbu ?? ""}

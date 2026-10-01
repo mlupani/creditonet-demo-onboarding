@@ -5,13 +5,14 @@ import { useApplication } from "@/lib/application-context";
 import { configEfectiva } from "@/lib/config";
 import { nombreProveedor } from "@/lib/parametros";
 import { isValidCard } from "@/lib/format";
-import { tarjetaValida } from "@/lib/validation";
+import { proveedorDeTarjeta, tarjetaValida } from "@/lib/validation";
 import type { TipoTarjeta } from "@/lib/types";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
+import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatTelefono } from "@/lib/telefono";
 import {
@@ -46,11 +47,31 @@ export function PantallaTokenizacion() {
   const [verReverso, setVerReverso] = useState(false);
   const [tarjetaAQuitar, setTarjetaAQuitar] = useState<string | null>(null);
 
+  const [proveedorElegido, setProveedorElegido] = useState<string | null>(null);
+
   const cfg = configEfectiva(app.configuracion);
-  const obligatoria = cfg.pantallas.find((p) => p.id === "tokenizacion")?.obligatoria ?? false;
-  const { proveedorId } = cfg.tokenizacion;
   const tarjetas = app.postOferta.tarjetas;
-  const tokenizadas = tarjetas.filter(tarjetaValida).length;
+  // Un bloque por proveedor: mínimo (obligatorio) y máximo de tarjetas con ese proveedor.
+  const bloques = cfg.tokenizacion.proveedores.map((b, i) => {
+    const propias = tarjetas.filter((t) => proveedorDeTarjeta(t, i === 0, b.proveedorId));
+    return {
+      ...b,
+      nombre: nombreProveedor(b.proveedorId),
+      total: propias.length,
+      validas: propias.filter(tarjetaValida).length,
+    };
+  });
+  const hayMinimo = bloques.some((b) => b.minimo > 0);
+  // Proveedor de la próxima tarjeta: el elegido o el primero al que todavía le falta el mínimo.
+  const bloqueActual =
+    bloques.find((b) => b.proveedorId === proveedorElegido) ??
+    bloques.find((b) => b.validas < b.minimo && b.total < b.maximo) ??
+    bloques.find((b) => b.total < b.maximo) ??
+    bloques[0];
+  const proveedorId = bloqueActual?.proveedorId ?? "";
+  const lleno = !bloqueActual || bloqueActual.total >= bloqueActual.maximo;
+  const nombreDe = (t: { proveedorId?: string }) =>
+    nombreProveedor(t.proveedorId ?? bloques[0]?.proveedorId ?? "");
   const p = app.postOferta.personales;
   const celular = formatTelefono(
     p["telefono.pais"] ?? "",
@@ -95,6 +116,7 @@ export function PantallaTokenizacion() {
     const tipoDetectado = detectarTipo(form.numero);
     conDemora("presencial", () => {
       tokenizarPresencial({
+        proveedorId,
         tipo: tipoDetectado,
         marca: detectarMarca(form.numero),
         numero: form.numero,
@@ -116,19 +138,34 @@ export function PantallaTokenizacion() {
           description="Tarjetas para el cobro automático de las cuotas. El cliente la carga desde un link o el vendedor la tokeniza con la tarjeta en mano."
           icon={<IconCreditCard width={18} height={18} />}
           action={
-            <StatusBadge tone={obligatoria ? "danger" : "neutral"}>
-              {obligatoria ? "Obligatoria" : "Opcional"}
+            <StatusBadge tone={hayMinimo ? "danger" : "neutral"}>
+              {hayMinimo ? "Mínimo por proveedor" : "Sin mínimo"}
             </StatusBadge>
           }
         />
         <div className="space-y-4 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2 text-xs">
-            <span className="font-medium text-ink-600">
-              <strong className="text-ink-900">{tokenizadas}</strong> tarjeta
-              {tokenizadas === 1 ? "" : "s"} tokenizada{tokenizadas === 1 ? "" : "s"}
-            </span>
-            <span className="font-medium text-ink-600">{nombreProveedor(proveedorId)}</span>
-          </div>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {bloques.map((b) => {
+              const cumple = b.validas >= b.minimo;
+              return (
+                <li
+                  key={b.proveedorId}
+                  className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs ${
+                    cumple ? "border-success-200 bg-success-50/60" : "border-warning-200 bg-warning-50/60"
+                  }`}
+                >
+                  <span className="font-semibold text-ink-800">{b.nombre}</span>
+                  <span className="font-medium text-ink-600">
+                    <strong className="text-ink-900">{b.validas}</strong> tokenizada
+                    {b.validas === 1 ? "" : "s"} · mín. {b.minimo} · máx. {b.maximo}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {bloques.length === 0 && (
+            <Banner tone="info">Esta pantalla no tiene proveedores de tokenización configurados.</Banner>
+          )}
 
           {tarjetas.length > 0 && (
             <ul className="grid gap-3 sm:grid-cols-2">
@@ -196,6 +233,13 @@ export function PantallaTokenizacion() {
                                   : "Presencial"}
                             </span>
                           </p>
+                          <p className="flex items-center justify-between gap-2 text-xs">
+                            <span className="flex items-center gap-1.5 text-ink-500">
+                              <IconCreditCard width={12} height={12} className="shrink-0" />
+                              Proveedor
+                            </span>
+                            <span className="text-right font-medium text-ink-700">{nombreDe(t)}</span>
+                          </p>
                         </div>
                         {porComprobar && (
                           <p className="mt-2 text-xs leading-relaxed text-ink-500">
@@ -214,7 +258,7 @@ export function PantallaTokenizacion() {
                             Link enviado por WhatsApp a {t.enviadoA}
                           </p>
                           <p className="mt-0.5 text-xs leading-tight text-ink-500">
-                            Esperando que el cliente complete el formulario.
+                            {nombreDe(t)} · esperando que el cliente complete el formulario.
                           </p>
                         </div>
                       </div>
@@ -266,11 +310,30 @@ export function PantallaTokenizacion() {
             </ul>
           )}
 
+          {bloques.length > 1 && (
+            <SelectField
+              id="tok-proveedor"
+              label="Proveedor de la tarjeta"
+              value={proveedorId}
+              onChange={setProveedorElegido}
+              options={bloques.map((b) => ({
+                value: b.proveedorId,
+                label: `${b.nombre} (${b.total} de ${b.maximo})`,
+              }))}
+            />
+          )}
+          {bloqueActual && lleno && (
+            <p className="text-xs font-medium text-warning-700">
+              Se alcanzó el máximo de {bloqueActual.maximo} tarjeta
+              {bloqueActual.maximo === 1 ? "" : "s"} con {bloqueActual.nombre}.
+              {bloques.length > 1 ? " Elegí otro proveedor para sumar más." : ""}
+            </p>
+          )}
           <div className="grid gap-2 sm:grid-cols-2">
             <Button
-              onClick={() => conDemora("whatsapp", enviarLinkWhatsApp, 700)}
+              onClick={() => conDemora("whatsapp", () => enviarLinkWhatsApp(proveedorId), 700)}
               loading={procesando === "whatsapp"}
-              disabled={!celular || procesando !== null}
+              disabled={!celular || lleno || procesando !== null}
             >
               {procesando !== "whatsapp" && <IconSend width={16} height={16} />}
               Enviar link por WhatsApp
@@ -278,7 +341,7 @@ export function PantallaTokenizacion() {
             <Button
               variant="outline"
               onClick={() => setPresencial((v) => !v)}
-              disabled={procesando !== null}
+              disabled={lleno || procesando !== null}
             >
               <IconUser width={16} height={16} />
               Carga presencial
@@ -290,7 +353,7 @@ export function PantallaTokenizacion() {
               : "Cargá el teléfono del cliente en Datos personales para poder enviar el link."}
           </p>
 
-          {presencial && (
+          {presencial && !lleno && (
             <div className="animate-fade-up rounded-xl border border-ink-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-ink-400">
                 Carga presencial · con la tarjeta en mano
