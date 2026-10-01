@@ -48,6 +48,7 @@ import {
   precargarPostOferta,
 } from "./mocks";
 import { creditosSeed, ordenarPorFechaDesc, type CreditoDB } from "./creditos-db";
+import { aplicarAnulacion, registrarAnulacion } from "./anulacion";
 import {
   CAPITAL_MAXIMO_BASE,
   CAPITAL_MAXIMO_CON_PRECANCELACION,
@@ -340,6 +341,7 @@ interface ApplicationContextValue {
     campos: Partial<Record<PantallaPostOfertaId, string[]>>
   ) => void;
   anularCredito: (nota: string) => void;
+  anularYSoltarSolicitud: (nota: string) => void;
   cerrarNoConcretado: (creditoId: string) => void;
   agregarComentario: (texto: string, autor?: string) => void;
   soltarAnalisis: () => void;
@@ -1674,23 +1676,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Anular: el cliente desistió. No es un rechazo de riesgo (reunión 11/09, 01:19).
   const anularCredito = useCallback((nota: string) => {
-    setAppOperativo((prev) => ({
-      ...prev,
-      estado: "ANULADO",
-      analista: {
-        ...prev.analista,
-        tomado: false,
-        cambioOfertaPendiente: null,
-        derivacionCambioFinanciero: null,
-        observacion: {
-          motivo: "Anulada",
-          nota,
-          fecha: fechaHoy(),
-          pantallas: [],
-        },
-      },
-    }));
+    setAppOperativo((prev) => aplicarAnulacion(prev, nota, fechaHoy()));
   }, []);
+
+  // Caída del crédito en originación (creditonet-118): queda Anulado en la DB simulada (sale de
+  // Trámite en la bandeja del vendedor) y el vendedor sigue con una solicitud nueva. A diferencia
+  // de "Reiniciar demo", no descarta el resto de la base.
+  const anularYSoltarSolicitud = useCallback(
+    (nota: string) => {
+      const snap = appRef.current;
+      // Sin cliente identificado no hay nada que listar: sólo se descarta el borrador.
+      if (snap.cliente) {
+        setCreditosDBBase(
+          registrarAnulacion(creditosDBRef.current, snap, appDbIdRef.current, `anulado-${Date.now()}`, nota, fechaHoy())
+        );
+      }
+      setAppRaw(crearAplicacionInicial());
+      setPasoState(1);
+      setPasoMaximo(1);
+      setPantallaActual("personales");
+      setMenuAbierto(false);
+      setAppDbId(null);
+    },
+    [setAppRaw]
+  );
 
   // Comentario sobre la solicitud: lo dejan tanto el canal de venta como el analista.
   // Además genera un aviso en la campanita (se lee por snapshot de refs: el updater de
@@ -2207,6 +2216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verificarReglaMotor,
       observarCredito,
       anularCredito,
+      anularYSoltarSolicitud,
       cerrarNoConcretado,
       agregarComentario,
       soltarAnalisis,
@@ -2290,6 +2300,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       verificarReglaMotor,
       observarCredito,
       anularCredito,
+      anularYSoltarSolicitud,
       cerrarNoConcretado,
       agregarComentario,
       soltarAnalisis,
