@@ -363,8 +363,13 @@ const CONCEPTOS_NETO: { clave: keyof RecalculoNeto; label: string; detalle: stri
     detalle: "Dinero que el cliente tiene libre para extraer de su cuenta.",
   },
   {
+    clave: "saldoDiaAcreditacion",
+    label: TERMINOS.saldoDiaAcreditacion,
+    detalle: "Saldo de la cuenta el día de la acreditación del sueldo.",
+  },
+  {
     clave: "extraccionesTransferencias",
-    label: `${TERMINOS.saldoDiaAcreditacion} y ${TERMINOS.transferenciasExtracciones.toLowerCase()}`,
+    label: TERMINOS.transferenciasExtracciones,
     detalle: "Movimientos que reducen el ingreso neto efectivo.",
   },
   {

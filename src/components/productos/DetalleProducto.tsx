@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import type { EstadoProducto } from "@/lib/config";
+import type { EstadoProductoAbm } from "@/lib/config";
 import {
   cambiarEstadoProducto,
   estadoVigencia,
@@ -18,7 +18,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ESTADO_PRODUCTO_META, TEXTO_ACCION } from "./ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META, TEXTO_ACCION } from "./ListaProductos";
 import { SECCIONES, SECCION_DE_ERROR } from "./SeccionesProducto";
 import { IconArrowLeft, IconCheckCircle, IconLoader } from "@/components/icons";
 
@@ -61,13 +61,13 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
   const [seccion, setSeccion] = useState(SECCIONES[0].id);
   const [intentado, setIntentado] = useState(false);
   const [guardado, setGuardado] = useState(false);
-  const [pendiente, setPendiente] = useState<EstadoProducto | null>(null);
+  const [pendiente, setPendiente] = useState<EstadoProductoAbm | null>(null);
 
   const errores = validarProducto(borrador, todos);
   const seccionesConError = new Set(Object.keys(errores).map((k) => SECCION_DE_ERROR[k]));
   const sucio = JSON.stringify(borrador) !== JSON.stringify(registro);
   const activa = SECCIONES.find((s) => s.id === seccion) ?? SECCIONES[0];
-  const meta = ESTADO_PRODUCTO_META[registro.config.estado];
+  const meta = ESTADO_PRODUCTO_ABM_META[registro.config.estado];
   const vigencia = estadoVigencia(registro.config);
 
   function editar(cambio: (p: ProductoAbm) => ProductoAbm) {
@@ -93,12 +93,12 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
   }
 
   // El estado se aplica directo: no forma parte de los cambios pendientes de guardar.
-  function aplicarEstado(estado: EstadoProducto) {
+  function aplicarEstado(estado: EstadoProductoAbm) {
     cambiarEstadoProducto(registro.config.id, estado);
     setBorrador((b) => ({ ...b, config: { ...b.config, estado } }));
   }
 
-  function pedirEstado(estado: EstadoProducto) {
+  function pedirEstado(estado: EstadoProductoAbm) {
     if (estado === "ACTIVO" || registro.config.estado === "ELIMINADO") aplicarEstado(estado);
     else setPendiente(estado);
   }
@@ -127,6 +127,11 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {registro.config.estado === "BORRADOR" && (
+            <Button variant="outline" onClick={() => pedirEstado("ACTIVO")}>
+              Activar
+            </Button>
+          )}
           {registro.config.estado === "ACTIVO" && (
             <Button variant="outline" onClick={() => pedirEstado("SUSPENDIDO")}>
               Suspender
@@ -152,10 +157,17 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
       {registro.config.estado !== "ACTIVO" ? (
         <Banner
           tone="warning"
-          title={registro.config.estado === "ELIMINADO" ? "Producto eliminado" : "Producto suspendido"}
+          title={
+            registro.config.estado === "BORRADOR"
+              ? "Producto en borrador"
+              : registro.config.estado === "ELIMINADO"
+                ? "Producto eliminado"
+                : "Producto suspendido"
+          }
         >
-          No se ofrece en Solicitar crédito. Las solicitudes que ya lo usan conservan su
-          configuración.
+          {registro.config.estado === "BORRADOR"
+            ? "No se ofrece en Solicitar crédito hasta que se lo active."
+            : "No se ofrece en Solicitar crédito. Las solicitudes que ya lo usan conservan su configuración."}
         </Banner>
       ) : (
         vigencia !== "VIGENTE" && (

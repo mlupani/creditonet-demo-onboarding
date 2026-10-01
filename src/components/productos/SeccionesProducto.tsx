@@ -17,7 +17,6 @@ import { Banner } from "@/components/ui/Banner";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
-import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
@@ -32,7 +31,7 @@ import {
   EditorSeleccion,
   EditorTramos,
 } from "./editores";
-import { ESTADO_PRODUCTO_META } from "./ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "./ListaProductos";
 
 export interface SeccionProps {
   p: ProductoAbm;
@@ -60,6 +59,9 @@ function Grilla({ children, cols = 2 }: { children: React.ReactNode; cols?: 2 | 
   );
 }
 
+// Valor con el que arranca el capital máximo al tildar "obligatorio".
+const CAPITAL_MAXIMO_INICIAL = 1_000_000;
+
 const NOTA_APLICA_ORGANISMOS =
   "Las reglas del producto se aplican a todos los organismos vinculados; cada organismo puede hacer excepciones.";
 
@@ -67,7 +69,7 @@ const NOTA_APLICA_ORGANISMOS =
 
 function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
   const { cf, ex } = useEditores(set);
-  const meta = ESTADO_PRODUCTO_META[p.config.estado];
+  const meta = ESTADO_PRODUCTO_ABM_META[p.config.estado];
   return (
     <Panel
       titulo="Datos generales"
@@ -112,7 +114,7 @@ function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
           <div className="flex items-center gap-3 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2.5">
             <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
             <span className="text-xs text-ink-500">
-              Activo, suspendido o eliminado: se cambia con los botones del encabezado.
+              Borrador, activo, suspendido o eliminado: se cambia con los botones del encabezado.
             </span>
           </div>
         </div>
@@ -137,15 +139,23 @@ function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
           hint="Vacío: sin vencimiento. Fuera de la vigencia el producto no se ofrece."
         />
       </Grilla>
-      <MoneyInput
-        id="p-capital"
-        label="Capital máximo"
-        required
-        value={p.config.capitalMaximo}
-        onChange={(v) => cf({ capitalMaximo: v })}
-        error={ver ? errores.capitalMaximo : undefined}
-        hint="Tope general antes de aplicar los límites del riesgo, del plan y del salario (Producto §4)."
+      <Checkbox
+        checked={p.config.capitalMaximo !== null}
+        onChange={(v) => cf({ capitalMaximo: v ? (CAPITAL_MAXIMO_INICIAL) : null })}
+        label="Capital máximo obligatorio"
+        description="Si no se tilda, el producto no tiene capital máximo."
       />
+      {p.config.capitalMaximo !== null && (
+        <MoneyInput
+          id="p-capital"
+          label="Capital máximo"
+          required
+          value={p.config.capitalMaximo}
+          onChange={(v) => cf({ capitalMaximo: v })}
+          error={ver ? errores.capitalMaximo : undefined}
+          hint="Tope general antes de aplicar los límites del riesgo, del plan y del salario (Producto §4)."
+        />
+      )}
     </Panel>
   );
 }
@@ -162,7 +172,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
     >
       <CampoNumero
         id="p-dia-corte"
-        label="Día de corte del mes"
+        label="Día de corte del mes inclusive"
         min={1}
         value={p.extras.diaCorte}
         onChange={(v) => ex({ diaCorte: v })}
@@ -172,11 +182,22 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
       <Grilla>
         <SelectField
           id="p-tipo-venc"
-          label="Vencimiento"
+          label="Vencimiento de la primer cuota o cuota 1"
           value={p.extras.tipoVencimiento}
           onChange={(v) => ex({ tipoVencimiento: v as ExtrasProducto["tipoVencimiento"] })}
           options={TIPOS_VENCIMIENTO}
         />
+        {p.extras.tipoVencimiento === "PERSONALIZADO" && (
+          <CampoNumero
+            id="p-dias-primer-venc"
+            label="Días hasta el vencimiento de la cuota 1"
+            sufijo="días"
+            min={1}
+            value={p.extras.diasPrimerVencimiento}
+            onChange={(v) => ex({ diasPrimerVencimiento: v })}
+            error={ver ? errores.diasPrimerVencimiento : undefined}
+          />
+        )}
         {p.extras.tipoVencimiento === "FIJO" && (
           <CampoNumero
             id="p-dia-fijo"
@@ -190,7 +211,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
       </Grilla>
       <SelectField
         id="p-mov-mes"
-        label="Movimiento por mes"
+        label="Corrimiento del día del vencimiento de la cuota"
         value={p.extras.movimientoMes}
         onChange={(v) => ex({ movimientoMes: v as ExtrasProducto["movimientoMes"] })}
         options={MOVIMIENTOS_MES}
@@ -198,12 +219,12 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
         className="sm:max-w-md"
       />
       <div className="space-y-3">
-        <Subtitulo>Plazos del flujo</Subtitulo>
+        <Subtitulo>Plazos de onboarding</Subtitulo>
         <Grilla>
           <CampoNumero
             id="p-dias-condiciones"
             label="Validez de las condiciones"
-            sufijo="días"
+            sufijo="días hábiles (inclusive)"
             value={p.extras.diasValidezCondiciones}
             onChange={(v) => ex({ diasValidezCondiciones: v })}
             hint="Desde que se presiona Solicitar."
@@ -211,7 +232,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
           <CampoNumero
             id="p-dias-observacion"
             label="Plazo para corregir una observación"
-            sufijo="días"
+            sufijo="días hábiles (inclusive)"
             value={p.extras.diasPlazoObservacion}
             onChange={(v) => ex({ diasPlazoObservacion: v })}
           />
@@ -323,12 +344,13 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
       vivo
       nota="Los canales y los organismos deciden dónde aparece el producto en Solicitar crédito. Las modalidades y los vendedores son de ejemplo: el vendedor real sale de la sesión."
     >
-      <MultiSelectField
+      <SelectField
         id="p-cobro"
-        label="Modalidades de cobro habilitadas (desde Parámetros)"
-        values={p.extras.modalidadesCobro}
-        onChange={(v) => ex({ modalidadesCobro: v })}
-        options={MODALIDADES_COBRO}
+        label="Modalidad de cobro (desde Parámetros)"
+        value={p.extras.modalidadCobro}
+        onChange={(v) => ex({ modalidadCobro: v })}
+        options={MODALIDADES_COBRO.map((m) => ({ value: m, label: m }))}
+        className="sm:max-w-md"
       />
 
       <div className="space-y-3">
@@ -752,6 +774,7 @@ export const SECCION_DE_ERROR: Record<string, string> = {
   vigenciaHasta: "datos",
   diaCorte: "vencimientos",
   diaVencimientoFijo: "vencimientos",
+  diasPrimerVencimiento: "vencimientos",
   gestionRazonSocial: "gestion",
   gestionCuit: "gestion",
   canales: "cobro",
