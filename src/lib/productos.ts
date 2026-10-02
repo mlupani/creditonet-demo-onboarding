@@ -435,6 +435,28 @@ export function guardarProducto(p: ProductoAbm) {
   );
 }
 
+// Una notificación deshabilitada deja de estar asignada a todos los productos que la tenían.
+export function desvincularNotificacion(notificacionId: string) {
+  if (!registros.some((r) => asignadasDe(r.extras.notificaciones).includes(notificacionId))) return;
+  commit(
+    registros.map((r) => {
+      const n = r.extras.notificaciones;
+      if (!asignadasDe(n).includes(notificacionId)) return r;
+      return {
+        ...r,
+        extras: {
+          ...r.extras,
+          notificaciones: {
+            ...n,
+            asignadas: asignadasDe(n).filter((x) => x !== notificacionId),
+            excepciones: quitadasDe(n).filter((x) => x !== notificacionId),
+          },
+        },
+      };
+    })
+  );
+}
+
 export type ResultadoEstado = { ok: true } | { ok: false; error: string };
 
 export const ERROR_ACTIVAR_SIN_ORGANISMO =
