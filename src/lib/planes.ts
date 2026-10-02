@@ -12,6 +12,8 @@
 import {
   ORGANISMOS,
   PLANES_CUOTAS,
+  normalizarGasto,
+  TRATAMIENTOS_GASTO,
   type EstadoProducto,
   type PlanCuotas,
 } from "./config";
@@ -61,6 +63,8 @@ const store = crearStoreAbm<PlanAbm>({
   inicial: estadoInicial(),
   valido: (r) => !!r?.config?.id && Array.isArray(r.config.grilla) && Array.isArray(r.organismos),
   aplicar: (lista) => {
+    // Planes guardados con el check `seCapitaliza`: se pasan al select de tratamiento.
+    for (const r of lista) r.config.gastoOtorgamiento = normalizarGasto(r.config.gastoOtorgamiento);
     for (const id of Object.keys(PLANES_CUOTAS)) delete PLANES_CUOTAS[id];
     for (const r of lista) PLANES_CUOTAS[r.config.id] = r.config;
     for (const o of ORGANISMOS)
@@ -167,6 +171,8 @@ export function validarPlan(p: PlanAbm, todos: PlanAbm[]): Record<string, string
   const g = c.gastoOtorgamiento;
   if (g.valor < 0 || (g.tipo === "PORCENTAJE" && g.valor > 100))
     e.gastoOtorgamiento = "Revisá el valor del gasto de otorgamiento.";
+  if (!TRATAMIENTOS_GASTO.some((t) => t.value === g.tratamiento))
+    e.gastoTratamiento = "Elegí si el gasto se capitaliza o se distribuye en las cuotas.";
   if (c.cargoAdministrativoPct < 0 || c.cargoAdministrativoPct > 100)
     e.cargoAdministrativoPct = "El cargo va de 0 a 100 %.";
 

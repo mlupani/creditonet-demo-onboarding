@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { calcularCuota, type OfferTerm } from "@/lib/credit";
-import type { SistemaAmortizacion } from "@/lib/config";
+import type { GastoOtorgamiento, SistemaAmortizacion } from "@/lib/config";
 import { formatARS } from "@/lib/format";
 import type { Plazo } from "@/lib/types";
 
@@ -26,6 +26,7 @@ function capitalesDe(maximo: number, elegido: number, minimo: number): number[] 
 export function GrillaCuotas({
   terms,
   sistema,
+  gasto,
   capitalMaximo,
   capitalMinimo = 0,
   capital,
@@ -36,6 +37,8 @@ export function GrillaCuotas({
   terms: OfferTerm[];
   // Sistema de amortización del plan (por defecto, francés).
   sistema?: SistemaAmortizacion;
+  // Gasto de otorgamiento del plan: capitalizado o repartido, cambia la cuota de cada celda.
+  gasto?: GastoOtorgamiento;
   capitalMaximo: number;
   // Se muestran sólo capitales por encima de este piso (ej. lo que se cancela de la oferta).
   capitalMinimo?: number;
@@ -116,7 +119,7 @@ export function GrillaCuotas({
                         type="button"
                         onClick={() => onSeleccionar(cap, term.plazo)}
                         aria-label={`${formatARS(cap)} en ${term.plazo} cuotas de ${formatARS(
-                          calcularCuota(cap, term.plazo, term.tna, sistema)
+                          calcularCuota(cap, term.plazo, term.tna, sistema, gasto)
                         )}`}
                         aria-pressed={elegida}
                         className={`block w-full px-2 py-2 text-right tabular-nums transition ${
@@ -127,7 +130,7 @@ export function GrillaCuotas({
                               : "text-ink-700 hover:bg-brand-50"
                         }`}
                       >
-                        {formatARS(calcularCuota(cap, term.plazo, term.tna, sistema))}
+                        {formatARS(calcularCuota(cap, term.plazo, term.tna, sistema, gasto))}
                       </button>
                     </td>
                   );

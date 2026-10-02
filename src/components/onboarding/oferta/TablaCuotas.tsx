@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { SISTEMAS_AMORTIZACION } from "@/lib/config";
+import { SISTEMAS_AMORTIZACION, TRATAMIENTOS_GASTO } from "@/lib/config";
 import {
   calcularCuota,
   grillaDe,
@@ -138,7 +138,7 @@ export function TablaCuotas({
               plan.gastoOtorgamiento.tipo === "PORCENTAJE"
                 ? formatPct(plan.gastoOtorgamiento.valor)
                 : formatARS(plan.gastoOtorgamiento.valor)
-            }${plan.gastoOtorgamiento.seCapitaliza ? " (se capitaliza)" : ""}`,
+            } (${(TRATAMIENTOS_GASTO.find((t) => t.value === plan.gastoOtorgamiento.tratamiento)?.label ?? "").toLowerCase()})`,
           ],
           ...(plan.cargoAdministrativoPct > 0
             ? [["Cargo administrativo", `${formatPct(plan.cargoAdministrativoPct)} s/cuota`]]
@@ -193,7 +193,13 @@ export function TablaCuotas({
           ? terms.map((term) => <SkeletonCuota key={term.plazo} />)
           : terms.map((term) => {
               const seleccionada = term.plazo === o.plazo && !pendiente;
-              const cuota = calcularCuota(o.montoSolicitado, term.plazo, term.tna, plan.sistema);
+              const cuota = calcularCuota(
+                o.montoSolicitado,
+                term.plazo,
+                term.tna,
+                plan.sistema,
+                plan.gastoOtorgamiento
+              );
               return (
                 <button
                   key={term.plazo}
@@ -256,6 +262,7 @@ export function TablaCuotas({
         <GrillaCuotas
           terms={terms}
           sistema={plan.sistema}
+          gasto={plan.gastoOtorgamiento}
           capitalMaximo={capitalMaximo}
           capitalMinimo={capitalMinimo}
           capital={o.montoSolicitado}
