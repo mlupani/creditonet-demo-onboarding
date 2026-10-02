@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import { configEfectiva, pantallasVisibles } from "@/lib/config";
 import { estadoPantallasPostOferta, pendientesFinalizarCarga } from "@/lib/validation";
@@ -11,6 +11,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { ForzarErroresProvider } from "@/components/ui/ForzarErrores";
 import { EstadoBadge } from "@/components/ui/StatusBadge";
 import { StepperLibre, type PasoLibre } from "@/components/ui/StepperLibre";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
@@ -148,6 +149,10 @@ export function PostOfertaShell() {
   const [confirmar, setConfirmar] = useState(false);
   // Comentario opcional al reenviar una observada: qué se vio y qué se corrigió.
   const [comentario, setComentario] = useState("");
+  // Intento de continuar con la pantalla incompleta: muestra los errores en rojo y lleva al
+  // primer obligatorio que falta. `n` permite repetir el scroll en intentos sucesivos.
+  const [intento, setIntento] = useState<{ pantalla: PantallaPostOfertaId; n: number } | null>(null);
+  const contenidoRef = useRef<HTMLDivElement>(null);
 
   const visibles = useMemo(() => pantallasVisibles(app.configuracion), [app.configuracion]);
   const estados = useMemo(() => estadoPantallasPostOferta(app), [app]);
@@ -193,6 +198,20 @@ export function PostOfertaShell() {
       setPantallaActual(visibles[0]?.id ?? "personales");
     }
   }, [visibles, pantallaActual, setPantallaActual]);
+
+  const forzarErrores = intento?.pantalla === pantallaActual;
+
+  // Tras un intento fallido de continuar, lleva al primer campo en error (o a la advertencia).
+  useEffect(() => {
+    if (!intento) return;
+    const raiz = contenidoRef.current;
+    const destino =
+      raiz?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+      raiz?.querySelector<HTMLElement>("[data-pendientes]");
+    destino?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (destino && "focus" in destino && destino.matches("input,select,textarea"))
+      destino.focus({ preventScroll: true });
+  }, [intento]);
 
   useEffect(() => {
     visitarPantalla(pantallaActual);
@@ -366,7 +385,8 @@ export function PostOfertaShell() {
         />
       </div>
 
-      <div key={pantallaActual} className="mt-6 animate-fade-up">
+      <div key={pantallaActual} ref={contenidoRef} className="mt-6 animate-fade-up">
+        <ForzarErroresProvider value={forzarErrores}>
         {puntual && observadas.includes(pantallaActual) ? (
           <PantallaObservada
             id={pantallaActual}
@@ -385,13 +405,19 @@ export function PostOfertaShell() {
             <PantallaActiva />
           </fieldset>
         )}
+        </ForzarErroresProvider>
         {!puntual && siguientePantalla && (
           <Card className="mt-6 p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1" data-pendientes>
                 {!soloLectura && estadoActual && !estadoActual.completa ? (
-                  <ValidationMessage tipo="warning" className="!mt-0 justify-start">
-                    Completá los campos obligatorios de esta pantalla para continuar.
+                  <ValidationMessage
+                    tipo={forzarErrores ? "error" : "warning"}
+                    className="!mt-0 justify-start"
+                  >
+                    {forzarErrores
+                      ? `Falta completar: ${estadoActual.pendientes.map((p) => p.campo).join(", ")}.`
+                      : "Completá los campos obligatorios de esta pantalla para continuar."}
                   </ValidationMessage>
                 ) : (
                   <p className="text-xs text-ink-500">
@@ -403,8 +429,13 @@ export function PostOfertaShell() {
               </div>
               <Button
                 size="lg"
-                disabled={!soloLectura && !estadoActual?.completa}
-                onClick={() => setPantallaActual(siguientePantalla.id)}
+                onClick={() => {
+                  if (!soloLectura && estadoActual && !estadoActual.completa) {
+                    setIntento((prev) => ({ pantalla: pantallaActual, n: (prev?.n ?? 0) + 1 }));
+                    return;
+                  }
+                  setPantallaActual(siguientePantalla.id);
+                }}
                 className="sm:w-auto"
               >
                 Continuar

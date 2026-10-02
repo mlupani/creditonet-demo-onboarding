@@ -19,6 +19,7 @@ import {
   configEfectiva,
   planesDelOrganismo,
   type FilaGrilla,
+  type GastoOtorgamiento,
   type PlanCuotas,
   type SistemaAmortizacion,
 } from "./config";
@@ -156,35 +157,66 @@ export function planDeSolicitud(app: CreditApplication): PlanCuotas {
   );
 }
 
+// Importe del gasto de otorgamiento: porcentaje del capital o monto fijo.
+export function gastoDeOtorgamiento(monto: number, gasto?: GastoOtorgamiento | null): number {
+  if (!gasto) return 0;
+  return gasto.tipo === "PORCENTAJE" ? (monto * gasto.valor) / 100 : gasto.valor;
+}
+
+// Capital sobre el que se calculan los intereses: si el gasto se capitaliza, se suma al capital.
+export function capitalFinanciadoDe(monto: number, gasto?: GastoOtorgamiento | null): number {
+  return gasto?.tratamiento === "CAPITALIZA" ? monto + gastoDeOtorgamiento(monto, gasto) : monto;
+}
+
 // Cuota mensual según el sistema de amortización del plan. Se redondea a $100.
 // Francés: cuota fija. Americano: sólo interés y el capital se devuelve al final. Tasa directa:
 // el interés se calcula sobre el capital original durante todo el plazo.
+// El gasto de otorgamiento se suma al capital financiado o se reparte en partes iguales entre las
+// cuotas, según su tratamiento.
 export function calcularCuota(
   monto: number,
   plazo: number,
   tna: number,
-  sistema: SistemaAmortizacion = "FRANCES"
+  sistema: SistemaAmortizacion = "FRANCES",
+  gasto?: GastoOtorgamiento | null
 ): number {
   if (monto <= 0 || plazo <= 0) return 0;
+  const capital = capitalFinanciadoDe(monto, gasto);
   const i = tna / 100 / 12;
   let cuota: number;
-  if (sistema === "AMERICANO") cuota = monto * i;
-  else if (sistema === "TASA_DIRECTA") cuota = (monto * (1 + (tna / 100) * (plazo / 12))) / plazo;
+  if (sistema === "AMERICANO") cuota = capital * i;
+  else if (sistema === "TASA_DIRECTA") cuota = (capital * (1 + (tna / 100) * (plazo / 12))) / plazo;
   else {
     const factor = Math.pow(1 + i, plazo);
-    cuota = (monto * i * factor) / (factor - 1);
+    cuota = (capital * i * factor) / (factor - 1);
   }
+  if (gasto?.tratamiento === "DISTRIBUYE_CUOTAS") cuota += gastoDeOtorgamiento(monto, gasto) / plazo;
   return Math.round(cuota / 100) * 100;
 }
 
-// Total a pagar: en el sistema americano la última cuota incluye el capital.
+// Total a pagar: en el sistema americano la última cuota incluye el capital financiado.
 export function totalAPagarDe(
   monto: number,
   plazo: number,
   cuota: number,
-  sistema: SistemaAmortizacion = "FRANCES"
+  sistema: SistemaAmortizacion = "FRANCES",
+  gasto?: GastoOtorgamiento | null
 ): number {
-  return sistema === "AMERICANO" ? cuota * plazo + monto : cuota * plazo;
+  return sistema === "AMERICANO" ? cuota * plazo + capitalFinanciadoDe(monto, gasto) : cuota * plazo;
+}
+
+// Capital que soporta una cuota, sin gasto y sin redondear.
+function capitalDeCuotaSinGasto(
+  cuota: number,
+  plazo: number,
+  tna: number,
+  sistema: SistemaAmortizacion
+): number {
+  const i = tna / 100 / 12;
+  if (sistema === "AMERICANO") return cuota / i;
+  if (sistema === "TASA_DIRECTA") return (cuota * plazo) / (1 + (tna / 100) * (plazo / 12));
+  const factor = Math.pow(1 + i, plazo);
+  return (cuota * (factor - 1)) / (i * factor);
 }
 
 // Inversa de la anterior: qué capital soporta una cuota máxima. Se trunca a $10.000.
@@ -192,18 +224,25 @@ export function capitalDesdeCuota(
   cuota: number,
   plazo: number,
   tna: number,
-  sistema: SistemaAmortizacion = "FRANCES"
+  sistema: SistemaAmortizacion = "FRANCES",
+  gasto?: GastoOtorgamiento | null
 ): number {
   if (cuota <= 0 || plazo <= 0) return 0;
-  const i = tna / 100 / 12;
+  const pct = gasto?.tipo === "PORCENTAJE" ? gasto.valor / 100 : 0;
+  const fijo = gasto?.tipo === "MONTO_FIJO" ? gasto.valor : 0;
   let capital: number;
-  if (sistema === "AMERICANO") capital = cuota / i;
-  else if (sistema === "TASA_DIRECTA") capital = (cuota * plazo) / (1 + (tna / 100) * (plazo / 12));
-  else {
-    const factor = Math.pow(1 + i, plazo);
-    capital = (cuota * (factor - 1)) / (i * factor);
+  if (gasto?.tratamiento === "CAPITALIZA") {
+    // El capital + gasto es lo que financia la cuota.
+    capital = (capitalDeCuotaSinGasto(cuota, plazo, tna, sistema) - fijo) / (1 + pct);
+  } else if (gasto?.tratamiento === "DISTRIBUYE_CUOTAS") {
+    // La cuota = cuota financiera del capital + gasto / plazo. Todo es lineal en el capital.
+    const neta = capitalDeCuotaSinGasto(cuota - fijo / plazo, plazo, tna, sistema);
+    const porCuota = capitalDeCuotaSinGasto(1, plazo, tna, sistema);
+    capital = neta / (1 + (porCuota * pct) / plazo);
+  } else {
+    capital = capitalDeCuotaSinGasto(cuota, plazo, tna, sistema);
   }
-  return Math.floor(capital / 10_000) * 10_000;
+  return Math.max(Math.floor(capital / 10_000) * 10_000, 0);
 }
 
 // Un crédito en mora se cancela siempre: entra solo en la renovación y no se puede quitar.
@@ -288,13 +327,25 @@ export function recalcularOferta(entrada: Oferta): Oferta {
   const capitalMaximoActual = hayPrecancelacion(oferta)
     ? oferta.capitalMaximoRenovacion
     : oferta.capitalMaximoBase;
-  const valorCuota = calcularCuota(oferta.montoSolicitado, oferta.plazo, term.tna, plan?.sistema);
+  const valorCuota = calcularCuota(
+    oferta.montoSolicitado,
+    oferta.plazo,
+    term.tna,
+    plan?.sistema,
+    plan?.gastoOtorgamiento
+  );
   return {
     ...oferta,
     capitalMaximoActual,
     tna: term.tna,
     valorCuota,
-    totalAPagar: totalAPagarDe(oferta.montoSolicitado, oferta.plazo, valorCuota, plan?.sistema),
+    totalAPagar: totalAPagarDe(
+      oferta.montoSolicitado,
+      oferta.plazo,
+      valorCuota,
+      plan?.sistema,
+      plan?.gastoOtorgamiento
+    ),
     primeraCuotaVencimiento: term.primeraCuota,
   };
 }
@@ -417,7 +468,13 @@ export function calcularLimites(
       id: "cuota",
       label: "Límite por cuota máxima",
       detalle: `${menorCuota.label}: ${formatARS(cuotaMaxima)} en ${app.oferta.plazo} cuotas`,
-      monto: capitalDesdeCuota(cuotaMaxima, app.oferta.plazo, term.tna, plan.sistema),
+      monto: capitalDesdeCuota(
+        cuotaMaxima,
+        app.oferta.plazo,
+        term.tna,
+        plan.sistema,
+        plan.gastoOtorgamiento
+      ),
     },
   ];
   const menor = limites.reduce((a, b) => (b.monto < a.monto ? b : a));
