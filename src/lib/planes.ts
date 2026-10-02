@@ -12,6 +12,7 @@
 import {
   ORGANISMOS,
   PLANES_CUOTAS,
+  migrarSistemaAmortizacion,
   type EstadoProducto,
   type PlanCuotas,
 } from "./config";
@@ -60,6 +61,10 @@ const store = crearStoreAbm<PlanAbm>({
   clave: "creditonet.planes.v1",
   inicial: estadoInicial(),
   valido: (r) => !!r?.config?.id && Array.isArray(r.config.grilla) && Array.isArray(r.organismos),
+  migrar: (r) => ({
+    ...r,
+    config: { ...r.config, sistema: migrarSistemaAmortizacion(r.config.sistema) },
+  }),
   aplicar: (lista) => {
     for (const id of Object.keys(PLANES_CUOTAS)) delete PLANES_CUOTAS[id];
     for (const r of lista) PLANES_CUOTAS[r.config.id] = r.config;

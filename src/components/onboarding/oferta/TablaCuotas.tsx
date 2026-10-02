@@ -5,6 +5,7 @@ import { useApplication } from "@/lib/application-context";
 import { SISTEMAS_AMORTIZACION } from "@/lib/config";
 import {
   calcularCuota,
+  cuotaEsVariable,
   grillaDe,
   importeTerceros,
   planDeSolicitud,
@@ -227,7 +228,9 @@ export function TablaCuotas({
                   <p className="mt-1.5 text-lg font-bold tabular-nums text-ink-900">
                     {formatARS(cuota)}
                   </p>
-                  <p className="text-xs text-ink-500">por mes · TNA {term.tna}%</p>
+                  <p className="text-xs text-ink-500">
+                    {cuotaEsVariable(plan.sistema) ? "1ª cuota" : "por mes"} · TNA {term.tna}%
+                  </p>
                   <p className="mt-1.5 text-[11px] text-ink-400">
                     1ª cuota:{" "}
                     <span className="font-semibold text-ink-600">{term.primeraCuota}</span>
@@ -251,7 +254,9 @@ export function TablaCuotas({
       >
         <p className="mb-3 text-xs text-ink-500">
           Cuota mensual de cada capital según la cantidad de cuotas, hasta el capital máximo de{" "}
-          <strong className="font-semibold text-ink-700">{formatARS(capitalMaximo)}</strong>. Elegí una celda para seleccionar ese capital y ese plazo.
+          <strong className="font-semibold text-ink-700">{formatARS(capitalMaximo)}</strong>.
+          {cuotaEsVariable(plan.sistema) && " Con este sistema la cuota varía mes a mes: se muestra la primera."}{" "}
+          Elegí una celda para seleccionar ese capital y ese plazo.
         </p>
         <GrillaCuotas
           terms={terms}

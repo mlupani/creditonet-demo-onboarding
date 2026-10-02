@@ -2,6 +2,7 @@
 
 import {
   ORGANISMOS,
+  AJUSTE_CUOTA_VARIABLE_PCT,
   SISTEMAS_AMORTIZACION,
   type FilaGrilla,
   type PlanCuotas,
@@ -136,7 +137,7 @@ function Amortizacion({ p, set }: SeccionPlanProps) {
         value={p.config.sistema}
         onChange={(v) => cf({ sistema: v as SistemaAmortizacion })}
         options={SISTEMAS_AMORTIZACION}
-        hint="Francés: cuota fija · Americano: sólo interés y el capital al final · Tasa directa: interés sobre el capital original."
+        hint={`Francés cuota fija: cuota constante · Francés cuota variable: arranca como el francés y se ajusta ${AJUSTE_CUOTA_VARIABLE_PCT} % por mes · Americano: sólo interés y el capital al final · Tasa directa: interés sobre el capital original · Alemán: capital constante y cuota decreciente.`}
       />
       <CampoNumero
         id="pl-gracia"
