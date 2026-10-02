@@ -225,6 +225,7 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
             value={p.extras.diasValidezCondiciones}
             onChange={(v) => ex({ diasValidezCondiciones: v })}
             hint="Desde que se presiona Solicitar."
+            className="sm:[&>label]:min-h-10"
           />
           <CampoNumero
             id="p-dias-observacion"
@@ -232,6 +233,8 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
             sufijo="días hábiles (inclusive)"
             value={p.extras.diasPlazoObservacion}
             onChange={(v) => ex({ diasPlazoObservacion: v })}
+            hint="Regla subtitulo: Credito se cae, queda anulado"
+            className="sm:[&>label]:min-h-10"
           />
         </Grilla>
       </div>
