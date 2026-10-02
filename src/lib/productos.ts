@@ -435,6 +435,28 @@ export function guardarProducto(p: ProductoAbm) {
   );
 }
 
+// Una notificación deshabilitada deja de estar asignada a todos los productos que la tenían.
+export function desvincularNotificacion(notificacionId: string) {
+  if (!registros.some((r) => asignadasDe(r.extras.notificaciones).includes(notificacionId))) return;
+  commit(
+    registros.map((r) => {
+      const n = r.extras.notificaciones;
+      if (!asignadasDe(n).includes(notificacionId)) return r;
+      return {
+        ...r,
+        extras: {
+          ...r.extras,
+          notificaciones: {
+            ...n,
+            asignadas: asignadasDe(n).filter((x) => x !== notificacionId),
+            excepciones: quitadasDe(n).filter((x) => x !== notificacionId),
+          },
+        },
+      };
+    })
+  );
+}
+
 export type ResultadoEstado = { ok: true } | { ok: false; error: string };
 
 export const ERROR_ACTIVAR_SIN_ORGANISMO =
@@ -540,12 +562,12 @@ export function errorTokenizacion(t: TokenizacionConfig): string | null {
   return null;
 }
 
-// Con la pantalla de tokenización habilitada la tokenización es obligatoria: hay que tener al
-// menos un proveedor asignado y que entre todos pidan como mínimo una tarjeta.
+// Con la pantalla de tokenización habilitada hay que tener al menos un proveedor asignado y, si la
+// tokenización es obligatoria (por defecto), que entre todos pidan como mínimo una tarjeta.
 export function errorTokenizacionObligatoria(t: TokenizacionConfig): string | null {
   if (t.proveedores.length === 0)
     return "Asigná al menos un proveedor de tokenización o deshabilitá la pantalla de tokenización.";
-  if (!t.proveedores.some((b) => b.minimo >= 1))
+  if (t.obligatoria !== false && !t.proveedores.some((b) => b.minimo >= 1))
     return "La tokenización es obligatoria: pedí al menos una tarjeta (mínimo 1 en algún proveedor).";
   return null;
 }

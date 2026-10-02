@@ -11,6 +11,7 @@ import type {
   TokenizacionConfig,
 } from "@/lib/config";
 import type { TipoCliente } from "@/lib/types";
+import { crearXlsx } from "@/lib/xlsx";
 import { TIPOS_TARJETA, claveCombinacion, normalizarAsignacion, textoCombinacion, tiposTarjetaDe } from "@/lib/config";
 import {
   TITULO_PANTALLA_CAMPOS,
@@ -163,7 +164,7 @@ export function EditorNotificaciones({
   const asignadas = asignadasDe(valor);
   const quitadas = quitadasDe(valor);
   const disponibles = plantillas.filter(
-    (n) => !asignadas.includes(n.id) && (!productoId || disponibleEnProducto(n, productoId))
+    (n) => n.estado === "ACTIVA" && !asignadas.includes(n.id) && (!productoId || disponibleEnProducto(n, productoId))
   );
   const agregar = () => {
     if (!elegida) return;
@@ -455,7 +456,7 @@ export function EditorTokenizacion({
   const bloques = valor.proveedores;
   const libres = PROVEEDORES_TOKENIZACION.filter((x) => !bloques.some((b) => b.proveedorId === x.id));
   const cambiar = (i: number, patch: Partial<BloqueTokenizacion>) =>
-    onChange({ proveedores: bloques.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
+    onChange({ ...valor, proveedores: bloques.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
   return (
     <div className="space-y-3">
       {bloques.length === 0 && (
@@ -471,7 +472,7 @@ export function EditorTokenizacion({
               variant="ghost"
               size="sm"
               aria-label={`Quitar el proveedor ${i + 1}`}
-              onClick={() => onChange({ proveedores: bloques.filter((_, j) => j !== i) })}
+              onClick={() => onChange({ ...valor, proveedores: bloques.filter((_, j) => j !== i) })}
             >
               <IconTrash width={14} height={14} />
             </Button>
@@ -508,6 +509,7 @@ export function EditorTokenizacion({
         disabled={libres.length === 0}
         onClick={() =>
           onChange({
+            ...valor,
             proveedores: [...bloques, { proveedorId: libres[0].id, minimo: bloques.length === 0 ? 1 : 0, maximo: 1 }],
           })
         }
@@ -528,6 +530,7 @@ export function EditorCamposObligatorios({
   habilitadas,
   tokenizacion,
   onTokenizacion,
+  onHabilitar,
   errorTokenizacion,
   cantidades,
   onCantidades,
@@ -538,6 +541,8 @@ export function EditorCamposObligatorios({
   tokenizacion: TokenizacionConfig;
   onTokenizacion: (valor: TokenizacionConfig) => void;
   errorTokenizacion?: string;
+  // Habilita o deshabilita una pantalla (hoy sólo se usa para el pedido de tokenización).
+  onHabilitar: (pantalla: PantallaPostOfertaId, habilitada: boolean) => void;
   // Cantidad mínima y máxima de referencias y garantes (pantallas "referencias" y "garantias").
   cantidades: { referencias: CantidadConfig; garantes: CantidadConfig };
   onCantidades: (valor: { referencias: CantidadConfig; garantes: CantidadConfig }) => void;
@@ -576,6 +581,26 @@ export function EditorCamposObligatorios({
               {estado}
             </summary>
             <div className="border-t border-ink-100 px-4 py-4">
+              {pantalla === "tokenizacion" && (
+                <div className="mb-4 border-b border-ink-100 pb-4">
+                  <Checkbox
+                    checked={habilitadas.includes("tokenizacion")}
+                    onChange={(v) => onHabilitar("tokenizacion", v)}
+                    label="Pedir tokenización"
+                    description="Si está deshabilitado, el onboarding no pide tarjetas."
+                  />
+                  {habilitadas.includes("tokenizacion") && (
+                    <div className="mt-3">
+                      <Checkbox
+                        checked={tokenizacion.obligatoria !== false}
+                        onChange={(v) => onTokenizacion({ ...tokenizacion, obligatoria: v })}
+                        label="Tokenización obligatoria"
+                        description="Si está deshabilitado, el cliente puede continuar sin tokenizar tarjeta."
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               {pantalla === "tokenizacion" && (
                 <div className="mb-4 grid gap-x-6 gap-y-4 border-b border-ink-100 pb-4 sm:grid-cols-2">
                   <MultiSelectField
@@ -962,11 +987,39 @@ function TablaCombinaciones({
     setMotor(c.motor);
   }
 
+  function exportar() {
+    const filas = [
+      ["N°", "Tipo de cliente", "Condición laboral", "Situación BCRA", "Buró interno", "Grupo de reglas"],
+      ...combinaciones.map((c, i) => [
+        String(i + 1),
+        c.tipoCliente === "NUEVO" ? "Nuevo" : c.tipoCliente === "EXISTENTE" ? "Existente" : "Cualquiera",
+        c.condicion || "Cualquiera",
+        c.bcra ? (ROTULO_BCRA[Number(c.bcra)] ?? c.bcra) : "Cualquiera",
+        c.interna ? (ROTULO_PERFIL[Number(c.interna)] ?? c.interna) : "Cualquiera",
+        nombreMotor(c.motor),
+      ]),
+    ];
+    const blob = new Blob([crearXlsx("Combinaciones", filas) as BlobPart], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "motor-riesgo-combinaciones.xlsx";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   const cualquiera = <span className="text-ink-400">Cualquiera</span>;
 
   return (
     <div className="space-y-4">
-      <Subtitulo>Combinaciones de asignación</Subtitulo>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Subtitulo>Combinaciones de asignación</Subtitulo>
+        <Button size="sm" variant="outline" onClick={exportar} disabled={combinaciones.length === 0}>
+          Exportar a Excel
+        </Button>
+      </div>
       <p className="text-xs text-ink-500">
         Cada fila es una regla: si el cliente cumple lo que fija la combinación, evalúa con su grupo de
         reglas. Lo que dejes sin elegir no se tiene en cuenta; si aplican varias filas, gana la más

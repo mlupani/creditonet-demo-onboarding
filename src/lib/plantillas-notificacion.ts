@@ -24,6 +24,13 @@ export const MEDIOS: { id: MedioNotificacion; label: string; ambitos: AmbitoNoti
   { id: "APP", label: "Campana de la app", ambitos: ["INTERNO"] },
 ];
 
+// Equipo al que va dirigida una notificación interna.
+export const CANALES_DESTINO: { id: string; nombre: string }[] = [
+  { id: "venta", nombre: "Canal de venta" },
+  { id: "analistas", nombre: "Analistas" },
+  { id: "telefonistas", nombre: "Telefonistas" },
+];
+
 export interface ParametroNotificacion {
   id: string;
   // Nombre con el que se usa en el texto: {{clave}}.
@@ -42,6 +49,8 @@ export interface Notificacion {
   texto: string;
   medios: MedioNotificacion[];
   parametros: ParametroNotificacion[];
+  // Sólo internas: equipo (ver CANALES_DESTINO) al que va dirigido el aviso (vacío o ausente = todos).
+  canal?: string;
   // Productos para los que la notificación está disponible (cada producto elige luego cuáles envía).
   disponibleEn: { todos: boolean; ids: string[] };
   estado: EstadoNotificacion;
@@ -216,6 +225,7 @@ export const nuevaNotificacion = (ambito: AmbitoNotificacion): Notificacion => (
   texto: "",
   medios: [],
   parametros: [],
+  canal: "",
   disponibleEn: { todos: true, ids: [] },
   estado: "ACTIVA",
 });
