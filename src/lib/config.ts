@@ -675,7 +675,7 @@ export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
       camposObligatorios: {},
       referencias: { minimo: 1, maximo: 2 },
       garantes: { minimo: 1, maximo: 2 },
-      tokenizacion: { proveedores: [{ proveedorId: "proveedor-a", minimo: 0, maximo: 2 }] },
+      tokenizacion: { proveedores: [{ proveedorId: "proveedor-a", minimo: 1, maximo: 2 }] },
       documentos: [
         { tipoId: "dni-frente", obligatorio: true, minimo: 1, maximo: 1 },
         { tipoId: "dni-dorso", obligatorio: true, minimo: 1, maximo: 1 },

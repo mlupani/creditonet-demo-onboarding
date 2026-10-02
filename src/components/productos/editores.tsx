@@ -506,7 +506,7 @@ export function EditorTokenizacion({
         disabled={libres.length === 0}
         onClick={() =>
           onChange({
-            proveedores: [...bloques, { proveedorId: libres[0].id, minimo: 0, maximo: 1 }],
+            proveedores: [...bloques, { proveedorId: libres[0].id, minimo: bloques.length === 0 ? 1 : 0, maximo: 1 }],
           })
         }
       >
