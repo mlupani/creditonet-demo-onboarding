@@ -8,6 +8,7 @@ import { esSuperior, puedeVer } from "@/lib/roles";
 import { Tooltip } from "@/components/ui/Tooltip";
 import {
   IconBarChart,
+  IconBell,
   IconBriefcase,
   IconBuilding,
   IconCalendar,
@@ -46,6 +47,7 @@ const NAV: NavItem[] = [
   { label: "Clientes", icon: IconUsers },
   { label: "Créditos", icon: IconCreditCard },
   { label: "Motor de riesgo", href: "/motor-riesgo", icon: IconShieldCheck, disponible: true },
+  { label: "Notificaciones", href: "/notificaciones", icon: IconBell, disponible: true },
   { label: "Reportes", icon: IconBarChart },
   { label: "Parámetros", href: "/parametros", icon: IconSettings, disponible: true },
 ];

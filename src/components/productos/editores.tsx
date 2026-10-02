@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type {
   AsignacionMotor,
+  CombinacionMotor,
   BloqueTokenizacion,
   DocumentoConfig,
   TokenizacionConfig,
   TipoTarjeta,
 } from "@/lib/config";
-import { TIPOS_TARJETA } from "@/lib/config";
+import type { TipoCliente } from "@/lib/types";
+import { TIPOS_TARJETA, claveCombinacion, normalizarAsignacion, textoCombinacion } from "@/lib/config";
 import {
   TITULO_PANTALLA_CAMPOS,
   camposConfigurablesDe,
@@ -27,9 +30,8 @@ import { aplicarCambioDomicilio, sanitizarCampoDomicilio } from "@/lib/campos-po
 import type { Domicilio, PantallaPostOfertaId } from "@/lib/types";
 import { PERFILES_INTERNOS, ROTULO_BCRA, ROTULO_PERFIL, SITUACIONES_BCRA } from "@/lib/planes";
 import {
-  CANALES_NOTIFICACION,
-  ESTADOS_NOTIFICACION_ONBOARDING,
   MAX_TRAMOS_PUNITORIOS,
+  asignadasDe,
   normalizarGestion,
   type GestionPrestamos,
   type NotificacionesProducto,
@@ -37,6 +39,7 @@ import {
   type SeleccionLista,
   type TramoPunitorio,
 } from "@/lib/productos";
+import { AMBITOS, MEDIOS, disponibleEnProducto, getEvento, usePlantillasNotificacion } from "@/lib/plantillas-notificacion";
 import { TERMINOS } from "@/lib/terminologia";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -136,69 +139,73 @@ export function EditorTramos({
   );
 }
 
-// --- Notificaciones: estados del onboarding + crédito activo ---
+// --- Notificaciones: asignación de las plantillas globales a este producto ---
+//
+// Las notificaciones (evento, texto, medios, parámetros) se administran una sola vez en el módulo
+// Notificaciones; el producto sólo elige cuáles envía.
 
 export function EditorNotificaciones({
   idBase,
   valor,
   onChange,
+  productoId,
 }: {
   idBase: string;
+  // Con producto, sólo se ofrecen las notificaciones disponibles para él.
+  productoId?: string;
   valor: NotificacionesProducto;
   onChange: (valor: NotificacionesProducto) => void;
 }) {
-  const ca = valor.creditoActivo;
-  const setCa = (patch: Partial<typeof ca>) =>
-    onChange({ ...valor, creditoActivo: { ...ca, ...patch } });
+  const todas = usePlantillasNotificacion().filter((n) => !productoId || disponibleEnProducto(n, productoId));
+  const asignadas = asignadasDe(valor);
+  const alternar = (id: string, v: boolean) =>
+    onChange({ asignadas: v ? [...asignadas.filter((x) => x !== id), id] : asignadas.filter((x) => x !== id) });
   return (
     <div className="space-y-5">
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-          Onboarding · hasta 5 estados
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-ink-500">
+          Marcá las notificaciones que este producto envía. Se crean y editan en el módulo Notificaciones.
         </p>
-        {ESTADOS_NOTIFICACION_ONBOARDING.map((e) => (
-          <Checkbox
-            key={e.id}
-            checked={valor.onboarding[e.id]}
-            onChange={(v) => onChange({ ...valor, onboarding: { ...valor.onboarding, [e.id]: v } })}
-            label={`Avisar al pasar a ${e.label}`}
-          />
-        ))}
+        <Link href="/notificaciones" className="text-sm font-medium text-brand-600 hover:underline">
+          Administrar notificaciones
+        </Link>
       </div>
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-          Crédito activo
-        </p>
-        <Checkbox
-          checked={ca.vencimiento}
-          onChange={(v) => setCa({ vencimiento: v })}
-          label="Vencimiento de cuota"
-        />
-        {ca.vencimiento && (
-          <CampoNumero
-            id={`${idBase}-dias-antes`}
-            label="Avisar con anticipación de"
-            sufijo="días"
-            value={ca.diasAntesVencimiento}
-            onChange={(v) => setCa({ diasAntesVencimiento: v })}
-            className="sm:max-w-xs"
-          />
-        )}
-        <Checkbox checked={ca.pago} onChange={(v) => setCa({ pago: v })} label="Pago recibido" />
-        <Checkbox checked={ca.mora} onChange={(v) => setCa({ mora: v })} label="Mora" />
-        <Checkbox
-          checked={ca.cancelacion}
-          onChange={(v) => setCa({ cancelacion: v })}
-          label="Cancelación del crédito"
-        />
-      </div>
-      <MultiSelectField
-        id={`${idBase}-canales`}
-        label="Medios de envío"
-        values={valor.canales}
-        onChange={(v) => onChange({ ...valor, canales: v })}
-        options={CANALES_NOTIFICACION}
-      />
+      {AMBITOS.map((a) => {
+        const lista = todas.filter((n) => n.ambito === a.id);
+        const marcadas = lista.filter((n) => asignadas.includes(n.id)).length;
+        return (
+          <div key={a.id} className="space-y-2">
+            <Subtitulo>
+              {a.label} · {marcadas} de {lista.length}
+            </Subtitulo>
+            {lista.length === 0 ? (
+              <p className="text-sm text-ink-400">Todavía no hay notificaciones {a.label.toLowerCase()}.</p>
+            ) : (
+              <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200 bg-white">
+                {lista.map((n) => (
+                  <li key={n.id} className="flex flex-wrap items-start gap-x-6 gap-y-2 px-4 py-3">
+                    <div className="min-w-0 flex-1 basis-64" id={`${idBase}-${n.id}`}>
+                      <Checkbox
+                        checked={asignadas.includes(n.id)}
+                        onChange={(v) => alternar(n.id, v)}
+                        label={`${n.nombre}${n.estado === "INACTIVA" ? " (inactiva)" : ""}`}
+                        description={`${getEvento(n.evento)?.label ?? n.evento} · ${n.medios
+                          .map((m) => MEDIOS.find((x) => x.id === m)?.label ?? m)
+                          .join(", ")}`}
+                      />
+                    </div>
+                    {n.parametros.length > 0 && (
+                      <p className="text-xs text-ink-500">
+                        {n.parametros.map((p) => `${p.etiqueta || p.clave}: ${p.valor} ${p.unidad}`.trim()).join(" · ")}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -779,131 +786,199 @@ export function EditorRecalculoNeto({
   );
 }
 
-// Asignación de un grupo de reglas a varias claves a la vez (situaciones, condiciones laborales):
-// un desplegable para el motor y un multiselect con las claves. Se guarda como clave → motor,
-// así que cada clave tiene un solo motor y las que ya tienen otro no se ofrecen en esta fila.
-function AsignacionPorSituacion({
+// --- Motor de riesgo: tabla de combinaciones ---
+
+const TIPOS_CLIENTE = [
+  { value: "NUEVO", label: "Cliente nuevo" },
+  { value: "EXISTENTE", label: "Cliente existente" },
+];
+
+// Arriba se arma la combinación: tipo de cliente, condiciones laborales, situaciones BCRA y de
+// buró interno (todo opcional: lo que se deja vacío no se mira) y el grupo de reglas que rige.
+// "Agregar" genera una fila por cada combinación de lo elegido; abajo se ven las filas, cada una
+// es una regla de asignación. Una misma combinación no se puede cargar dos veces.
+function TablaCombinaciones({
   idBase,
-  titulo,
-  claves,
-  rotulo,
-  etiquetaClaves,
-  textoVacio,
-  valor,
+  combinaciones,
   onChange,
   opcionesMotor,
 }: {
   idBase: string;
-  titulo: string;
-  claves: string[];
-  rotulo: (clave: string) => string;
-  etiquetaClaves: string;
-  textoVacio: string;
-  valor: Record<string, string>;
-  onChange: (valor: Record<string, string>) => void;
+  combinaciones: CombinacionMotor[];
+  onChange: (combinaciones: CombinacionMotor[]) => void;
   opcionesMotor: { value: string; label: string }[];
 }) {
-  const [nueva, setNueva] = useState<{ motorId: string; sits: string[] } | null>(null);
-  // Una fila por motor, con sus situaciones.
-  const grupos = [...new Set(Object.values(valor))].map((motorId) => ({
-    motorId,
-    sits: claves.filter((n) => valor[n] === motorId),
-  }));
-  const asignadasA = (motorId: string) => (n: string) => !valor[n] || valor[n] === motorId;
-  const aRotulos = (sits: string[]) => sits.map((n) => rotulo(n));
-  const aClaves = (rotulos: string[]) => claves.filter((n) => rotulos.includes(rotulo(n)));
-  const sinMotor = (motorId: string) =>
-    Object.fromEntries(Object.entries(valor).filter(([, id]) => id !== motorId));
+  const [tipo, setTipo] = useState<TipoCliente | "">("");
+  const [condiciones, setCondiciones] = useState<string[]>([]);
+  const [bcra, setBcra] = useState<string[]>([]);
+  const [interna, setInterna] = useState<string[]>([]);
+  const [motor, setMotor] = useState("");
+  const [aviso, setAviso] = useState<string | null>(null);
 
-  function cambiarClaves(motorId: string, sits: string[]) {
-    const resto = Object.fromEntries(Object.entries(valor).filter(([, id]) => id !== motorId));
-    onChange({ ...resto, ...Object.fromEntries(sits.map((n) => [n, motorId])) });
+  const nombreMotor = (id: string) => opcionesMotor.find((o) => o.value === id)?.label ?? "—";
+  const clavesDe = (rotulos: string[], numeros: number[], rotulo: Record<number, string>) =>
+    numeros.filter((n) => rotulos.includes(rotulo[n])).map(String);
+  // Sin nada elegido en un criterio, la fila lo deja en blanco ("cualquiera").
+  const o = (valores: string[]) => (valores.length > 0 ? valores : [""]);
+
+  const bcraElegidas = clavesDe(bcra, SITUACIONES_BCRA, ROTULO_BCRA);
+  const internaElegidas = clavesDe(interna, PERFILES_INTERNOS, ROTULO_PERFIL);
+  const cantidad = o(condiciones).length * o(bcraElegidas).length * o(internaElegidas).length;
+
+  function agregar() {
+    if (!motor) return;
+    const marca = Date.now().toString(36);
+    const nuevas: CombinacionMotor[] = [];
+    for (const condicion of o(condiciones))
+      for (const b of o(bcraElegidas))
+        for (const i of o(internaElegidas))
+          nuevas.push({
+            id: `comb-${marca}-${nuevas.length}`,
+            tipoCliente: tipo,
+            condicion,
+            bcra: b,
+            interna: i,
+            motor,
+          });
+    const existentes = new Set(combinaciones.map(claveCombinacion));
+    const repetidas = nuevas.filter((c) => existentes.has(claveCombinacion(c)));
+    if (repetidas.length > 0) {
+      setAviso(
+        `Ya está cargada: ${repetidas
+          .slice(0, 3)
+          .map(textoCombinacion)
+          .join("; ")}${repetidas.length > 3 ? ` y ${repetidas.length - 3} más` : ""}. Eliminá la fila existente o cambiá la combinación.`
+      );
+      return;
+    }
+    setAviso(null);
+    onChange([...combinaciones, ...nuevas]);
+    setCondiciones([]);
+    setBcra([]);
+    setInterna([]);
   }
-  function cambiarMotor(anterior: string, motorId: string) {
-    if (!motorId) return;
-    onChange(Object.fromEntries(Object.entries(valor).map(([n, id]) => [n, id === anterior ? motorId : id])));
-  }
-  // La fila nueva se arma completa (motor y situaciones) y recién entra con "Agregar".
-  function confirmarNueva() {
-    if (!nueva?.motorId || nueva.sits.length === 0) return;
-    // Sólo se ofrecen situaciones libres: se suman a lo que ya tenía ese motor.
-    onChange({ ...valor, ...Object.fromEntries(nueva.sits.map((n) => [n, nueva.motorId])) });
-    setNueva(null);
-  }
-  const libresNueva = claves.filter((n) => !valor[n]);
+
+  const cualquiera = <span className="text-ink-400">Cualquiera</span>;
 
   return (
-    <div className="space-y-3">
-      <Subtitulo>{titulo}</Subtitulo>
-      {grupos.length === 0 && !nueva && (
-        <p className="text-sm text-ink-500">{textoVacio}</p>
-      )}
-      {grupos.map((g, i) => (
-        <div key={g.motorId} className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
-          <SelectField
-            id={`${idBase}-motor-${i}`}
-            label="Grupo de reglas"
-            value={g.motorId}
-            onChange={(v) => cambiarMotor(g.motorId, v)}
-            options={opcionesMotor}
-          />
-          <MultiSelectField
-            id={`${idBase}-sits-${i}`}
-            label={etiquetaClaves}
-            values={aRotulos(g.sits)}
-            onChange={(r) => cambiarClaves(g.motorId, aClaves(r))}
-            options={aRotulos(claves.filter(asignadasA(g.motorId)))}
-            placeholder={`Elegí ${etiquetaClaves.toLowerCase()}…`}
-          />
-          <Button size="sm" variant="ghost" onClick={() => onChange(sinMotor(g.motorId))} aria-label="Quitar asignación">
-            <IconTrash width={14} height={14} />
-            Quitar
-          </Button>
-        </div>
-      ))}
-      {nueva && (
-        <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
-          <SelectField
-            id={`${idBase}-motor-nueva`}
-            label="Grupo de reglas"
-            value={nueva.motorId}
-            onChange={(v) => setNueva({ ...nueva, motorId: v })}
-            placeholder="Elegí el grupo…"
-            options={opcionesMotor}
-          />
-          <MultiSelectField
-            id={`${idBase}-sits-nueva`}
-            label={etiquetaClaves}
-            values={aRotulos(nueva.sits)}
-            onChange={(r) => setNueva({ ...nueva, sits: aClaves(r) })}
-            options={aRotulos(libresNueva)}
-            placeholder={`Elegí ${etiquetaClaves.toLowerCase()}…`}
-          />
-          <div className="flex gap-1.5">
-            <Button size="sm" onClick={confirmarNueva} disabled={!nueva.motorId || nueva.sits.length === 0}>
-              Agregar
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setNueva(null)}>
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      )}
-      {!nueva && libresNueva.length > 0 && (
-        <Button size="sm" variant="outline" onClick={() => setNueva({ motorId: "", sits: [] })}>
+    <div className="space-y-4">
+      <Subtitulo>Combinaciones de asignación</Subtitulo>
+      <p className="text-xs text-ink-500">
+        Cada fila es una regla: si el cliente cumple lo que fija la combinación, evalúa con su grupo de
+        reglas. Lo que dejes sin elegir no se tiene en cuenta; si aplican varias filas, gana la más
+        específica y, a igual especificidad, la primera de la tabla.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <SelectField
+          id={`${idBase}-comb-tipo`}
+          label="Tipo de cliente"
+          value={tipo}
+          onChange={(v) => setTipo(v as TipoCliente | "")}
+          placeholder="Cualquiera"
+          options={TIPOS_CLIENTE}
+        />
+        <SelectField
+          id={`${idBase}-comb-motor`}
+          label="Grupo de reglas"
+          value={motor}
+          onChange={setMotor}
+          placeholder="Elegí el grupo…"
+          options={opcionesMotor}
+        />
+        <MultiSelectField
+          id={`${idBase}-comb-cond`}
+          label="Condiciones laborales"
+          values={condiciones}
+          onChange={setCondiciones}
+          options={CONDICIONES_LABORALES}
+          placeholder="Cualquiera"
+          className="sm:col-span-2"
+        />
+        <MultiSelectField
+          id={`${idBase}-comb-bcra`}
+          label="Situación BCRA"
+          values={bcra}
+          onChange={setBcra}
+          options={SITUACIONES_BCRA.map((n) => ROTULO_BCRA[n])}
+          placeholder="Cualquiera"
+        />
+        <MultiSelectField
+          id={`${idBase}-comb-interna`}
+          label="Situación en buró interno"
+          values={interna}
+          onChange={setInterna}
+          options={PERFILES_INTERNOS.map((n) => ROTULO_PERFIL[n])}
+          placeholder="Cualquiera"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" onClick={agregar} disabled={!motor}>
           <IconPlus width={14} height={14} />
-          Agregar asignación
+          Agregar combinación
         </Button>
-      )}
+        {cantidad > 1 && <p className="text-xs text-ink-500">Se van a generar {cantidad} filas.</p>}
+      </div>
+      {aviso && <ValidationMessage tipo="error">{aviso}</ValidationMessage>}
+
+      <div className="overflow-x-auto rounded-xl border border-ink-200">
+        <table className="w-full min-w-[40rem] text-left text-sm">
+          <thead className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+            <tr>
+              <th className="w-10 px-3 py-2.5">N°</th>
+              <th className="px-3 py-2.5">Tipo de cliente</th>
+              <th className="px-3 py-2.5">Condición laboral</th>
+              <th className="px-3 py-2.5">Situación BCRA</th>
+              <th className="px-3 py-2.5">Buró interno</th>
+              <th className="px-3 py-2.5">Grupo de reglas</th>
+              <th className="px-3 py-2.5">
+                <span className="sr-only">Eliminar</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ink-100">
+            {combinaciones.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-5 text-center text-sm text-ink-400">
+                  Sin combinaciones: todos los clientes usan el motor general.
+                </td>
+              </tr>
+            )}
+            {combinaciones.map((c, i) => (
+              <tr key={c.id}>
+                <td className="px-3 py-2.5 tabular-nums text-ink-400">{i + 1}</td>
+                <td className="px-3 py-2.5 text-ink-800">
+                  {c.tipoCliente ? (c.tipoCliente === "NUEVO" ? "Nuevo" : "Existente") : cualquiera}
+                </td>
+                <td className="px-3 py-2.5 text-ink-800">{c.condicion || cualquiera}</td>
+                <td className="px-3 py-2.5 text-ink-800">
+                  {c.bcra ? ROTULO_BCRA[Number(c.bcra)] ?? c.bcra : cualquiera}
+                </td>
+                <td className="px-3 py-2.5 text-ink-800">
+                  {c.interna ? ROTULO_PERFIL[Number(c.interna)] ?? c.interna : cualquiera}
+                </td>
+                <td className="px-3 py-2.5 font-medium text-ink-900">{nombreMotor(c.motor)}</td>
+                <td className="px-3 py-2.5 text-right">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onChange(combinaciones.filter((x) => x.id !== c.id))}
+                    aria-label={`Eliminar combinación ${i + 1}`}
+                  >
+                    <IconTrash width={14} height={14} />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-// --- Motor de riesgo: asignación por tipo de cliente, condición laboral, situación BCRA y buró interno ---
-
 export function EditorMotor({
   idBase,
-  valor,
+  valor: valorGuardado,
   onChange,
   placeholderGeneral = "Sin motor asignado",
   error,
@@ -913,7 +988,7 @@ export function EditorMotor({
   valor: AsignacionMotor;
   onChange: (valor: AsignacionMotor) => void;
   placeholderGeneral?: string;
-  // Asignación incompleta (ver `errorAsignacionMotor`): se muestra junto a "Distinguir".
+  // Combinaciones incompletas o repetidas (ver `errorAsignacionMotor`).
   error?: string;
   mostrarError?: boolean;
 }) {
@@ -922,8 +997,9 @@ export function EditorMotor({
     value: m.id,
     label: m.estado === "ACTIVO" ? m.nombre : `${m.nombre} (${m.estado.toLowerCase()})`,
   }));
+  const valor = normalizarAsignacion(valorGuardado);
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <SelectField
         id={`${idBase}-general`}
         label="Motor general"
@@ -931,79 +1007,15 @@ export function EditorMotor({
         onChange={(v) => onChange({ ...valor, motorId: v || null })}
         placeholder={placeholderGeneral}
         options={OPCIONES_MOTOR}
-        hint="Se usa cuando no aplica ninguna asignación específica."
+        hint="Se usa cuando no aplica ninguna combinación."
       />
-      <div className="space-y-3">
-        <Checkbox
-          checked={valor.distingueTipoCliente}
-          onChange={(v) => onChange({ ...valor, distingueTipoCliente: v })}
-          label="Distinguir cliente nuevo / existente"
-          description="Cada tipo de cliente evalúa con su propio grupo de reglas."
-        />
-        {valor.distingueTipoCliente && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SelectField
-              id={`${idBase}-nuevo`}
-              label="Cliente nuevo"
-              value={valor.porTipoCliente.NUEVO ?? ""}
-              onChange={(v) =>
-                onChange({ ...valor, porTipoCliente: { ...valor.porTipoCliente, NUEVO: v || null } })
-              }
-              placeholder="Elegí el grupo de reglas…"
-              options={OPCIONES_MOTOR}
-              error={mostrarError && error && !valor.porTipoCliente.NUEVO ? "Obligatorio" : undefined}
-            />
-            <SelectField
-              id={`${idBase}-existente`}
-              label="Cliente existente"
-              value={valor.porTipoCliente.EXISTENTE ?? ""}
-              onChange={(v) =>
-                onChange({
-                  ...valor,
-                  porTipoCliente: { ...valor.porTipoCliente, EXISTENTE: v || null },
-                })
-              }
-              placeholder="Elegí el grupo de reglas…"
-              options={OPCIONES_MOTOR}
-              error={mostrarError && error && !valor.porTipoCliente.EXISTENTE ? "Obligatorio" : undefined}
-            />
-          </div>
-        )}
-        {mostrarError && error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
-      </div>
-      <AsignacionPorSituacion
-        idBase={`${idBase}-cond`}
-        titulo="Grupo de reglas por condición laboral"
-        claves={CONDICIONES_LABORALES}
-        rotulo={(c) => c}
-        etiquetaClaves="Condiciones laborales"
-        textoVacio="Sin asignaciones: todas las condiciones usan el motor general."
-        valor={valor.porCondicionLaboral}
-        onChange={(porCondicionLaboral) => onChange({ ...valor, porCondicionLaboral })}
+      <TablaCombinaciones
+        idBase={idBase}
+        combinaciones={valor.combinaciones}
+        onChange={(combinaciones) => onChange({ ...valor, combinaciones })}
         opcionesMotor={OPCIONES_MOTOR}
       />
-      <AsignacionPorSituacion
-        idBase={`${idBase}-bcra`}
-        titulo="Grupo de reglas por situación BCRA"
-        claves={SITUACIONES_BCRA.map(String)}
-        rotulo={(n) => ROTULO_BCRA[Number(n)]}
-        etiquetaClaves="Situaciones"
-        textoVacio="Sin asignaciones: todas las situaciones usan el motor general."
-        valor={valor.porSituacionBcra ?? {}}
-        onChange={(porSituacionBcra) => onChange({ ...valor, porSituacionBcra })}
-        opcionesMotor={OPCIONES_MOTOR}
-      />
-      <AsignacionPorSituacion
-        idBase={`${idBase}-interna`}
-        titulo="Grupo de reglas por situación en buró interno"
-        claves={PERFILES_INTERNOS.map(String)}
-        rotulo={(n) => ROTULO_PERFIL[Number(n)]}
-        etiquetaClaves="Situaciones"
-        textoVacio="Sin asignaciones: todas las situaciones usan el motor general."
-        valor={valor.porSituacionInterna ?? {}}
-        onChange={(porSituacionInterna) => onChange({ ...valor, porSituacionInterna })}
-        opcionesMotor={OPCIONES_MOTOR}
-      />
+      {mostrarError && error && <ValidationMessage tipo="error">{error}</ValidationMessage>}
     </div>
   );
 }

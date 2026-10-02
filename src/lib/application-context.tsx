@@ -95,6 +95,7 @@ import {
 import { hidratarPlanes } from "./planes";
 import { hidratarOrganismos } from "./organismos";
 import { hidratarMotivosObservacion } from "./motivos-observacion";
+import { hidratarPlantillasNotificacion } from "./plantillas-notificacion";
 
 // Plazo de la oferta dentro de la grilla del plan; si el plan no lo tiene, el primero de la grilla.
 // Campos de `analista` que deja una observación nueva: la vigente y su lugar en el historial.
@@ -510,6 +511,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hidratarPlanes();
       hidratarOrganismos();
       hidratarMotivosObservacion();
+      hidratarPlantillasNotificacion();
       hidratarNotificaciones();
       try {
         // La base compartida manda sobre la de la sesión: la otra pestaña pudo haberla cambiado.

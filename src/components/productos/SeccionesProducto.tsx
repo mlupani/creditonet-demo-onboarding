@@ -717,11 +717,12 @@ function Notificaciones({ p, set }: SeccionProps) {
   return (
     <Panel
       titulo="Notificaciones"
-      descripcion="Avisos del onboarding (hasta 5 estados) y del crédito activo."
-      nota={`${NOTA_APLICA_ORGANISMOS} Valores de ejemplo.`}
+      descripcion="Notificaciones que envía el producto, elegidas del catálogo global."
+      nota={NOTA_APLICA_ORGANISMOS}
     >
       <EditorNotificaciones
         idBase="p-notif"
+        productoId={p.config.id}
         valor={p.extras.notificaciones}
         onChange={(v) => ex({ notificaciones: v })}
       />

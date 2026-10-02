@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import {
-  ESTADOS_NOTIFICACION_ONBOARDING,
+  asignadasDe,
   type ExtrasProducto,
   type GestionPrestamos,
   type NotificacionesProducto,
@@ -12,6 +12,7 @@ import {
   type TramoPunitorio,
 } from "@/lib/productos";
 import type { VistaOrganismo } from "@/lib/organismos";
+import { getPlantillasNotificacion } from "@/lib/plantillas-notificacion";
 import { formatARS } from "@/lib/format";
 import { TERMINOS } from "@/lib/terminologia";
 import { Button } from "@/components/ui/Button";
@@ -185,21 +186,13 @@ function texto(campo: CampoExtra, valor: unknown): ReactNode {
       );
     }
     case "notif": {
-      const n = valor as NotificacionesProducto;
-      const onboarding = ESTADOS_NOTIFICACION_ONBOARDING.filter((e) => n.onboarding[e.id]).map(
-        (e) => e.label
-      );
-      const activo = [
-        n.creditoActivo.vencimiento && `vencimiento (${n.creditoActivo.diasAntesVencimiento} d)`,
-        n.creditoActivo.pago && "pago",
-        n.creditoActivo.mora && "mora",
-        n.creditoActivo.cancelacion && "cancelación",
-      ].filter(Boolean);
+      const asignadas = getPlantillasNotificacion().filter((x) => asignadasDe(valor as NotificacionesProducto).includes(x.id));
+      const externas = asignadas.filter((x) => x.ambito === "EXTERNO").map((x) => x.nombre);
+      const internas = asignadas.filter((x) => x.ambito === "INTERNO").map((x) => x.nombre);
       return (
         <span>
-          <span className="block">Onboarding: {onboarding.join(", ") || "sin avisos"}</span>
-          <span className="block">Crédito activo: {activo.join(", ") || "sin avisos"}</span>
-          <span className="block text-xs text-ink-500">{n.canales.join(", ") || "Sin medios"}</span>
+          <span className="block">Externas: {externas.join(", ") || "ninguna"}</span>
+          <span className="block">Internas: {internas.join(", ") || "ninguna"}</span>
         </span>
       );
     }

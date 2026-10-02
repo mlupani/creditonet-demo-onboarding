@@ -131,19 +131,14 @@ export interface TramoPunitorio {
   montoTopeSinIva: number;
 }
 
+// Notificaciones que envía el producto: ids de las plantillas globales del módulo Notificaciones.
 export interface NotificacionesProducto {
-  // Onboarding: qué estados avisan al cliente.
-  onboarding: Record<EstadoNotificacionOnboarding, boolean>;
-  // Crédito activo: vencimiento, pago, mora y cancelación.
-  creditoActivo: {
-    vencimiento: boolean;
-    diasAntesVencimiento: number;
-    pago: boolean;
-    mora: boolean;
-    cancelacion: boolean;
-  };
-  canales: string[];
+  asignadas: string[];
 }
+
+// Productos y organismos guardados antes de la asignación tienen el formato anterior (sin lista).
+export const asignadasDe = (n: NotificacionesProducto | null | undefined): string[] =>
+  Array.isArray(n?.asignadas) ? n.asignadas : [];
 
 // Valores de ejemplo: se guardan y se muestran, pero no cambian el flujo ni el cálculo.
 // El organismo puede hacer excepciones sobre cualquiera de estos valores.
@@ -256,23 +251,7 @@ const EXTRAS_BASE: ExtrasProducto = {
   cancelacionMinCuotasPagas: 1,
   permiteCambioPrimerVencimiento: true,
   permiteCorrimientoDesarrollo: true,
-  notificaciones: {
-    onboarding: {
-      EN_TRAMITE: false,
-      PREAPROBADO: true,
-      OBSERVADO: true,
-      RECHAZADO: true,
-      PARA_LIQUIDAR: true,
-    },
-    creditoActivo: {
-      vencimiento: true,
-      diasAntesVencimiento: 5,
-      pago: true,
-      mora: true,
-      cancelacion: true,
-    },
-    canales: ["WhatsApp", "Email"],
-  },
+  notificaciones: { asignadas: ["ntf-1", "ntf-2", "ntf-3", "ntf-4", "ntf-5"] },
 };
 
 // Ajustes por producto sobre el ejemplo base.
@@ -347,6 +326,8 @@ export function hidratarProductos() {
         guardado.map((r) => {
           const extras = { ...r.extras };
           extras.permiteCorrimientoDesarrollo ??= EXTRAS_BASE.permiteCorrimientoDesarrollo;
+          if (!Array.isArray(extras.notificaciones?.asignadas))
+            extras.notificaciones = structuredClone(EXTRAS_BASE.notificaciones);
           extras.condicionCancelacion ??= EXTRAS_BASE.condicionCancelacion;
           extras.cancelacionMinPctPagado ??= EXTRAS_BASE.cancelacionMinPctPagado;
           extras.cancelacionMinCuotasPagas ??= EXTRAS_BASE.cancelacionMinCuotasPagas;

@@ -5,6 +5,8 @@ import {
   SISTEMAS_AMORTIZACION,
   minimoDocumento,
   motorAsignado,
+  normalizarAsignacion,
+  textoCombinacion,
   type AsignacionMotor,
   type OverridesOrganismo,
 } from "@/lib/config";
@@ -423,22 +425,12 @@ function Permisos(props: SeccionOrgProps) {
 
 function describirAsignacion(a: AsignacionMotor | null): string {
   if (!a) return "Sin asignación propia";
-  const partes = [a.motorId ? getMotor(a.motorId).nombre : "Sin motor general"];
-  if (a.distingueTipoCliente)
+  const asignacion = normalizarAsignacion(a);
+  const partes = [asignacion.motorId ? getMotor(asignacion.motorId).nombre : "Sin motor general"];
+  if (asignacion.combinaciones.length > 0)
     partes.push(
-      `nuevo: ${a.porTipoCliente.NUEVO ? getMotor(a.porTipoCliente.NUEVO).nombre : "—"} · existente: ${
-        a.porTipoCliente.EXISTENTE ? getMotor(a.porTipoCliente.EXISTENTE).nombre : "—"
-      }`
+      asignacion.combinaciones.map((c) => `${textoCombinacion(c)}: ${getMotor(c.motor).nombre}`).join(" · ")
     );
-  const cond = Object.entries(a.porCondicionLaboral);
-  if (cond.length > 0)
-    partes.push(cond.map(([c, id]) => `${c}: ${getMotor(id).nombre}`).join(" · "));
-  const bcra = Object.entries(a.porSituacionBcra ?? {});
-  if (bcra.length > 0)
-    partes.push(bcra.map(([n, id]) => `BCRA ${n}: ${getMotor(id).nombre}`).join(" · "));
-  const interna = Object.entries(a.porSituacionInterna ?? {});
-  if (interna.length > 0)
-    partes.push(interna.map(([n, id]) => `Buró interno ${n}: ${getMotor(id).nombre}`).join(" · "));
   return partes.join(" · ");
 }
 

@@ -534,56 +534,110 @@ export type EstadoProducto = "ACTIVO" | "SUSPENDIDO" | "ELIMINADO";
 // El producto nace en borrador y se ofrece recién cuando se lo activa.
 export type EstadoProductoAbm = EstadoProducto | "BORRADOR";
 
-// Motor §9: qué motor (grupo de reglas) corresponde según el cliente. Prioridad: tipo de cliente
-// (si se lo distingue) → condición laboral → situación BCRA → situación en buró interno →
-// motor general. Las claves de las situaciones son "1".."5".
+// Motor §9: qué motor (grupo de reglas) corresponde según el cliente. La asignación es una tabla
+// de combinaciones: cada fila fija, de forma opcional, el tipo de cliente, la condición laboral, la
+// situación BCRA y la situación en buró interno, y el grupo de reglas que rige cuando el cliente
+// cumple todo lo que la fila fija. Lo que la fila deja vacío ("cualquiera") no se mira. Si aplican
+// varias filas gana la más específica (la que fija más datos); a igual especificidad, la primera.
+// Sin ninguna fila aplicable rige el motor general. Las situaciones son "1".."5".
+export interface CombinacionMotor {
+  id: string;
+  tipoCliente: TipoCliente | "";
+  condicion: string;
+  bcra: string;
+  interna: string;
+  motor: string;
+}
+
 export interface AsignacionMotor {
   motorId: string | null;
-  distingueTipoCliente: boolean;
-  porTipoCliente: Record<TipoCliente, string | null>;
-  porCondicionLaboral: Record<string, string>;
-  porSituacionBcra: Record<string, string>;
-  porSituacionInterna: Record<string, string>;
+  combinaciones: CombinacionMotor[];
 }
 
 export function asignacionMotorVacia(motorId: string | null = null): AsignacionMotor {
-  return {
-    motorId,
-    distingueTipoCliente: false,
-    porTipoCliente: { NUEVO: null, EXISTENTE: null },
-    porCondicionLaboral: {},
-    porSituacionBcra: {},
-    porSituacionInterna: {},
-  };
+  return { motorId, combinaciones: [] };
 }
 
-// Con "Distinguir cliente nuevo / existente" tildado hacen falta los dos grupos de reglas: si
-// falta alguno, la asignación está incompleta y no se puede guardar (creditonet-119).
-export function errorAsignacionMotor(a: AsignacionMotor | null | undefined): string | undefined {
-  if (!a?.distingueTipoCliente) return undefined;
-  const faltan = [
-    !a.porTipoCliente.NUEVO && "cliente nuevo",
-    !a.porTipoCliente.EXISTENTE && "cliente existente",
+// Dos filas con la misma clave son la misma combinación.
+export const claveCombinacion = (c: Pick<CombinacionMotor, "tipoCliente" | "condicion" | "bcra" | "interna">) =>
+  [c.tipoCliente, c.condicion, c.bcra, c.interna].join("|");
+
+export function textoCombinacion(c: Pick<CombinacionMotor, "tipoCliente" | "condicion" | "bcra" | "interna">): string {
+  const partes = [
+    c.tipoCliente === "NUEVO" ? "cliente nuevo" : c.tipoCliente === "EXISTENTE" ? "cliente existente" : "",
+    c.condicion,
+    c.bcra ? `BCRA ${c.bcra}` : "",
+    c.interna ? `buró interno ${c.interna}` : "",
   ].filter(Boolean);
-  return faltan.length > 0
-    ? `Completá el grupo de reglas para ${faltan.join(" y ")} o destildá “Distinguir cliente nuevo / existente”.`
-    : undefined;
+  return partes.length > 0 ? partes.join(" · ") : "cualquier cliente";
+}
+
+// Formatos guardados antes de la tabla de combinaciones.
+interface AsignacionAnterior {
+  distingueTipoCliente?: boolean;
+  porTipoCliente?: Partial<Record<TipoCliente, string | null>>;
+  porCondicionLaboral?: Record<string, string>;
+  porSituacionBcra?: Record<string, string>;
+  porSituacionInterna?: Record<string, string>;
+  // Versión intermedia: una fila por condición con el motor del cliente nuevo y el del existente.
+  combinaciones?: { id: string; condicion: string; nuevo?: string; existente?: string; motor?: string }[];
+}
+
+// Devuelve la asignación en formato de combinaciones; las anteriores se convierten conservando
+// su prioridad (tipo de cliente → condición → BCRA → buró interno) como orden de las filas.
+export function normalizarAsignacion(a: AsignacionMotor): AsignacionMotor {
+  const v = a as unknown as AsignacionAnterior;
+  if (Array.isArray(v.combinaciones) && v.combinaciones.every((c) => "motor" in c) && !("porSituacionBcra" in v))
+    return a;
+  const filas: CombinacionMotor[] = [];
+  const fila = (id: string, parte: Partial<CombinacionMotor>, motor: string | null | undefined) => {
+    if (motor) filas.push({ id, tipoCliente: "", condicion: "", bcra: "", interna: "", ...parte, motor });
+  };
+  if (v.distingueTipoCliente) {
+    fila("mig-nuevo", { tipoCliente: "NUEVO" }, v.porTipoCliente?.NUEVO);
+    fila("mig-existente", { tipoCliente: "EXISTENTE" }, v.porTipoCliente?.EXISTENTE);
+  }
+  for (const c of v.combinaciones ?? []) {
+    const condicion = c.condicion === "*" ? "" : c.condicion;
+    fila(`${c.id}-n`, { tipoCliente: "NUEVO", condicion }, c.nuevo);
+    fila(`${c.id}-e`, { tipoCliente: "EXISTENTE", condicion }, c.existente);
+  }
+  for (const [condicion, id] of Object.entries(v.porCondicionLaboral ?? {})) fila(`mig-c-${condicion}`, { condicion }, id);
+  for (const [n, id] of Object.entries(v.porSituacionBcra ?? {})) fila(`mig-b-${n}`, { bcra: n }, id);
+  for (const [n, id] of Object.entries(v.porSituacionInterna ?? {})) fila(`mig-i-${n}`, { interna: n }, id);
+  return { motorId: a.motorId ?? null, combinaciones: filas };
+}
+
+// Cada fila necesita su grupo de reglas y no puede repetirse la misma combinación.
+export function errorAsignacionMotor(a: AsignacionMotor | null | undefined): string | undefined {
+  if (!a) return undefined;
+  const filas = normalizarAsignacion(a).combinaciones;
+  if (filas.some((c) => !c.motor)) return "Hay combinaciones sin grupo de reglas: completalas o eliminalas.";
+  const vistas = new Set<string>();
+  for (const c of filas) {
+    const k = claveCombinacion(c);
+    if (vistas.has(k)) return `La combinación “${textoCombinacion(c)}” está repetida: dejá una sola.`;
+    vistas.add(k);
+  }
+  return undefined;
 }
 
 export function motorAsignado(
-  a: AsignacionMotor,
+  asignacion: AsignacionMotor,
   condicionLaboral: string,
   tipoCliente: TipoCliente | null,
   situaciones: { bcra: number; interna: number } | null = null
 ): string | null {
-  if (a.distingueTipoCliente && tipoCliente && a.porTipoCliente[tipoCliente])
-    return a.porTipoCliente[tipoCliente];
-  return (
-    a.porCondicionLaboral[condicionLaboral] ??
-    (situaciones ? a.porSituacionBcra?.[situaciones.bcra] : undefined) ??
-    (situaciones ? a.porSituacionInterna?.[situaciones.interna] : undefined) ??
-    a.motorId
-  );
+  const aplica = (c: CombinacionMotor) =>
+    (!c.tipoCliente || c.tipoCliente === tipoCliente) &&
+    (!c.condicion || c.condicion === condicionLaboral) &&
+    (!c.bcra || (situaciones !== null && c.bcra === String(situaciones.bcra))) &&
+    (!c.interna || (situaciones !== null && c.interna === String(situaciones.interna)));
+  const fijados = (c: CombinacionMotor) => [c.tipoCliente, c.condicion, c.bcra, c.interna].filter(Boolean).length;
+  let mejor: CombinacionMotor | null = null;
+  for (const c of normalizarAsignacion(asignacion).combinaciones)
+    if (c.motor && aplica(c) && (!mejor || fijados(c) > fijados(mejor))) mejor = c;
+  return mejor?.motor ?? asignacion.motorId ?? null;
 }
 
 export interface ProductoConfig {
