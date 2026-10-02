@@ -223,6 +223,18 @@ export function tiposVariables(fuentes: FuenteVariable[]): Record<string, "numer
   return Object.fromEntries(variablesDeFuentes(fuentes).map((v) => [v.nombre, v.tipo]));
 }
 
+/** Filas para exportar el catálogo (encabezado + una por variable), agrupadas por origen. */
+export function variablesAFilas(variables: VariableMotor[]): string[][] {
+  return [
+    ["Variable", "Origen", "Tipo", "Descripción"],
+    ...FUENTES.flatMap((f) =>
+      variables
+        .filter((v) => v.fuente === f.id)
+        .map((v) => [v.nombre, LABEL_FUENTE[f.id], v.tipo === "numero" ? "Número" : "Texto", v.detalle]),
+    ),
+  ];
+}
+
 const normalizar = (s: string) =>
   s
     .normalize("NFD")
