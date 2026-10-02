@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { configEfectiva } from "@/lib/config";
+import { configEfectiva, minimoTokenizacion } from "@/lib/config";
 import { nombreProveedor } from "@/lib/parametros";
 import { isValidCard } from "@/lib/format";
 import { proveedorDeTarjeta, tarjetaValida } from "@/lib/validation";
@@ -56,6 +56,7 @@ export function PantallaTokenizacion() {
     const propias = tarjetas.filter((t) => proveedorDeTarjeta(t, i === 0, b.proveedorId));
     return {
       ...b,
+      minimo: minimoTokenizacion(cfg.tokenizacion, b),
       nombre: nombreProveedor(b.proveedorId),
       total: propias.length,
       validas: propias.filter(tarjetaValida).length,
@@ -139,7 +140,7 @@ export function PantallaTokenizacion() {
           icon={<IconCreditCard width={18} height={18} />}
           action={
             <StatusBadge tone={hayMinimo ? "danger" : "neutral"}>
-              {hayMinimo ? "Mínimo por proveedor" : "Sin mínimo"}
+              {hayMinimo ? "Mínimo por proveedor" : cfg.tokenizacion.obligatoria === false ? "Opcional" : "Sin mínimo"}
             </StatusBadge>
           }
         />
