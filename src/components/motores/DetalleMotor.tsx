@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import type { EstadoProducto } from "@/lib/config";
 import { OPERADORES, arbolDeExpresion } from "@/lib/expresiones";
+import { crearXlsx } from "@/lib/xlsx";
 import { fechaAIso, isoAFecha } from "@/lib/format";
 import {
   ACCIONES,
@@ -20,6 +21,7 @@ import {
   textoVigenciaMotor,
   useMotores,
   validarMotor,
+  variablesAFilas,
   variablesDeFuentes,
   vencimientoMotor,
   vigenciaMotor,
@@ -898,6 +900,19 @@ function ModalVariables({
 }) {
   const [busqueda, setBusqueda] = useState("");
   const filtradas = filtrarVariables(variables, busqueda);
+
+  function exportar() {
+    const blob = new Blob([crearXlsx("Variables", variablesAFilas(variables)) as BlobPart], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "motor-riesgo-variables.xlsx";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   return (
     <Modal
       open={open}
@@ -905,7 +920,10 @@ function ModalVariables({
       title="Variables disponibles"
       maxWidth="max-w-2xl"
       footer={
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={exportar}>
+            Exportar a Excel
+          </Button>
           <Button variant="outline" onClick={onClose}>
             Cerrar
           </Button>
