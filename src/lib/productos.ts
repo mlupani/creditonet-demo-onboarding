@@ -540,6 +540,16 @@ export function errorTokenizacion(t: TokenizacionConfig): string | null {
   return null;
 }
 
+// Con la pantalla de tokenización habilitada la tokenización es obligatoria: hay que tener al
+// menos un proveedor asignado y que entre todos pidan como mínimo una tarjeta.
+export function errorTokenizacionObligatoria(t: TokenizacionConfig): string | null {
+  if (t.proveedores.length === 0)
+    return "Asigná al menos un proveedor de tokenización o deshabilitá la pantalla de tokenización.";
+  if (!t.proveedores.some((b) => b.minimo >= 1))
+    return "La tokenización es obligatoria: pedí al menos una tarjeta (mínimo 1 en algún proveedor).";
+  return null;
+}
+
 // Documentos del legajo: obligatorio ⇒ mínimo ≥ 1; máximo ≥ 1 y ≥ mínimo.
 export function errorDocumentos(docs: DocumentoConfig[]): string | null {
   for (const d of docs) {
@@ -582,9 +592,7 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
   const tokenizacionHabilitada = ob.pantallas.some((s) => s.id === "tokenizacion" && s.visible);
   const tok =
     errorTokenizacion(ob.tokenizacion) ??
-    (tokenizacionHabilitada && ob.tokenizacion.proveedores.length === 0
-      ? "Agregá al menos un proveedor o deshabilitá la pantalla de tokenización."
-      : null);
+    (tokenizacionHabilitada ? errorTokenizacionObligatoria(ob.tokenizacion) : null);
   if (tok) e.tokenizacion = tok;
   const doc = errorDocumentos(ob.documentos);
   if (doc) e.documentos = doc;
