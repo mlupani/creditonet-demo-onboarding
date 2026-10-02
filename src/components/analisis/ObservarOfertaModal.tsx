@@ -78,6 +78,7 @@ export function ObservarOfertaModal({ open, onClose }: { open: boolean; onClose:
           label="Pantallas a corregir"
           required
           placeholder="Seleccioná pantallas…"
+          plural="pantallas"
           values={observables.filter((pv) => pantallas.includes(pv.id)).map((pv) => pv.label)}
           onChange={(labels) =>
             setPantallas(observables.filter((pv) => labels.includes(pv.label)).map((pv) => pv.id))

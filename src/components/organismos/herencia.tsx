@@ -270,6 +270,7 @@ function EditorExtra({
           values={valor as string[]}
           onChange={onChange}
           options={campo.opciones}
+          plural="opciones"
         />
       );
     case "seleccion":

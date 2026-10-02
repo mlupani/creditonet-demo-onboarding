@@ -20,6 +20,7 @@ export function MultiSelectField({
   required = false,
   className = "",
   placeholder = "Seleccioná bancos…",
+  plural = "bancos",
 }: {
   id: string;
   label: string;
@@ -32,6 +33,8 @@ export function MultiSelectField({
   required?: boolean;
   className?: string;
   placeholder?: string;
+  // Con más de dos elegidos se muestra "N <plural> seleccionados".
+  plural?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -66,7 +69,7 @@ export function MultiSelectField({
       ? placeholder
       : values.length <= 2
         ? values.join(", ")
-        : `${values.length} bancos seleccionados`;
+        : `${values.length} ${plural} seleccionados`;
 
   return (
     <div ref={ref} className={className}>

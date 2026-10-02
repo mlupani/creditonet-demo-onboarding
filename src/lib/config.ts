@@ -444,9 +444,14 @@ export const TIPOS_TARJETA: { value: TipoTarjeta; label: string }[] = [
   { value: "PRECARGABLE", label: "Precargable" },
 ];
 
+export const tiposTarjetaDe = (t: { tiposTarjeta?: TipoTarjeta[]; tipoTarjeta?: TipoTarjeta }): TipoTarjeta[] =>
+  t.tiposTarjeta && t.tiposTarjeta.length > 0 ? t.tiposTarjeta : [t.tipoTarjeta ?? "DEBITO"];
+
 export interface TokenizacionConfig {
   proveedores: BloqueTokenizacion[];
-  // Tipo de tarjeta que se tokeniza. Sin definir: débito.
+  // Tipos de tarjeta que se pueden tokenizar (uno o más). Sin definir: débito.
+  tiposTarjeta?: TipoTarjeta[];
+  // Formato anterior (un solo tipo): se lee como lista de uno.
   tipoTarjeta?: TipoTarjeta;
   // false: el código de seguridad deja de ser obligatorio. Sin definir: se pide.
   pedirCodigoSeguridad?: boolean;

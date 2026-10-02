@@ -8,10 +8,9 @@ import type {
   BloqueTokenizacion,
   DocumentoConfig,
   TokenizacionConfig,
-  TipoTarjeta,
 } from "@/lib/config";
 import type { TipoCliente } from "@/lib/types";
-import { TIPOS_TARJETA, claveCombinacion, normalizarAsignacion, textoCombinacion } from "@/lib/config";
+import { TIPOS_TARJETA, claveCombinacion, normalizarAsignacion, textoCombinacion, tiposTarjetaDe } from "@/lib/config";
 import {
   TITULO_PANTALLA_CAMPOS,
   camposConfigurablesDe,
@@ -563,12 +562,19 @@ export function EditorCamposObligatorios({
             <div className="border-t border-ink-100 px-4 py-4">
               {pantalla === "tokenizacion" && (
                 <div className="mb-4 grid gap-x-6 gap-y-4 border-b border-ink-100 pb-4 sm:grid-cols-2">
-                  <SelectField
+                  <MultiSelectField
                     id="p-tok-tipo-tarjeta"
-                    label="Tipo de tarjeta"
-                    value={tokenizacion.tipoTarjeta ?? "DEBITO"}
-                    onChange={(v) => onTokenizacion({ ...tokenizacion, tipoTarjeta: v as TipoTarjeta })}
-                    options={TIPOS_TARJETA}
+                    label="Tipos de tarjeta"
+                    values={tiposTarjetaDe(tokenizacion).map((t) => TIPOS_TARJETA.find((x) => x.value === t)?.label ?? t)}
+                    onChange={(rotulos) => {
+                      // Siempre queda al menos un tipo.
+                      const tipos = TIPOS_TARJETA.filter((x) => rotulos.includes(x.label)).map((x) => x.value);
+                      if (tipos.length > 0) onTokenizacion({ ...tokenizacion, tiposTarjeta: tipos, tipoTarjeta: undefined });
+                    }}
+                    options={TIPOS_TARJETA.map((x) => x.label)}
+                    placeholder="Elegí los tipos…"
+                    plural="tipos de tarjeta"
+                    hint="Podés marcar más de uno."
                   />
                   <Checkbox
                     checked={tokenizacion.pedirCodigoSeguridad !== false}
@@ -935,6 +941,7 @@ function TablaCombinaciones({
           onChange={setCondiciones}
           options={CONDICIONES_LABORALES}
           placeholder="Cualquiera"
+          plural="condiciones"
           className="sm:col-span-2"
         />
         <MultiSelectField
@@ -944,6 +951,7 @@ function TablaCombinaciones({
           onChange={setBcra}
           options={SITUACIONES_BCRA.map((n) => ROTULO_BCRA[n])}
           placeholder="Cualquiera"
+          plural="situaciones"
         />
         <MultiSelectField
           id={`${idBase}-comb-interna`}
@@ -952,6 +960,7 @@ function TablaCombinaciones({
           onChange={setInterna}
           options={PERFILES_INTERNOS.map((n) => ROTULO_PERFIL[n])}
           placeholder="Cualquiera"
+          plural="situaciones"
         />
       </div>
       <div className="flex flex-wrap items-center gap-3">

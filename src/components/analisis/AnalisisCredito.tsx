@@ -1445,6 +1445,7 @@ export function AnalisisCredito({
               label="Pantallas a corregir"
               required
               placeholder="Seleccioná pantallas…"
+              plural="pantallas"
               values={pantallasVisibles(app.configuracion)
                 .filter((pv) => PANTALLAS_OBSERVABLES.includes(pv.id))
                 .filter((pv) => pantallas.includes(pv.id))
@@ -1486,6 +1487,7 @@ export function AnalisisCredito({
                   id={`campos-observados-${pantallaId}`}
                   label={`Campos a corregir · ${labelPantalla ?? pantallaId}`}
                   required
+                  plural="campos"
                   values={opciones
                     .filter((c) => seleccionados.includes(c.id))
                     .map((c) => c.label)}
