@@ -50,7 +50,7 @@ import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { CampoNumero, Subtitulo } from "./campos";
-import { IconPlus, IconTrash } from "@/components/icons";
+import { IconPencil, IconPlus, IconTrash } from "@/components/icons";
 
 // Editores compartidos por el ABM de Productos y el de Organismos (que hace excepciones sobre
 // los mismos valores).
@@ -862,7 +862,8 @@ function TablaCombinaciones({
   const [bcra, setBcra] = useState<string[]>([]);
   const [interna, setInterna] = useState<string[]>([]);
   const [motor, setMotor] = useState("");
-  const [aviso, setAviso] = useState<string | null>(null);
+  // Fila que se está editando: el formulario se carga con sus valores y "Guardar" la reemplaza.
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
   const nombreMotor = (id: string) => opcionesMotor.find((o) => o.value === id)?.label ?? "—";
   const clavesDe = (rotulos: string[], numeros: number[], rotulo: Record<number, string>) =>
@@ -874,37 +875,50 @@ function TablaCombinaciones({
   const internaElegidas = clavesDe(interna, PERFILES_INTERNOS, ROTULO_PERFIL);
   const cantidad = o(condiciones).length * o(bcraElegidas).length * o(internaElegidas).length;
 
-  function agregar() {
-    if (!motor) return;
-    const marca = Date.now().toString(36);
-    const nuevas: CombinacionMotor[] = [];
-    for (const condicion of o(condiciones))
-      for (const b of o(bcraElegidas))
-        for (const i of o(internaElegidas))
-          nuevas.push({
-            id: `comb-${marca}-${nuevas.length}`,
-            tipoCliente: tipo,
-            condicion,
-            bcra: b,
-            interna: i,
-            motor,
-          });
-    const existentes = new Set(combinaciones.map(claveCombinacion));
-    const repetidas = nuevas.filter((c) => existentes.has(claveCombinacion(c)));
-    if (repetidas.length > 0) {
-      setAviso(
-        `Ya está cargada: ${repetidas
-          .slice(0, 3)
-          .map(textoCombinacion)
-          .join("; ")}${repetidas.length > 3 ? ` y ${repetidas.length - 3} más` : ""}. Eliminá la fila existente o cambiá la combinación.`
-      );
-      return;
-    }
-    setAviso(null);
-    onChange([...combinaciones, ...nuevas]);
+  // Filas que genera lo elegido en el formulario.
+  const nuevas: CombinacionMotor[] = [];
+  for (const condicion of o(condiciones))
+    for (const b of o(bcraElegidas))
+      for (const i of o(internaElegidas))
+        nuevas.push({ id: `nueva-${nuevas.length}`, tipoCliente: tipo, condicion, bcra: b, interna: i, motor });
+
+  // Una misma combinación no se carga dos veces (al editar, la propia fila no cuenta).
+  const existentes = new Set(combinaciones.filter((c) => c.id !== editandoId).map(claveCombinacion));
+  const repetidas = nuevas.filter((c) => existentes.has(claveCombinacion(c)));
+  const aviso =
+    repetidas.length > 0
+      ? `Ya está cargada: ${repetidas.slice(0, 3).map(textoCombinacion).join("; ")}${
+          repetidas.length > 3 ? ` y ${repetidas.length - 3} más` : ""
+        }. Cambiá la combinación${editandoId ? "" : " o eliminá la fila existente"}.`
+      : null;
+
+  function limpiar() {
+    setTipo("");
     setCondiciones([]);
     setBcra([]);
     setInterna([]);
+    setEditandoId(null);
+  }
+
+  function guardar() {
+    if (!motor || repetidas.length > 0) return;
+    const marca = Date.now().toString(36);
+    const filas = nuevas.map((c, i) => ({ ...c, id: `comb-${marca}-${i}` }));
+    if (editandoId) {
+      // La primera conserva el lugar y el id de la fila editada; las demás van a continuación.
+      filas[0].id = editandoId;
+      onChange(combinaciones.flatMap((c) => (c.id === editandoId ? filas : [c])));
+    } else onChange([...combinaciones, ...filas]);
+    limpiar();
+  }
+
+  function editar(c: CombinacionMotor) {
+    setEditandoId(c.id);
+    setTipo(c.tipoCliente);
+    setCondiciones(c.condicion ? [c.condicion] : []);
+    setBcra(c.bcra ? [ROTULO_BCRA[Number(c.bcra)]] : []);
+    setInterna(c.interna ? [ROTULO_PERFIL[Number(c.interna)]] : []);
+    setMotor(c.motor);
   }
 
   const cualquiera = <span className="text-ink-400">Cualquiera</span>;
@@ -964,11 +978,23 @@ function TablaCombinaciones({
         />
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" onClick={agregar} disabled={!motor}>
-          <IconPlus width={14} height={14} />
-          Agregar combinación
+        <Button size="sm" onClick={guardar} disabled={!motor || repetidas.length > 0}>
+          {editandoId ? (
+            "Guardar cambios"
+          ) : (
+            <>
+              <IconPlus width={14} height={14} />
+              Agregar combinación
+            </>
+          )}
         </Button>
+        {editandoId && (
+          <Button size="sm" variant="ghost" onClick={limpiar}>
+            Cancelar edición
+          </Button>
+        )}
         {cantidad > 1 && <p className="text-xs text-ink-500">Se van a generar {cantidad} filas.</p>}
+        {editandoId && <p className="text-xs font-medium text-brand-700">Editando la combinación seleccionada.</p>}
       </div>
       {aviso && <ValidationMessage tipo="error">{aviso}</ValidationMessage>}
 
@@ -983,7 +1009,7 @@ function TablaCombinaciones({
               <th className="px-3 py-2.5">Buró interno</th>
               <th className="px-3 py-2.5">Grupo de reglas</th>
               <th className="px-3 py-2.5">
-                <span className="sr-only">Eliminar</span>
+                <span className="sr-only">Acciones</span>
               </th>
             </tr>
           </thead>
@@ -1010,14 +1036,30 @@ function TablaCombinaciones({
                 </td>
                 <td className="px-3 py-2.5 font-medium text-ink-900">{nombreMotor(c.motor)}</td>
                 <td className="px-3 py-2.5 text-right">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onChange(combinaciones.filter((x) => x.id !== c.id))}
-                    aria-label={`Eliminar combinación ${i + 1}`}
-                  >
-                    <IconTrash width={14} height={14} />
-                  </Button>
+                  <div className="inline-flex gap-0.5">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="Editar combinación"
+                      aria-label={`Editar combinación ${i + 1}`}
+                      onClick={() => editar(c)}
+                    >
+                      <IconPencil width={14} height={14} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="Eliminar combinación"
+                      aria-label={`Eliminar combinación ${i + 1}`}
+                      className="text-danger-600 hover:text-danger-700"
+                      onClick={() => {
+                        onChange(combinaciones.filter((x) => x.id !== c.id));
+                        if (editandoId === c.id) limpiar();
+                      }}
+                    >
+                      <IconTrash width={14} height={14} />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1032,7 +1074,6 @@ export function EditorMotor({
   idBase,
   valor: valorGuardado,
   onChange,
-  placeholderGeneral = "Sin motor asignado",
   error,
   mostrarError = true,
 }: {
@@ -1052,15 +1093,6 @@ export function EditorMotor({
   const valor = normalizarAsignacion(valorGuardado);
   return (
     <div className="space-y-5">
-      <SelectField
-        id={`${idBase}-general`}
-        label="Motor general"
-        value={valor.motorId ?? ""}
-        onChange={(v) => onChange({ ...valor, motorId: v || null })}
-        placeholder={placeholderGeneral}
-        options={OPCIONES_MOTOR}
-        hint="Se usa cuando no aplica ninguna combinación."
-      />
       <TablaCombinaciones
         idBase={idBase}
         combinaciones={valor.combinaciones}

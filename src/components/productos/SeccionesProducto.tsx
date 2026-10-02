@@ -60,9 +60,6 @@ function Grilla({ children, cols = 2 }: { children: React.ReactNode; cols?: 2 | 
 // Valor con el que arranca el capital máximo al tildar "obligatorio".
 const CAPITAL_MAXIMO_INICIAL = 1_000_000;
 
-const NOTA_APLICA_ORGANISMOS =
-  "Las reglas del producto se aplican a todos los organismos vinculados; cada organismo puede hacer excepciones.";
-
 // --- 1. Datos generales ---
 
 function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
@@ -73,7 +70,7 @@ function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
       titulo="Datos generales"
       descripcion="Identificación, estado y vigencia del producto."
       vivo
-      nota={NOTA_APLICA_ORGANISMOS}
+      nota=""
     >
       <Grilla>
         <FormField
@@ -548,38 +545,6 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
       </div>
 
       <div className="space-y-3">
-        <Subtitulo>Referencias, garantes y tokenización</Subtitulo>
-        <Grilla>
-          <CampoNumero
-            id="p-ref-min"
-            label="Referencias · mínimo"
-            value={ob.referencias.minimo}
-            onChange={(v) => setOb({ referencias: { ...ob.referencias, minimo: v } })}
-            error={ver ? errores.referencias : undefined}
-          />
-          <CampoNumero
-            id="p-ref-max"
-            label="Referencias · máximo"
-            value={ob.referencias.maximo}
-            onChange={(v) => setOb({ referencias: { ...ob.referencias, maximo: v } })}
-          />
-          <CampoNumero
-            id="p-gar-min"
-            label="Garantes · mínimo"
-            value={ob.garantes.minimo}
-            onChange={(v) => setOb({ garantes: { ...ob.garantes, minimo: v } })}
-            error={ver ? errores.garantes : undefined}
-          />
-          <CampoNumero
-            id="p-gar-max"
-            label="Garantes · máximo"
-            value={ob.garantes.maximo}
-            onChange={(v) => setOb({ garantes: { ...ob.garantes, maximo: v } })}
-          />
-        </Grilla>
-      </div>
-
-      <div className="space-y-3">
         <Subtitulo>Legajo</Subtitulo>
         <p className="text-xs text-ink-500">
           Documentos que forman el legajo virtual, obligatoriedad y cantidad mínima y máxima por
@@ -695,9 +660,9 @@ function Motor({ p, set, errores, ver }: SeccionProps) {
   return (
     <Panel
       titulo="Motor de riesgo"
-      descripcion="Qué grupo de reglas evalúa según el cliente (Producto §6)."
+      descripcion="Qué grupo de reglas evalúa según el cliente."
       vivo
-      nota="El producto no ejecuta reglas de riesgo: sólo indica qué motor corresponde. Si el organismo define su propia asignación, pisa a la del producto."
+      nota=""
     >
       <EditorMotor
         idBase="p-motor"
