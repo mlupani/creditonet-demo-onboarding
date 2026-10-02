@@ -543,21 +543,30 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
           tokenizacion={ob.tokenizacion}
           onTokenizacion={(tokenizacion) => setOb({ tokenizacion })}
           errorTokenizacion={ver ? errores.tokenizacion : undefined}
+          cantidades={{ referencias: ob.referencias, garantes: ob.garantes }}
+          onCantidades={(c) => setOb(c)}
+          errores={ver ? { referencias: errores.referencias, garantes: errores.garantes } : undefined}
         />
-      </div>
-
-      <div className="space-y-3">
-        <Subtitulo>Legajo</Subtitulo>
-        <p className="text-xs text-ink-500">
-          Documentos que forman el legajo virtual, obligatoriedad y cantidad mínima y máxima por
-          ítem (Producto §7 bis). El organismo puede reemplazar esta lista con su propia
-          documentación.
-        </p>
-        <EditorDocumentos
-          docs={ob.documentos}
-          onChange={(documentos) => setOb({ documentos })}
-          error={ver ? errores.documentos : undefined}
-        />
+        <details
+          open={ver && errores.documentos ? true : undefined}
+          className="rounded-xl border border-ink-200 bg-white"
+        >
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink-800">
+            Legajo · {ob.documentos.length} ítem{ob.documentos.length === 1 ? "" : "s"}
+          </summary>
+          <div className="space-y-3 border-t border-ink-100 px-4 py-4">
+            <p className="text-xs text-ink-500">
+              Documentos que forman el legajo virtual, obligatoriedad y cantidad mínima y máxima por
+              ítem (Producto §7 bis). El organismo puede reemplazar esta lista con su propia
+              documentación.
+            </p>
+            <EditorDocumentos
+              docs={ob.documentos}
+              onChange={(documentos) => setOb({ documentos })}
+              error={ver ? errores.documentos : undefined}
+            />
+          </div>
+        </details>
       </div>
 
       <div className="space-y-4">

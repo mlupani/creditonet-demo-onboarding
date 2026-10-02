@@ -6,6 +6,7 @@ import type {
   AsignacionMotor,
   CombinacionMotor,
   BloqueTokenizacion,
+  CantidadConfig,
   DocumentoConfig,
   TokenizacionConfig,
 } from "@/lib/config";
@@ -333,19 +334,21 @@ export function EditorDocumentos({
                     )}
                   </p>
                   <p className="text-xs text-ink-500">{t.categoria}</p>
+                  <div className="mt-2">
+                    <Checkbox
+                      checked={d.obligatorio}
+                      onChange={(v) =>
+                        cambiar(d.tipoId, {
+                          obligatorio: v,
+                          minimo: v ? Math.max(d.minimo, 1) : 0,
+                          maximo: v ? Math.max(d.maximo, 1) : d.maximo,
+                        })
+                      }
+                      label="Obligatorio"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
-                  <Checkbox
-                    checked={d.obligatorio}
-                    onChange={(v) =>
-                      cambiar(d.tipoId, {
-                        obligatorio: v,
-                        minimo: v ? Math.max(d.minimo, 1) : 0,
-                        maximo: v ? Math.max(d.maximo, 1) : d.maximo,
-                      })
-                    }
-                    label="Obligatorio"
-                  />
                   <CampoNumero
                     id={`doc-${d.tipoId}-min`}
                     label="Mínimo"
@@ -526,12 +529,19 @@ export function EditorCamposObligatorios({
   tokenizacion,
   onTokenizacion,
   errorTokenizacion,
+  cantidades,
+  onCantidades,
+  errores,
 }: {
   obligatorios: Partial<Record<string, boolean>>;
   onChange: (obligatorios: Partial<Record<string, boolean>>) => void;
   tokenizacion: TokenizacionConfig;
   onTokenizacion: (valor: TokenizacionConfig) => void;
   errorTokenizacion?: string;
+  // Cantidad mínima y máxima de referencias y garantes (pantallas "referencias" y "garantias").
+  cantidades: { referencias: CantidadConfig; garantes: CantidadConfig };
+  onCantidades: (valor: { referencias: CantidadConfig; garantes: CantidadConfig }) => void;
+  errores?: Partial<Record<"referencias" | "garantes", string>>;
   // Pantallas habilitadas del producto: las deshabilitadas se indican pero siguen editables.
   habilitadas: PantallaPostOfertaId[];
 }) {
@@ -551,7 +561,13 @@ export function EditorCamposObligatorios({
         return (
           <details
             key={pantalla}
-            open={pantalla === "tokenizacion" && errorTokenizacion ? true : undefined}
+            open={
+              (pantalla === "tokenizacion" && errorTokenizacion) ||
+              (pantalla === "referencias" && errores?.referencias) ||
+              (pantalla === "garantias" && errores?.garantes)
+                ? true
+                : undefined
+            }
             className="rounded-xl border border-ink-200 bg-white"
           >
             <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink-800">
@@ -613,6 +629,31 @@ export function EditorCamposObligatorios({
                   ))}
                 </div>
               )}
+              {(pantalla === "referencias" || pantalla === "garantias") &&
+                (() => {
+                  const key = pantalla === "referencias" ? "referencias" : "garantes";
+                  const id = pantalla === "referencias" ? "p-ref" : "p-gar";
+                  return (
+                    <div className={`space-y-2 ${campos.length > 0 ? "mt-4 border-t border-ink-100 pt-4" : ""}`}>
+                      <Subtitulo>{key === "referencias" ? "Cantidad de referencias" : "Cantidad de garantes"}</Subtitulo>
+                      <div className="grid grid-cols-2 gap-3">
+                        <CampoNumero
+                          id={`${id}-min`}
+                          label="Mínimo"
+                          value={cantidades[key].minimo}
+                          onChange={(v) => onCantidades({ ...cantidades, [key]: { ...cantidades[key], minimo: v } })}
+                        />
+                        <CampoNumero
+                          id={`${id}-max`}
+                          label="Máximo"
+                          value={cantidades[key].maximo}
+                          onChange={(v) => onCantidades({ ...cantidades, [key]: { ...cantidades[key], maximo: v } })}
+                        />
+                      </div>
+                      {errores?.[key] && <ValidationMessage tipo="error">{errores[key]}</ValidationMessage>}
+                    </div>
+                  );
+                })()}
             </div>
           </details>
         );
