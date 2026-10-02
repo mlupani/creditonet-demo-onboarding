@@ -235,6 +235,28 @@ alCambiarPlanes(resincronizar);
 
 export const useOrganismos = store.useLista;
 
+// Una notificación deshabilitada también se limpia de las excepciones de los organismos (las que
+// rigen y las pendientes de refrendación).
+export function limpiarNotificacionDeOrganismos(notificacionId: string) {
+  const sinId = (ids?: string[]) => (Array.isArray(ids) ? ids.filter((x) => x !== notificacionId) : ids);
+  const limpiar = (todas: Record<string, ExcepcionesOrganismo>) =>
+    Object.fromEntries(
+      Object.entries(todas).map(([productoId, exc]) => {
+        const n = exc.extras.notificaciones;
+        if (!n) return [productoId, exc];
+        const notificaciones = { ...n, asignadas: sinId(n.asignadas) ?? [], excepciones: sinId(n.excepciones) };
+        return [productoId, { ...exc, extras: { ...exc.extras, notificaciones } }];
+      })
+    );
+  const actual = store.get();
+  const nueva = actual.map((r) => ({
+    ...r,
+    config: { ...r.config, excepciones: limpiar(r.config.excepciones) },
+    pendiente: r.pendiente ? { ...r.pendiente, excepciones: limpiar(r.pendiente.excepciones) } : null,
+  }));
+  if (JSON.stringify(nueva) !== JSON.stringify(actual)) store.commit(nueva);
+}
+
 // Se llama al hidratar la sesión, después de hidratar los productos.
 export function hidratarOrganismos() {
   store.hidratar();

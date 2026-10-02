@@ -13,6 +13,7 @@ import type {
   RiskResultado,
 } from "./types";
 import {
+  AJUSTE_CUOTA_VARIABLE_PCT,
   GRILLA_BASE,
   PLANES_CUOTAS,
   SESION_ANALISTA,
@@ -156,54 +157,117 @@ export function planDeSolicitud(app: CreditApplication): PlanCuotas {
   );
 }
 
-// Cuota mensual según el sistema de amortización del plan. Se redondea a $100.
-// Francés: cuota fija. Americano: sólo interés y el capital se devuelve al final. Tasa directa:
-// el interés se calcula sobre el capital original durante todo el plazo.
+// Cuota de un período del cronograma, sin redondear.
+export interface CuotaAmortizacion {
+  nro: number;
+  cuota: number;
+  capital: number;
+  interes: number;
+  // Saldo de capital después de pagar la cuota.
+  saldo: number;
+}
+
+// Sistemas en los que la cuota cambia de un mes a otro: la oferta informa la primera.
+export function cuotaEsVariable(sistema: SistemaAmortizacion): boolean {
+  return sistema === "FRANCES_VARIABLE" || sistema === "ALEMAN" || sistema === "AMERICANO";
+}
+
+function cuotaFrancesa(monto: number, plazo: number, i: number): number {
+  if (i === 0) return monto / plazo;
+  const factor = Math.pow(1 + i, plazo);
+  return (monto * i * factor) / (factor - 1);
+}
+
+// Cronograma completo según el sistema de amortización.
+// Francés cuota fija: cuota constante, interés sobre saldo. Francés cuota variable: el mismo
+// cronograma ajustado AJUSTE_CUOTA_VARIABLE_PCT por mes (capital indexado). Americano: sólo
+// interés y el capital en la última cuota. Tasa directa: interés sobre el capital original.
+// Alemán: capital constante, interés sobre saldo y cuota decreciente.
+export function cronogramaCuotas(
+  monto: number,
+  plazo: number,
+  tna: number,
+  sistema: SistemaAmortizacion = "FRANCES_FIJA"
+): CuotaAmortizacion[] {
+  if (monto <= 0 || plazo <= 0) return [];
+  const i = tna / 100 / 12;
+  const g = sistema === "FRANCES_VARIABLE" ? 1 + AJUSTE_CUOTA_VARIABLE_PCT / 100 : 1;
+  const fija = cuotaFrancesa(monto, plazo, i);
+  const filas: CuotaAmortizacion[] = [];
+  let saldo = monto;
+  for (let nro = 1; nro <= plazo; nro++) {
+    let capital: number;
+    let interes: number;
+    if (sistema === "AMERICANO") {
+      interes = monto * i;
+      capital = nro === plazo ? monto : 0;
+    } else if (sistema === "TASA_DIRECTA") {
+      interes = monto * i;
+      capital = monto / plazo;
+    } else if (sistema === "ALEMAN") {
+      interes = saldo * i;
+      capital = monto / plazo;
+    } else {
+      interes = saldo * i;
+      capital = fija - interes;
+    }
+    saldo -= capital;
+    const ajuste = Math.pow(g, nro - 1);
+    filas.push({
+      nro,
+      cuota: (capital + interes) * ajuste,
+      capital: capital * ajuste,
+      interes: interes * ajuste,
+      saldo: saldo * ajuste,
+    });
+  }
+  return filas;
+}
+
+// Cuota mensual según el sistema de amortización del plan. Se redondea a $100. Si la cuota
+// varía (ver `cuotaEsVariable`), es la primera.
 export function calcularCuota(
   monto: number,
   plazo: number,
   tna: number,
-  sistema: SistemaAmortizacion = "FRANCES"
+  sistema: SistemaAmortizacion = "FRANCES_FIJA"
 ): number {
-  if (monto <= 0 || plazo <= 0) return 0;
-  const i = tna / 100 / 12;
-  let cuota: number;
-  if (sistema === "AMERICANO") cuota = monto * i;
-  else if (sistema === "TASA_DIRECTA") cuota = (monto * (1 + (tna / 100) * (plazo / 12))) / plazo;
-  else {
-    const factor = Math.pow(1 + i, plazo);
-    cuota = (monto * i * factor) / (factor - 1);
-  }
-  return Math.round(cuota / 100) * 100;
+  const primera = cronogramaCuotas(monto, plazo, tna, sistema)[0];
+  return primera ? Math.round(primera.cuota / 100) * 100 : 0;
 }
 
-// Total a pagar: en el sistema americano la última cuota incluye el capital.
+// Total a pagar. Con cuota constante, cuota × plazo (sobre la cuota redondeada); en el americano
+// la última cuota suma el capital; si la cuota varía, la suma del cronograma redondeada a $100.
 export function totalAPagarDe(
   monto: number,
   plazo: number,
+  tna: number,
   cuota: number,
-  sistema: SistemaAmortizacion = "FRANCES"
+  sistema: SistemaAmortizacion = "FRANCES_FIJA"
 ): number {
-  return sistema === "AMERICANO" ? cuota * plazo + monto : cuota * plazo;
+  if (sistema === "AMERICANO") return cuota * plazo + monto;
+  if (!cuotaEsVariable(sistema)) return cuota * plazo;
+  const total = cronogramaCuotas(monto, plazo, tna, sistema).reduce((s, f) => s + f.cuota, 0);
+  return Math.round(total / 100) * 100;
 }
 
-// Inversa de la anterior: qué capital soporta una cuota máxima. Se trunca a $10.000.
+// Inversa de calcularCuota: qué capital soporta una cuota máxima (la primera, si varía). Se
+// trunca a $10.000.
 export function capitalDesdeCuota(
   cuota: number,
   plazo: number,
   tna: number,
-  sistema: SistemaAmortizacion = "FRANCES"
+  sistema: SistemaAmortizacion = "FRANCES_FIJA"
 ): number {
   if (cuota <= 0 || plazo <= 0) return 0;
   const i = tna / 100 / 12;
   let capital: number;
   if (sistema === "AMERICANO") capital = cuota / i;
   else if (sistema === "TASA_DIRECTA") capital = (cuota * plazo) / (1 + (tna / 100) * (plazo / 12));
-  else {
-    const factor = Math.pow(1 + i, plazo);
-    capital = (cuota * (factor - 1)) / (i * factor);
-  }
-  return Math.floor(capital / 10_000) * 10_000;
+  else if (sistema === "ALEMAN") capital = (cuota * plazo) / (1 + i * plazo);
+  else capital = cuota / cuotaFrancesa(1, plazo, i);
+  // El margen evita que un error de coma flotante (1.199.999,99…) baje un escalón entero.
+  return Math.floor(capital / 10_000 + 1e-9) * 10_000;
 }
 
 // Un crédito en mora se cancela siempre: entra solo en la renovación y no se puede quitar.
@@ -294,7 +358,13 @@ export function recalcularOferta(entrada: Oferta): Oferta {
     capitalMaximoActual,
     tna: term.tna,
     valorCuota,
-    totalAPagar: totalAPagarDe(oferta.montoSolicitado, oferta.plazo, valorCuota, plan?.sistema),
+    totalAPagar: totalAPagarDe(
+      oferta.montoSolicitado,
+      oferta.plazo,
+      term.tna,
+      valorCuota,
+      plan?.sistema
+    ),
     primeraCuotaVencimiento: term.primeraCuota,
   };
 }

@@ -10,6 +10,8 @@ export function crearStoreAbm<T>(opciones: {
   aplicar: (lista: T[]) => void;
   // Valida el guardado antes de restaurarlo.
   valido: (registro: T) => boolean;
+  // Adapta un registro guardado con una versión anterior del modelo.
+  migrar?: (registro: T) => T;
 }) {
   let registros = opciones.inicial;
   const oyentes = new Set<() => void>();
@@ -31,7 +33,7 @@ export function crearStoreAbm<T>(opciones: {
       if (!raw) return;
       const guardado = JSON.parse(raw) as T[];
       if (Array.isArray(guardado) && guardado.length > 0 && guardado.every(opciones.valido))
-        commit(guardado);
+        commit(opciones.migrar ? guardado.map(opciones.migrar) : guardado);
     } catch {
       /* si el guardado está dañado se queda con los valores de ejemplo */
     }
