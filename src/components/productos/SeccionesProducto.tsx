@@ -61,6 +61,8 @@ function Grilla({ children, cols = 2 }: { children: React.ReactNode; cols?: 2 | 
 const CAPITAL_MAXIMO_INICIAL = 1_000_000;
 
 // --- 1. Datos generales ---
+const NOTA_APLICA_ORGANISMOS =
+  "Las reglas del producto se aplican a todos los organismos vinculados; cada organismo puede hacer excepciones.";
 
 function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
   const { cf, ex } = useEditores(set);
