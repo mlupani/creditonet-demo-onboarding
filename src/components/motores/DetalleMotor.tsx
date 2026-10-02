@@ -25,6 +25,7 @@ import {
   variablesDeFuentes,
   vencimientoMotor,
   vigenciaMotor,
+  type AccionRegla,
   type FirmaMotor,
   type MotorRiesgo,
   type VariableMotor,
@@ -162,6 +163,14 @@ function Formulario({
   }
   const editarRegla = (rid: string, cambio: Partial<ReglaMotor>) =>
     editar((m) => ({ ...m, reglas: m.reglas.map((r) => (r.id === rid ? { ...r, ...cambio } : r)) }));
+
+  // Acción editada desde la tabla: en modo edición queda en el borrador; en lectura se graba al instante.
+  function cambiarAccion(rid: string, accion: AccionRegla) {
+    if (nuevo || algunaEdicion) return editarRegla(rid, { accion });
+    const siguiente = { ...borrador, reglas: borrador.reglas.map((r) => (r.id === rid ? { ...r, accion } : r)) };
+    guardarMotor(siguiente);
+    setBorrador(siguiente);
+  }
 
   // Clic en una variable disponible → se agrega a la regla que se estaba editando (por defecto, la última).
   function agregarVariable(nombre: string) {
@@ -520,9 +529,22 @@ function Formulario({
                           {r.nombre || "Sin nombre"}
                         </td>
                         <td className="px-4 py-2.5">
-                          <StatusBadge tone={r.accion === "RECHAZAR" ? "danger" : "warning"}>
-                            {ACCIONES.find((a) => a.id === r.accion)?.label}
-                          </StatusBadge>
+                          <select
+                            aria-label={`Acción de la regla ${i + 1}`}
+                            value={r.accion}
+                            onChange={(e) => cambiarAccion(r.id, e.target.value as AccionRegla)}
+                            className={`rounded-md border px-2 py-1 text-xs font-semibold ${
+                              r.accion === "RECHAZAR"
+                                ? "border-danger-300 bg-danger-50 text-danger-700"
+                                : "border-warning-300 bg-warning-50 text-warning-700"
+                            }`}
+                          >
+                            {ACCIONES.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.label}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-right">
                           <Button size="sm" variant="ghost" onClick={() => setReglasEditando((ids) => [...ids, r.id])}>
