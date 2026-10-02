@@ -46,7 +46,9 @@ import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
 import {
   IconArrowLeft,
   IconCheckCircle,
+  IconCopy,
   IconLoader,
+  IconPencil,
   IconPlus,
   IconSearch,
   IconTrash,
@@ -172,6 +174,35 @@ function Formulario({
     setBorrador(siguiente);
   }
 
+  const [reglaAEliminar, setReglaAEliminar] = useState<ReglaMotor | null>(null);
+
+  // La copia queda justo debajo de la original y se abre para editarla.
+  function copiarRegla(r: ReglaMotor) {
+    const copiaId = nuevaReglaId(borrador.reglas);
+    setReglasEditando((ids) => [...ids, copiaId]);
+    editar((m) => {
+      const idx = m.reglas.findIndex((x) => x.id === r.id);
+      const copia = { ...r, id: copiaId, nombre: `${r.nombre} (copia)` };
+      return { ...m, reglas: [...m.reglas.slice(0, idx + 1), copia, ...m.reglas.slice(idx + 1)] };
+    });
+  }
+
+  // Desde la tabla en lectura se graba al instante; si el grupo no queda válido (por ejemplo, sin
+  // reglas) pasa a edición con el error a la vista.
+  function eliminarRegla(rid: string) {
+    const siguiente = { ...borrador, reglas: borrador.reglas.filter((x) => x.id !== rid) };
+    setReglasEditando((ids) => ids.filter((x) => x !== rid));
+    if (nuevo || algunaEdicion) return editar(() => siguiente);
+    setBorrador(siguiente);
+    if (Object.keys(validarMotor(siguiente, todos)).length === 0) {
+      guardarMotor(siguiente);
+      setGuardado(true);
+    } else {
+      setEditando(true);
+      setIntentado(true);
+    }
+  }
+
   // Clic en una variable disponible → se agrega a la regla que se estaba editando (por defecto, la última).
   function agregarVariable(nombre: string) {
     const destino = borrador.reglas.find((r) => r.id === reglaActiva) ?? borrador.reglas.at(-1);
@@ -241,7 +272,7 @@ function Formulario({
   const seccionesConError = new Set(Object.keys(errores).map(seccionDeError));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8">
       <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.push("/motor-riesgo")}>
         <IconArrowLeft width={15} height={15} />
         Retornar a la lista de grupos
@@ -475,23 +506,22 @@ function Formulario({
               {ver("reglas") ?? "El grupo todavía no tiene reglas."}
             </p>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-ink-200">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto rounded-xl border border-ink-200">
+              <table className="w-full min-w-[40rem] text-sm">
                 <thead className="bg-ink-25 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-400">
                   <tr>
                     <th className="w-12 px-4 py-2.5">N°</th>
-                    <th className="px-4 py-2.5">Nombre</th>
+                    <th className="min-w-[11rem] px-4 py-2.5">Nombre</th>
+                    <th className="w-[38%] px-4 py-2.5">Script</th>
                     <th className="px-4 py-2.5">Acción</th>
-                    <th className="px-4 py-2.5">
-                      <span className="sr-only">Editar</span>
-                    </th>
+                    <th className="w-32 px-4 py-2.5 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-100">
                   {borrador.reglas.map((r, i) =>
                     reglasEditando.includes(r.id) ? (
                       <tr key={r.id}>
-                        <td colSpan={4} className="bg-ink-25 p-3">
+                        <td colSpan={5} className="bg-ink-25 p-3">
                           <ReglaEditor
                             numero={i + 1}
                             regla={r}
@@ -509,24 +539,17 @@ function Formulario({
                             }
                             onChange={(c) => editarRegla(r.id, c)}
                             onActivar={() => setReglaActiva(r.id)}
-                            onCopiar={() => {
-                              const copiaId = nuevaReglaId(borrador.reglas);
-                              setReglasEditando((ids) => [...ids, copiaId]);
-                              editar((m) => {
-                                const idx = m.reglas.findIndex((x) => x.id === r.id);
-                                const copia = { ...r, id: copiaId, nombre: `${r.nombre} (copia)` };
-                                return { ...m, reglas: [...m.reglas.slice(0, idx + 1), copia, ...m.reglas.slice(idx + 1)] };
-                              });
-                            }}
-                            onEliminar={() => editar((m) => ({ ...m, reglas: m.reglas.filter((x) => x.id !== r.id) }))}
+                            onCopiar={() => copiarRegla(r)}
+                            onEliminar={() => eliminarRegla(r.id)}
                           />
                         </td>
                       </tr>
                     ) : (
                       <tr key={r.id} className="hover:bg-ink-25">
                         <td className="px-4 py-2.5 tabular-nums text-ink-400">{i + 1}</td>
-                        <td className="px-4 py-2.5 font-medium text-ink-900" title={r.expresion}>
-                          {r.nombre || "Sin nombre"}
+                        <td className="px-4 py-2.5 font-medium text-ink-900">{r.nombre || "Sin nombre"}</td>
+                        <td className="break-words px-4 py-2.5 font-mono text-xs leading-relaxed text-ink-800">
+                          {r.expresion || <span className="text-ink-400">—</span>}
                         </td>
                         <td className="px-4 py-2.5">
                           <select
@@ -547,9 +570,36 @@ function Formulario({
                           </select>
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                          <Button size="sm" variant="ghost" onClick={() => setReglasEditando((ids) => [...ids, r.id])}>
-                            Editar
-                          </Button>
+                          <div className="inline-flex gap-0.5">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Editar regla"
+                              aria-label={`Editar regla ${i + 1}`}
+                              onClick={() => setReglasEditando((ids) => [...ids, r.id])}
+                            >
+                              <IconPencil width={15} height={15} />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Copiar regla"
+                              aria-label={`Copiar regla ${i + 1}`}
+                              onClick={() => copiarRegla(r)}
+                            >
+                              <IconCopy width={15} height={15} />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Eliminar regla"
+                              aria-label={`Eliminar regla ${i + 1}`}
+                              onClick={() => setReglaAEliminar(r)}
+                              className="text-danger-600 hover:text-danger-700"
+                            >
+                              <IconTrash width={15} height={15} />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -604,6 +654,24 @@ function Formulario({
           {seccion === "auditoria" && !nuevo && <Auditoria registro={registro} />}
         </div>
       </div>
+
+      <ConfirmationModal
+        open={reglaAEliminar !== null}
+        title="¿Eliminar la regla?"
+        descripcion={nuevo ? undefined : "Se quita del grupo y el cambio se graba al instante."}
+        rows={[
+          { label: "Regla", value: reglaAEliminar?.nombre || "Sin nombre" },
+          { label: "Script", value: reglaAEliminar?.expresion || "—" },
+        ]}
+        confirmLabel="Eliminar regla"
+        cancelLabel="Volver"
+        tone="danger"
+        onConfirm={() => {
+          if (reglaAEliminar) eliminarRegla(reglaAEliminar.id);
+          setReglaAEliminar(null);
+        }}
+        onCancel={() => setReglaAEliminar(null)}
+      />
 
       <ModalVariables
         open={verVariables}
