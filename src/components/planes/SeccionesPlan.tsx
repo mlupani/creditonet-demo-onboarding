@@ -28,7 +28,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { CampoNumero, Panel, Subtitulo } from "@/components/productos/campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
-import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
 import { IconPlus, IconTrash } from "@/components/icons";
 
 export interface SeccionPlanProps {
@@ -60,7 +60,7 @@ const PLAZOS: Plazo[] = [12, 18, 24, 36, 48, 60, 72, 84, 96, 120];
 
 function DatosGenerales({ p, set, errores, ver }: SeccionPlanProps) {
   const { cf } = useEditores(set);
-  const meta = ESTADO_PRODUCTO_META[p.config.estado];
+  const meta = ESTADO_PRODUCTO_ABM_META[p.config.estado];
   return (
     <Panel
       titulo="Datos generales"
