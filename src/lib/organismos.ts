@@ -27,6 +27,7 @@ import {
   asignarProductosAOrganismo,
   errorDocumentos,
   errorTokenizacion,
+  errorTokenizacionObligatoria,
   getProductos,
   type ExtrasProducto,
 } from "./productos";
@@ -492,7 +493,8 @@ export function validarOrganismo(o: OrganismoAbm, todos: OrganismoAbm[]): Record
       e[`referencias@${productoId}`] = "El mínimo de referencias supera al máximo.";
     if (ov.garantes && (ov.garantes.minimo ?? 0) > (ov.garantes.maximo ?? Infinity))
       e[`garantes@${productoId}`] = "El mínimo de garantes supera al máximo.";
-    const errorTok = ov.tokenizacion && errorTokenizacion(ov.tokenizacion);
+    const errorTok =
+      ov.tokenizacion && (errorTokenizacion(ov.tokenizacion) ?? errorTokenizacionObligatoria(ov.tokenizacion));
     if (errorTok) e[`tokenizacion@${productoId}`] = errorTok;
     const errorDocs = ov.documentos && errorDocumentos(ov.documentos);
     if (errorDocs) e[`documentos@${productoId}`] = errorDocs;
