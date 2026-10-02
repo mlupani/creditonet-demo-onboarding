@@ -298,7 +298,8 @@ export interface TopesAutorizacion {
 export interface PlanCuotas {
   id: string;
   nombre: string;
-  estado: EstadoProducto;
+  // El plan nace en borrador y se ofrece recién cuando se lo activa.
+  estado: EstadoProductoAbm;
   // Vigencia comercial (dd/mm/aaaa).
   vigenciaDesde: string;
   vigenciaHasta: string | null;

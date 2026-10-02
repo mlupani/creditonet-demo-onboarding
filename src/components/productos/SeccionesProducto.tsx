@@ -33,6 +33,7 @@ import {
   EditorTramos,
 } from "./editores";
 import { ESTADO_PRODUCTO_ABM_META } from "./ListaProductos";
+import { CarteraPunitorios } from "./CarteraPunitorios";
 
 export interface SeccionProps {
   p: ProductoAbm;
@@ -437,6 +438,7 @@ function Punitorios({ p, set, errores, ver }: SeccionProps) {
         label="Modificar cartera activa"
         description="Aplica el cambio de punitorios desde el primer mes en curso, también a los créditos ya activos."
       />
+      {p.extras.modificarCarteraActiva && <CarteraPunitorios p={p} set={set} />}
     </Panel>
   );
 }
@@ -547,6 +549,7 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
           onTokenizacion={(tokenizacion) => setOb({ tokenizacion })}
           errorTokenizacion={ver ? errores.tokenizacion : undefined}
           cantidades={{ referencias: ob.referencias, garantes: ob.garantes }}
+          onHabilitar={(id, visible) => cambiarPantalla(id, { visible })}
           onCantidades={(c) => setOb(c)}
           errores={ver ? { referencias: errores.referencias, garantes: errores.garantes } : undefined}
         />

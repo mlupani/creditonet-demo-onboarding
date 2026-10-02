@@ -3,21 +3,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import { ORGANISMOS, SISTEMAS_AMORTIZACION, type EstadoProducto } from "@/lib/config";
+import { ORGANISMOS, SISTEMAS_AMORTIZACION, type EstadoProductoAbm } from "@/lib/config";
 import { estadoVigencia } from "@/lib/productos";
 import { cambiarEstadoPlan, usePlanes, type PlanAbm } from "@/lib/planes";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
 import { NuevoPlanModal } from "./NuevoPlanModal";
 import { TEXTO_ACCION_PLAN } from "./DetallePlan";
 import { IconChevronDown, IconPlus, IconSearch } from "@/components/icons";
 
 type Campo = "codigo" | "nombre" | "estado" | "vigencia" | "prioridad";
 
-const ORDEN_ESTADOS: EstadoProducto[] = ["ACTIVO", "SUSPENDIDO", "ELIMINADO"];
+const ORDEN_ESTADOS: EstadoProductoAbm[] = ["BORRADOR", "ACTIVO", "SUSPENDIDO", "ELIMINADO"];
 
 // Anchos fijos para que las columnas queden alineadas entre los tres grupos.
 const COLUMNAS: { campo: Campo; label: string; ancho: string }[] = [
@@ -56,16 +57,18 @@ export function ListaPlanes() {
   const { hidratado } = useApplication();
   const planes = usePlanes();
   const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState<EstadoProducto | "">("");
+  const [filtro, setFiltro] = useState<EstadoProductoAbm | "">("");
   const [filtroOrg, setFiltroOrg] = useState("");
   const [orden, setOrden] = useState<{ campo: Campo; asc: boolean }>({ campo: "codigo", asc: true });
-  const [abiertos, setAbiertos] = useState<Record<EstadoProducto, boolean>>({
+  const [abiertos, setAbiertos] = useState<Record<EstadoProductoAbm, boolean>>({
+    BORRADOR: true,
     ACTIVO: true,
     SUSPENDIDO: false,
     ELIMINADO: false,
   });
   const [nuevo, setNuevo] = useState(false);
-  const [pendiente, setPendiente] = useState<{ id: string; estado: EstadoProducto } | null>(null);
+  const [pendiente, setPendiente] = useState<{ id: string; estado: EstadoProductoAbm } | null>(null);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
 
   const q = sinAcentos(busqueda.trim());
   const coincide = (p: PlanAbm) =>
@@ -83,9 +86,13 @@ export function ListaPlanes() {
   });
 
   const abrir = (p: PlanAbm) => router.push(`/planes/${p.config.id}`);
-  const cambiar = (p: PlanAbm, estado: EstadoProducto) => {
+  const aplicar = (id: string, estado: EstadoProductoAbm) => {
+    const r = cambiarEstadoPlan(id, estado);
+    setErrorEstado(r.ok ? null : r.error);
+  };
+  const cambiar = (p: PlanAbm, estado: EstadoProductoAbm) => {
     if (estado === "ACTIVO" || (estado === "SUSPENDIDO" && p.config.estado === "ELIMINADO"))
-      cambiarEstadoPlan(p.config.id, estado);
+      aplicar(p.config.id, estado);
     else setPendiente({ id: p.config.id, estado });
   };
   const planPendiente = planes.find((p) => p.config.id === pendiente?.id);
@@ -126,14 +133,14 @@ export function ListaPlanes() {
         </div>
         <select
           value={filtro}
-          onChange={(e) => setFiltro(e.target.value as EstadoProducto | "")}
+          onChange={(e) => setFiltro(e.target.value as EstadoProductoAbm | "")}
           aria-label="Filtrar por estado"
           className="h-10 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-700 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         >
           <option value="">Estado: todos</option>
           {ORDEN_ESTADOS.map((e) => (
             <option key={e} value={e}>
-              {ESTADO_PRODUCTO_META[e].label}
+              {ESTADO_PRODUCTO_ABM_META[e].label}
             </option>
           ))}
         </select>
@@ -151,6 +158,14 @@ export function ListaPlanes() {
           ))}
         </select>
       </div>
+
+      {errorEstado && (
+        <div className="mt-4">
+          <Banner tone="error" title="No se pudo activar el plan">
+            {errorEstado}
+          </Banner>
+        </div>
+      )}
 
       <div className="mt-5 space-y-4">
         {!hidratado ? (
@@ -170,7 +185,7 @@ export function ListaPlanes() {
                   className={`text-ink-400 transition-transform ${abierto ? "" : "-rotate-90"}`}
                 />
                 <h2 className="text-xs font-bold uppercase tracking-widest text-ink-700">
-                  {ESTADO_PRODUCTO_META[estado].grupo}
+                  {ESTADO_PRODUCTO_ABM_META[estado].grupo}
                 </h2>
                 <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">
                   {filtrando || filtro ? `${filas.length} de ${total}` : total}
@@ -182,7 +197,7 @@ export function ListaPlanes() {
                     <p className="px-5 py-6 text-center text-sm text-ink-400">
                       {filtrando
                         ? "Ningún plan coincide con la búsqueda o el filtro."
-                        : `No hay planes ${ESTADO_PRODUCTO_META[estado].grupo.toLowerCase()}.`}
+                        : `No hay planes ${ESTADO_PRODUCTO_ABM_META[estado].grupo.toLowerCase()}.`}
                     </p>
                   ) : (
                     <table className="w-full min-w-[62rem] table-fixed text-left text-sm">
@@ -242,8 +257,8 @@ export function ListaPlanes() {
                                 </p>
                               </td>
                               <td className="px-3 py-3">
-                                <StatusBadge tone={ESTADO_PRODUCTO_META[c.estado].tone}>
-                                  {ESTADO_PRODUCTO_META[c.estado].label}
+                                <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[c.estado].tone}>
+                                  {ESTADO_PRODUCTO_ABM_META[c.estado].label}
                                 </StatusBadge>
                               </td>
                               <td className="whitespace-nowrap px-3 py-3 text-ink-700">
@@ -279,7 +294,7 @@ export function ListaPlanes() {
                                       Suspender
                                     </Button>
                                   )}
-                                  {c.estado === "SUSPENDIDO" && (
+                                  {(c.estado === "SUSPENDIDO" || c.estado === "BORRADOR") && (
                                     <Button size="sm" variant="ghost" onClick={() => cambiar(p, "ACTIVO")}>
                                       Activar
                                     </Button>
@@ -321,7 +336,7 @@ export function ListaPlanes() {
         cancelLabel="Volver"
         tone="danger"
         onConfirm={() => {
-          if (pendiente) cambiarEstadoPlan(pendiente.id, pendiente.estado);
+          if (pendiente) aplicar(pendiente.id, pendiente.estado);
           setPendiente(null);
         }}
         onCancel={() => setPendiente(null)}
