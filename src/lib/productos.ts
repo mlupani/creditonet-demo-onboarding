@@ -134,11 +134,27 @@ export interface TramoPunitorio {
 // Notificaciones que envía el producto: ids de las plantillas globales del módulo Notificaciones.
 export interface NotificacionesProducto {
   asignadas: string[];
+  // Asignadas que se quitan como excepción: siguen asignadas, pero no se envían. Reversible.
+  excepciones?: string[];
 }
 
 // Productos y organismos guardados antes de la asignación tienen el formato anterior (sin lista).
 export const asignadasDe = (n: NotificacionesProducto | null | undefined): string[] =>
   Array.isArray(n?.asignadas) ? n.asignadas : [];
+
+export const quitadasDe = (n: NotificacionesProducto | null | undefined): string[] =>
+  Array.isArray(n?.excepciones) ? n.excepciones : [];
+
+// Las que realmente se evalúan y envían: asignadas menos las quitadas como excepción.
+export const efectivasDe = (n: NotificacionesProducto | null | undefined): string[] => {
+  const quitadas = quitadasDe(n);
+  return asignadasDe(n).filter((id) => !quitadas.includes(id));
+};
+
+export const marcarExcepcion = (n: NotificacionesProducto, id: string, quitada: boolean): NotificacionesProducto => {
+  const resto = quitadasDe(n).filter((x) => x !== id);
+  return { ...n, excepciones: quitada ? [...resto, id] : resto };
+};
 
 // Valores de ejemplo: se guardan y se muestran, pero no cambian el flujo ni el cálculo.
 // El organismo puede hacer excepciones sobre cualquiera de estos valores.

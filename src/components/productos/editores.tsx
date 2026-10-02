@@ -32,6 +32,8 @@ import { PERFILES_INTERNOS, ROTULO_BCRA, ROTULO_PERFIL, SITUACIONES_BCRA } from 
 import {
   MAX_TRAMOS_PUNITORIOS,
   asignadasDe,
+  quitadasDe,
+  marcarExcepcion,
   normalizarGestion,
   type GestionPrestamos,
   type NotificacionesProducto,
@@ -156,56 +158,97 @@ export function EditorNotificaciones({
   valor: NotificacionesProducto;
   onChange: (valor: NotificacionesProducto) => void;
 }) {
-  const todas = usePlantillasNotificacion().filter((n) => !productoId || disponibleEnProducto(n, productoId));
+  const [elegida, setElegida] = useState("");
+  const plantillas = usePlantillasNotificacion();
   const asignadas = asignadasDe(valor);
-  const alternar = (id: string, v: boolean) =>
-    onChange({ asignadas: v ? [...asignadas.filter((x) => x !== id), id] : asignadas.filter((x) => x !== id) });
+  const quitadas = quitadasDe(valor);
+  const disponibles = plantillas.filter(
+    (n) => !asignadas.includes(n.id) && (!productoId || disponibleEnProducto(n, productoId))
+  );
+  const agregar = () => {
+    if (!elegida) return;
+    onChange({ ...valor, asignadas: [...asignadas, elegida] });
+    setElegida("");
+  };
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-ink-500">
-          Marcá las notificaciones que este producto envía. Se crean y editan en el módulo Notificaciones.
+          Las notificaciones asignadas se ven en sólo lectura: se crean y editan en el módulo Notificaciones. Podés quitar
+          una como excepción (deja de enviarse, sin borrarla) y restaurarla cuando quieras.
         </p>
         <Link href="/notificaciones" className="text-sm font-medium text-brand-600 hover:underline">
           Administrar notificaciones
         </Link>
       </div>
       {AMBITOS.map((a) => {
-        const lista = todas.filter((n) => n.ambito === a.id);
-        const marcadas = lista.filter((n) => asignadas.includes(n.id)).length;
+        const lista = plantillas.filter((n) => n.ambito === a.id && asignadas.includes(n.id));
+        const enviadas = lista.filter((n) => !quitadas.includes(n.id)).length;
         return (
           <div key={a.id} className="space-y-2">
             <Subtitulo>
-              {a.label} · {marcadas} de {lista.length}
+              {a.label} · {enviadas} de {lista.length}
             </Subtitulo>
             {lista.length === 0 ? (
-              <p className="text-sm text-ink-400">Todavía no hay notificaciones {a.label.toLowerCase()}.</p>
+              <p className="text-sm text-ink-400">Todavía no hay notificaciones {a.label.toLowerCase()} asignadas.</p>
             ) : (
               <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200 bg-white">
-                {lista.map((n) => (
-                  <li key={n.id} className="flex flex-wrap items-start gap-x-6 gap-y-2 px-4 py-3">
-                    <div className="min-w-0 flex-1 basis-64" id={`${idBase}-${n.id}`}>
-                      <Checkbox
-                        checked={asignadas.includes(n.id)}
-                        onChange={(v) => alternar(n.id, v)}
-                        label={`${n.nombre}${n.estado === "INACTIVA" ? " (inactiva)" : ""}`}
-                        description={`${getEvento(n.evento)?.label ?? n.evento} · ${n.medios
-                          .map((m) => MEDIOS.find((x) => x.id === m)?.label ?? m)
-                          .join(", ")}`}
-                      />
-                    </div>
-                    {n.parametros.length > 0 && (
-                      <p className="text-xs text-ink-500">
-                        {n.parametros.map((p) => `${p.etiqueta || p.clave}: ${p.valor} ${p.unidad}`.trim()).join(" · ")}
-                      </p>
-                    )}
-                  </li>
-                ))}
+                {lista.map((n) => {
+                  const enExcepcion = quitadas.includes(n.id);
+                  return (
+                    <li key={n.id} className="flex flex-wrap items-start gap-x-6 gap-y-2 px-4 py-3">
+                      <div className="min-w-0 flex-1 basis-64" id={`${idBase}-${n.id}`}>
+                        <p className={`text-sm font-medium ${enExcepcion ? "text-ink-400 line-through" : "text-ink-900"}`}>
+                          {n.nombre}
+                          {n.estado === "INACTIVA" && " (inactiva)"}
+                          {enExcepcion && (
+                            <span className="ml-2 rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700 no-underline">
+                              Excepción
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-ink-500">
+                          {getEvento(n.evento)?.label ?? n.evento} ·{" "}
+                          {n.medios.map((m) => MEDIOS.find((x) => x.id === m)?.label ?? m).join(", ")}
+                        </p>
+                      </div>
+                      {n.parametros.length > 0 && (
+                        <p className="text-xs text-ink-500">
+                          {n.parametros.map((p) => `${p.etiqueta || p.clave}: ${p.valor} ${p.unidad}`.trim()).join(" · ")}
+                        </p>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`${enExcepcion ? "Restaurar" : "Quitar como excepción"} ${n.nombre}`}
+                        onClick={() => onChange(marcarExcepcion(valor, n.id, !enExcepcion))}
+                      >
+                        {enExcepcion ? "Restaurar" : "Quitar como excepción"}
+                      </Button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
         );
       })}
+      <div className="flex flex-wrap items-end gap-2">
+        <SelectField
+          id={`${idBase}-agregar`}
+          label="Asignar otra notificación"
+          value={elegida}
+          onChange={setElegida}
+          placeholder={disponibles.length === 0 ? "No quedan notificaciones disponibles" : "Elegí una notificación…"}
+          options={disponibles.map((n) => ({ value: n.id, label: `${n.nombre} · ${n.ambito === "EXTERNO" ? "Externa" : "Interna"}` }))}
+          disabled={disponibles.length === 0}
+          className="min-w-64 flex-1 sm:max-w-md"
+        />
+        <Button onClick={agregar} disabled={!elegida}>
+          <IconPlus width={14} height={14} />
+          Asignar
+        </Button>
+      </div>
     </div>
   );
 }
