@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import {
-  asignadasDe,
+  efectivasDe,
   type ExtrasProducto,
   type GestionPrestamos,
   type NotificacionesProducto,
@@ -186,7 +186,7 @@ function texto(campo: CampoExtra, valor: unknown): ReactNode {
       );
     }
     case "notif": {
-      const asignadas = getPlantillasNotificacion().filter((x) => asignadasDe(valor as NotificacionesProducto).includes(x.id));
+      const asignadas = getPlantillasNotificacion().filter((x) => efectivasDe(valor as NotificacionesProducto).includes(x.id));
       const externas = asignadas.filter((x) => x.ambito === "EXTERNO").map((x) => x.nombre);
       const internas = asignadas.filter((x) => x.ambito === "INTERNO").map((x) => x.nombre);
       return (
