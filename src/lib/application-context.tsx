@@ -94,6 +94,7 @@ import {
 } from "./firma";
 import { hidratarPlanes } from "./planes";
 import { hidratarOrganismos } from "./organismos";
+import { hidratarLogPunitorios } from "./punitorios-cartera";
 import { hidratarMotivosObservacion } from "./motivos-observacion";
 import { hidratarPlantillasNotificacion } from "./plantillas-notificacion";
 
@@ -512,6 +513,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hidratarOrganismos();
       hidratarMotivosObservacion();
       hidratarPlantillasNotificacion();
+      hidratarLogPunitorios();
       hidratarNotificaciones();
       try {
         // La base compartida manda sobre la de la sesión: la otra pestaña pudo haberla cambiado.
