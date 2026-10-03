@@ -245,6 +245,22 @@ export function IconMenu(p: IconProps) {
   );
 }
 
+export function IconChevronsLeft(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="m11 17-5-5 5-5M18 17l-5-5 5-5" />
+    </svg>
+  );
+}
+
+export function IconChevronsRight(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="m6 17 5-5-5-5M13 17l5-5-5-5" />
+    </svg>
+  );
+}
+
 export function IconChevronDown(p: IconProps) {
   return (
     <svg {...base(p)}>
