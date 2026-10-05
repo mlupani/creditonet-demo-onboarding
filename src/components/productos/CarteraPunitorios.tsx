@@ -301,7 +301,7 @@ export function CarteraPunitorios({
                     <div className="grid grid-cols-2 gap-3">
                       <CampoNumero
                         id={`cart-pct-${i}`}
-                        label="Nuevo %"
+                        label="Nuevo porcentaje de tasa"
                         sufijo="%"
                         step={0.5}
                         value={nuevos[i].punitorioPct}
