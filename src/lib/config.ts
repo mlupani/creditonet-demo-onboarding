@@ -405,13 +405,23 @@ export function rangosCuotaIniciales(rciPct: number, smvmBolsillo: number): Rang
   }));
 }
 
-// Campaña de bonificación de cuotas: si el cliente paga al día, se bonifican las últimas
-// `cuotasBonificadas` cuotas del plan.
+// Condiciones que activan una campaña de bonificación (la primera es la habitual).
+export const CONDICIONES_BONIFICACION = [
+  { value: "PAGO_AL_DIA", label: "Paga al día" },
+  { value: "CLIENTE_EXISTENTE", label: "Cliente existente" },
+  { value: "PRIMER_CREDITO", label: "Primer crédito" },
+  { value: "SIN_MORA_12M", label: "Sin mora en los últimos 12 meses" },
+] as const;
+
+export type CondicionBonificacion = (typeof CONDICIONES_BONIFICACION)[number]["value"];
+
+// Campaña de bonificación de cuotas: si se cumple la condición (ej. paga al día), se bonifican
+// las últimas `cuotasBonificadas` cuotas del plan.
 export interface BonificacionPlan {
   id: string;
   nombre: string;
   cuotasBonificadas: number;
-  condicion: "PAGO_AL_DIA";
+  condicion: CondicionBonificacion;
 }
 
 // Hasta qué monto autoriza cada rol; por encima interviene el siguiente.
@@ -908,7 +918,8 @@ export interface OrganismoConfig extends OpcionCatalogo {
   planes: string[];
   // Condición laboral del colectivo: participa en la selección del motor (Motor §9).
   condicionLaboral: string;
-  // Productos activos que este organismo ofrece a su colectivo.
+  // Producto que este organismo ofrece a su colectivo (uno solo; la lista queda por la relación
+  // que se guarda del lado del producto).
   productos: string[];
   // Excepciones por producto. Un producto sin entrada hereda todo.
   excepciones: Record<string, ExcepcionesOrganismo>;
@@ -938,13 +949,7 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
     motor: asignacionMotorVacia("motor-salud"),
     canales: null,
     planId: "linea-salud-2026",
-    productos: [
-      "prestamo-personal",
-      "credito-judicial",
-      "prestamo-prendario",
-      "adelanto-sueldo",
-      "linea-consumo",
-    ],
+    productos: ["prestamo-personal"],
     overrides: {},
   },
   {
@@ -956,13 +961,7 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
     motor: asignacionMotorVacia("motor-seguridad"),
     canales: null,
     planId: "linea-seguridad-2026",
-    productos: [
-      "prestamo-personal",
-      "credito-judicial",
-      "prestamo-prendario",
-      "refinanciacion",
-      "prestamo-emergencia",
-    ],
+    productos: ["prestamo-personal"],
     overrides: {
       // Referencias y garantías opcionales: mínimo cero (la pantalla habilitada igual es obligatoria).
       referencias: { minimo: 0 },
@@ -980,13 +979,7 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
     motor: asignacionMotorVacia("motor-pasivos"),
     canales: null,
     planId: "linea-pasivos-2026",
-    productos: [
-      "prestamo-personal",
-      "adelanto-sueldo",
-      "refinanciacion",
-      "prestamo-emergencia",
-      "linea-consumo",
-    ],
+    productos: ["prestamo-personal"],
     overrides: {
       permiteDeudaTerceros: false,
       capitalMaximo: 2_000_000,
@@ -1011,13 +1004,7 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
     motor: null,
     canales: null,
     planId: "linea-docentes-2026",
-    productos: [
-      "prestamo-personal",
-      "tarjeta-credito",
-      "prestamo-prendario",
-      "linea-consumo",
-      "refinanciacion",
-    ],
+    productos: ["prestamo-personal"],
     overrides: {},
   },
   {
@@ -1029,13 +1016,7 @@ const ORGANISMOS_SEMILLA: OrganismoSemilla[] = [
     motor: null,
     canales: null,
     planId: "linea-municipal-2026",
-    productos: [
-      "prestamo-personal",
-      "credito-judicial",
-      "tarjeta-credito",
-      "adelanto-sueldo",
-      "prestamo-emergencia",
-    ],
+    productos: ["prestamo-personal"],
     overrides: {},
   },
 ];

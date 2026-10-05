@@ -37,15 +37,6 @@ import { crearStoreAbm } from "./store-abm";
 
 // --- Modelo ---
 
-// Valores de ejemplo de la ficha del organismo.
-export interface ExtrasOrganismo {
-  cuit: string;
-  rubro: string;
-  contactoNombre: string;
-  contactoEmail: string;
-  diaCorteHaberes: number;
-}
-
 // Excepciones que esperan la refrendación del supervisor. No rigen hasta entonces.
 export interface PropuestaExcepciones {
   excepciones: Record<string, ExcepcionesOrganismo>;
@@ -57,95 +48,46 @@ export interface OrganismoAbm {
   codigo: string;
   // Lo que lee el flujo: estado, vigencia, plan, productos y excepciones aplicadas (por producto).
   config: OrganismoConfig;
-  extras: ExtrasOrganismo;
   pendiente: PropuestaExcepciones | null;
   refrendada: { por: string; fecha: string } | null;
 }
 
-// Qué valores del producto puede pisar el organismo, agrupados por sección del detalle.
+// Qué valores del producto puede pisar el organismo, agrupados por sección del detalle. Las
+// secciones espejan las del producto; "Opciones generales" y "Gestión de préstamos" no admiten
+// excepción.
 export const EXTRAS_POR_SECCION = {
-  vencimiento: [
+  vencimientos: [
     "diaCorte",
     "tipoVencimiento",
     "diaVencimientoFijo",
+    "diasPrimerVencimiento",
     "movimientoMes",
     "diasValidezCondiciones",
     "diasPlazoObservacion",
   ],
-  permisos: [
-    "permiteCreditosParalelos",
-    "visibleDashboard",
-    "seContabiliza",
-    "centroCostos",
-    "gestionPrestamos",
+  financieros: ["recalculoNeto"],
+  cobro: ["modalidadCobro", "vendedores"],
+  punitorios: ["tramosPunitorios", "modificarCarteraActiva"],
+  operaciones: [
     "permiteRenovacion",
-    "cargoRenovacionPct",
     "condicionRenovacion",
     "renovacionMinPctPagado",
     "renovacionMinCuotasPagas",
     "permiteCancelacionAnticipada",
-    "cargoCancelacionPct",
     "condicionCancelacion",
     "cancelacionMinPctPagado",
     "cancelacionMinCuotasPagas",
     "permiteCambioPrimerVencimiento",
     "permiteCorrimientoDesarrollo",
   ],
-  financieros: ["recalculoNeto"],
-  punitorios: ["tramosPunitorios", "modificarCarteraActiva", "modalidadCobro"],
-  firma: ["modalidadFirma"],
-  vendedores: ["vendedores"],
   notificaciones: ["notificaciones"],
 } as const satisfies Record<string, readonly (keyof ExtrasProducto)[]>;
-
-const EXTRAS_ORGANISMO_BASE: ExtrasOrganismo = {
-  cuit: "30-00000000-0",
-  rubro: "Administración pública",
-  contactoNombre: "",
-  contactoEmail: "",
-  diaCorteHaberes: 20,
-};
-
-const EXTRAS_POR_ORGANISMO: Record<string, Partial<ExtrasOrganismo>> = {
-  "empleados-salud": {
-    cuit: "30-71234567-8",
-    rubro: "Salud - Servicios sanatoriales",
-    contactoNombre: "Recursos Humanos",
-    contactoEmail: "rrhh@salud.gob.example",
-  },
-  "policia-provincial": {
-    cuit: "30-70123456-4",
-    rubro: "Seguridad",
-    contactoNombre: "Jefatura de Personal",
-    contactoEmail: "personal@policia.gob.example",
-    diaCorteHaberes: 25,
-  },
-  "jubilados-provincial": {
-    cuit: "30-69876543-1",
-    rubro: "Administración pública",
-    contactoNombre: "Caja de Jubilaciones",
-    contactoEmail: "convenios@caja.gob.example",
-    diaCorteHaberes: 10,
-  },
-  "docentes-provincial": {
-    cuit: "30-70765432-9",
-    rubro: "Educación",
-    contactoNombre: "Dirección de Liquidaciones",
-    contactoEmail: "liquidaciones@educacion.gob.example",
-  },
-  municipales: {
-    cuit: "30-99999999-5",
-    rubro: "Administración pública",
-    contactoNombre: "Oficina de Haberes",
-    contactoEmail: "haberes@municipio.gob.example",
-  },
-};
 
 // Excepciones de ejemplo ya cargadas sobre el préstamo personal, para que la herencia se vea
 // desde el primer momento.
 const EXCEPCIONES_INICIALES: Record<string, Partial<ExtrasProducto>> = {
-  // Firma: el producto admite electrónica y física; la Policía sólo firma en papel.
-  "policia-provincial": { modalidadFirma: "FISICA", diaCorte: 25 },
+  // Vencimientos: la Policía cobra los haberes más tarde.
+  "policia-provincial": { diaCorte: 25 },
   // Punitorios: el producto tiene 5 tramos; Jubilados sólo 3 y más suaves.
   "jubilados-provincial": {
     diasValidezCondiciones: 45,
@@ -171,7 +113,6 @@ function estadoInicial(): OrganismoAbm[] {
     return {
       codigo: String(i + 1).padStart(3, "0"),
       config,
-      extras: { ...EXTRAS_ORGANISMO_BASE, ...(EXTRAS_POR_ORGANISMO[o.id] ?? {}) },
       pendiente: null,
       refrendada: null,
     };
@@ -198,9 +139,9 @@ function productosDe(organismoId: string): string[] {
 }
 
 const store = crearStoreAbm<OrganismoAbm>({
-  clave: "creditonet.organismos.v6",
+  clave: "creditonet.organismos.v7",
   inicial: estadoInicial(),
-  valido: (r) => !!r?.config?.id && !!r.config.excepciones && !!r.extras,
+  valido: (r) => !!r?.config?.id && !!r.config.excepciones && r.config.productos.length <= 1,
   aplicar: (lista) => {
     ORGANISMOS.splice(
       0,
@@ -279,6 +220,15 @@ export function guardarOrganismo(borrador: OrganismoAbm) {
   if (!actual) return;
   asignarProductosAOrganismo(borrador.config.id, borrador.config.productos);
   asignarPlanesAOrganismo(borrador.config.id, borrador.config.planes);
+  borrador = {
+    ...borrador,
+    config: {
+      ...borrador.config,
+      excepciones: Object.fromEntries(
+        Object.entries(borrador.config.excepciones).filter(([id]) => borrador.config.productos.includes(id))
+      ),
+    },
+  };
   const cambiaExcepciones =
     JSON.stringify(borrador.config.excepciones) !== JSON.stringify(actual.config.excepciones);
   const nuevo: OrganismoAbm = {
@@ -351,7 +301,7 @@ export function crearOrganismo(datos: {
       .filter((p) => p.config.estado === "ACTIVO" || p.config.estado === "BORRADOR")
       .map((p) => p.config.id)
   );
-  const productos = origen ? origen.config.productos.filter((p) => activos.has(p)) : [];
+  const productos = origen ? origen.config.productos.filter((p) => activos.has(p)).slice(0, 1) : [];
   const planes = origen ? [...origen.config.planes] : [];
   const nuevo: OrganismoAbm = {
     codigo: String(siguiente).padStart(3, "0"),
@@ -367,7 +317,6 @@ export function crearOrganismo(datos: {
       planes,
       excepciones: origen ? structuredClone(origen.config.excepciones) : {},
     },
-    extras: { ...EXTRAS_ORGANISMO_BASE },
     pendiente: null,
     refrendada: null,
   };
@@ -387,7 +336,6 @@ export interface VistaOrganismo {
   codigo: string;
   config: Omit<OrganismoConfig, "excepciones"> &
     Pick<ExcepcionesOrganismo, "overrides" | "motor" | "canales">;
-  extras: ExtrasOrganismo;
   // Excepciones sobre los valores de ejemplo del producto.
   excepciones: Partial<ExtrasProducto>;
 }
@@ -398,7 +346,6 @@ export function vistaDe(o: OrganismoAbm, productoId: string): VistaOrganismo {
   void _todas;
   return {
     codigo: o.codigo,
-    extras: o.extras,
     config: { ...resto, overrides: exc.overrides, motor: exc.motor, canales: exc.canales },
     excepciones: exc.extras,
   };
@@ -419,22 +366,19 @@ export function desdeVista(o: OrganismoAbm, productoId: string, v: VistaOrganism
   const excepciones = { ...o.config.excepciones };
   if (estaVacia(exc)) delete excepciones[productoId];
   else excepciones[productoId] = exc;
-  return { ...o, extras: v.extras, config: { ...resto, excepciones } };
+  return { ...o, config: { ...resto, excepciones } };
 }
 
 // --- Excepciones ---
 
 export type SeccionOrganismo =
-  | "vencimiento"
-  | "permisos"
-  | "motor"
+  | "capital"
+  | "vencimientos"
   | "financieros"
+  | "cobro"
   | "punitorios"
-  | "formulario"
   | "onboarding"
-  | "firma"
-  | "canales"
-  | "vendedores"
+  | "motor"
   | "notificaciones";
 
 // Cantidad de excepciones que tiene el organismo, en un producto, en cada sección del detalle.
@@ -443,27 +387,23 @@ export function excepcionesPorSeccion(exc: ExcepcionesOrganismo): Record<Seccion
   const extras = (claves: readonly (keyof ExtrasProducto)[]) =>
     claves.filter((k) => exc.extras[k] !== undefined).length;
   return {
-    vencimiento: extras(EXTRAS_POR_SECCION.vencimiento),
-    permisos:
-      extras(EXTRAS_POR_SECCION.permisos) +
-      (ov.permiteDeudaTerceros !== undefined ? 1 : 0) +
-      (ov.capitalMaximo !== undefined ? 1 : 0),
-    motor: exc.motor ? 1 : 0,
+    capital: ov.capitalMaximo !== undefined ? 1 : 0,
+    vencimientos: extras(EXTRAS_POR_SECCION.vencimientos),
     financieros: extras(EXTRAS_POR_SECCION.financieros),
+    cobro: extras(EXTRAS_POR_SECCION.cobro) + (exc.canales ? 1 : 0),
     punitorios: extras(EXTRAS_POR_SECCION.punitorios),
-    formulario:
-      (ov.documentos ? 1 : 0) +
-      Object.keys(ov.camposObligatorios ?? {}).length +
-      (ov.camposQuitados?.length ?? 0),
     onboarding:
+      extras(EXTRAS_POR_SECCION.operaciones) +
+      (ov.permiteDeudaTerceros !== undefined ? 1 : 0) +
       (ov.navegacion !== undefined ? 1 : 0) +
       Object.keys(ov.pantallas ?? {}).length +
+      Object.keys(ov.camposObligatorios ?? {}).length +
+      (ov.camposQuitados?.length ?? 0) +
       (ov.referencias ? 1 : 0) +
       (ov.garantes ? 1 : 0) +
-      (ov.tokenizacion ? 1 : 0),
-    firma: extras(EXTRAS_POR_SECCION.firma),
-    canales: exc.canales ? 1 : 0,
-    vendedores: extras(EXTRAS_POR_SECCION.vendedores),
+      (ov.tokenizacion ? 1 : 0) +
+      (ov.documentos ? 1 : 0),
+    motor: exc.motor ? 1 : 0,
     notificaciones: extras(EXTRAS_POR_SECCION.notificaciones),
   };
 }
@@ -504,6 +444,15 @@ export function validarOrganismo(o: OrganismoAbm, todos: OrganismoAbm[]): Record
     const hasta = parseFecha(c.vigenciaHasta);
     if (!hasta) e.vigenciaHasta = "La fecha de fin no es válida.";
     else if (desde && hasta < desde) e.vigenciaHasta = "El fin no puede ser anterior al inicio.";
+  }
+  // La vigencia puede ser distinta a la del producto, pero no puede terminar después.
+  const producto = getProductos().find((p) => p.config.id === c.productos[0]);
+  const finProducto = producto?.config.vigenciaHasta;
+  if (finProducto && !e.vigenciaHasta) {
+    const tope = parseFecha(finProducto);
+    const hasta = c.vigenciaHasta ? parseFecha(c.vigenciaHasta) : null;
+    if (tope && (!hasta || hasta > tope))
+      e.vigenciaHasta = `El fin no puede superar la vigencia del producto (${finProducto}).`;
   }
 
   for (const [productoId, exc] of Object.entries(c.excepciones)) {

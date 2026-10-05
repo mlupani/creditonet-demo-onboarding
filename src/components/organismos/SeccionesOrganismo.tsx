@@ -4,7 +4,6 @@ import {
   CANALES,
   SISTEMAS_AMORTIZACION,
   minimoDocumento,
-  motorAsignado,
   normalizarAsignacion,
   textoCombinacion,
   type AsignacionMotor,
@@ -18,7 +17,7 @@ import {
   esObligatorio,
 } from "@/lib/campos-config";
 import { getMotor } from "@/lib/motores";
-import { RUBROS, tipoDeDocumento, nombreProveedor } from "@/lib/parametros";
+import { tipoDeDocumento, nombreProveedor } from "@/lib/parametros";
 import type { PantallaPostOfertaId } from "@/lib/types";
 import {
   MODALIDADES_COBRO,
@@ -26,12 +25,13 @@ import {
   MODALIDADES_FIRMA,
   MOVIMIENTOS_MES,
   TIPOS_VENCIMIENTO,
+  textoVigencia,
+  vendedoresDeCanales,
   type ProductoAbm,
 } from "@/lib/productos";
 import type { VistaOrganismo } from "@/lib/organismos";
 import { usePlanes } from "@/lib/planes";
 import Link from "next/link";
-import { VENDEDORES } from "@/lib/config";
 import { formatARS } from "@/lib/format";
 import { Banner } from "@/components/ui/Banner";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -43,7 +43,7 @@ import { CampoNumero, Panel, Subtitulo } from "@/components/productos/campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
 import { EditorDocumentos, EditorTokenizacion, EditorMotor } from "@/components/productos/editores";
 import { ESTADO_PRODUCTO_ABM_META, ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
-import { FilaExtra, FilaHerencia, Si, type CampoExtra } from "./herencia";
+import { FilaExtra, FilaHerencia, FilaSoloLectura, Si, type CampoExtra } from "./herencia";
 
 export interface SeccionOrgProps {
   o: VistaOrganismo;
@@ -89,16 +89,15 @@ function Filas({ campos, o, p, set }: Pick<SeccionOrgProps, "o" | "p" | "set"> &
 
 // --- 1. Datos generales ---
 
-function DatosGenerales({ o, set, errores, ver }: SeccionOrgProps) {
+function DatosGenerales({ o, productos, set, errores, ver }: SeccionOrgProps) {
   const { cf } = useEditores(set);
-  const ex = (patch: Partial<VistaOrganismo["extras"]>) =>
-    set((x) => ({ ...x, extras: { ...x.extras, ...patch } }));
+  const producto = productos.find((x) => x.config.id === o.config.productos[0]);
   return (
     <Panel
       titulo="Datos generales"
-      descripcion="Identificación del organismo: empleador o ente pagador."
+      descripcion="Identificación y vigencia del organismo: empleador o ente pagador."
       vivo
-      nota="El nombre, la descripción y la condición laboral se usan en Solicitar crédito y en la selección del motor."
+      nota="La vigencia puede ser distinta a la del producto, pero el “hasta” no puede superarla."
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField id="o-codigo" label="ID" value={o.codigo} onChange={() => {}} disabled />
@@ -117,13 +116,6 @@ function DatosGenerales({ o, set, errores, ver }: SeccionOrgProps) {
         value={o.config.detalle ?? ""}
         onChange={(v) => cf({ detalle: v })}
       />
-      <FormField
-        id="o-condicion"
-        label="Condición laboral del colectivo"
-        value={o.config.condicionLaboral}
-        onChange={(v) => cf({ condicionLaboral: v })}
-        hint="Participa en la selección del motor (Motor §9)."
-      />
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
           id="o-vig-desde"
@@ -141,7 +133,11 @@ function DatosGenerales({ o, set, errores, ver }: SeccionOrgProps) {
           value={fechaAIso(o.config.vigenciaHasta)}
           onChange={(v) => cf({ vigenciaHasta: v ? isoAFecha(v) : null })}
           error={ver ? errores.vigenciaHasta : undefined}
-          hint="Vacío: sin vencimiento. Fuera de la vigencia el organismo no se ofrece."
+          hint={
+            producto
+              ? `Vigencia del producto: ${textoVigencia(producto.config)}.`
+              : "Vacío: sin vencimiento. Fuera de la vigencia el organismo no se ofrece."
+          }
         />
       </div>
       <div className="flex items-center gap-3 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2.5">
@@ -153,91 +149,54 @@ function DatosGenerales({ o, set, errores, ver }: SeccionOrgProps) {
           Activo, suspendido o eliminado: se cambia con los botones del encabezado.
         </span>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="o-cuit" label="CUIT" value={o.extras.cuit} onChange={(v) => ex({ cuit: v })} />
-        <SelectField
-          id="o-rubro"
-          label="Rubro"
-          value={o.extras.rubro}
-          onChange={(v) => ex({ rubro: v })}
-          options={RUBROS.map((r) => ({ value: r, label: r }))}
-        />
-        <FormField
-          id="o-contacto"
-          label="Contacto"
-          value={o.extras.contactoNombre}
-          onChange={(v) => ex({ contactoNombre: v })}
-        />
-        <FormField
-          id="o-email"
-          label="Email de contacto"
-          type="email"
-          value={o.extras.contactoEmail}
-          onChange={(v) => ex({ contactoEmail: v })}
-        />
-        <CampoNumero
-          id="o-corte"
-          label="Día de corte de haberes"
-          value={o.extras.diaCorteHaberes}
-          min={1}
-          onChange={(v) => ex({ diaCorteHaberes: v })}
-          hint="Valor de ejemplo."
-        />
-      </div>
     </Panel>
   );
 }
 
-// --- 2. Productos habilitados ---
+// --- 2. Producto habilitado ---
 
-function Productos({ o, productos, set }: SeccionOrgProps) {
-  const { cf } = useEditores(set);
-  const habilitados = o.config.productos;
+function Producto({ o, productos, set }: SeccionOrgProps) {
+  const actual = o.config.productos[0] ?? "";
   // Los borradores también se vinculan acá: es la única forma de poder activarlos.
-  const vinculable = (p: ProductoAbm) => p.config.estado === "ACTIVO" || p.config.estado === "BORRADOR";
+  const vinculable = (p: ProductoAbm) =>
+    p.config.estado === "ACTIVO" || p.config.estado === "BORRADOR" || p.config.id === actual;
+  // Cambiar de producto descarta las excepciones del anterior.
+  const elegir = (id: string) =>
+    set((x) => ({
+      ...x,
+      config: { ...x.config, productos: id ? [id] : [], overrides: {}, motor: null, canales: null },
+      excepciones: {},
+    }));
   return (
     <Panel
-      titulo="Productos habilitados"
-      descripcion="Qué productos ofrece este organismo a su colectivo (Producto §5)."
+      titulo="Producto habilitado"
+      descripcion="El producto que ofrece este organismo a su colectivo (Producto §5)."
       vivo
-      nota="Sólo se pueden vincular productos activos o en borrador (un borrador necesita al menos un organismo para activarse). Las excepciones se definen después, producto por producto."
+      nota="Un organismo ofrece un solo producto. Sólo se pueden vincular productos activos o en borrador (un borrador necesita al menos un organismo para activarse). Las excepciones se definen sobre este producto, en las secciones de abajo."
     >
-      {habilitados.length === 0 && (
+      {!actual && (
         <Banner tone="warning" title="El organismo no ofrece ningún producto">
-          Mientras no habilites al menos uno, no se puede iniciar una solicitud con este organismo.
+          Mientras no elijas uno, no se puede iniciar una solicitud con este organismo.
         </Banner>
       )}
-      <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200">
-        {productos
-          .filter((p) => vinculable(p) || habilitados.includes(p.config.id))
-          .map((p) => (
-            <li key={p.config.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1 basis-56">
-                <Checkbox
-                  checked={habilitados.includes(p.config.id)}
-                  disabled={!vinculable(p) && !habilitados.includes(p.config.id)}
-                  onChange={(v) =>
-                    cf({
-                      productos: v
-                        ? [...habilitados.filter((x) => x !== p.config.id), p.config.id]
-                        : habilitados.filter((x) => x !== p.config.id),
-                    })
-                  }
-                  label={p.config.nombre}
-                  description={`${p.codigo} · ${p.extras.categoria}`}
-                />
-              </div>
-              <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[p.config.estado].tone}>
-                {ESTADO_PRODUCTO_ABM_META[p.config.estado].label}
-              </StatusBadge>
-            </li>
-          ))}
-      </ul>
+      <SelectField
+        id="o-producto"
+        label="Producto"
+        value={actual}
+        placeholder="Elegí un producto…"
+        onChange={elegir}
+        options={productos.filter(vinculable).map((p) => ({
+          value: p.config.id,
+          label: `${p.config.nombre} · ${p.codigo} · ${ESTADO_PRODUCTO_ABM_META[p.config.estado].label}`,
+        }))}
+        hint={actual ? "Al cambiar de producto se descartan las excepciones del anterior." : undefined}
+        className="sm:max-w-xl"
+      />
     </Panel>
   );
 }
 
-// --- 2 bis. Planes de cuotas ---
+// --- 3. Planes de cuotas ---
 
 function Planes({ o, set }: SeccionOrgProps) {
   const planes = usePlanes();
@@ -302,9 +261,42 @@ function Planes({ o, set }: SeccionOrgProps) {
   );
 }
 
-// --- 3. Excepciones de vencimiento ---
+// --- 4. Capital máximo (dato general del producto) ---
 
-const CAMPOS_VENCIMIENTO: CampoExtra[] = [
+function Capital({ o, p, set, errores, ver }: SeccionOrgProps) {
+  const { ov, quitarOv } = useEditores(set);
+  const capital = o.config.overrides.capitalMaximo;
+  return (
+    <Panel
+      titulo="Capital máximo"
+      descripcion="Tope general antes de aplicar los límites del riesgo, del plan y del salario (Producto §4)."
+      vivo
+      nota={`${NOTA_HERENCIA} Cambia el flujo real.`}
+    >
+      <FilaHerencia
+        etiqueta="Capital máximo"
+        productoNombre={p.config.nombre}
+        heredado={
+          <span className="font-semibold tabular-nums">
+            {p.config.capitalMaximo === null ? "Sin capital máximo" : formatARS(p.config.capitalMaximo)}
+          </span>
+        }
+        error={ver ? errores.capitalMaximo : undefined}
+        editor={
+          capital !== undefined ? (
+            <MoneyInput id="o-capital" label="" value={capital} onChange={(v) => ov({ capitalMaximo: v })} />
+          ) : null
+        }
+        onCrear={() => ov({ capitalMaximo: p.config.capitalMaximo ?? 1_000_000 })}
+        onQuitar={() => quitarOv("capitalMaximo")}
+      />
+    </Panel>
+  );
+}
+
+// --- 5. Vencimientos ---
+
+const CAMPOS_VENCIMIENTOS: CampoExtra[] = [
   { clave: "diaCorte", etiqueta: "Día de corte del mes inclusive", tipo: "num" },
   {
     clave: "tipoVencimiento",
@@ -324,183 +316,65 @@ const CAMPOS_VENCIMIENTO: CampoExtra[] = [
   { clave: "diasPlazoObservacion", etiqueta: "Plazo maximo dias habiles (inclusive) OBS / COFE", tipo: "num", sufijo: "días hábiles (inclusive)" },
 ];
 
-function Vencimiento(props: SeccionOrgProps) {
+function Vencimientos(props: SeccionOrgProps) {
   return (
     <Panel
-      titulo="Excepciones de vencimiento"
-      descripcion="Plazos particulares de este organismo frente a los del producto."
+      titulo="Vencimientos"
+      descripcion="Día de corte y modalidad de vencimiento de las cuotas."
       nota={NOTA_HERENCIA}
     >
-      <Filas campos={CAMPOS_VENCIMIENTO} {...props} />
+      <Filas campos={CAMPOS_VENCIMIENTOS} {...props} />
     </Panel>
   );
 }
 
-// --- 4. Permisos / estados ---
+// --- 6. Opciones generales y Gestión de préstamos (sin excepción) ---
 
-const CAMPOS_PERMISOS: CampoExtra[] = [
-  { clave: "permiteCreditosParalelos", etiqueta: "Producto en paralelo", tipo: "bool" },
-  { clave: "visibleDashboard", etiqueta: "Visible en dashboard", tipo: "bool" },
+const CAMPOS_OPCIONES: CampoExtra[] = [
+  { clave: "permiteCreditosParalelos", etiqueta: "Permite producto en paralelo", tipo: "bool" },
+  { clave: "modalidadFirma", etiqueta: "Modalidad de firma", tipo: "select", opciones: MODALIDADES_FIRMA },
+  { clave: "requiereChequeoTelefonico", etiqueta: "Requiere chequeo telefónico", tipo: "bool" },
   { clave: "seContabiliza", etiqueta: "Se contabiliza", tipo: "bool" },
   { clave: "centroCostos", etiqueta: "Centro de costos", tipo: "texto" },
-  { clave: "gestionPrestamos", etiqueta: "Gestión de préstamos", tipo: "gestion" },
-  { clave: "permiteRenovacion", etiqueta: "Renovación", tipo: "bool" },
-  { clave: "cargoRenovacionPct", etiqueta: "Cargos de renovación", tipo: "num", sufijo: "%", step: 0.1 },
-  { clave: "condicionRenovacion", etiqueta: "Condición mínima para renovar", tipo: "select", opciones: CONDICIONES_RENOVACION },
-  { clave: "renovacionMinPctPagado", etiqueta: "Porcentaje mínimo pagado para renovar", tipo: "num", sufijo: "%" },
-  { clave: "renovacionMinCuotasPagas", etiqueta: "Cuotas pagadas mínimas para renovar", tipo: "num" },
-  { clave: "permiteCancelacionAnticipada", etiqueta: "Cancelación anticipada", tipo: "bool" },
-  { clave: "cargoCancelacionPct", etiqueta: "Cargos de cancelación anticipada", tipo: "num", sufijo: "%", step: 0.1 },
-  { clave: "condicionCancelacion", etiqueta: "Condición mínima para cancelar", tipo: "select", opciones: CONDICIONES_RENOVACION },
-  { clave: "cancelacionMinPctPagado", etiqueta: "Porcentaje mínimo pagado para cancelar", tipo: "num", sufijo: "%" },
-  { clave: "cancelacionMinCuotasPagas", etiqueta: "Cuotas pagadas mínimas para cancelar", tipo: "num" },
-  { clave: "permiteCambioPrimerVencimiento", etiqueta: "Cambio del primer vencimiento", tipo: "bool" },
-  { clave: "permiteCorrimientoDesarrollo", etiqueta: "Corrimiento del desarrollo del préstamo", tipo: "bool" },
+  { clave: "visibleDashboard", etiqueta: "Visible en dashboard", tipo: "bool" },
 ];
 
-function Permisos(props: SeccionOrgProps) {
-  const { o, p, set, errores, ver } = props;
-  const { ov, quitarOv } = useEditores(set);
-  const ovs = o.config.overrides;
-  const meta = ESTADO_PRODUCTO_META[o.config.estado];
+function Opciones({ p }: SeccionOrgProps) {
   return (
     <Panel
-      titulo="Permisos / estados"
-      descripcion="Qué operaciones admite el organismo y en qué estado está."
-      vivo
-      nota={`${NOTA_HERENCIA} La deuda de terceros y el capital máximo cambian el flujo real.`}
+      titulo="Opciones generales"
+      descripcion="Condiciones generales del producto."
+      nota="Estas opciones rigen igual para todos los organismos: no admiten excepción."
     >
-      <div className="flex items-center gap-3 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3">
-        <span className="text-sm text-ink-600">Estado del organismo</span>
-        <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
-        <span className="text-xs text-ink-500">
-          Se cambia con los botones del encabezado. Sólo un organismo activo se ofrece.
-        </span>
-      </div>
-
-      <FilaHerencia
-        etiqueta="Cancelación de deudas de terceros"
-        productoNombre={p.config.nombre}
-        heredado={<Si valor={p.config.permiteDeudaTerceros} />}
-        editor={
-          ovs.permiteDeudaTerceros !== undefined ? (
-            <Checkbox
-              checked={ovs.permiteDeudaTerceros}
-              onChange={(v) => ov({ permiteDeudaTerceros: v })}
-              label={ovs.permiteDeudaTerceros ? "Sí" : "No"}
-            />
-          ) : null
-        }
-        onCrear={() => ov({ permiteDeudaTerceros: p.config.permiteDeudaTerceros })}
-        onQuitar={() => quitarOv("permiteDeudaTerceros")}
-      />
-      <FilaHerencia
-        etiqueta="Capital máximo"
-        productoNombre={p.config.nombre}
-        heredado={
-          <span className="font-semibold tabular-nums">
-            {p.config.capitalMaximo === null ? "Sin capital máximo" : formatARS(p.config.capitalMaximo)}
-          </span>
-        }
-        error={ver ? errores.capitalMaximo : undefined}
-        editor={
-          ovs.capitalMaximo !== undefined ? (
-            <MoneyInput
-              id="o-capital"
-              label=""
-              value={ovs.capitalMaximo}
-              onChange={(v) => ov({ capitalMaximo: v })}
-            />
-          ) : null
-        }
-        onCrear={() => ov({ capitalMaximo: p.config.capitalMaximo ?? 1_000_000 })}
-        onQuitar={() => quitarOv("capitalMaximo")}
-      />
-      <Filas campos={CAMPOS_PERMISOS} {...props} />
-    </Panel>
-  );
-}
-
-// --- 5. Motor de riesgo ---
-
-function describirAsignacion(a: AsignacionMotor | null): string {
-  if (!a) return "Sin asignación propia";
-  const asignacion = normalizarAsignacion(a);
-  const partes = [asignacion.motorId ? getMotor(asignacion.motorId).nombre : "Sin motor general"];
-  if (asignacion.combinaciones.length > 0)
-    partes.push(
-      asignacion.combinaciones.map((c) => `${textoCombinacion(c)}: ${getMotor(c.motor).nombre}`).join(" · ")
-    );
-  return partes.join(" · ");
-}
-
-function Motor({ o, p, productos, set, errores, ver }: SeccionOrgProps) {
-  const { cf } = useEditores(set);
-  const motorOrg = o.config.motor;
-  const condicion = o.config.condicionLaboral;
-  // El organismo pisa al producto: si su asignación aplica al cliente, manda.
-  const efectivo = (prod: ProductoAbm, tipo: "NUEVO" | "EXISTENTE") => {
-    const delOrg = motorOrg ? motorAsignado(motorOrg, condicion, tipo) : null;
-    if (delOrg) return { id: delOrg, origen: "organismo" };
-    const delProd = motorAsignado(prod.config.motor, condicion, tipo);
-    if (delProd) return { id: delProd, origen: "producto" };
-    return { id: "motor-general", origen: "motor general" };
-  };
-  const habilitados = productos.filter((x) => o.config.productos.includes(x.config.id));
-  return (
-    <Panel
-      titulo="Motor de riesgo"
-      descripcion="Grupo de reglas de este organismo (Producto §6)."
-      vivo
-      nota="El organismo puede pisar la asignación del producto: si define la suya y aplica al cliente, manda; si no, rige la del producto."
-    >
-      <FilaHerencia
-        etiqueta="Asignación de motor"
-        ayuda="Por tipo de cliente, condición laboral, situación BCRA y situación en buró interno."
-        productoNombre={p.config.nombre}
-        heredado={describirAsignacion(p.config.motor)}
-        editor={
-          motorOrg ? (
-            <EditorMotor
-              idBase="o-motor"
-              valor={motorOrg}
-              onChange={(motor) => cf({ motor })}
-              placeholderGeneral="Sin motor general propio"
-              error={errores.motor}
-              mostrarError={ver}
-            />
-          ) : null
-        }
-        onCrear={() => cf({ motor: structuredClone(p.config.motor) })}
-        onQuitar={() => cf({ motor: null })}
-      />
-      <div className="space-y-2">
-        <Subtitulo>Motor que se aplica hoy, por producto</Subtitulo>
-        {habilitados.length === 0 ? (
-          <p className="text-sm text-ink-500">El organismo no tiene productos habilitados.</p>
-        ) : (
-          <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200">
-            {habilitados.map((prod) => {
-              const nuevo = efectivo(prod, "NUEVO");
-              const existente = efectivo(prod, "EXISTENTE");
-              return (
-                <li key={prod.config.id} className="px-4 py-3">
-                  <p className="text-sm font-semibold text-ink-900">{prod.config.nombre}</p>
-                  <p className="text-xs text-ink-500">
-                    Cliente nuevo: {getMotor(nuevo.id).nombre} ({nuevo.origen}) · Cliente existente:{" "}
-                    {getMotor(existente.id).nombre} ({existente.origen})
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+      <div className="space-y-3">
+        {CAMPOS_OPCIONES.map((c) => (
+          <FilaSoloLectura key={c.clave} campo={c} p={p} />
+        ))}
       </div>
     </Panel>
   );
 }
 
-// --- 6. Datos financieros ---
+const CAMPO_GESTION: CampoExtra = {
+  clave: "gestionPrestamos",
+  etiqueta: "Gestión de préstamos",
+  ayuda: "Activar o desactivar la gestión y datos de quien gestiona la cartera.",
+  tipo: "gestion",
+};
+
+function Gestion({ p }: SeccionOrgProps) {
+  return (
+    <Panel
+      titulo="Gestión de préstamos"
+      descripcion="Activar o desactivar la gestión y datos de quien gestiona la cartera."
+      nota="Rige igual para todos los organismos: no admite excepción."
+    >
+      <FilaSoloLectura campo={CAMPO_GESTION} p={p} />
+    </Panel>
+  );
+}
+
+// --- 7. Datos financieros ---
 
 const CAMPOS_FINANCIEROS: CampoExtra[] = [
   {
@@ -515,7 +389,7 @@ function Financieros(props: SeccionOrgProps) {
   return (
     <Panel
       titulo="Datos financieros"
-      descripcion="Variables financieras que el organismo activa o desactiva."
+      descripcion="Conceptos que intervienen en el recálculo del sueldo neto."
       nota={NOTA_HERENCIA}
     >
       <Filas campos={CAMPOS_FINANCIEROS} {...props} />
@@ -523,11 +397,9 @@ function Financieros(props: SeccionOrgProps) {
   );
 }
 
-// --- 7. Punitorios ---
+// --- 8. Cobro, canales y vendedores ---
 
-const CAMPOS_PUNITORIOS: CampoExtra[] = [
-  { clave: "tramosPunitorios", etiqueta: "Punitorios", ayuda: "Hasta 5 tramos de atraso.", tipo: "tramos" },
-  { clave: "modificarCarteraActiva", etiqueta: "Modificar cartera activa", tipo: "bool" },
+const CAMPOS_COBRO: CampoExtra[] = [
   {
     clave: "modalidadCobro",
     etiqueta: "Modalidad de cobro",
@@ -536,11 +408,74 @@ const CAMPOS_PUNITORIOS: CampoExtra[] = [
   },
 ];
 
+function Cobro(props: SeccionOrgProps) {
+  const { o, p, set, errores, ver } = props;
+  const { cf } = useEditores(set);
+  const propios = o.config.canales;
+  const nombres = (ids: string[]) =>
+    ids.map((id) => CANALES.find((c) => c.id === id)?.nombre ?? id).join(", ") || "Ninguno";
+  // Los vendedores que se ofrecen son los vinculados a los canales que rigen.
+  const vendedores = vendedoresDeCanales(propios ?? p.config.canales);
+  const campoVendedores: CampoExtra = {
+    clave: "vendedores",
+    etiqueta: "Vendedores habilitados",
+    tipo: "seleccion",
+    opciones: vendedores.map((v) => ({ value: v.id, label: v.nombre, detalle: v.detalle })),
+  };
+  return (
+    <Panel
+      titulo="Cobro, canales y vendedores"
+      descripcion="Cómo se cobra, dónde se ofrece y quién lo vende."
+      vivo
+      nota={`${NOTA_HERENCIA} Con excepción de canales, el producto sólo se ofrece en los que ambos habilitan. El vendedor real sale de la sesión.`}
+    >
+      <Filas campos={CAMPOS_COBRO} o={o} p={p} set={set} />
+      <FilaHerencia
+        etiqueta="Canales habilitados"
+        productoNombre={p.config.nombre}
+        heredado={nombres(p.config.canales)}
+        error={ver ? errores.canales : undefined}
+        editor={
+          propios ? (
+            <div className="space-y-2">
+              {CANALES.map((c) => (
+                <Checkbox
+                  key={c.id}
+                  checked={propios.includes(c.id)}
+                  onChange={(v) =>
+                    cf({
+                      canales: v
+                        ? [...propios.filter((x) => x !== c.id), c.id]
+                        : propios.filter((x) => x !== c.id),
+                    })
+                  }
+                  label={c.nombre}
+                  description={c.detalle}
+                />
+              ))}
+            </div>
+          ) : null
+        }
+        onCrear={() => cf({ canales: [...p.config.canales] })}
+        onQuitar={() => cf({ canales: null })}
+      />
+      <Filas campos={[campoVendedores]} o={o} p={p} set={set} />
+    </Panel>
+  );
+}
+
+// --- 9. Intereses punitorios ---
+
+const CAMPOS_PUNITORIOS: CampoExtra[] = [
+  { clave: "tramosPunitorios", etiqueta: "Punitorios", ayuda: "Hasta 5 tramos de atraso.", tipo: "tramos" },
+  { clave: "modificarCarteraActiva", etiqueta: "Modificar cartera activa", tipo: "bool" },
+];
+
 function Punitorios(props: SeccionOrgProps) {
   return (
     <Panel
-      titulo="Punitorios"
-      descripcion="Cómo se cobra el atraso en este organismo."
+      titulo="Intereses punitorios"
+      descripcion="Hasta 5 tramos de atraso, cada uno con su porcentaje, gracia y tope."
       nota={NOTA_HERENCIA}
     >
       <Filas campos={CAMPOS_PUNITORIOS} {...props} />
@@ -548,12 +483,43 @@ function Punitorios(props: SeccionOrgProps) {
   );
 }
 
-// --- 8. Formulario / legajo ---
+// --- 10. Configuración del onboarding ---
 
-function Formulario({ o, p, set, errores, ver }: SeccionOrgProps) {
+const CAMPOS_OPERACIONES: CampoExtra[] = [
+  { clave: "permiteRenovacion", etiqueta: "Permite renovación", tipo: "bool" },
+  { clave: "condicionRenovacion", etiqueta: "Condición mínima para renovar", tipo: "select", opciones: CONDICIONES_RENOVACION },
+  { clave: "renovacionMinPctPagado", etiqueta: "Porcentaje mínimo pagado para renovar", tipo: "num", sufijo: "%" },
+  { clave: "renovacionMinCuotasPagas", etiqueta: "Cuotas pagadas mínimas para renovar", tipo: "num" },
+  { clave: "permiteCancelacionAnticipada", etiqueta: "Permite cancelación anticipada", tipo: "bool" },
+  { clave: "condicionCancelacion", etiqueta: "Condición mínima para cancelar", tipo: "select", opciones: CONDICIONES_RENOVACION },
+  { clave: "cancelacionMinPctPagado", etiqueta: "Porcentaje mínimo pagado para cancelar", tipo: "num", sufijo: "%" },
+  { clave: "cancelacionMinCuotasPagas", etiqueta: "Cuotas pagadas mínimas para cancelar", tipo: "num" },
+  { clave: "permiteCambioPrimerVencimiento", etiqueta: "Permite cambio del primer vencimiento", tipo: "bool" },
+  { clave: "permiteCorrimientoDesarrollo", etiqueta: "Permite corrimiento del desarrollo del préstamo", tipo: "bool" },
+];
+
+function Onboarding(props: SeccionOrgProps) {
+  const { o, p, set, errores, ver } = props;
   const { ov, quitarOv } = useEditores(set);
   const ovs = o.config.overrides;
-  const docsProducto = p.config.onboarding.documentos;
+  const ob = p.config.onboarding;
+  const pantallas = [...ob.pantallas].sort((a, b) => a.orden - b.orden);
+  const docsProducto = ob.documentos;
+  const baseObligatorios = ob.camposObligatorios;
+
+  const setPantalla = (id: string, patch: { visible?: boolean }) =>
+    ov({
+      pantallas: {
+        ...ovs.pantallas,
+        [id]: { ...(ovs.pantallas?.[id as keyof typeof ovs.pantallas] ?? {}), ...patch },
+      },
+    });
+  const quitarPantalla = (id: string) => {
+    const { [id as keyof NonNullable<typeof ovs.pantallas>]: _q, ...resto } = ovs.pantallas ?? {};
+    void _q;
+    ov({ pantallas: resto });
+  };
+
   const camposEx = Object.entries(ovs.camposObligatorios ?? {}).filter(
     (e): e is [string, boolean] => e[1] !== undefined
   );
@@ -570,47 +536,70 @@ function Formulario({ o, p, set, errores, ver }: SeccionOrgProps) {
       .filter((c) => !c.fijo && ovs.camposObligatorios?.[c.id] === undefined)
       .map((c) => ({ ...c, pantalla }))
   );
-  const baseObligatorios = p.config.onboarding.camposObligatorios;
 
   return (
     <Panel
-      titulo="Formulario / legajo"
-      descripcion="Documentación propia y obligatoriedad de campos del formulario."
+      titulo="Configuración del onboarding"
+      descripcion="Pantallas, navegación, campos, legajo y permisos de operación (Producto §7 bis)."
       vivo
-      nota={`${NOTA_HERENCIA} El organismo puede reemplazar la lista de documentos del producto y volver obligatorio u opcional un campo.`}
+      nota={`${NOTA_HERENCIA} Los cambios se reflejan en Solicitar crédito.`}
     >
-      <FilaHerencia
-        etiqueta="Documentación del legajo"
-        ayuda="Con excepción, esta lista reemplaza a la del producto."
-        productoNombre={p.config.nombre}
-        heredado={
-          <ul className="space-y-0.5">
-            {docsProducto.map((d) => (
-              <li key={d.tipoId}>
-                {tipoDeDocumento(d).nombre}
-                <span className="text-xs text-ink-500">
-                  {d.obligatorio ? " · obligatorio" : " · opcional"}
-                  {` · ${d.obligatorio ? `mín. ${minimoDocumento(d)} · ` : ""}máx. ${d.maximo}`}
+      <div className="space-y-3">
+        <Subtitulo>Pantallas / solapas</Subtitulo>
+        {pantallas.map((s) => {
+          const propio = ovs.pantallas?.[s.id];
+          const visible = propio?.visible ?? s.visible;
+          return (
+            <FilaHerencia
+              key={s.id}
+              etiqueta={s.label}
+              productoNombre={p.config.nombre}
+              heredado={
+                <span>
+                  Habilitada <Si valor={s.visible} />
                 </span>
-              </li>
-            ))}
-          </ul>
-        }
+              }
+              editor={
+                propio ? (
+                  <Checkbox
+                    checked={visible}
+                    onChange={(v) => setPantalla(s.id, { visible: v })}
+                    label="Habilitada"
+                    description="Una pantalla habilitada es obligatoria."
+                  />
+                ) : null
+              }
+              onCrear={() => setPantalla(s.id, { visible: s.visible })}
+              onQuitar={() => quitarPantalla(s.id)}
+            />
+          );
+        })}
+      </div>
+
+      <FilaHerencia
+        etiqueta="Navegación entre pantallas"
+        productoNombre={p.config.nombre}
+        heredado={ob.navegacion === "LIBRE" ? "Libre: en cualquier orden" : "Secuencial"}
         editor={
-          ovs.documentos ? (
-            <EditorDocumentos
-              docs={ovs.documentos}
-              onChange={(documentos) => ov({ documentos })}
-              error={ver ? errores.documentos : undefined}
+          ovs.navegacion !== undefined ? (
+            <SelectField
+              id="o-navegacion"
+              label=""
+              value={ovs.navegacion}
+              onChange={(v) => ov({ navegacion: v as "LIBRE" | "SECUENCIAL" })}
+              options={[
+                { value: "LIBRE", label: "Libre: en cualquier orden" },
+                { value: "SECUENCIAL", label: "Secuencial" },
+              ]}
             />
           ) : null
         }
-        onCrear={() => ov({ documentos: structuredClone(docsProducto) })}
-        onQuitar={() => quitarOv("documentos")}
+        onCrear={() => ov({ navegacion: ob.navegacion })}
+        onQuitar={() => quitarOv("navegacion")}
       />
 
       <div className="space-y-3">
-        <Subtitulo>Campos obligatorios</Subtitulo>
+        <Subtitulo>Campos obligatorios / opcionales</Subtitulo>
         {camposEx.map(([id, valor]) => {
           const encontrado = campoConfigurable(id);
           const base = encontrado ? esObligatorio(encontrado.campo, baseObligatorios) : false;
@@ -636,6 +625,20 @@ function Formulario({ o, p, set, errores, ver }: SeccionOrgProps) {
             />
           );
         })}
+        <SelectField
+          id="o-campo-nuevo"
+          label="Agregar excepción sobre un campo"
+          value=""
+          placeholder="Elegí un campo del formulario…"
+          onChange={(id) => {
+            const c = campoConfigurable(id);
+            if (c) setCampo(id, !esObligatorio(c.campo, baseObligatorios));
+          }}
+          options={disponibles.map((c) => ({
+            value: c.id,
+            label: `${c.label} (${TITULO_PANTALLA_CAMPOS[c.pantalla].toLowerCase()})`,
+          }))}
+        />
         <FilaHerencia
           etiqueta="Campos quitados del formulario"
           ayuda="Un campo quitado no se muestra ni se valida en la carga."
@@ -683,105 +686,6 @@ function Formulario({ o, p, set, errores, ver }: SeccionOrgProps) {
           onCrear={() => ov({ camposQuitados: [] })}
           onQuitar={() => quitarOv("camposQuitados")}
         />
-        <SelectField
-          id="o-campo-nuevo"
-          label="Agregar excepción sobre un campo"
-          value=""
-          placeholder="Elegí un campo del formulario…"
-          onChange={(id) => {
-            const c = campoConfigurable(id);
-            if (c) setCampo(id, !esObligatorio(c.campo, baseObligatorios));
-          }}
-          options={disponibles.map((c) => ({
-            value: c.id,
-            label: `${c.label} (${TITULO_PANTALLA_CAMPOS[c.pantalla].toLowerCase()})`,
-          }))}
-        />
-      </div>
-    </Panel>
-  );
-}
-
-// --- 9. Onboarding ---
-
-function Onboarding({ o, p, set, errores, ver }: SeccionOrgProps) {
-  const { ov, quitarOv } = useEditores(set);
-  const ovs = o.config.overrides;
-  const ob = p.config.onboarding;
-  const pantallas = [...ob.pantallas].sort((a, b) => a.orden - b.orden);
-
-  const setPantalla = (id: string, patch: { visible?: boolean }) =>
-    ov({
-      pantallas: {
-        ...ovs.pantallas,
-        [id]: { ...(ovs.pantallas?.[id as keyof typeof ovs.pantallas] ?? {}), ...patch },
-      },
-    });
-  const quitarPantalla = (id: string) => {
-    const { [id as keyof NonNullable<typeof ovs.pantallas>]: _q, ...resto } = ovs.pantallas ?? {};
-    void _q;
-    ov({ pantallas: resto });
-  };
-
-  return (
-    <Panel
-      titulo="Onboarding"
-      descripcion="Pantallas de la carga post-oferta, cantidades y tokenización."
-      vivo
-      nota={`${NOTA_HERENCIA} Los cambios se reflejan en Solicitar crédito.`}
-    >
-      <FilaHerencia
-        etiqueta="Navegación entre pantallas"
-        productoNombre={p.config.nombre}
-        heredado={ob.navegacion === "LIBRE" ? "Libre: en cualquier orden" : "Secuencial"}
-        editor={
-          ovs.navegacion !== undefined ? (
-            <SelectField
-              id="o-navegacion"
-              label=""
-              value={ovs.navegacion}
-              onChange={(v) => ov({ navegacion: v as "LIBRE" | "SECUENCIAL" })}
-              options={[
-                { value: "LIBRE", label: "Libre: en cualquier orden" },
-                { value: "SECUENCIAL", label: "Secuencial" },
-              ]}
-            />
-          ) : null
-        }
-        onCrear={() => ov({ navegacion: ob.navegacion })}
-        onQuitar={() => quitarOv("navegacion")}
-      />
-
-      <div className="space-y-3">
-        <Subtitulo>Pantallas</Subtitulo>
-        {pantallas.map((s) => {
-          const propio = ovs.pantallas?.[s.id];
-          const visible = propio?.visible ?? s.visible;
-          return (
-            <FilaHerencia
-              key={s.id}
-              etiqueta={s.label}
-              productoNombre={p.config.nombre}
-              heredado={
-                <span>
-                  Habilitada <Si valor={s.visible} />
-                </span>
-              }
-              editor={
-                propio ? (
-                  <Checkbox
-                    checked={visible}
-                    onChange={(v) => setPantalla(s.id, { visible: v })}
-                    label="Habilitada"
-                    description="Una pantalla habilitada es obligatoria."
-                  />
-                ) : null
-              }
-              onCrear={() => setPantalla(s.id, { visible: s.visible })}
-              onQuitar={() => quitarPantalla(s.id)}
-            />
-          );
-        })}
       </div>
 
       <div className="space-y-3">
@@ -878,115 +782,123 @@ function Onboarding({ o, p, set, errores, ver }: SeccionOrgProps) {
           onQuitar={() => quitarOv("tokenizacion")}
         />
       </div>
+
+      <div className="space-y-3">
+        <Subtitulo>Legajo</Subtitulo>
+        <FilaHerencia
+          etiqueta="Documentación del legajo"
+          ayuda="Con excepción, esta lista reemplaza a la del producto."
+          productoNombre={p.config.nombre}
+          heredado={
+            <ul className="space-y-0.5">
+              {docsProducto.map((d) => (
+                <li key={d.tipoId}>
+                  {tipoDeDocumento(d).nombre}
+                  <span className="text-xs text-ink-500">
+                    {d.obligatorio ? " · obligatorio" : " · opcional"}
+                    {` · ${d.obligatorio ? `mín. ${minimoDocumento(d)} · ` : ""}máx. ${d.maximo}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          }
+          editor={
+            ovs.documentos ? (
+              <EditorDocumentos
+                docs={ovs.documentos}
+                onChange={(documentos) => ov({ documentos })}
+                error={ver ? errores.documentos : undefined}
+              />
+            ) : null
+          }
+          onCrear={() => ov({ documentos: structuredClone(docsProducto) })}
+          onQuitar={() => quitarOv("documentos")}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Subtitulo>Permisos de operación</Subtitulo>
+        <Filas campos={CAMPOS_OPERACIONES} o={o} p={p} set={set} />
+        <FilaHerencia
+          etiqueta="Permite cancelar deudas de terceros"
+          ayuda="Cambia el flujo real: habilita o no la cancelación de deudas con terceros en la oferta."
+          productoNombre={p.config.nombre}
+          heredado={<Si valor={p.config.permiteDeudaTerceros} />}
+          editor={
+            ovs.permiteDeudaTerceros !== undefined ? (
+              <Checkbox
+                checked={ovs.permiteDeudaTerceros}
+                onChange={(v) => ov({ permiteDeudaTerceros: v })}
+                label={ovs.permiteDeudaTerceros ? "Sí" : "No"}
+              />
+            ) : null
+          }
+          onCrear={() => ov({ permiteDeudaTerceros: p.config.permiteDeudaTerceros })}
+          onQuitar={() => quitarOv("permiteDeudaTerceros")}
+        />
+      </div>
     </Panel>
   );
 }
 
-// --- 10. Firma ---
+// --- 11. Motor de riesgo ---
 
-const CAMPOS_FIRMA: CampoExtra[] = [
-  {
-    clave: "modalidadFirma",
-    etiqueta: "Modalidad de firma",
-    ayuda: "Electrónica, física o ambas.",
-    tipo: "select",
-    opciones: MODALIDADES_FIRMA,
-  },
-];
-
-function Firma(props: SeccionOrgProps) {
-  return (
-    <Panel
-      titulo="Firma"
-      descripcion="Requerimientos de firma de la operación."
-      nota={NOTA_HERENCIA}
-    >
-      <Filas campos={CAMPOS_FIRMA} {...props} />
-    </Panel>
-  );
+function describirAsignacion(a: AsignacionMotor | null): string {
+  if (!a) return "Sin asignación propia";
+  const asignacion = normalizarAsignacion(a);
+  const partes = [asignacion.motorId ? getMotor(asignacion.motorId).nombre : "Sin motor general"];
+  if (asignacion.combinaciones.length > 0)
+    partes.push(
+      asignacion.combinaciones.map((c) => `${textoCombinacion(c)}: ${getMotor(c.motor).nombre}`).join(" · ")
+    );
+  return partes.join(" · ");
 }
 
-// --- 11. Canales ---
-
-function Canales({ o, p, set, errores, ver }: SeccionOrgProps) {
+function Motor({ o, p, set, errores, ver }: SeccionOrgProps) {
   const { cf } = useEditores(set);
-  const propios = o.config.canales;
-  const nombres = (ids: string[]) =>
-    ids.map((id) => CANALES.find((c) => c.id === id)?.nombre ?? id).join(", ") || "Ninguno";
+  const motorOrg = o.config.motor;
   return (
     <Panel
-      titulo="Canales"
-      descripcion="En qué canales se ofrece el organismo."
+      titulo="Motor de riesgo"
+      descripcion="Qué grupo de reglas evalúa según el cliente."
       vivo
-      nota="Con excepción, el producto sólo se ofrece en los canales que ambos habilitan."
+      nota="El organismo puede pisar la asignación del producto: si define la suya y aplica al cliente, manda; si no, rige la del producto."
     >
       <FilaHerencia
-        etiqueta="Canales habilitados"
+        etiqueta="Asignación de motor"
+        ayuda="Por tipo de cliente, condición laboral, situación BCRA y situación en buró interno."
         productoNombre={p.config.nombre}
-        heredado={nombres(p.config.canales)}
-        error={ver ? errores.canales : undefined}
+        heredado={describirAsignacion(p.config.motor)}
         editor={
-          propios ? (
-            <div className="space-y-2">
-              {CANALES.map((c) => (
-                <Checkbox
-                  key={c.id}
-                  checked={propios.includes(c.id)}
-                  onChange={(v) =>
-                    cf({
-                      canales: v
-                        ? [...propios.filter((x) => x !== c.id), c.id]
-                        : propios.filter((x) => x !== c.id),
-                    })
-                  }
-                  label={c.nombre}
-                  description={c.detalle}
-                />
-              ))}
-            </div>
+          motorOrg ? (
+            <EditorMotor
+              idBase="o-motor"
+              valor={motorOrg}
+              onChange={(motor) => cf({ motor })}
+              placeholderGeneral="Sin motor general propio"
+              error={errores.motor}
+              mostrarError={ver}
+            />
           ) : null
         }
-        onCrear={() => cf({ canales: [...p.config.canales] })}
-        onQuitar={() => cf({ canales: null })}
+        onCrear={() => cf({ motor: structuredClone(p.config.motor) })}
+        onQuitar={() => cf({ motor: null })}
       />
     </Panel>
   );
 }
 
-// --- 12. Vendedores ---
-
-const CAMPOS_VENDEDORES: CampoExtra[] = [
-  {
-    clave: "vendedores",
-    etiqueta: "Vendedores habilitados",
-    tipo: "seleccion",
-    opciones: VENDEDORES.map((v) => ({ value: v.id, label: v.nombre, detalle: v.detalle })),
-  },
-];
-
-function Vendedores(props: SeccionOrgProps) {
-  return (
-    <Panel
-      titulo="Vendedores"
-      descripcion="Quiénes pueden vender a este organismo."
-      nota={`${NOTA_HERENCIA} El vendedor real sale de la sesión.`}
-    >
-      <Filas campos={CAMPOS_VENDEDORES} {...props} />
-    </Panel>
-  );
-}
-
-// --- 13. Notificaciones ---
+// --- 12. Notificaciones ---
 
 const CAMPOS_NOTIFICACIONES: CampoExtra[] = [
-  { clave: "notificaciones", etiqueta: "Avisos al cliente", tipo: "notif" },
+  { clave: "notificaciones", etiqueta: "Notificaciones", tipo: "notif" },
 ];
 
 function Notificaciones(props: SeccionOrgProps) {
   return (
     <Panel
       titulo="Notificaciones"
-      descripcion="Avisos automáticos a los clientes de este organismo."
+      descripcion="Notificaciones que envía el producto, elegidas del catálogo global."
       nota={NOTA_HERENCIA}
     >
       <Filas campos={CAMPOS_NOTIFICACIONES} {...props} />
@@ -995,6 +907,9 @@ function Notificaciones(props: SeccionOrgProps) {
 }
 
 // --- Registro de secciones ---
+//
+// Las del producto siguen el orden y los nombres de SECCIONES (SeccionesProducto.tsx); "Capital
+// máximo" es el dato general del producto que admite excepción.
 
 export const SECCIONES_ORGANISMO: {
   id: string;
@@ -1005,18 +920,17 @@ export const SECCIONES_ORGANISMO: {
   Componente: (props: SeccionOrgProps) => React.ReactNode;
 }[] = [
   { id: "datos", alcance: "organismo", label: "Datos generales", vivo: true, Componente: DatosGenerales },
-  { id: "productos", alcance: "organismo", label: "Productos habilitados", vivo: true, Componente: Productos },
+  { id: "producto", alcance: "organismo", label: "Producto habilitado", vivo: true, Componente: Producto },
   { id: "planes", alcance: "organismo", label: "Planes de cuotas", vivo: true, Componente: Planes },
-  { id: "vencimiento", alcance: "producto", label: "Excepciones de vencimiento", vivo: false, Componente: Vencimiento },
-  { id: "permisos", alcance: "producto", label: "Permisos / estados", vivo: true, Componente: Permisos },
+  { id: "capital", alcance: "producto", label: "Capital máximo", vivo: true, Componente: Capital },
+  { id: "vencimientos", alcance: "producto", label: "Vencimientos", vivo: false, Componente: Vencimientos },
+  { id: "opciones", alcance: "producto", label: "Opciones generales", vivo: false, Componente: Opciones },
+  { id: "gestion", alcance: "producto", label: "Gestión de préstamos", vivo: false, Componente: Gestion },
+  { id: "financieros", alcance: "producto", label: "Datos financieros", vivo: false, Componente: Financieros },
+  { id: "cobro", alcance: "producto", label: "Cobro, canales y vendedores", vivo: true, Componente: Cobro },
+  { id: "punitorios", alcance: "producto", label: "Intereses punitorios", vivo: false, Componente: Punitorios },
+  { id: "onboarding", alcance: "producto", label: "Configuración del onboarding", vivo: true, Componente: Onboarding },
   { id: "motor", alcance: "producto", label: "Motor de riesgo", vivo: true, Componente: Motor },
-  { id: "financieros", alcance: "producto", label: "Datos financieros", vivo: true, Componente: Financieros },
-  { id: "punitorios", alcance: "producto", label: "Punitorios", vivo: false, Componente: Punitorios },
-  { id: "formulario", alcance: "producto", label: "Formulario / legajo", vivo: true, Componente: Formulario },
-  { id: "onboarding", alcance: "producto", label: "Onboarding", vivo: true, Componente: Onboarding },
-  { id: "firma", alcance: "producto", label: "Firma", vivo: false, Componente: Firma },
-  { id: "canales", alcance: "producto", label: "Canales", vivo: true, Componente: Canales },
-  { id: "vendedores", alcance: "producto", label: "Vendedores", vivo: false, Componente: Vendedores },
   { id: "notificaciones", alcance: "producto", label: "Notificaciones", vivo: false, Componente: Notificaciones },
 ];
 
@@ -1025,12 +939,11 @@ export const SECCION_DE_ERROR_ORG: Record<string, string> = {
   nombre: "datos",
   vigenciaDesde: "datos",
   vigenciaHasta: "datos",
-  capitalMaximo: "permisos",
+  capitalMaximo: "capital",
   referencias: "onboarding",
   garantes: "onboarding",
   tokenizacion: "onboarding",
-  documentos: "formulario",
-  canales: "canales",
+  documentos: "onboarding",
+  canales: "cobro",
   motor: "motor",
 };
-

@@ -4,9 +4,11 @@ import { useState } from "react";
 import {
   ORGANISMOS,
   AJUSTE_CUOTA_VARIABLE_PCT,
+  CONDICIONES_BONIFICACION,
   SALTOS_CAPITAL_GRILLA,
   SISTEMAS_AMORTIZACION,
   TRATAMIENTOS_GASTO,
+  type CondicionBonificacion,
   type FilaGrilla,
   type PlanCuotas,
   type SistemaAmortizacion,
@@ -681,7 +683,7 @@ function Bonificaciones({ p, set, errores, ver }: SeccionPlanProps) {
       {lista.length === 0 && <p className="text-sm text-ink-500">El plan no tiene campañas de bonificación.</p>}
       {lista.map((b) => (
         <div key={b.id} className="rounded-xl border border-ink-200 bg-white p-3">
-          <div className="grid gap-3 sm:grid-cols-[1fr_16rem_10rem_auto] sm:items-end">
+          <div className="grid gap-3 sm:grid-cols-[1fr_16rem_14rem_auto] sm:items-end">
             <FormField
               id={`${b.id}-nombre`}
               label="Nombre de la campaña"
@@ -696,12 +698,12 @@ function Bonificaciones({ p, set, errores, ver }: SeccionPlanProps) {
               value={b.cuotasBonificadas}
               onChange={(v) => cambiar(b.id, { cuotasBonificadas: Math.round(v) })}
             />
-            <FormField
+            <SelectField
               id={`${b.id}-condicion`}
               label="Condición"
-              value="Paga al día"
-              onChange={() => {}}
-              disabled
+              value={b.condicion}
+              onChange={(v) => cambiar(b.id, { condicion: v as CondicionBonificacion })}
+              options={[...CONDICIONES_BONIFICACION]}
             />
             <Button
               variant="ghost"

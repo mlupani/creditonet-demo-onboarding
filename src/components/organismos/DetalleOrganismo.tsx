@@ -15,8 +15,6 @@ import {
   rechazarExcepciones,
   refrendarExcepciones,
   totalExcepciones,
-  totalExcepcionesProducto,
-  productosConExcepciones,
   useOrganismos,
   validarOrganismo,
   vistaDe,
@@ -26,7 +24,6 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
 import { SECCIONES_ORGANISMO, SECCION_DE_ERROR_ORG } from "./SeccionesOrganismo";
@@ -39,12 +36,11 @@ import {
   IconCheckCircle,
   IconClipboardPlus,
   IconClock,
+  IconCreditCard,
   IconFileText,
-  IconIdCard,
   IconLoader,
   IconLock,
-  IconPencil,
-  IconPhone,
+  IconSettings,
   IconShieldCheck,
   IconUsers,
   IconWallet,
@@ -71,18 +67,17 @@ export const TEXTO_ACCION_ORG: Partial<
 
 const ICONOS_SECCION: Record<string, ItemNav["icon"]> = {
   datos: IconFileText,
-  productos: IconBriefcase,
+  producto: IconBriefcase,
   planes: IconCalendar,
-  vencimiento: IconClock,
-  permisos: IconLock,
-  motor: IconShieldCheck,
+  capital: IconLock,
+  vencimientos: IconClock,
+  opciones: IconSettings,
+  gestion: IconUsers,
   financieros: IconWallet,
+  cobro: IconCreditCard,
   punitorios: IconAlertTriangle,
-  formulario: IconIdCard,
   onboarding: IconClipboardPlus,
-  firma: IconPencil,
-  canales: IconPhone,
-  vendedores: IconUsers,
+  motor: IconShieldCheck,
   notificaciones: IconBell,
 };
 
@@ -123,7 +118,6 @@ export function DetalleOrganismo({ id }: { id: string }) {
 const claveDe = (o: OrganismoAbm) =>
   JSON.stringify({
     config: { ...o.config, productos: [...o.config.productos].sort() },
-    extras: o.extras,
   });
 
 function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoAbm[] }) {
@@ -131,7 +125,6 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
   const productos = useProductos();
   const [borrador, setBorrador] = useState<OrganismoAbm>(() => borradorDe(registro));
   const [seccion, setSeccion] = useState(SECCIONES_ORGANISMO[0].id);
-  const [prodElegido, setProdElegido] = useState<string | null>(null);
   const [intentado, setIntentado] = useState(false);
   const sidebarColapsado = useSidebarColapsado();
   const [guardado, setGuardado] = useState<null | { pendiente: boolean }>(null);
@@ -146,9 +139,8 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
   const meta = ESTADO_PRODUCTO_META[registro.config.estado];
   const vigencia = estadoVigencia(registro.config);
 
-  // Producto cuyas excepciones se editan: uno de los que el organismo habilita.
-  const habilitados = productos.filter((p) => borrador.config.productos.includes(p.config.id));
-  const referencia = habilitados.find((p) => p.config.id === prodElegido) ?? habilitados[0];
+  // Producto sobre el que se editan las excepciones: el único que el organismo habilita.
+  const referencia = productos.find((p) => p.config.id === borrador.config.productos[0]);
   const prodId = referencia?.config.id ?? "__ninguno__";
   const vista = vistaDe(borrador, prodId);
   const excProducto = borrador.config.excepciones[prodId];
@@ -156,7 +148,6 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
     excProducto ?? { overrides: {}, motor: null, canales: null, extras: {} }
   );
   const total = totalExcepciones(borrador);
-  const conExcepciones = productosConExcepciones(borrador);
 
   function editar(cambio: (o: ReturnType<typeof vistaDe>) => ReturnType<typeof vistaDe>) {
     setGuardado(null);
@@ -167,8 +158,7 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
     setIntentado(true);
     const primero = Object.keys(errores)[0];
     if (primero) {
-      const [campo, prod] = primero.split("@");
-      if (prod) setProdElegido(prod);
+      const [campo] = primero.split("@");
       setSeccion(SECCION_DE_ERROR_ORG[campo] ?? SECCIONES_ORGANISMO[0].id);
       return;
     }
@@ -240,8 +230,9 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
           <p className="mt-1 text-sm text-ink-500">
             {registro.config.detalle}
             {registro.config.detalle && " · "}
-            {registro.config.productos.length} producto
-            {registro.config.productos.length === 1 ? "" : "s"} · Vigencia:{" "}
+            {productos.find((p) => p.config.id === registro.config.productos[0])?.config.nombre ??
+              "Sin producto"}{" "}
+            · Vigencia:{" "}
             {textoVigencia(registro.config)}
           </p>
         </div>
@@ -317,40 +308,23 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
       )}
 
       <Card className="mt-5">
-        <div className="flex flex-wrap items-end justify-between gap-4 p-4 sm:p-5">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-ink-900">Excepciones por producto</p>
-            <p className="mt-0.5 max-w-xl text-sm text-ink-500">
-              El organismo hereda cada producto por completo y sólo pisa lo que necesita, producto
-              por producto. Elegí cuál editar.{" "}
-              {total === 0 ? (
-                "Hoy hereda el 100 % de la configuración."
-              ) : (
-                <>
-                  <span className="font-semibold text-warning-700">
-                    {total} {total === 1 ? "excepción" : "excepciones"}
-                  </span>{" "}
-                  definidas en {conExcepciones} de {borrador.config.productos.length} productos.
-                </>
-              )}
-            </p>
-          </div>
-          {referencia && (
-            <SelectField
-              id="o-referencia"
-              label="Producto"
-              value={referencia.config.id}
-              onChange={setProdElegido}
-              options={habilitados.map((p) => {
-                const n = totalExcepcionesProducto(borrador.config.excepciones[p.config.id]);
-                return {
-                  value: p.config.id,
-                  label: `${p.config.nombre}${n > 0 ? ` · ${n} excepci${n === 1 ? "ón" : "ones"}` : ""}`,
-                };
-              })}
-              className="w-full sm:w-80"
-            />
-          )}
+        <div className="p-4 sm:p-5">
+          <p className="text-sm font-semibold text-ink-900">
+            Excepciones sobre {referencia ? referencia.config.nombre : "el producto"}
+          </p>
+          <p className="mt-0.5 max-w-2xl text-sm text-ink-500">
+            El organismo hereda el producto por completo y sólo pisa lo que necesita. Las secciones
+            repiten las del producto, precargadas con sus valores.{" "}
+            {!referencia
+              ? "Elegí el producto en “Producto habilitado”."
+              : total === 0
+                ? "Hoy hereda el 100 % de la configuración."
+                : (
+                    <span className="font-semibold text-warning-700">
+                      {total} {total === 1 ? "excepción definida" : "excepciones definidas"}.
+                    </span>
+                  )}
+          </p>
         </div>
       </Card>
 
@@ -416,9 +390,8 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
               ver={intentado}
             />
           ) : (
-            <Banner tone="warning" title="El organismo no tiene productos habilitados">
-              Habilitá al menos un producto activo en “Productos habilitados” para poder definir
-              excepciones sobre él.
+            <Banner tone="warning" title="El organismo no tiene producto">
+              Elegí un producto en “Producto habilitado” para poder definir excepciones sobre él.
             </Banner>
           )}
       </NavSecciones>

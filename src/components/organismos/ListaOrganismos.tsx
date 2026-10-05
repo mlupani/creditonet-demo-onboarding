@@ -4,10 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import type { EstadoProducto } from "@/lib/config";
-import { estadoVigencia } from "@/lib/productos";
+import { estadoVigencia, useProductos } from "@/lib/productos";
 import {
   cambiarEstadoOrganismo,
-  productosConExcepciones,
   totalExcepciones,
   useOrganismos,
   type OrganismoAbm,
@@ -31,7 +30,7 @@ const COLUMNAS: { campo: Campo; label: string; ancho: string }[] = [
   { campo: "nombre", label: "Nombre", ancho: "" },
   { campo: "estado", label: "Estado", ancho: "w-28" },
   { campo: "vigencia", label: "Vigencia", ancho: "w-44" },
-  { campo: "productos", label: "Prod.", ancho: "w-20" },
+  { campo: "productos", label: "Producto", ancho: "w-52" },
   { campo: "excepciones", label: "Excepciones", ancho: "w-48" },
 ];
 
@@ -41,7 +40,12 @@ const sinAcentos = (s: string) =>
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 
-function comparar(a: OrganismoAbm, b: OrganismoAbm, campo: Campo): number {
+function comparar(
+  a: OrganismoAbm,
+  b: OrganismoAbm,
+  campo: Campo,
+  producto: (o: OrganismoAbm) => string
+): number {
   switch (campo) {
     case "codigo":
       return a.codigo.localeCompare(b.codigo);
@@ -54,7 +58,7 @@ function comparar(a: OrganismoAbm, b: OrganismoAbm, campo: Campo): number {
         b.config.vigenciaDesde.split("/").reverse().join("")
       );
     case "productos":
-      return a.config.productos.length - b.config.productos.length;
+      return producto(a).localeCompare(producto(b), "es");
     case "excepciones":
       return totalExcepciones(a) - totalExcepciones(b);
   }
@@ -64,6 +68,9 @@ export function ListaOrganismos() {
   const router = useRouter();
   const { hidratado } = useApplication();
   const organismos = useOrganismos();
+  const productos = useProductos();
+  const nombreProducto = (o: OrganismoAbm) =>
+    productos.find((p) => p.config.id === o.config.productos[0])?.config.nombre ?? "";
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<EstadoProducto | "">("");
   const [orden, setOrden] = useState<{ campo: Campo; asc: boolean }>({ campo: "codigo", asc: true });
@@ -78,12 +85,12 @@ export function ListaOrganismos() {
   const q = sinAcentos(busqueda.trim());
   const coincide = (o: OrganismoAbm) =>
     !q ||
-    sinAcentos(`${o.codigo} ${o.config.nombre} ${o.config.detalle ?? ""} ${o.extras.rubro}`).includes(q);
+    sinAcentos(`${o.codigo} ${o.config.nombre} ${o.config.detalle ?? ""}`).includes(q);
 
   const grupos = ORDEN_ESTADOS.filter((e) => !filtro || filtro === e).map((estado) => {
     const filas = organismos
       .filter((o) => o.config.estado === estado && coincide(o))
-      .sort((a, b) => (orden.asc ? 1 : -1) * comparar(a, b, orden.campo));
+      .sort((a, b) => (orden.asc ? 1 : -1) * comparar(a, b, orden.campo, nombreProducto));
     const total = organismos.filter((o) => o.config.estado === estado).length;
     const abierto = abiertos[estado] || filtro === estado || (q !== "" && filas.length > 0);
     return { estado, filas, total, abierto };
@@ -126,7 +133,7 @@ export function ListaOrganismos() {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, ID o rubro…"
+            placeholder="Buscar por nombre o ID…"
             aria-label="Buscar organismos"
             className="h-10 w-full rounded-lg border border-ink-300 bg-white pl-9 pr-3 text-sm shadow-xs outline-none transition placeholder:text-ink-400 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
@@ -245,8 +252,8 @@ export function ListaOrganismos() {
                                   </span>
                                 )}
                               </td>
-                              <td className="px-3 py-3 tabular-nums text-ink-700">
-                                {o.config.productos.length}
+                              <td className="px-3 py-3 text-ink-700">
+                                {nombreProducto(o) || <span className="text-ink-400">Sin producto</span>}
                               </td>
                               <td className="px-3 py-3">
                                 <div className="flex flex-col items-start gap-1">
@@ -257,8 +264,7 @@ export function ListaOrganismos() {
                                       title={`${excepciones} excepciones en total`}
                                       className="whitespace-nowrap rounded-full border border-warning-300 bg-warning-100 px-2 py-0.5 text-[11px] font-bold tabular-nums text-warning-700"
                                     >
-                                      En {productosConExcepciones(o)} de {o.config.productos.length}{" "}
-                                      productos
+                                      {excepciones} {excepciones === 1 ? "excepción" : "excepciones"}
                                     </span>
                                   )}
                                   {o.pendiente && (

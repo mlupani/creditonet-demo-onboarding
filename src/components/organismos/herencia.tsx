@@ -119,6 +119,22 @@ export function FilaHerencia({
   );
 }
 
+// Valor del producto que el organismo no puede pisar (se muestra para espejar la sección).
+export function FilaSoloLectura({ campo, p }: { campo: CampoExtra; p: ProductoAbm }) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 rounded-xl border border-ink-200 bg-white px-4 py-3">
+      <div className="min-w-0 flex-1 basis-56">
+        <p className="text-sm font-semibold text-ink-900">{campo.etiqueta}</p>
+        {campo.ayuda && <p className="text-xs text-ink-500">{campo.ayuda}</p>}
+      </div>
+      <div className="min-w-0 flex-1 basis-56 text-sm text-ink-700">{texto(campo, p.extras[campo.clave])}</div>
+      <span className="shrink-0 rounded-full border border-ink-200 bg-ink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-500">
+        Sin excepción
+      </span>
+    </div>
+  );
+}
+
 // --- Filas sobre los valores de ejemplo del producto (`extras`) ---
 
 export type CampoExtra = {
