@@ -13,6 +13,7 @@ import type {
   RiskResultado,
 } from "./types";
 import {
+  AJUSTE_CUOTA_VARIABLE_PCT,
   GRILLA_BASE,
   PLANES_CUOTAS,
   SESION_ANALISTA,
@@ -173,76 +174,117 @@ export function capitalFinanciadoDe(monto: number, gasto?: GastoOtorgamiento | n
 // el interés se calcula sobre el capital original durante todo el plazo.
 // El gasto de otorgamiento se suma al capital financiado o se reparte en partes iguales entre las
 // cuotas, según su tratamiento.
+// Cuota de un período del cronograma, sin redondear.
+export interface CuotaAmortizacion {
+  nro: number;
+  cuota: number;
+  capital: number;
+  interes: number;
+  // Saldo de capital después de pagar la cuota.
+  saldo: number;
+}
+
+// Sistemas en los que la cuota cambia de un mes a otro: la oferta informa la primera.
+export function cuotaEsVariable(sistema: SistemaAmortizacion): boolean {
+  return sistema === "FRANCES_VARIABLE" || sistema === "ALEMAN" || sistema === "AMERICANO";
+}
+
+function cuotaFrancesa(monto: number, plazo: number, i: number): number {
+  if (i === 0) return monto / plazo;
+  const factor = Math.pow(1 + i, plazo);
+  return (monto * i * factor) / (factor - 1);
+}
+
+// Cronograma completo según el sistema de amortización.
+// Francés cuota fija: cuota constante, interés sobre saldo. Francés cuota variable: el mismo
+// cronograma ajustado AJUSTE_CUOTA_VARIABLE_PCT por mes (capital indexado). Americano: sólo
+// interés y el capital en la última cuota. Tasa directa: interés sobre el capital original.
+// Alemán: capital constante, interés sobre saldo y cuota decreciente.
+export function cronogramaCuotas(
+  monto: number,
+  plazo: number,
+  tna: number,
+  sistema: SistemaAmortizacion = "FRANCES_FIJA"
+): CuotaAmortizacion[] {
+  if (monto <= 0 || plazo <= 0) return [];
+  const i = tna / 100 / 12;
+  const g = sistema === "FRANCES_VARIABLE" ? 1 + AJUSTE_CUOTA_VARIABLE_PCT / 100 : 1;
+  const fija = cuotaFrancesa(monto, plazo, i);
+  const filas: CuotaAmortizacion[] = [];
+  let saldo = monto;
+  for (let nro = 1; nro <= plazo; nro++) {
+    let capital: number;
+    let interes: number;
+    if (sistema === "AMERICANO") {
+      interes = monto * i;
+      capital = nro === plazo ? monto : 0;
+    } else if (sistema === "TASA_DIRECTA") {
+      interes = monto * i;
+      capital = monto / plazo;
+    } else if (sistema === "ALEMAN") {
+      interes = saldo * i;
+      capital = monto / plazo;
+    } else {
+      interes = saldo * i;
+      capital = fija - interes;
+    }
+    saldo -= capital;
+    const ajuste = Math.pow(g, nro - 1);
+    filas.push({
+      nro,
+      cuota: (capital + interes) * ajuste,
+      capital: capital * ajuste,
+      interes: interes * ajuste,
+      saldo: saldo * ajuste,
+    });
+  }
+  return filas;
+}
+
+// Cuota mensual según el sistema de amortización del plan. Se redondea a $100. Si la cuota
+// varía (ver `cuotaEsVariable`), es la primera.
 export function calcularCuota(
   monto: number,
   plazo: number,
   tna: number,
-  sistema: SistemaAmortizacion = "FRANCES",
-  gasto?: GastoOtorgamiento | null
+  sistema: SistemaAmortizacion = "FRANCES_FIJA"
 ): number {
-  if (monto <= 0 || plazo <= 0) return 0;
-  const capital = capitalFinanciadoDe(monto, gasto);
-  const i = tna / 100 / 12;
-  let cuota: number;
-  if (sistema === "AMERICANO") cuota = capital * i;
-  else if (sistema === "TASA_DIRECTA") cuota = (capital * (1 + (tna / 100) * (plazo / 12))) / plazo;
-  else {
-    const factor = Math.pow(1 + i, plazo);
-    cuota = (capital * i * factor) / (factor - 1);
-  }
-  if (gasto?.tratamiento === "DISTRIBUYE_CUOTAS") cuota += gastoDeOtorgamiento(monto, gasto) / plazo;
-  return Math.round(cuota / 100) * 100;
+  const primera = cronogramaCuotas(monto, plazo, tna, sistema)[0];
+  return primera ? Math.round(primera.cuota / 100) * 100 : 0;
 }
 
-// Total a pagar: en el sistema americano la última cuota incluye el capital financiado.
+// Total a pagar. Con cuota constante, cuota × plazo (sobre la cuota redondeada); en el americano
+// la última cuota suma el capital; si la cuota varía, la suma del cronograma redondeada a $100.
 export function totalAPagarDe(
   monto: number,
   plazo: number,
-  cuota: number,
-  sistema: SistemaAmortizacion = "FRANCES",
-  gasto?: GastoOtorgamiento | null
-): number {
-  return sistema === "AMERICANO" ? cuota * plazo + capitalFinanciadoDe(monto, gasto) : cuota * plazo;
-}
-
-// Capital que soporta una cuota, sin gasto y sin redondear.
-function capitalDeCuotaSinGasto(
-  cuota: number,
-  plazo: number,
   tna: number,
-  sistema: SistemaAmortizacion
+  cuota: number,
+  sistema: SistemaAmortizacion = "FRANCES_FIJA"
 ): number {
-  const i = tna / 100 / 12;
-  if (sistema === "AMERICANO") return cuota / i;
-  if (sistema === "TASA_DIRECTA") return (cuota * plazo) / (1 + (tna / 100) * (plazo / 12));
-  const factor = Math.pow(1 + i, plazo);
-  return (cuota * (factor - 1)) / (i * factor);
+  if (sistema === "AMERICANO") return cuota * plazo + monto;
+  if (!cuotaEsVariable(sistema)) return cuota * plazo;
+  const total = cronogramaCuotas(monto, plazo, tna, sistema).reduce((s, f) => s + f.cuota, 0);
+  return Math.round(total / 100) * 100;
 }
 
-// Inversa de la anterior: qué capital soporta una cuota máxima. Se trunca a $10.000.
+// Inversa de calcularCuota: qué capital soporta una cuota máxima (la primera, si varía). Se
+// trunca a $10.000.
 export function capitalDesdeCuota(
   cuota: number,
   plazo: number,
   tna: number,
-  sistema: SistemaAmortizacion = "FRANCES",
-  gasto?: GastoOtorgamiento | null
+  sistema: SistemaAmortizacion = "FRANCES_FIJA"
 ): number {
   if (cuota <= 0 || plazo <= 0) return 0;
-  const pct = gasto?.tipo === "PORCENTAJE" ? gasto.valor / 100 : 0;
-  const fijo = gasto?.tipo === "MONTO_FIJO" ? gasto.valor : 0;
+  const i = tna / 100 / 12;
   let capital: number;
-  if (gasto?.tratamiento === "CAPITALIZA") {
-    // El capital + gasto es lo que financia la cuota.
-    capital = (capitalDeCuotaSinGasto(cuota, plazo, tna, sistema) - fijo) / (1 + pct);
-  } else if (gasto?.tratamiento === "DISTRIBUYE_CUOTAS") {
-    // La cuota = cuota financiera del capital + gasto / plazo. Todo es lineal en el capital.
-    const neta = capitalDeCuotaSinGasto(cuota - fijo / plazo, plazo, tna, sistema);
-    const porCuota = capitalDeCuotaSinGasto(1, plazo, tna, sistema);
-    capital = neta / (1 + (porCuota * pct) / plazo);
-  } else {
-    capital = capitalDeCuotaSinGasto(cuota, plazo, tna, sistema);
-  }
-  return Math.max(Math.floor(capital / 10_000) * 10_000, 0);
+  if (sistema === "AMERICANO") capital = cuota / i;
+  else if (sistema === "TASA_DIRECTA") capital = (cuota * plazo) / (1 + (tna / 100) * (plazo / 12));
+  else if (sistema === "ALEMAN") capital = (cuota * plazo) / (1 + i * plazo);
+  else capital = cuota / cuotaFrancesa(1, plazo, i);
+  // El margen evita que un error de coma flotante (1.199.999,99…) baje un escalón entero.
+  return Math.floor(capital / 10_000 + 1e-9) * 10_000;
 }
 
 // Un crédito en mora se cancela siempre: entra solo en la renovación y no se puede quitar.
@@ -331,8 +373,7 @@ export function recalcularOferta(entrada: Oferta): Oferta {
     oferta.montoSolicitado,
     oferta.plazo,
     term.tna,
-    plan?.sistema,
-    plan?.gastoOtorgamiento
+    plan?.sistema
   );
   return {
     ...oferta,
@@ -342,9 +383,9 @@ export function recalcularOferta(entrada: Oferta): Oferta {
     totalAPagar: totalAPagarDe(
       oferta.montoSolicitado,
       oferta.plazo,
+      term.tna,
       valorCuota,
-      plan?.sistema,
-      plan?.gastoOtorgamiento
+      plan?.sistema
     ),
     primeraCuotaVencimiento: term.primeraCuota,
   };
@@ -473,7 +514,6 @@ export function calcularLimites(
         app.oferta.plazo,
         term.tna,
         plan.sistema,
-        plan.gastoOtorgamiento
       ),
     },
   ];

@@ -285,8 +285,8 @@ function Planes({ o, set }: SeccionOrgProps) {
                   } · ${c.condicionesLaborales.join(", ")}`}
                 />
               </div>
-              <StatusBadge tone={ESTADO_PRODUCTO_META[c.estado].tone}>
-                {ESTADO_PRODUCTO_META[c.estado].label}
+              <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[c.estado].tone}>
+                {ESTADO_PRODUCTO_ABM_META[c.estado].label}
               </StatusBadge>
               <Link
                 href={`/planes/${c.id}`}
@@ -854,16 +854,24 @@ function Onboarding({ o, p, set, errores, ver }: SeccionOrgProps) {
                     (b) =>
                       `${nombreProveedor(b.proveedorId)}: mín. ${b.minimo} · máx. ${b.maximo}`
                   )
-                  .join(" · ")
+                  .join(" · ") + (ob.tokenizacion.obligatoria === false ? " · opcional" : "")
           }
           error={ver ? errores.tokenizacion : undefined}
           editor={
             ovs.tokenizacion ? (
-              <EditorTokenizacion
-                idBase="o-tok"
-                valor={ovs.tokenizacion}
-                onChange={(tokenizacion) => ov({ tokenizacion })}
-              />
+              <div className="space-y-3">
+                <Checkbox
+                  checked={ovs.tokenizacion.obligatoria !== false}
+                  onChange={(v) => ov({ tokenizacion: { ...ovs.tokenizacion!, obligatoria: v } })}
+                  label="Tokenización obligatoria"
+                  description="Si está deshabilitado, el cliente puede continuar sin tokenizar tarjeta."
+                />
+                <EditorTokenizacion
+                  idBase="o-tok"
+                  valor={ovs.tokenizacion}
+                  onChange={(tokenizacion) => ov({ tokenizacion })}
+                />
+              </div>
             ) : null
           }
           onCrear={() => ov({ tokenizacion: structuredClone(ob.tokenizacion) })}

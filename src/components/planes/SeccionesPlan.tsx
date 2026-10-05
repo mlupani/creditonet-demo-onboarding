@@ -2,6 +2,7 @@
 
 import {
   ORGANISMOS,
+  AJUSTE_CUOTA_VARIABLE_PCT,
   SISTEMAS_AMORTIZACION,
   TRATAMIENTOS_GASTO,
   type FilaGrilla,
@@ -30,7 +31,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
 import { CampoNumero, Panel, Subtitulo } from "@/components/productos/campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
-import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
 import { IconPlus, IconTrash } from "@/components/icons";
 
 export interface SeccionPlanProps {
@@ -62,7 +63,7 @@ const PLAZOS: Plazo[] = [12, 18, 24, 36, 48, 60, 72, 84, 96, 120];
 
 function DatosGenerales({ p, set, errores, ver }: SeccionPlanProps) {
   const { cf } = useEditores(set);
-  const meta = ESTADO_PRODUCTO_META[p.config.estado];
+  const meta = ESTADO_PRODUCTO_ABM_META[p.config.estado];
   return (
     <Panel
       titulo="Datos generales"
@@ -138,7 +139,7 @@ function Amortizacion({ p, set }: SeccionPlanProps) {
         value={p.config.sistema}
         onChange={(v) => cf({ sistema: v as SistemaAmortizacion })}
         options={SISTEMAS_AMORTIZACION}
-        hint="Francés: cuota fija · Americano: sólo interés y el capital al final · Tasa directa: interés sobre el capital original."
+        hint={`Francés cuota fija: cuota constante · Francés cuota variable: arranca como el francés y se ajusta ${AJUSTE_CUOTA_VARIABLE_PCT} % por mes · Americano: sólo interés y el capital al final · Tasa directa: interés sobre el capital original · Alemán: capital constante y cuota decreciente.`}
       />
       <CampoNumero
         id="pl-gracia"

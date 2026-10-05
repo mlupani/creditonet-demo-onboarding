@@ -14,10 +14,12 @@ import {
   PLANES_CUOTAS,
   normalizarGasto,
   TRATAMIENTOS_GASTO,
-  type EstadoProducto,
+  migrarSistemaAmortizacion,
+  type EstadoProductoAbm,
   type PlanCuotas,
 } from "./config";
 import { fechaHoy, parseFecha } from "./format";
+import type { ResultadoEstado } from "./productos";
 import { crearStoreAbm } from "./store-abm";
 
 export interface PlanAbm {
@@ -62,6 +64,10 @@ const store = crearStoreAbm<PlanAbm>({
   clave: "creditonet.planes.v1",
   inicial: estadoInicial(),
   valido: (r) => !!r?.config?.id && Array.isArray(r.config.grilla) && Array.isArray(r.organismos),
+  migrar: (r) => ({
+    ...r,
+    config: { ...r.config, sistema: migrarSistemaAmortizacion(r.config.sistema) },
+  }),
   aplicar: (lista) => {
     // Planes guardados con el check `seCapitaliza`: se pasan al select de tratamiento.
     for (const r of lista) r.config.gastoOtorgamiento = normalizarGasto(r.config.gastoOtorgamiento);
@@ -85,10 +91,19 @@ export function guardarPlan(p: PlanAbm) {
   store.commit(store.get().map((r) => (r.config.id === p.config.id ? p : r)));
 }
 
-export function cambiarEstadoPlan(id: string, estado: EstadoProducto) {
+// Único punto donde cambia el estado: activar (desde borrador o suspendido) valida el plan acá
+// además de en la pantalla, para que ninguna vía (lista, detalle) pueda activar un plan inválido.
+export function cambiarEstadoPlan(id: string, estado: EstadoProductoAbm): ResultadoEstado {
+  const actual = store.get().find((r) => r.config.id === id);
+  if (!actual) return { ok: false, error: "El plan no existe." };
+  if (estado === "ACTIVO") {
+    const primero = Object.values(validarPlan(actual, store.get()))[0];
+    if (primero) return { ok: false, error: `No se puede activar el plan: ${primero}` };
+  }
   store.commit(
     store.get().map((r) => (r.config.id === id ? { ...r, config: { ...r.config, estado } } : r))
   );
+  return { ok: true };
 }
 
 // Un organismo elige qué planes usa: la vinculación vive del lado del plan.
@@ -121,7 +136,8 @@ function idLibre(nombre: string): string {
   return id;
 }
 
-// Alta de plan: copia las condiciones de otro plan (o del primero) y queda sin organismos.
+// Alta de plan: copia las condiciones de otro plan (o del primero) y queda sin organismos. Nace
+// en borrador: no se ofrece hasta que se lo activa.
 export function crearPlan(datos: { nombre: string; copiarDeId: string | null }): string {
   const lista = store.get();
   const id = idLibre(datos.nombre);
@@ -133,7 +149,7 @@ export function crearPlan(datos: { nombre: string; copiarDeId: string | null }):
       ...structuredClone(base.config),
       id,
       nombre: datos.nombre,
-      estado: "ACTIVO",
+      estado: "BORRADOR",
       vigenciaDesde: fechaHoy(),
       vigenciaHasta: null,
       prioridad: Math.max(0, ...lista.map((r) => r.config.prioridad)) + 1,

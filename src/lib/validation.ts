@@ -9,7 +9,7 @@ import type {
 } from "./types";
 import { isValidCBU, isValidCUIL, isValidDNI, isValidEmail, parseFecha } from "./format";
 import { parseTelefono, validarNumero } from "./telefono";
-import { configEfectiva, minimoDocumento, pantallasVisibles } from "./config";
+import { configEfectiva, minimoDocumento, minimoTokenizacion, pantallasVisibles } from "./config";
 import { erroresPantalla } from "./campos-post-oferta";
 import { getTipoDocumento, nombreProveedor } from "./parametros";
 
@@ -321,13 +321,14 @@ export function estadoPantallasPostOferta(app: CreditApplication): PantallaEstad
           const delProveedor = po.tarjetas.filter((t) => proveedorDeTarjeta(t, i === 0, b.proveedorId));
           const validas = delProveedor.filter(tarjetaValida).length;
           const nombre = nombreProveedor(b.proveedorId);
-          if (validas < b.minimo) {
+          const minimo = minimoTokenizacion(cfg.tokenizacion, b);
+          if (validas < minimo) {
             const esperandoCliente = delProveedor.some((t) => t.estado === "ESPERANDO_CLIENTE");
             const esperandoComprobacion = delProveedor.some(
               (t) => t.estado === "TOKENIZADA" && t.verificada === false
             );
             push(
-              `Tarjetas de ${nombre}: ${validas} de ${b.minimo}${
+              `Tarjetas de ${nombre}: ${validas} de ${minimo}${
                 esperandoCliente
                   ? " · esperando al cliente"
                   : esperandoComprobacion
