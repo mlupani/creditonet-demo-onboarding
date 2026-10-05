@@ -285,8 +285,8 @@ function Planes({ o, set }: SeccionOrgProps) {
                   } · ${c.condicionesLaborales.join(", ")}`}
                 />
               </div>
-              <StatusBadge tone={ESTADO_PRODUCTO_META[c.estado].tone}>
-                {ESTADO_PRODUCTO_META[c.estado].label}
+              <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[c.estado].tone}>
+                {ESTADO_PRODUCTO_ABM_META[c.estado].label}
               </StatusBadge>
               <Link
                 href={`/planes/${c.id}`}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import { planOfrecible, type EstadoProducto } from "@/lib/config";
+import { planOfrecible, type EstadoProductoAbm } from "@/lib/config";
 import { estadoVigencia, textoVigencia } from "@/lib/productos";
 import {
   cambiarEstadoPlan,
@@ -17,7 +17,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
 import { SECCIONES_PLAN, SECCION_DE_ERROR_PLAN } from "./SeccionesPlan";
 import {
   IconArrowLeft,
@@ -43,7 +43,7 @@ import { useSidebarColapsado } from "@/lib/sidebar-colapsado";
 import { NavSecciones, type ItemNav } from "@/components/ui/NavSecciones";
 
 export const TEXTO_ACCION_PLAN: Partial<
-  Record<EstadoProducto, { titulo: string; descripcion: string; boton: string }>
+  Record<EstadoProductoAbm, { titulo: string; descripcion: string; boton: string }>
 > = {
   SUSPENDIDO: {
     titulo: "¿Suspender el plan?",
@@ -115,13 +115,14 @@ function Editor({ registro, todos }: { registro: PlanAbm; todos: PlanAbm[] }) {
   const [intentado, setIntentado] = useState(false);
   const sidebarColapsado = useSidebarColapsado();
   const [guardado, setGuardado] = useState(false);
-  const [pendiente, setPendiente] = useState<EstadoProducto | null>(null);
+  const [pendiente, setPendiente] = useState<EstadoProductoAbm | null>(null);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
 
   const errores = validarPlan(borrador, todos);
   const seccionesConError = new Set(Object.keys(errores).map((k) => SECCION_DE_ERROR_PLAN[k]));
   const sucio = JSON.stringify(borrador) !== JSON.stringify(registro);
   const activa = SECCIONES_PLAN.find((s) => s.id === seccion) ?? SECCIONES_PLAN[0];
-  const meta = ESTADO_PRODUCTO_META[registro.config.estado];
+  const meta = ESTADO_PRODUCTO_ABM_META[registro.config.estado];
   const vigencia = estadoVigencia(registro.config);
   const cantErrores = Object.keys(errores).length;
 
@@ -148,12 +149,13 @@ function Editor({ registro, todos }: { registro: PlanAbm; todos: PlanAbm[] }) {
   }
 
   // El estado se aplica directo: no forma parte de los cambios pendientes de guardar.
-  function aplicarEstado(estado: EstadoProducto) {
-    cambiarEstadoPlan(registro.config.id, estado);
-    setBorrador((b) => ({ ...b, config: { ...b.config, estado } }));
+  function aplicarEstado(estado: EstadoProductoAbm) {
+    const r = cambiarEstadoPlan(registro.config.id, estado);
+    setErrorEstado(r.ok ? null : r.error);
+    if (r.ok) setBorrador((b) => ({ ...b, config: { ...b.config, estado } }));
   }
 
-  function pedirEstado(estado: EstadoProducto) {
+  function pedirEstado(estado: EstadoProductoAbm) {
     if (estado === "ACTIVO" || registro.config.estado === "ELIMINADO") aplicarEstado(estado);
     else setPendiente(estado);
   }
@@ -188,7 +190,7 @@ function Editor({ registro, todos }: { registro: PlanAbm; todos: PlanAbm[] }) {
               Suspender
             </Button>
           )}
-          {registro.config.estado === "SUSPENDIDO" && (
+          {(registro.config.estado === "SUSPENDIDO" || registro.config.estado === "BORRADOR") && (
             <Button variant="outline" onClick={() => pedirEstado("ACTIVO")}>
               Activar
             </Button>
@@ -205,7 +207,17 @@ function Editor({ registro, todos }: { registro: PlanAbm; todos: PlanAbm[] }) {
         </div>
       </div>
 
-      {registro.config.estado !== "ACTIVO" ? (
+      {errorEstado && (
+        <Banner tone="error" title="No se pudo activar el plan">
+          {errorEstado}
+        </Banner>
+      )}
+
+      {registro.config.estado === "BORRADOR" ? (
+        <Banner tone="warning" title="Plan en borrador">
+          No habilita clientes ni se ofrece en las solicitudes. Al activarlo se valida el plan.
+        </Banner>
+      ) : registro.config.estado !== "ACTIVO" ? (
         <Banner
           tone="warning"
           title={registro.config.estado === "ELIMINADO" ? "Plan eliminado" : "Plan suspendido"}
