@@ -963,25 +963,14 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
 
 // --- 15. Vinculaciones ---
 
-function Vinculaciones({ p, set, errores, ver }: SeccionPlanProps) {
-  const { cf } = useEditores(set);
+function Vinculaciones({ p, set }: SeccionPlanProps) {
   return (
     <Panel
       titulo="Vinculaciones"
-      descripcion="Organismos a los que se asigna el plan y su prioridad."
+      descripcion="Organismos a los que se asigna el plan."
       vivo
-      nota="Un organismo puede tener varios planes. Con más de un plan que habilite al cliente, se usa el de menor número de prioridad."
+      nota="Un organismo puede tener varios planes."
     >
-      <CampoNumero
-        id="pl-prioridad"
-        label="Prioridad"
-        min={1}
-        value={p.config.prioridad}
-        onChange={(v) => cf({ prioridad: v })}
-        error={ver ? errores.prioridad : undefined}
-        hint="1 se evalúa primero."
-        className="sm:max-w-xs"
-      />
       <div className="space-y-3">
         <Subtitulo>Organismos</Subtitulo>
         {p.organismos.length === 0 && (
