@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
+import { crearXlsx } from "@/lib/xlsx";
 import {
   AMBITOS,
   CANALES_DESTINO,
@@ -74,6 +75,49 @@ export function ListaNotificaciones() {
     .filter((n) => !q || sinAcentos(`${n.codigo} ${n.nombre} ${getEvento(n.evento)?.label ?? ""} ${n.texto}`).includes(q))
     .sort((a, b) => a.codigo.localeCompare(b.codigo));
 
+  // Exporta lo que se ve en la solapa activa, con los filtros aplicados.
+  function exportar() {
+    const interno = ambito === "INTERNO";
+    const filasXlsx = [
+      [
+        "ID",
+        "Notificación",
+        "Evento",
+        ...(interno ? ["Dirigida a"] : []),
+        "Medios",
+        "Parámetros",
+        "Productos",
+        "Estado",
+        "Texto",
+      ],
+      ...filas.map((n) => [
+        n.codigo,
+        n.nombre,
+        getEvento(n.evento)?.label ?? n.evento,
+        ...(interno ? [nombreCanal(n.canal)] : []),
+        n.medios.map(etiquetaMedio).join(", "),
+        n.parametros.map((p) => `${p.etiqueta || p.clave}: ${p.valor} ${p.unidad}`.trim()).join("; "),
+        !n.disponibleEn || n.disponibleEn.todos
+          ? "Todos"
+          : productos
+              .filter((p) => disponibleEnProducto(n, p.config.id))
+              .map((p) => p.config.nombre)
+              .join(", ") || "—",
+        n.estado === "ACTIVA" ? "Activa" : "Inactiva",
+        n.texto,
+      ]),
+    ];
+    const blob = new Blob([crearXlsx("Notificaciones", filasXlsx) as BlobPart], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `notificaciones-${interno ? "internas" : "externas"}.xlsx`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="animate-fade-in">
@@ -89,6 +133,9 @@ export function ListaNotificaciones() {
         <Button onClick={() => setEditando(nuevaNotificacion(ambito))}>
           <IconPlus width={16} height={16} />
           Nueva notificación
+        </Button>
+        <Button variant="outline" onClick={exportar} disabled={filas.length === 0}>
+          Exportar a Excel
         </Button>
         <div className="relative w-full sm:w-72">
           <IconSearch

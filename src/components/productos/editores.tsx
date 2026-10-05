@@ -1014,12 +1014,7 @@ function TablaCombinaciones({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Subtitulo>Combinaciones de asignación</Subtitulo>
-        <Button size="sm" variant="outline" onClick={exportar} disabled={combinaciones.length === 0}>
-          Exportar a Excel
-        </Button>
-      </div>
+      <Subtitulo>Combinaciones de asignación</Subtitulo>
       <p className="text-xs text-ink-500">
         Cada fila es una regla: si el cliente cumple lo que fija la combinación, evalúa con su grupo de
         reglas. Lo que dejes sin elegir no se tiene en cuenta; si aplican varias filas, gana la más
@@ -1081,6 +1076,9 @@ function TablaCombinaciones({
               Agregar combinación
             </>
           )}
+        </Button>
+        <Button size="sm" variant="outline" onClick={exportar} disabled={combinaciones.length === 0}>
+          Exportar a Excel
         </Button>
         {editandoId && (
           <Button size="sm" variant="ghost" onClick={limpiar}>
