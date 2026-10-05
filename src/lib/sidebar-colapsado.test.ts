@@ -44,3 +44,12 @@ test("recupera el estado guardado entre navegaciones", () => {
   recargarSidebarColapsado();
   assert.equal(leerSidebarColapsado(), true);
 });
+
+test("el menú de secciones persiste con su propia clave", async () => {
+  const { NAV_SECCIONES_COLAPSADO_KEY, alternarNavSeccionesColapsado, leerNavSeccionesColapsado } =
+    await import("./sidebar-colapsado");
+  alternarNavSeccionesColapsado();
+  assert.equal(leerNavSeccionesColapsado(), true);
+  assert.equal(datos.get(NAV_SECCIONES_COLAPSADO_KEY), "1");
+  assert.equal(leerSidebarColapsado(), false);
+});

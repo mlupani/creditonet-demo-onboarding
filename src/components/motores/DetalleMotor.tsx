@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/productos/campos";
+import { NavSecciones, type ItemNav } from "@/components/ui/NavSecciones";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
@@ -49,8 +50,13 @@ import {
   IconCopy,
   IconLoader,
   IconPencil,
+  IconEye,
+  IconFileText,
+  IconGitBranch,
   IconPlus,
   IconSearch,
+  IconShieldCheck,
+  IconTable,
   IconTrash,
 } from "@/components/icons";
 
@@ -109,6 +115,14 @@ export function DetalleMotor({ id }: { id: string }) {
 }
 
 type SeccionId = "cabecera" | "fuentes" | "reglas" | "concatenacion" | "auditoria";
+
+const ICONOS_SECCION: Record<string, ItemNav["icon"]> = {
+  cabecera: IconFileText,
+  fuentes: IconTable,
+  reglas: IconShieldCheck,
+  concatenacion: IconGitBranch,
+  auditoria: IconEye,
+};
 
 const SECCIONES: { id: SeccionId; label: string }[] = [
   { id: "cabecera", label: "Cabecera" },
@@ -355,32 +369,21 @@ function Formulario({
         </Banner>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[14.5rem_minmax(0,1fr)]">
-        <nav aria-label="Secciones del grupo" className="lg:sticky lg:top-20 lg:self-start">
-          <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-            {SECCIONES.filter((x) => x.id !== "auditoria" || !nuevo).map((x) => {
-              const seleccionada = x.id === seccion;
-              const conError = intentado && seccionesConError.has(x.id);
-              return (
-                <li key={x.id} className="shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSeccion(x.id)}
-                    aria-current={seleccionada ? "page" : undefined}
-                    className={`flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
-                      seleccionada ? "bg-brand-50 text-brand-700" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
-                    }`}
-                  >
-                    <span className="flex-1">{x.label}</span>
-                    {conError && <span className="h-2 w-2 rounded-full bg-danger-500" title="Tiene errores" />}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="min-w-0">
+      <NavSecciones
+        ariaLabel="Secciones del grupo"
+        items={SECCIONES.filter((x) => x.id !== "auditoria" || !nuevo).map((x) => ({
+          id: x.id,
+          label: x.label,
+          icon: ICONOS_SECCION[x.id],
+          extra:
+            intentado && seccionesConError.has(x.id) ? (
+              <span className="block h-2 w-2 rounded-full bg-danger-500" title="Tiene errores" />
+            ) : null,
+        }))}
+        activa={seccion}
+        onSelect={(id) => setSeccion(id as SeccionId)}
+        ancho="14.5rem"
+      >
           {seccion === "cabecera" && (
         <Panel titulo="Cabecera" descripcion="Identificación y vigencia del grupo." vivo>
           <div className="grid gap-4 sm:grid-cols-[6rem_minmax(0,1fr)]">
@@ -652,8 +655,7 @@ function Formulario({
         </Panel>
           )}
           {seccion === "auditoria" && !nuevo && <Auditoria registro={registro} />}
-        </div>
-      </div>
+      </NavSecciones>
 
       <ConfirmationModal
         open={reglaAEliminar !== null}
