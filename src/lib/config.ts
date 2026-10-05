@@ -455,6 +455,14 @@ export interface TokenizacionConfig {
   tipoTarjeta?: TipoTarjeta;
   // false: el código de seguridad deja de ser obligatorio. Sin definir: se pide.
   pedirCodigoSeguridad?: boolean;
+  // false: la tokenización es opcional (el cliente puede seguir sin tarjeta y los mínimos no se
+  // exigen). Sin definir: obligatoria. Sólo aplica si la pantalla de tokenización está habilitada.
+  obligatoria?: boolean;
+}
+
+// Mínimo de tarjetas que se exige de un bloque: 0 si la tokenización es opcional.
+export function minimoTokenizacion(t: TokenizacionConfig, b: BloqueTokenizacion): number {
+  return t.obligatoria === false ? 0 : b.minimo;
 }
 
 // Producto: navegación entre las pantallas del onboarding. Libre: en cualquier orden.
