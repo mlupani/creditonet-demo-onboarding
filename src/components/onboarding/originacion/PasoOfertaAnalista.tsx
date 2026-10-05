@@ -46,7 +46,8 @@ export function PasoOfertaAnalista() {
     analista.plazo,
     getTerm(analista.plazo, plan).tna,
     plan.sistema,
-    plan.gastoOtorgamiento
+    plan.gastoOtorgamiento,
+    plan.cargoAdministrativo
   );
   const esLaDelAnalista =
     o.montoSolicitado === analista.montoSolicitado && o.plazo === analista.plazo;

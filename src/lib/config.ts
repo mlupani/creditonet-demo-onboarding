@@ -100,9 +100,6 @@ interface PlanSemilla {
   nombre: string;
   sistema: string;
   plazos: Plazo[];
-  montoMaximo: number;
-  // Tope habilitado cuando la operación renueva un crédito propio vigente.
-  montoMaximoRenovacion: number;
   rciMaxPct: number;
   endeudamientoMaxPct: number;
   smvmBolsillo: number;
@@ -131,8 +128,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     nombre: "Línea Salud 2026",
     sistema: "Francés",
     plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
-    montoMaximo: 2_500_000,
-    montoMaximoRenovacion: 2_850_000,
     rciMaxPct: 40,
     endeudamientoMaxPct: 50,
     smvmBolsillo: 350_000,
@@ -153,8 +148,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     nombre: "Línea Fuerzas de Seguridad 2026",
     sistema: "Francés",
     plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
-    montoMaximo: 3_200_000,
-    montoMaximoRenovacion: 3_600_000,
     rciMaxPct: 35,
     endeudamientoMaxPct: 45,
     smvmBolsillo: 400_000,
@@ -175,8 +168,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     nombre: "Línea Pasivos 2026",
     sistema: "Francés",
     plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
-    montoMaximo: 1_600_000,
-    montoMaximoRenovacion: 1_800_000,
     rciMaxPct: 30,
     endeudamientoMaxPct: 40,
     smvmBolsillo: 300_000,
@@ -197,8 +188,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     nombre: "Línea Docentes 2026",
     sistema: "Francés",
     plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
-    montoMaximo: 2_200_000,
-    montoMaximoRenovacion: 2_500_000,
     rciMaxPct: 40,
     endeudamientoMaxPct: 50,
     smvmBolsillo: 350_000,
@@ -219,8 +208,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
     nombre: "Línea Municipal 2026",
     sistema: "Francés",
     plazos: [12, 18, 24, 36, 48, 60, 72, 84, 96, 120],
-    montoMaximo: 1_800_000,
-    montoMaximoRenovacion: 2_000_000,
     rciMaxPct: 35,
     endeudamientoMaxPct: 45,
     smvmBolsillo: 320_000,
@@ -321,6 +308,88 @@ export function normalizarGasto(
   };
 }
 
+// Cargo administrativo / de cobranza: porcentaje de la cuota o monto fijo por cuota. Va dentro de
+// la cuota que paga el cliente.
+export interface CargoAdministrativo {
+  tipo: "PORCENTAJE" | "MONTO_FIJO";
+  valor: number;
+}
+
+// Los planes guardados antes tenían `cargoAdministrativoPct` (siempre porcentaje de la cuota).
+export function normalizarCargo(
+  c: Partial<PlanCuotas> & { cargoAdministrativoPct?: number }
+): CargoAdministrativo {
+  return c.cargoAdministrativo ?? { tipo: "PORCENTAJE", valor: c.cargoAdministrativoPct ?? 0 };
+}
+
+// Capital máximo por rango de sueldo neto del cliente. `hasta: null` es un rango sin tope.
+export const MAX_RANGOS_SUELDO = 6;
+
+export interface RangoSueldoCapital {
+  id: string;
+  desde: number;
+  hasta: number | null;
+  capitalMaximo: number;
+}
+
+// Recortes porcentuales del plan sobre el capital. BCRA y buró interno recortan sólo a las
+// situaciones elegidas (que tienen que estar habilitadas en el plan). `sueldoRecalculadoPct`
+// recorta cuando el sueldo se recalcula para la oferta.
+export interface LimitantesPlan {
+  bcra: { situaciones: number[]; pct: number };
+  buroInterno: { perfiles: number[]; pct: number };
+  sueldoRecalculadoPct: number;
+}
+
+// Los planes guardados tenían un único recorte "situación BCRA distinta de 1": pasa a las
+// situaciones 2 a 5 que el plan habilita.
+// Los recortes por tipo de cliente y por condición laboral se eliminaron: se descartan.
+export function normalizarLimitantes(
+  l: Partial<LimitantesPlan> & { situacionBcraDistintaDeUnoPct?: number },
+  situacionesBcraPlan: number[]
+): LimitantesPlan {
+  const { situacionBcraDistintaDeUnoPct } = l;
+  return {
+    bcra: l.bcra ?? {
+      situaciones: [2, 3, 4, 5].filter((n) => situacionesBcraPlan.includes(n)),
+      pct: situacionBcraDistintaDeUnoPct ?? 0,
+    },
+    buroInterno: l.buroInterno ?? { perfiles: [], pct: 0 },
+    sueldoRecalculadoPct: l.sueldoRecalculadoPct ?? 0,
+  };
+}
+
+// Cuota máxima por rango de sueldo neto: en cada rango rigen su mínimo de bolsillo (SMVM), su RCI
+// (% del ingreso neto) y su tope de cuota en monto. `hasta: null` es un rango sin tope.
+export interface RangoSueldoCuota {
+  id: string;
+  desde: number;
+  hasta: number | null;
+  smvmBolsillo: number;
+  rciPct: number;
+  cuotaMaxima: number;
+}
+
+// Sueldo neto desde / hasta de los 5 rangos con que arranca un plan (el último, sin tope).
+const RANGOS_CUOTA_INICIALES: [number, number | null][] = [
+  [0, 500_000],
+  [500_000, 1_000_000],
+  [1_000_000, 2_000_000],
+  [2_000_000, 4_000_000],
+  [4_000_000, null],
+];
+
+export function rangosCuotaIniciales(rciPct: number, smvmBolsillo: number): RangoSueldoCuota[] {
+  return RANGOS_CUOTA_INICIALES.map(([desde, hasta], i) => ({
+    id: `rc-${i + 1}`,
+    desde,
+    hasta,
+    smvmBolsillo,
+    rciPct,
+    cuotaMaxima: Math.round(((hasta ?? 6_000_000) * rciPct) / 100 / 1000) * 1000,
+  }));
+}
+
 export interface BonificacionPlan {
   id: string;
   concepto: string;
@@ -351,27 +420,22 @@ export interface PlanCuotas {
   sellosPct: number;
   periodoGraciaDias: number;
   gastoOtorgamiento: GastoOtorgamiento;
-  // Cargo administrativo / de cobranza, como porcentaje sobre la cuota.
-  cargoAdministrativoPct: number;
+  // Cargo administrativo / de cobranza: % de la cuota o monto fijo, incluido en la cuota.
+  cargoAdministrativo: CargoAdministrativo;
   // Habilitación: para qué perfiles puede usarse el plan.
   situacionesBcra: number[];
   condicionesLaborales: string[];
   perfilesInternos: number[];
-  // Capital máximo, y el tope ampliado cuando la operación renueva un crédito propio.
-  montoMaximo: number;
-  montoMaximoRenovacion: number;
+  // Capital máximo según el sueldo neto (hasta MAX_RANGOS_SUELDO). Vacío: el plan no limita el capital.
+  rangosSueldoNeto: RangoSueldoCapital[];
   // Cuota máxima: compiten estas tres reglas y gana la menor.
-  rciMaxPct: number;
+  // Cuota máxima por rango de sueldo neto (SMVM, RCI y tope de cuota de cada rango).
+  rangosCuota: RangoSueldoCuota[];
+  // Nivel de endeudamiento: limitante aparte, sobre el ingreso bruto.
   endeudamientoMaxPct: number;
-  smvmBolsillo: number;
   // Recortes porcentuales sobre el capital ya calculado (02:48). Si aplican varios, manda el
   // mayor. 0 significa que la condición no recorta nada.
-  limitantes: {
-    clienteNuevoPct: number;
-    clienteExistentePct: number;
-    condicionLaboralPct: Partial<Record<string, number>>;
-    situacionBcraDistintaDeUnoPct: number;
-  };
+  limitantes: LimitantesPlan;
   bonificaciones: BonificacionPlan[];
   topes: TopesAutorizacion;
   grilla: FilaGrilla[];
@@ -395,17 +459,15 @@ function semillaAPlan(p: PlanSemilla, i: number): PlanCuotas {
       valor: p.cargoOtorgamientoPct,
       tratamiento: "DISTRIBUYE_CUOTAS",
     },
-    cargoAdministrativoPct: 0,
+    cargoAdministrativo: { tipo: "PORCENTAJE", valor: 0 },
     // Hoy la situación BCRA y el perfil interno no bloquean el plan: sólo recortan capital.
     situacionesBcra: [1, 2, 3, 4, 5],
     condicionesLaborales: [...p.condicionesLaborales],
     perfilesInternos: [1, 2, 3, 4, 5],
-    montoMaximo: p.montoMaximo,
-    montoMaximoRenovacion: p.montoMaximoRenovacion,
-    rciMaxPct: p.rciMaxPct,
+    rangosSueldoNeto: [],
+    rangosCuota: rangosCuotaIniciales(p.rciMaxPct, p.smvmBolsillo),
     endeudamientoMaxPct: p.endeudamientoMaxPct,
-    smvmBolsillo: p.smvmBolsillo,
-    limitantes: structuredClone(p.limitantes),
+    limitantes: normalizarLimitantes(structuredClone(p.limitantes), [1, 2, 3, 4, 5]),
     bonificaciones:
       i === 0
         ? [

@@ -13,6 +13,10 @@ import {
   ORGANISMOS,
   PLANES_CUOTAS,
   migrarSistemaAmortizacion,
+  MAX_RANGOS_SUELDO,
+  rangosCuotaIniciales,
+  normalizarCargo,
+  normalizarLimitantes,
   normalizarGasto,
   TRATAMIENTOS_GASTO,
   type EstadoProductoAbm,
@@ -70,7 +74,19 @@ const store = crearStoreAbm<PlanAbm>({
   }),
   aplicar: (lista) => {
     // Planes guardados con el check `seCapitaliza`: se pasan al select de tratamiento.
-    for (const r of lista) r.config.gastoOtorgamiento = normalizarGasto(r.config.gastoOtorgamiento);
+    for (const r of lista) {
+      r.config.gastoOtorgamiento = normalizarGasto(r.config.gastoOtorgamiento);
+      // Planes guardados con `cargoAdministrativoPct`: pasan al cargo con tipo y valor.
+      r.config.cargoAdministrativo = normalizarCargo(r.config);
+      delete (r.config as { cargoAdministrativoPct?: number }).cargoAdministrativoPct;
+      r.config.rangosSueldoNeto ??= [];
+      r.config.limitantes = normalizarLimitantes(r.config.limitantes, r.config.situacionesBcra);
+      // Planes guardados con RCI y SMVM únicos: se reparten en los 5 rangos iniciales.
+      const previo = r.config as { rciMaxPct?: number; smvmBolsillo?: number };
+      r.config.rangosCuota ??= rangosCuotaIniciales(previo.rciMaxPct ?? 40, previo.smvmBolsillo ?? 0);
+      delete previo.rciMaxPct;
+      delete previo.smvmBolsillo;
+    }
     for (const id of Object.keys(PLANES_CUOTAS)) delete PLANES_CUOTAS[id];
     for (const r of lista) PLANES_CUOTAS[r.config.id] = r.config;
     for (const o of ORGANISMOS)
@@ -189,28 +205,38 @@ export function validarPlan(p: PlanAbm, todos: PlanAbm[]): Record<string, string
     e.gastoOtorgamiento = "Revisá el valor del gasto de otorgamiento.";
   if (!TRATAMIENTOS_GASTO.some((t) => t.value === g.tratamiento))
     e.gastoTratamiento = "Elegí si el gasto se capitaliza o se distribuye en las cuotas.";
-  if (c.cargoAdministrativoPct < 0 || c.cargoAdministrativoPct > 100)
-    e.cargoAdministrativoPct = "El cargo va de 0 a 100 %.";
+  const cargo = c.cargoAdministrativo;
+  if (cargo.valor < 0 || (cargo.tipo === "PORCENTAJE" && cargo.valor > 100))
+    e.cargoAdministrativo = "Revisá el valor del cargo administrativo.";
 
   if (c.situacionesBcra.length === 0) e.situacionesBcra = "Aceptá al menos una situación BCRA.";
   if (c.condicionesLaborales.length === 0)
     e.condicionesLaborales = "Habilitá al menos una condición laboral.";
   if (c.perfilesInternos.length === 0) e.perfilesInternos = "Habilitá al menos un perfil interno.";
 
-  if (c.montoMaximo <= 0) e.montoMaximo = "El capital máximo debe ser mayor a cero.";
-  if (c.montoMaximoRenovacion < c.montoMaximo)
-    e.montoMaximoRenovacion = "El tope por renovación no puede ser menor al capital máximo.";
-  if (c.rciMaxPct <= 0 || c.rciMaxPct > 100) e.rciMaxPct = "La relación cuota-ingreso va de 1 a 100 %.";
+  const rangos = [...c.rangosSueldoNeto].sort((a, b) => a.desde - b.desde);
+  if (rangos.length > MAX_RANGOS_SUELDO)
+    e.rangosSueldoNeto = `El plan admite hasta ${MAX_RANGOS_SUELDO} rangos de sueldo.`;
+  else if (rangos.some((r) => r.capitalMaximo <= 0 || (r.hasta !== null && r.hasta <= r.desde)))
+    e.rangosSueldoNeto = "Cada rango necesita un sueldo hasta mayor al desde y un capital máximo mayor a cero.";
+  else if (rangos.some((r, i) => i > 0 && (rangos[i - 1].hasta === null || r.desde < rangos[i - 1].hasta!)))
+    e.rangosSueldoNeto = "Los rangos de sueldo no pueden superponerse.";
+  const rangosCuota = [...c.rangosCuota].sort((a, b) => a.desde - b.desde);
+  if (rangosCuota.length === 0) e.rangosCuota = "Cargá al menos un rango de sueldo.";
+  else if (rangosCuota.some((r) => r.hasta !== null && r.hasta <= r.desde))
+    e.rangosCuota = "En cada rango el sueldo hasta tiene que ser mayor al desde.";
+  else if (rangosCuota.some((r) => r.smvmBolsillo < 0 || r.rciPct <= 0 || r.rciPct > 100 || r.cuotaMaxima <= 0))
+    e.rangosCuota = "Cada rango necesita un RCI de 1 a 100 %, un mínimo de bolsillo sin negativos y una cuota máxima mayor a cero.";
+  else if (rangosCuota.some((r, i) => i > 0 && (rangosCuota[i - 1].hasta === null || r.desde < rangosCuota[i - 1].hasta!)))
+    e.rangosCuota = "Los rangos de sueldo no pueden superponerse.";
   if (c.endeudamientoMaxPct <= 0 || c.endeudamientoMaxPct > 100)
     e.endeudamientoMaxPct = "El endeudamiento va de 1 a 100 %.";
-  if (c.smvmBolsillo < 0) e.smvmBolsillo = "El mínimo de bolsillo no puede ser negativo.";
 
   const l = c.limitantes;
   const pcts = [
-    l.clienteNuevoPct,
-    l.clienteExistentePct,
-    l.situacionBcraDistintaDeUnoPct,
-    ...Object.values(l.condicionLaboralPct).map((v) => v ?? 0),
+    l.bcra.pct,
+    l.buroInterno.pct,
+    l.sueldoRecalculadoPct,
   ];
   if (pcts.some((v) => v < 0 || v > 100)) e.limitantes = "Los recortes van de 0 a 100 %.";
 

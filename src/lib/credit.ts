@@ -20,6 +20,7 @@ import {
   configEfectiva,
   planesDelOrganismo,
   type FilaGrilla,
+  type CargoAdministrativo,
   type GastoOtorgamiento,
   type PlanCuotas,
   type SistemaAmortizacion,
@@ -168,6 +169,8 @@ export interface CuotaAmortizacion {
   saldo: number;
   // Parte de la cuota que corresponde al gasto de otorgamiento repartido en las cuotas.
   gasto: number;
+  // Parte de la cuota que corresponde al cargo administrativo / de cobranza.
+  cargo: number;
 }
 
 // Sistemas en los que la cuota cambia de un mes a otro: la oferta informa la primera.
@@ -175,10 +178,24 @@ export function cuotaEsVariable(sistema: SistemaAmortizacion): boolean {
   return sistema === "FRANCES_VARIABLE" || sistema === "ALEMAN" || sistema === "AMERICANO";
 }
 
+// Rango de sueldo neto que contiene al sueldo (desde incluido, hasta excluido).
+export function rangoSueldoDe<T extends { desde: number; hasta: number | null }>(
+  sueldoNeto: number,
+  rangos: T[]
+): T | undefined {
+  return rangos.find((r) => sueldoNeto >= r.desde && (r.hasta === null || sueldoNeto < r.hasta));
+}
+
 // Importe del gasto de otorgamiento: porcentaje del capital o monto fijo.
 export function gastoDeOtorgamiento(monto: number, gasto?: GastoOtorgamiento | null): number {
   if (!gasto) return 0;
   return gasto.tipo === "PORCENTAJE" ? (monto * gasto.valor) / 100 : gasto.valor;
+}
+
+// Cargo administrativo de una cuota: % de la cuota (sin el cargo) o monto fijo.
+export function cargoDeCuota(cuotaSinCargo: number, cargo?: CargoAdministrativo | null): number {
+  if (!cargo) return 0;
+  return cargo.tipo === "PORCENTAJE" ? (cuotaSinCargo * cargo.valor) / 100 : cargo.valor;
 }
 
 // Capital sobre el que se calculan los intereses: si el gasto se capitaliza, se suma al capital.
@@ -198,13 +215,15 @@ function cuotaFrancesa(monto: number, plazo: number, i: number): number {
 // interés y el capital en la última cuota. Tasa directa: interés sobre el capital original.
 // Alemán: capital constante, interés sobre saldo y cuota decreciente.
 // El gasto de otorgamiento se suma al capital financiado (se capitaliza) o se reparte en partes
-// iguales sobre cada cuota (se distribuye en las cuotas).
+// iguales sobre cada cuota (se distribuye en las cuotas). El cargo administrativo va dentro de la
+// cuota: porcentaje de la cuota (con gasto incluido) o monto fijo.
 export function cronogramaCuotas(
   montoSolicitado: number,
   plazo: number,
   tna: number,
   sistema: SistemaAmortizacion = "FRANCES_FIJA",
-  gastoOtorgamiento?: GastoOtorgamiento | null
+  gastoOtorgamiento?: GastoOtorgamiento | null,
+  cargoAdministrativo?: CargoAdministrativo | null
 ): CuotaAmortizacion[] {
   if (montoSolicitado <= 0 || plazo <= 0) return [];
   const monto = capitalFinanciadoDe(montoSolicitado, gastoOtorgamiento);
@@ -235,13 +254,16 @@ export function cronogramaCuotas(
     }
     saldo -= capital;
     const ajuste = Math.pow(g, nro - 1);
+    const sinCargo = (capital + interes) * ajuste + gastoCuota;
+    const cargo = cargoDeCuota(sinCargo, cargoAdministrativo);
     filas.push({
       nro,
-      cuota: (capital + interes) * ajuste + gastoCuota,
+      cuota: sinCargo + cargo,
       capital: capital * ajuste,
       interes: interes * ajuste,
       saldo: saldo * ajuste,
       gasto: gastoCuota,
+      cargo,
     });
   }
   return filas;
@@ -254,9 +276,10 @@ export function calcularCuota(
   plazo: number,
   tna: number,
   sistema: SistemaAmortizacion = "FRANCES_FIJA",
-  gasto?: GastoOtorgamiento | null
+  gasto?: GastoOtorgamiento | null,
+  cargo?: CargoAdministrativo | null
 ): number {
-  const primera = cronogramaCuotas(monto, plazo, tna, sistema, gasto)[0];
+  const primera = cronogramaCuotas(monto, plazo, tna, sistema, gasto, cargo)[0];
   return primera ? Math.round(primera.cuota / 100) * 100 : 0;
 }
 
@@ -268,11 +291,16 @@ export function totalAPagarDe(
   tna: number,
   cuota: number,
   sistema: SistemaAmortizacion = "FRANCES_FIJA",
-  gasto?: GastoOtorgamiento | null
+  gasto?: GastoOtorgamiento | null,
+  cargo?: CargoAdministrativo | null
 ): number {
-  if (sistema === "AMERICANO") return cuota * plazo + capitalFinanciadoDe(monto, gasto);
+  // La última cuota del americano devuelve el capital: el cargo en % también lo grava.
+  if (sistema === "AMERICANO") {
+    const capital = capitalFinanciadoDe(monto, gasto);
+    return cuota * plazo + capital + cargoDeCuota(capital, cargo?.tipo === "PORCENTAJE" ? cargo : null);
+  }
   if (!cuotaEsVariable(sistema)) return cuota * plazo;
-  const total = cronogramaCuotas(monto, plazo, tna, sistema, gasto).reduce((s, f) => s + f.cuota, 0);
+  const total = cronogramaCuotas(monto, plazo, tna, sistema, gasto, cargo).reduce((s, f) => s + f.cuota, 0);
   return Math.round(total / 100) * 100;
 }
 
@@ -298,9 +326,15 @@ export function capitalDesdeCuota(
   plazo: number,
   tna: number,
   sistema: SistemaAmortizacion = "FRANCES_FIJA",
-  gasto?: GastoOtorgamiento | null
+  gasto?: GastoOtorgamiento | null,
+  cargoAdministrativo?: CargoAdministrativo | null
 ): number {
   if (cuota <= 0 || plazo <= 0) return 0;
+  // La cuota que paga el cliente incluye el cargo: se lo descuenta antes de invertir.
+  cuota =
+    cargoAdministrativo?.tipo === "PORCENTAJE"
+      ? cuota / (1 + cargoAdministrativo.valor / 100)
+      : cuota - (cargoAdministrativo?.valor ?? 0);
   const pct = gasto?.tipo === "PORCENTAJE" ? gasto.valor / 100 : 0;
   const fijo = gasto?.tipo === "MONTO_FIJO" ? gasto.valor : 0;
   let capital: number;
@@ -404,7 +438,8 @@ export function recalcularOferta(entrada: Oferta): Oferta {
     oferta.plazo,
     term.tna,
     plan?.sistema,
-    plan?.gastoOtorgamiento
+    plan?.gastoOtorgamiento,
+    plan?.cargoAdministrativo
   );
   return {
     ...oferta,
@@ -417,7 +452,8 @@ export function recalcularOferta(entrada: Oferta): Oferta {
       term.tna,
       valorCuota,
       plan?.sistema,
-      plan?.gastoOtorgamiento
+      plan?.gastoOtorgamiento,
+      plan?.cargoAdministrativo
     ),
     primeraCuotaVencimiento: term.primeraCuota,
   };
@@ -467,7 +503,6 @@ export function calcularLimites(
   // (reunión 11/09, 44:00): la cuota de un crédito marcado para precancelar deja de pesar en
   // la exposición, así que libera capacidad y el capital máximo sube.
   const cancelado = (c: CreditoActivo) => conCancelaciones && seCancela(c);
-  const renovando = app.oferta.creditosActivos.some(cancelado);
   const cuotasVigentes = app.oferta.creditosActivos
     .filter((c) => !cancelado(c))
     .reduce((s, c) => s + c.valorCuota, 0);
@@ -476,19 +511,41 @@ export function calcularLimites(
     .reduce((s, c) => s + c.valorCuota, 0);
 
   // --- Cuota máxima: compiten tres reglas y gana la menor (reunión 11/09, 02:47) ---
+  // SMVM, RCI y cuota máxima salen del rango de sueldo neto del cliente; fuera de todos los rangos
+  // no hay cuota posible. El endeudamiento es un limitante aparte, igual para todos los sueldos.
+  const rangoCuota = rangoSueldoDe(neto, plan.rangosCuota);
   const limitesCuota: LimiteCuota[] = [
-    {
-      id: "smvm",
-      label: "SMVM de bolsillo",
-      detalle: `Ingreso neto ${formatARS(neto)} menos el mínimo de bolsillo ${formatARS(plan.smvmBolsillo)}`,
-      monto: Math.max(neto - plan.smvmBolsillo - cuotasVigentes, 0),
-    },
-    {
-      id: "rci",
-      label: "Relación cuota-ingreso",
-      detalle: `${plan.rciMaxPct} % del ingreso neto`,
-      monto: Math.round((neto * plan.rciMaxPct) / 100),
-    },
+    ...(rangoCuota
+      ? [
+          {
+            id: "smvm",
+            label: "SMVM de bolsillo",
+            detalle: `Ingreso neto ${formatARS(neto)} menos el mínimo de bolsillo ${formatARS(rangoCuota.smvmBolsillo)}`,
+            monto: Math.max(neto - rangoCuota.smvmBolsillo - cuotasVigentes, 0),
+          },
+          {
+            id: "rci",
+            label: "Relación cuota-ingreso",
+            detalle: `${rangoCuota.rciPct} % del ingreso neto`,
+            monto: Math.round((neto * rangoCuota.rciPct) / 100),
+          },
+          {
+            id: "cuota-rango",
+            label: "Cuota máxima del rango",
+            detalle: `Rango de sueldo neto ${formatARS(rangoCuota.desde)} – ${
+              rangoCuota.hasta === null ? "sin tope" : formatARS(rangoCuota.hasta)
+            }`,
+            monto: rangoCuota.cuotaMaxima,
+          },
+        ]
+      : [
+          {
+            id: "sin-rango",
+            label: "Rango de sueldo neto",
+            detalle: `Sueldo neto ${formatARS(neto)} fuera de los rangos de cuota del plan`,
+            monto: 0,
+          },
+        ]),
     {
       id: "endeudamiento",
       label: "Nivel de endeudamiento",
@@ -529,14 +586,25 @@ export function calcularLimites(
             monto: cfg.capitalMaximo,
           },
         ]),
-    {
-      id: "plan",
-      label: "Límite por plan de cuotas",
-      detalle: renovando
-        ? `${plan.nombre} · tope ampliado por renovación`
-        : plan.nombre,
-      monto: renovando ? plan.montoMaximoRenovacion : plan.montoMaximo,
-    },
+    // Si el plan define rangos de sueldo neto, el sueldo del cliente fija otro tope; fuera de todos
+    // los rangos no hay capital por este límite.
+    ...(plan.rangosSueldoNeto.length === 0
+      ? []
+      : [
+          (() => {
+            const rango = rangoSueldoDe(neto, plan.rangosSueldoNeto);
+            return {
+              id: "sueldo-neto",
+              label: "Límite por rango de sueldo neto",
+              detalle: rango
+                ? `Sueldo neto ${formatARS(neto)} en el rango ${formatARS(rango.desde)} – ${
+                    rango.hasta === null ? "sin tope" : formatARS(rango.hasta)
+                  }`
+                : `Sueldo neto ${formatARS(neto)} fuera de los rangos del plan`,
+              monto: rango?.capitalMaximo ?? 0,
+            };
+          })(),
+        ]),
     {
       id: "cuota",
       label: "Límite por cuota máxima",
@@ -546,7 +614,8 @@ export function calcularLimites(
         app.oferta.plazo,
         term.tna,
         plan.sistema,
-        plan.gastoOtorgamiento
+        plan.gastoOtorgamiento,
+        plan.cargoAdministrativo
       ),
     },
   ];
@@ -556,34 +625,37 @@ export function calcularLimites(
   // --- Limitantes de la oferta: recortes porcentuales sobre el capital ya calculado.
   // Si aplican varios, manda el mayor recorte (02:48-02:50). ---
   const lim = plan.limitantes;
-  const esNuevo = app.identificacion.tipoCliente === "NUEVO";
-  const condicion = app.laboral.condicionLaboral;
-  const recorteCondicion = lim.condicionLaboralPct[condicion] ?? 0;
   const bcra = app.situaciones?.bcra ?? 1;
+  const interna = app.situaciones?.interna ?? 1;
+  // Sólo recortan las situaciones elegidas que además el plan habilita.
+  const bcraLimitada = lim.bcra.situaciones.includes(bcra) && plan.situacionesBcra.includes(bcra);
+  const buroLimitado =
+    lim.buroInterno.perfiles.includes(interna) && plan.perfilesInternos.includes(interna);
+  const sueldoRecalculado = app.laboral.debitosNoRemunerativos > 0;
 
   const limitantes: LimitanteOferta[] = [
     {
-      id: "tipo-cliente",
-      label: esNuevo ? "Cliente nuevo" : "Cliente existente",
-      detalle: esNuevo
-        ? "Primera operación con la financiera"
-        : "Con historial de cumplimiento: sin recorte",
-      recortePct: esNuevo ? lim.clienteNuevoPct : lim.clienteExistentePct,
-      aplica: true,
-    },
-    {
-      id: "condicion-laboral",
-      label: `Condición laboral: ${condicion || "sin declarar"}`,
-      detalle: recorteCondicion > 0 ? "Condición con recorte configurado" : "Sin recorte",
-      recortePct: recorteCondicion,
-      aplica: recorteCondicion > 0,
-    },
-    {
       id: "situacion-bcra",
       label: `Situación BCRA ${bcra}`,
-      detalle: bcra !== 1 ? "Situación distinta de 1" : "Situación 1: sin recorte",
-      recortePct: bcra !== 1 ? lim.situacionBcraDistintaDeUnoPct : 0,
-      aplica: bcra !== 1,
+      detalle: bcraLimitada ? "Situación con recorte configurado" : "Sin recorte",
+      recortePct: bcraLimitada ? lim.bcra.pct : 0,
+      aplica: bcraLimitada,
+    },
+    {
+      id: "buro-interno",
+      label: `Buró interno ${interna}`,
+      detalle: buroLimitado ? "Situación con recorte configurado" : "Sin recorte",
+      recortePct: buroLimitado ? lim.buroInterno.pct : 0,
+      aplica: buroLimitado,
+    },
+    {
+      id: "sueldo-recalculado",
+      label: "Sueldo recalculado para oferta",
+      detalle: sueldoRecalculado
+        ? "El sueldo neto se recalculó con los conceptos no remunerativos"
+        : "El sueldo no se recalculó: sin recorte",
+      recortePct: sueldoRecalculado ? lim.sueldoRecalculadoPct : 0,
+      aplica: sueldoRecalculado,
     },
   ];
 
@@ -624,6 +696,9 @@ export interface EvaluacionPlan {
   cumpleRci: boolean;
   cumpleEndeudamiento: boolean;
   cumpleSmvm: boolean;
+  // Valores del rango de sueldo neto del cliente (0 si el sueldo cae fuera de todos los rangos).
+  rciMaxPct: number;
+  smvmBolsillo: number;
   capitalMaximo: number;
 }
 
@@ -639,18 +714,23 @@ export function evaluarPlan(app: CreditApplication): EvaluacionPlan {
   const rciPct = pct(o.valorCuota);
   const endeudamientoPct = pct(o.valorCuota + cuotasVigentes);
   const ingresoBolsillo = neto - o.valorCuota - cuotasVigentes;
+  const rango = rangoSueldoDe(neto, plan.rangosCuota);
+  const rciMaxPct = rango?.rciPct ?? 0;
+  const smvmBolsillo = rango?.smvmBolsillo ?? 0;
   return {
     plan,
     ingresoNeto: neto,
     cuotaPlan: o.valorCuota,
-    cuotaMaximaRci: Math.round((neto * plan.rciMaxPct) / 100),
+    cuotaMaximaRci: Math.round((neto * rciMaxPct) / 100),
     rciPct,
     cuotasVigentes,
     endeudamientoPct,
     ingresoBolsillo,
-    cumpleRci: rciPct <= plan.rciMaxPct,
+    cumpleRci: !!rango && rciPct <= rciMaxPct,
     cumpleEndeudamiento: endeudamientoPct <= plan.endeudamientoMaxPct,
-    cumpleSmvm: ingresoBolsillo >= plan.smvmBolsillo,
+    cumpleSmvm: !!rango && ingresoBolsillo >= smvmBolsillo,
+    rciMaxPct,
+    smvmBolsillo,
     capitalMaximo: o.capitalMaximoActual,
   };
 }

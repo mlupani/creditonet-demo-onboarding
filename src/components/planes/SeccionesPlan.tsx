@@ -29,6 +29,7 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
+import { MAX_RANGOS_SUELDO } from "@/lib/config";
 import { CampoNumero, Panel, Subtitulo } from "@/components/productos/campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
 import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
@@ -257,23 +258,46 @@ function Gastos({ p, set, errores, ver }: SeccionPlanProps) {
 
 function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
   const { cf } = useEditores(set);
+  const c = p.config.cargoAdministrativo;
+  const setC = (patch: Partial<typeof c>) => cf({ cargoAdministrativo: { ...c, ...patch } });
   return (
     <Panel
       titulo="Cargos periódicos"
-      descripcion="Cargo administrativo o de cobranza que se suma a cada cuota."
+      descripcion="Cargo administrativo o de cobranza que va incluido en cada cuota."
       vivo
-      nota="Si es mayor a cero, se informa en la tabla de cuotas de la oferta."
+      nota="Cambia la cuota de la oferta y, si es mayor a cero, se informa en la tabla de cuotas."
     >
-      <CampoNumero
-        id="pl-cargo-adm"
-        label="Cargo administrativo / cobranza"
-        sufijo="% s/cuota"
-        step={0.1}
-        value={p.config.cargoAdministrativoPct}
-        onChange={(v) => cf({ cargoAdministrativoPct: v })}
-        error={ver ? errores.cargoAdministrativoPct : undefined}
-        className="sm:max-w-xs"
-      />
+      <Grilla>
+        <SelectField
+          id="pl-cargo-tipo"
+          label="Cargo administrativo / cobranza"
+          value={c.tipo}
+          onChange={(v) => setC({ tipo: v as typeof c.tipo })}
+          options={[
+            { value: "PORCENTAJE", label: "Porcentaje de la cuota" },
+            { value: "MONTO_FIJO", label: "Monto fijo por cuota" },
+          ]}
+        />
+        {c.tipo === "PORCENTAJE" ? (
+          <CampoNumero
+            id="pl-cargo-valor"
+            label="Porcentaje"
+            sufijo="% s/cuota"
+            step={0.1}
+            value={c.valor}
+            onChange={(v) => setC({ valor: v })}
+            error={ver ? errores.cargoAdministrativo : undefined}
+          />
+        ) : (
+          <MoneyInput
+            id="pl-cargo-valor"
+            label="Monto por cuota"
+            value={c.valor}
+            onChange={(v) => setC({ valor: v })}
+            error={ver ? errores.cargoAdministrativo : undefined}
+          />
+        )}
+      </Grilla>
     </Panel>
   );
 }
@@ -370,32 +394,78 @@ function PerfilRiesgo({ p, set, errores, ver }: SeccionPlanProps) {
 
 function CapitalMaximo({ p, set, errores, ver }: SeccionPlanProps) {
   const { cf } = useEditores(set);
+  const rangos = p.config.rangosSueldoNeto;
+  const cambiar = (id: string, patch: Partial<(typeof rangos)[number]>) =>
+    cf({ rangosSueldoNeto: rangos.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
   return (
     <Panel
       titulo="Capital máximo"
-      descripcion="Tope de capital que otorga el plan."
+      descripcion="Tope de capital que otorga el plan según el sueldo neto del cliente."
       vivo
-      nota="Es uno de los límites de capital de la oferta: gana el más restrictivo entre el universal, sueldos brutos, producto, plan y cuota máxima."
+      nota="Es uno de los límites de capital de la oferta: gana el más restrictivo entre el universal, sueldos brutos, producto, plan, rango de sueldo neto y cuota máxima."
     >
-      <Grilla>
-        <MoneyInput
-          id="pl-monto-max"
-          label="Capital máximo"
-          required
-          value={p.config.montoMaximo}
-          onChange={(v) => cf({ montoMaximo: v })}
-          error={ver ? errores.montoMaximo : undefined}
-        />
-        <MoneyInput
-          id="pl-monto-renov"
-          label="Capital máximo con renovación"
-          required
-          value={p.config.montoMaximoRenovacion}
-          onChange={(v) => cf({ montoMaximoRenovacion: v })}
-          error={ver ? errores.montoMaximoRenovacion : undefined}
-          hint="Tope ampliado cuando la operación renueva un crédito propio."
-        />
-      </Grilla>
+      <div className="space-y-3">
+        <p className="text-xs text-ink-500">
+          Opcional, hasta {MAX_RANGOS_SUELDO} rangos: según el sueldo neto del cliente (desde incluido,
+          hasta excluido) se limita el capital. Dejá “hasta” vacío para un rango sin tope. Si el sueldo
+          cae fuera de todos los rangos, este límite no otorga capital.
+        </p>
+        {ver && errores.rangosSueldoNeto && (
+          <ValidationMessage tipo="error">{errores.rangosSueldoNeto}</ValidationMessage>
+        )}
+        {rangos.map((r, i) => (
+          <div key={r.id} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
+            <MoneyInput
+              id={`${r.id}-desde`}
+              label={i === 0 ? "Sueldo neto desde" : "Desde"}
+              value={r.desde}
+              onChange={(v) => cambiar(r.id, { desde: v })}
+            />
+            <MoneyInput
+              id={`${r.id}-hasta`}
+              label={i === 0 ? "Sueldo neto hasta" : "Hasta"}
+              value={r.hasta ?? 0}
+              onChange={(v) => cambiar(r.id, { hasta: v > 0 ? v : null })}
+            />
+            <MoneyInput
+              id={`${r.id}-capital`}
+              label={i === 0 ? "Capital máximo" : "Capital"}
+              value={r.capitalMaximo}
+              onChange={(v) => cambiar(r.id, { capitalMaximo: v })}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Quitar el rango"
+              onClick={() => cf({ rangosSueldoNeto: rangos.filter((x) => x.id !== r.id) })}
+              className="mb-1.5"
+            >
+              <IconTrash width={15} height={15} />
+            </Button>
+          </div>
+        ))}
+        <Button
+          variant="subtle"
+          size="sm"
+          disabled={rangos.length >= MAX_RANGOS_SUELDO}
+          onClick={() =>
+            cf({
+              rangosSueldoNeto: [
+                ...rangos,
+                {
+                  id: `rango-${Date.now()}`,
+                  desde: rangos.at(-1)?.hasta ?? 0,
+                  hasta: null,
+                  capitalMaximo: 0,
+                },
+              ],
+            })
+          }
+        >
+          <IconPlus width={14} height={14} />
+          Agregar rango ({rangos.length}/{MAX_RANGOS_SUELDO})
+        </Button>
+      </div>
     </Panel>
   );
 }
@@ -404,23 +474,94 @@ function CapitalMaximo({ p, set, errores, ver }: SeccionPlanProps) {
 
 function CuotaMaxima({ p, set, errores, ver }: SeccionPlanProps) {
   const { cf } = useEditores(set);
+  const rangos = p.config.rangosCuota;
+  const cambiar = (id: string, patch: Partial<(typeof rangos)[number]>) =>
+    cf({ rangosCuota: rangos.map((r) => (r.id === id ? { ...r, ...patch } : r)) });
   return (
     <Panel
       titulo="Cuota máxima"
-      descripcion="Reglas que acotan la cuota: compiten las tres y gana la menor."
+      descripcion="Reglas que acotan la cuota: compiten y gana la menor."
       vivo
       nota="La cuota máxima resultante define cuánto capital soporta el cliente en el plazo elegido."
     >
-      <Grilla cols={3}>
-        <CampoNumero
-          id="pl-rci"
-          label="Relación cuota-ingreso (RCI)"
-          sufijo="%"
-          value={p.config.rciMaxPct}
-          onChange={(v) => cf({ rciMaxPct: v })}
-          error={ver ? errores.rciMaxPct : undefined}
-          hint="Sobre el ingreso neto."
-        />
+      <div className="space-y-3">
+        <Subtitulo>Por rango de sueldo neto</Subtitulo>
+        <p className="text-xs text-ink-500">
+          Según el sueldo neto del cliente (desde incluido, hasta excluido) rigen el mínimo de bolsillo
+          (SMVM), el RCI sobre el ingreso neto y el tope de cuota del rango. Dejá “hasta” vacío para un
+          rango sin tope. Si el sueldo cae fuera de todos los rangos, no hay cuota posible.
+        </p>
+        {ver && errores.rangosCuota && <ValidationMessage tipo="error">{errores.rangosCuota}</ValidationMessage>}
+        {rangos.map((r, i) => (
+          <div key={r.id} className="grid gap-3 sm:grid-cols-[repeat(5,minmax(0,1fr))_auto] sm:items-end">
+            <MoneyInput
+              id={`${r.id}-desde`}
+              label={i === 0 ? "Sueldo neto desde" : "Desde"}
+              value={r.desde}
+              onChange={(v) => cambiar(r.id, { desde: v })}
+            />
+            <MoneyInput
+              id={`${r.id}-hasta`}
+              label={i === 0 ? "Sueldo neto hasta" : "Hasta"}
+              value={r.hasta ?? 0}
+              onChange={(v) => cambiar(r.id, { hasta: v > 0 ? v : null })}
+            />
+            <MoneyInput
+              id={`${r.id}-smvm`}
+              label={i === 0 ? "Mínimo de bolsillo (SMVM)" : "SMVM"}
+              value={r.smvmBolsillo}
+              onChange={(v) => cambiar(r.id, { smvmBolsillo: v })}
+            />
+            <CampoNumero
+              id={`${r.id}-rci`}
+              label={i === 0 ? "RCI (sobre ingreso neto)" : "RCI"}
+              sufijo="%"
+              value={r.rciPct}
+              onChange={(v) => cambiar(r.id, { rciPct: v })}
+            />
+            <MoneyInput
+              id={`${r.id}-cuota`}
+              label={i === 0 ? "Cuota máxima" : "Cuota"}
+              value={r.cuotaMaxima}
+              onChange={(v) => cambiar(r.id, { cuotaMaxima: v })}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Quitar el rango"
+              onClick={() => cf({ rangosCuota: rangos.filter((x) => x.id !== r.id) })}
+              className="mb-1.5"
+            >
+              <IconTrash width={15} height={15} />
+            </Button>
+          </div>
+        ))}
+        <Button
+          variant="subtle"
+          size="sm"
+          onClick={() =>
+            cf({
+              rangosCuota: [
+                ...rangos,
+                {
+                  id: `rc-${Date.now()}`,
+                  desde: rangos.at(-1)?.hasta ?? 0,
+                  hasta: null,
+                  smvmBolsillo: rangos.at(-1)?.smvmBolsillo ?? 0,
+                  rciPct: rangos.at(-1)?.rciPct ?? 0,
+                  cuotaMaxima: 0,
+                },
+              ],
+            })
+          }
+        >
+          <IconPlus width={14} height={14} />
+          Agregar rango
+        </Button>
+      </div>
+
+      <div className="space-y-3 border-t border-ink-100 pt-4">
+        <Subtitulo>Nivel de endeudamiento</Subtitulo>
         <CampoNumero
           id="pl-endeudamiento"
           label="Endeudamiento máximo"
@@ -428,17 +569,10 @@ function CuotaMaxima({ p, set, errores, ver }: SeccionPlanProps) {
           value={p.config.endeudamientoMaxPct}
           onChange={(v) => cf({ endeudamientoMaxPct: v })}
           error={ver ? errores.endeudamientoMaxPct : undefined}
-          hint="Sobre el ingreso bruto."
+          hint="Sobre el ingreso bruto, igual para todos los sueldos."
+          className="sm:max-w-xs"
         />
-        <MoneyInput
-          id="pl-smvm"
-          label="Mínimo de bolsillo"
-          value={p.config.smvmBolsillo}
-          onChange={(v) => cf({ smvmBolsillo: v })}
-          error={ver ? errores.smvmBolsillo : undefined}
-          hint="Lo que le tiene que quedar al cliente."
-        />
-      </Grilla>
+      </div>
     </Panel>
   );
 }
@@ -449,11 +583,6 @@ function Limitantes({ p, set, errores, ver }: SeccionPlanProps) {
   const { cf } = useEditores(set);
   const l = p.config.limitantes;
   const setL = (patch: Partial<typeof l>) => cf({ limitantes: { ...l, ...patch } });
-  const setCondicion = (condicion: string, pct: number) => {
-    const { [condicion]: _q, ...resto } = l.condicionLaboralPct;
-    void _q;
-    setL({ condicionLaboralPct: pct > 0 ? { ...resto, [condicion]: pct } : resto });
-  };
   return (
     <Panel
       titulo="Limitantes"
@@ -466,41 +595,63 @@ function Limitantes({ p, set, errores, ver }: SeccionPlanProps) {
       )}
       <Grilla cols={3}>
         <CampoNumero
-          id="pl-lim-nuevo"
-          label="Cliente nuevo"
+          id="pl-lim-sueldo"
+          label="Sueldo recalculado para oferta"
           sufijo="%"
-          value={l.clienteNuevoPct}
-          onChange={(v) => setL({ clienteNuevoPct: v })}
-        />
-        <CampoNumero
-          id="pl-lim-existente"
-          label="Cliente existente"
-          sufijo="%"
-          value={l.clienteExistentePct}
-          onChange={(v) => setL({ clienteExistentePct: v })}
-        />
-        <CampoNumero
-          id="pl-lim-bcra"
-          label="Situación BCRA distinta de 1"
-          sufijo="%"
-          value={l.situacionBcraDistintaDeUnoPct}
-          onChange={(v) => setL({ situacionBcraDistintaDeUnoPct: v })}
+          value={l.sueldoRecalculadoPct}
+          onChange={(v) => setL({ sueldoRecalculadoPct: v })}
+          hint="Recorte cuando el sueldo se recalcula con los conceptos no remunerativos."
         />
       </Grilla>
       <div className="space-y-3">
-        <Subtitulo>Recorte por condición laboral</Subtitulo>
-        <Grilla cols={3}>
-          {CONDICIONES_LABORALES.map((c, i) => (
-            <CampoNumero
-              key={c}
-              id={`pl-lim-cond-${i}`}
-              label={c}
-              sufijo="%"
-              value={l.condicionLaboralPct[c] ?? 0}
-              onChange={(v) => setCondicion(c, v)}
+        <Subtitulo>Situación BCRA</Subtitulo>
+        <p className="text-xs text-ink-500">
+          Sólo se listan las situaciones habilitadas en el plan. Elegí a cuáles se les aplica el recorte.
+        </p>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {p.config.situacionesBcra.map((n) => (
+            <Checkbox
+              key={n}
+              checked={l.bcra.situaciones.includes(n)}
+              onChange={(v) => setL({ bcra: { ...l.bcra, situaciones: alternar(l.bcra.situaciones, n, v).sort() } })}
+              label={ROTULO_BCRA[n]}
             />
           ))}
-        </Grilla>
+        </div>
+        <CampoNumero
+          id="pl-lim-bcra"
+          label="Recorte para las situaciones elegidas"
+          sufijo="%"
+          value={l.bcra.pct}
+          onChange={(v) => setL({ bcra: { ...l.bcra, pct: v } })}
+          className="sm:max-w-xs"
+        />
+      </div>
+      <div className="space-y-3">
+        <Subtitulo>Buró interno</Subtitulo>
+        <p className="text-xs text-ink-500">
+          Sólo se listan los perfiles habilitados en el plan. Elegí a cuáles se les aplica el recorte.
+        </p>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {p.config.perfilesInternos.map((n) => (
+            <Checkbox
+              key={n}
+              checked={l.buroInterno.perfiles.includes(n)}
+              onChange={(v) =>
+                setL({ buroInterno: { ...l.buroInterno, perfiles: alternar(l.buroInterno.perfiles, n, v).sort() } })
+              }
+              label={ROTULO_PERFIL[n]}
+            />
+          ))}
+        </div>
+        <CampoNumero
+          id="pl-lim-buro"
+          label="Recorte para los perfiles elegidos"
+          sufijo="%"
+          value={l.buroInterno.pct}
+          onChange={(v) => setL({ buroInterno: { ...l.buroInterno, pct: v } })}
+          className="sm:max-w-xs"
+        />
       </div>
     </Panel>
   );
@@ -674,7 +825,14 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
                   />
                 </td>
                 <td className="px-3 py-2 tabular-nums text-ink-700">
-                  {formatARS(calcularCuota(1_000_000, f.plazo, f.tna, p.config.sistema, p.config.gastoOtorgamiento))}
+                  {formatARS(calcularCuota(
+                    1_000_000,
+                    f.plazo,
+                    f.tna,
+                    p.config.sistema,
+                    p.config.gastoOtorgamiento,
+                    p.config.cargoAdministrativo
+                  ))}
                 </td>
                 <td className="px-3 py-2">
                   <input
@@ -804,15 +962,13 @@ export const SECCION_DE_ERROR_PLAN: Record<string, string> = {
   sellosPct: "iva",
   gastoOtorgamiento: "gastos",
   gastoTratamiento: "gastos",
-  cargoAdministrativoPct: "cargos",
+  cargoAdministrativo: "cargos",
   situacionesBcra: "bcra",
   condicionesLaborales: "laboral",
   perfilesInternos: "perfil",
-  montoMaximo: "capital",
-  montoMaximoRenovacion: "capital",
-  rciMaxPct: "cuota",
+  rangosSueldoNeto: "capital",
+  rangosCuota: "cuota",
   endeudamientoMaxPct: "cuota",
-  smvmBolsillo: "cuota",
   limitantes: "limitantes",
   bonificaciones: "bonificaciones",
   topes: "topes",

@@ -95,7 +95,14 @@ export function CambiarOfertaModal({
   const terceros = importeTerceros(o);
   const netoALiquidar = monto - precancel - terceros;
   const term = getTerm(plazo, plan);
-  const nuevaCuota = calcularCuota(monto, plazo, term.tna, plan.sistema, plan.gastoOtorgamiento);
+  const nuevaCuota = calcularCuota(
+    monto,
+    plazo,
+    term.tna,
+    plan.sistema,
+    plan.gastoOtorgamiento,
+    plan.cargoAdministrativo
+  );
   const cambio = monto !== o.montoSolicitado || plazo !== o.plazo;
 
   const errorLiquidar =
@@ -604,6 +611,7 @@ export function CambiarOfertaModal({
           terms={terms}
           sistema={plan.sistema}
           gasto={plan.gastoOtorgamiento}
+          cargo={plan.cargoAdministrativo}
           capitalMaximo={o.montoSolicitado}
           capital={monto}
           plazo={plazo}

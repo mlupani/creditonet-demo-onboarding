@@ -598,7 +598,7 @@ export function AnalisisCredito({
           rows={[
             { label: "Línea", value: plan.plan.nombre },
             {
-              label: `RCI (tope ${plan.plan.rciMaxPct} %)`,
+              label: `RCI (tope ${plan.rciMaxPct} %)`,
               value: formatPct(plan.rciPct),
               tone: plan.cumpleRci ? "success" : "danger",
             },

@@ -141,8 +141,15 @@ export function TablaCuotas({
                 : formatARS(plan.gastoOtorgamiento.valor)
             } (${(TRATAMIENTOS_GASTO.find((t) => t.value === plan.gastoOtorgamiento.tratamiento)?.label ?? "").toLowerCase()})`,
           ],
-          ...(plan.cargoAdministrativoPct > 0
-            ? [["Cargo administrativo", `${formatPct(plan.cargoAdministrativoPct)} s/cuota`]]
+          ...(plan.cargoAdministrativo.valor > 0
+            ? [
+                [
+                  "Cargo administrativo",
+                  plan.cargoAdministrativo.tipo === "PORCENTAJE"
+                    ? `${formatPct(plan.cargoAdministrativo.valor)} s/cuota`
+                    : `${formatARS(plan.cargoAdministrativo.valor)} por cuota`,
+                ],
+              ]
             : []),
         ].map(([label, valor]) => (
           <span key={label}>
@@ -199,7 +206,8 @@ export function TablaCuotas({
                 term.plazo,
                 term.tna,
                 plan.sistema,
-                plan.gastoOtorgamiento
+                plan.gastoOtorgamiento,
+                plan.cargoAdministrativo
               );
               return (
                 <button
@@ -268,6 +276,7 @@ export function TablaCuotas({
           terms={terms}
           sistema={plan.sistema}
           gasto={plan.gastoOtorgamiento}
+          cargo={plan.cargoAdministrativo}
           capitalMaximo={capitalMaximo}
           capitalMinimo={capitalMinimo}
           capital={o.montoSolicitado}
