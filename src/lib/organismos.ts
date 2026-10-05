@@ -65,6 +65,7 @@ export const EXTRAS_POR_SECCION = {
     "diasValidezCondiciones",
     "diasPlazoObservacion",
   ],
+  opciones: ["modalidadFirma", "requiereChequeoTelefonico"],
   financieros: ["recalculoNeto"],
   cobro: ["modalidadCobro", "vendedores"],
   punitorios: ["tramosPunitorios", "modificarCarteraActiva"],
@@ -88,7 +89,7 @@ export const EXTRAS_POR_SECCION = {
 const EXCEPCIONES_INICIALES: Record<string, Partial<ExtrasProducto>> = {
   // Vencimientos: la Policía cobra los haberes más tarde.
   "policia-provincial": { diaCorte: 25 },
-  // Punitorios: el producto tiene 5 tramos; Jubilados sólo 3 y más suaves.
+  // Punitorios: el producto tiene hasta 6 tramos; Jubilados sólo 3 y más suaves.
   "jubilados-provincial": {
     diasValidezCondiciones: 45,
     tramosPunitorios: [
@@ -374,6 +375,7 @@ export function desdeVista(o: OrganismoAbm, productoId: string, v: VistaOrganism
 export type SeccionOrganismo =
   | "capital"
   | "vencimientos"
+  | "opciones"
   | "financieros"
   | "cobro"
   | "punitorios"
@@ -389,6 +391,7 @@ export function excepcionesPorSeccion(exc: ExcepcionesOrganismo): Record<Seccion
   return {
     capital: ov.capitalMaximo !== undefined ? 1 : 0,
     vencimientos: extras(EXTRAS_POR_SECCION.vencimientos),
+    opciones: extras(EXTRAS_POR_SECCION.opciones),
     financieros: extras(EXTRAS_POR_SECCION.financieros),
     cobro: extras(EXTRAS_POR_SECCION.cobro) + (exc.canales ? 1 : 0),
     punitorios: extras(EXTRAS_POR_SECCION.punitorios),

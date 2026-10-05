@@ -1,17 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   ORGANISMOS,
   AJUSTE_CUOTA_VARIABLE_PCT,
   CONDICIONES_BONIFICACION,
-  SALTOS_CAPITAL_GRILLA,
+  TIPOS_CARGO,
+  cargoNuevo,
+  cargosDe,
+  MAX_PLAZO_GRILLA,
+  terminosDe,
   SISTEMAS_AMORTIZACION,
   TRATAMIENTOS_GASTO,
+  type CargoPeriodico,
   type CondicionBonificacion,
   type FilaGrilla,
   type PlanCuotas,
   type SistemaAmortizacion,
+  type TipoCargo,
   type TratamientoGasto,
 } from "@/lib/config";
 import { calcularCuota } from "@/lib/credit";
@@ -24,7 +31,7 @@ import {
   type PlanAbm,
 } from "@/lib/planes";
 import { formatARS } from "@/lib/format";
-import type { Plazo } from "@/lib/types";
+import { useServicios } from "@/lib/servicios";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -65,7 +72,6 @@ function Grilla({ children, cols = 2 }: { children: React.ReactNode; cols?: 2 | 
   );
 }
 
-const PLAZOS: Plazo[] = [12, 18, 24, 36, 48, 60, 72, 84, 96, 120];
 
 // --- 1. Datos generales ---
 
@@ -265,46 +271,122 @@ function Gastos({ p, set, errores, ver }: SeccionPlanProps) {
 
 function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
   const { cf } = useEditores(set);
-  const c = p.config.cargoAdministrativo;
-  const setC = (patch: Partial<typeof c>) => cf({ cargoAdministrativo: { ...c, ...patch } });
+  const servicios = useServicios();
+  const cargos = p.config.cargos;
+  const ivaPlan = p.config.calculaIva ? p.config.ivaPct : 0;
+  const cambiar = (id: string, patch: Partial<CargoPeriodico>) =>
+    cf({ cargos: cargos.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
+  const elegirServicio = (c: CargoPeriodico, servicioId: string) => {
+    const previo = servicios.find((x) => x.id === c.servicioId)?.nombre;
+    const nuevo = servicios.find((x) => x.id === servicioId);
+    // El nombre sigue al servicio mientras no se lo haya personalizado.
+    cambiar(c.id, {
+      servicioId: servicioId || null,
+      nombre: nuevo && (!c.nombre || c.nombre === previo) ? nuevo.nombre : c.nombre,
+    });
+  };
   return (
     <Panel
       titulo="Cargos periódicos"
-      descripcion="Cargo administrativo o de cobranza que va incluido en cada cuota."
+      descripcion="Cargos administrativos, de cobranza o de servicios que van incluidos en cada cuota."
       vivo
-      nota="Cambia la cuota de la oferta y, si es mayor a cero, se informa en la tabla de cuotas."
+      accion={
+        <Button size="sm" variant="subtle" onClick={() => cf({ cargos: [...cargos, cargoNuevo()] })}>
+          <IconPlus width={14} height={14} />
+          Agregar cargo
+        </Button>
+      }
+      nota="Cambian la cuota de la oferta y se informan en la tabla de cuotas. Si el valor es sin IVA, se le suma el IVA del plan."
     >
-      <Grilla>
-        <SelectField
-          id="pl-cargo-tipo"
-          label="Cargo administrativo / cobranza"
-          value={c.tipo}
-          onChange={(v) => setC({ tipo: v as typeof c.tipo })}
-          options={[
-            { value: "PORCENTAJE", label: "Porcentaje de la cuota" },
-            { value: "MONTO_FIJO", label: "Monto fijo por cuota" },
-          ]}
-        />
-        {c.tipo === "PORCENTAJE" ? (
-          <CampoNumero
-            id="pl-cargo-valor"
-            label="Porcentaje"
-            sufijo="% s/cuota"
-            step={0.1}
-            value={c.valor}
-            onChange={(v) => setC({ valor: v })}
-            error={ver ? errores.cargoAdministrativo : undefined}
-          />
-        ) : (
-          <MoneyInput
-            id="pl-cargo-valor"
-            label="Monto por cuota"
-            value={c.valor}
-            onChange={(v) => setC({ valor: v })}
-            error={ver ? errores.cargoAdministrativo : undefined}
-          />
-        )}
-      </Grilla>
+      {ver && errores.cargos && <ValidationMessage tipo="error">{errores.cargos}</ValidationMessage>}
+      {cargos.length === 0 && (
+        <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-sm text-ink-500">
+          El plan no tiene cargos periódicos. Agregá uno con el botón “Agregar cargo”.
+        </p>
+      )}
+      {cargos.map((c, i) => {
+        const disponibles = servicios.filter((x) => x.estado === "ACTIVO" || x.id === c.servicioId);
+        return (
+          <div key={c.id} className="rounded-xl border border-ink-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <Subtitulo>Cargo {i + 1}</Subtitulo>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Quitar el cargo ${i + 1}`}
+                onClick={() => cf({ cargos: cargos.filter((x) => x.id !== c.id) })}
+              >
+                <IconTrash width={14} height={14} />
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <SelectField
+                id={`pl-cargo-servicio-${c.id}`}
+                label="Servicio"
+                value={c.servicioId ?? ""}
+                placeholder="Sin servicio (cargo propio)"
+                onChange={(v) => elegirServicio(c, v)}
+                options={[
+                  { value: "", label: "Sin servicio (cargo propio)" },
+                  ...disponibles.map((x) => ({ value: x.id, label: x.nombre })),
+                ]}
+                hint="Se administran en Servicios."
+              />
+              <FormField
+                id={`pl-cargo-nombre-${c.id}`}
+                label="Nombre del cargo"
+                value={c.nombre}
+                onChange={(v) => cambiar(c.id, { nombre: v })}
+                placeholder="Ej.: Cargo administrativo"
+              />
+              <SelectField
+                id={`pl-cargo-tipo-${c.id}`}
+                label="Se cobra como"
+                value={c.tipo}
+                onChange={(v) => cambiar(c.id, { tipo: v as TipoCargo })}
+                options={TIPOS_CARGO}
+              />
+              {c.tipo === "MONTO_FIJO" ? (
+                <MoneyInput
+                  id={`pl-cargo-valor-${c.id}`}
+                  label="Monto por cuota"
+                  value={c.valor}
+                  onChange={(v) => cambiar(c.id, { valor: v })}
+                />
+              ) : (
+                <CampoNumero
+                  id={`pl-cargo-valor-${c.id}`}
+                  label="Porcentaje"
+                  sufijo={c.tipo === "PORCENTAJE_CUOTA" ? "% s/cuota" : "% s/capital"}
+                  step={0.01}
+                  value={c.valor}
+                  onChange={(v) => cambiar(c.id, { valor: v })}
+                />
+              )}
+              <SelectField
+                id={`pl-cargo-iva-${c.id}`}
+                label="IVA"
+                value={c.conIva ? "CON" : "SIN"}
+                onChange={(v) => cambiar(c.id, { conIva: v === "CON" })}
+                options={[
+                  { value: "SIN", label: "Sin IVA (se suma el IVA del plan)" },
+                  { value: "CON", label: "Con IVA incluido" },
+                ]}
+                hint={
+                  c.conIva
+                    ? "El valor ya incluye el IVA."
+                    : ivaPlan > 0
+                      ? `Se le suma ${ivaPlan} % de IVA.`
+                      : "El plan no calcula IVA: no se suma."
+                }
+              />
+            </div>
+          </div>
+        );
+      })}
+      <Link href="/servicios" className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+        Administrar servicios
+      </Link>
     </Panel>
   );
 }
@@ -775,21 +857,20 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
     cf({ grilla: grilla.map((f, j) => (j === i ? { ...f, ...patch } : f)) });
   const recomendar = (i: number) =>
     cf({ grilla: grilla.map((f, j) => ({ ...f, recomendada: j === i })) });
-  const libres = PLAZOS.filter((pl) => !grilla.some((f) => f.plazo === pl));
   const [viendo, setViendo] = useState(false);
   const cg = p.config.capitalGrilla;
   const setCg = (patch: Partial<typeof cg>) => cf({ capitalGrilla: { ...cg, ...patch } });
   const grillaValida = !errores.grilla;
   const exportar = () => {
-    const plazos = [...grilla].sort((a, b) => a.plazo - b.plazo);
+    const plazos = terminosDe(grilla);
     const capitales = capitalesDe(cg.maximo, 0, cg.minimo - 1, cg.salto);
-    const { sistema, gastoOtorgamiento: gasto, cargoAdministrativo: cargo } = p.config;
+    const { sistema, gastoOtorgamiento: gasto } = p.config;
     const filas = [
       ["Capital", ...plazos.map((t) => `${t.plazo} cuotas`)],
       ["TNA %", ...plazos.map((t) => String(t.tna))],
       ...capitales.map((c) => [
         formatARS(c),
-        ...plazos.map((t) => formatARS(calcularCuota(c, t.plazo, t.tna, sistema, gasto, cargo))),
+        ...plazos.map((t) => formatARS(calcularCuota(c, t.plazo, t.tna, sistema, gasto, cargosDe(p.config)))),
       ]),
     ];
     const blob = new Blob([crearXlsx("Grilla", filas) as BlobPart], {
@@ -805,9 +886,9 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
   return (
     <Panel
       titulo="Grilla de tasas"
-      descripcion="TNA de cada plazo. Es la grilla con la que se arma la oferta."
+      descripcion="TNA de cada plazo o rango de plazos. Es la grilla con la que se arma la oferta."
       vivo
-      nota="La TNA de cada plazo sale de esta grilla y la cuota se calcula con el sistema del plan."
+      nota="La TNA de cada plazo sale de esta grilla y la cuota se calcula con el sistema del plan. El salto de capital lo escribís vos."
     >
       {ver && errores.grilla && <ValidationMessage tipo="error">{errores.grilla}</ValidationMessage>}
       <Grilla cols={3}>
@@ -823,99 +904,158 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
           value={cg.maximo}
           onChange={(v) => setCg({ maximo: v })}
         />
-        <SelectField
+        <MoneyInput
           id="pl-grilla-salto"
           label="Salto de capital"
-          value={String(cg.salto)}
-          onChange={(v) => setCg({ salto: Number(v) })}
-          options={SALTOS_CAPITAL_GRILLA.map((s) => ({ value: String(s), label: `Cada ${formatARS(s)}` }))}
+          value={cg.salto}
+          onChange={(v) => setCg({ salto: v })}
+          hint="Cada cuánto se abre una fila de capital."
         />
       </Grilla>
       <div className="overflow-x-auto rounded-xl border border-ink-200">
-        <table className="w-full min-w-[28rem] text-left text-sm">
+        <table className="w-full min-w-[44rem] text-left text-sm">
           <thead>
             <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-              <th className="px-3 py-2.5">Plazo</th>
+              <th className="px-3 py-2.5">Tipo</th>
+              <th className="px-3 py-2.5">Desde (cuotas)</th>
+              <th className="px-3 py-2.5">Hasta (cuotas)</th>
+              <th className="px-3 py-2.5">Cada</th>
               <th className="px-3 py-2.5">TNA</th>
               <th className="px-3 py-2.5">Recomendada</th>
               <th className="px-3 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-ink-100">
-            {grilla.map((f, i) => (
-              <tr key={i}>
-                <td className="px-3 py-2">
-                  <select
-                    aria-label={`Plazo de la fila ${i + 1}`}
-                    value={f.plazo}
-                    onChange={(e) => cambiar(i, { plazo: Number(e.target.value) as Plazo })}
-                    className="h-9 rounded-lg border border-ink-300 bg-white px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  >
-                    {[f.plazo, ...libres].sort((a, b) => a - b).map((pl) => (
-                      <option key={pl} value={pl}>
-                        {pl} cuotas
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="w-32 px-3 py-2">
-                  <input
-                    type="number"
-                    aria-label={`TNA de la fila ${i + 1}`}
-                    min={0}
-                    step={0.5}
-                    value={f.tna}
-                    onChange={(e) => cambiar(i, { tna: Number(e.target.value) })}
-                    className="h-9 w-full rounded-lg border border-ink-300 bg-white px-2 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <input
-                    type="radio"
-                    name="grilla-recomendada"
-                    aria-label={`Marcar ${f.plazo} cuotas como recomendada`}
-                    checked={f.recomendada}
-                    onChange={() => recomendar(i)}
-                  />
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Quitar ${f.plazo} cuotas`}
-                    disabled={grilla.length <= 1}
-                    onClick={() => cf({ grilla: grilla.filter((_, j) => j !== i) })}
-                  >
-                    <IconTrash width={15} height={15} />
-                  </Button>
-                </td>
-              </tr>
-            ))}
+            {grilla.map((f, i) => {
+              const corrido = f.modo === "CORRIDO";
+              const entrada =
+                "h-9 w-full rounded-lg border border-ink-300 bg-white px-2 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-ink-50 disabled:text-ink-300";
+              return (
+                <tr key={i}>
+                  <td className="px-3 py-2">
+                    <select
+                      aria-label={`Tipo de la fila ${i + 1}`}
+                      value={corrido ? "CORRIDO" : "EXACTO"}
+                      onChange={(e) =>
+                        cambiar(
+                          i,
+                          e.target.value === "CORRIDO"
+                            ? { modo: "CORRIDO", plazoHasta: f.plazoHasta ?? f.plazo + 12, cada: f.cada ?? 1 }
+                            : { modo: "EXACTO" }
+                        )
+                      }
+                      className="h-9 rounded-lg border border-ink-300 bg-white px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    >
+                      <option value="EXACTO">Plazo exacto</option>
+                      <option value="CORRIDO">Rango corrido</option>
+                    </select>
+                  </td>
+                  <td className="w-28 px-3 py-2">
+                    <input
+                      type="number"
+                      aria-label={`${corrido ? "Cuota inicial" : "Plazo"} de la fila ${i + 1}`}
+                      min={1}
+                      max={MAX_PLAZO_GRILLA}
+                      step={1}
+                      value={f.plazo}
+                      onChange={(e) => cambiar(i, { plazo: Number(e.target.value) })}
+                      className={entrada}
+                    />
+                  </td>
+                  <td className="w-28 px-3 py-2">
+                    <input
+                      type="number"
+                      aria-label={`Cuota final de la fila ${i + 1}`}
+                      min={1}
+                      max={MAX_PLAZO_GRILLA}
+                      step={1}
+                      disabled={!corrido}
+                      value={corrido ? (f.plazoHasta ?? f.plazo) : ""}
+                      onChange={(e) => cambiar(i, { plazoHasta: Number(e.target.value) })}
+                      className={entrada}
+                    />
+                  </td>
+                  <td className="w-24 px-3 py-2">
+                    <input
+                      type="number"
+                      aria-label={`Cada cuántas cuotas se ofrece un plazo en la fila ${i + 1}`}
+                      min={1}
+                      step={1}
+                      disabled={!corrido}
+                      value={corrido ? (f.cada ?? 1) : ""}
+                      onChange={(e) => cambiar(i, { cada: Number(e.target.value) })}
+                      className={entrada}
+                    />
+                  </td>
+                  <td className="w-28 px-3 py-2">
+                    <input
+                      type="number"
+                      aria-label={`TNA de la fila ${i + 1}`}
+                      min={0}
+                      step={0.5}
+                      value={f.tna}
+                      onChange={(e) => cambiar(i, { tna: Number(e.target.value) })}
+                      className={entrada}
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="radio"
+                      name="grilla-recomendada"
+                      aria-label={`Marcar la fila ${i + 1} como recomendada`}
+                      checked={f.recomendada}
+                      onChange={() => recomendar(i)}
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Quitar la fila ${i + 1}`}
+                      disabled={grilla.length <= 1}
+                      onClick={() => cf({ grilla: grilla.filter((_, j) => j !== i) })}
+                    >
+                      <IconTrash width={15} height={15} />
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      <Button
-        variant="subtle"
-        size="sm"
-        disabled={libres.length === 0}
-        onClick={() => {
-          const ultima = grilla[grilla.length - 1];
-          cf({
-            grilla: [
-              ...grilla,
-              {
-                plazo: libres[0],
-                tna: (ultima?.tna ?? 60) + 3,
-                recomendada: false,
-                primeraCuota: ultima?.primeraCuota ?? "10/10/2026",
-              },
-            ].sort((a, b) => a.plazo - b.plazo),
-          });
-        }}
-      >
-        <IconPlus width={14} height={14} />
-        Agregar plazo
-      </Button>
+      <p className="text-xs text-ink-500">
+        Plazo exacto: sólo esa cantidad de cuotas. Rango corrido: todas las cantidades de “desde” a
+        “hasta” (o una cada tantas cuotas, si completás “cada”) con la misma TNA.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {(["EXACTO", "CORRIDO"] as const).map((modo) => (
+          <Button
+            key={modo}
+            variant="subtle"
+            size="sm"
+            onClick={() => {
+              const ultima = terminosDe(grilla).at(-1);
+              const desde = (ultima?.plazo ?? 0) + 1;
+              cf({
+                grilla: [
+                  ...grilla,
+                  {
+                    plazo: desde,
+                    ...(modo === "CORRIDO" ? { modo, plazoHasta: desde + 11, cada: 1 } : {}),
+                    tna: (ultima?.tna ?? 60) + 3,
+                    recomendada: false,
+                    primeraCuota: ultima?.primeraCuota ?? "10/10/2026",
+                  },
+                ],
+              });
+            }}
+          >
+            <IconPlus width={14} height={14} />
+            {modo === "EXACTO" ? "Agregar plazo" : "Agregar rango"}
+          </Button>
+        ))}
+      </div>
       <div className="flex flex-wrap gap-2">
         <Button variant="subtle" size="sm" disabled={!grillaValida} onClick={() => setViendo(true)}>
           <IconEye width={14} height={14} />
@@ -943,15 +1083,15 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
         </p>
         {viendo && grillaValida && (
           <GrillaCuotas
-            terms={[...grilla].sort((a, b) => a.plazo - b.plazo)}
+            terms={terminosDe(grilla)}
             sistema={p.config.sistema}
             gasto={p.config.gastoOtorgamiento}
-            cargo={p.config.cargoAdministrativo}
+            cargos={cargosDe(p.config)}
             capitalMaximo={cg.maximo}
             capitalMinimo={cg.minimo - 1}
             paso={cg.salto}
             capital={0}
-            plazo={grilla[0].plazo}
+            plazo={terminosDe(grilla)[0].plazo}
             seleccionable={false}
             onSeleccionar={() => {}}
           />
@@ -1038,7 +1178,7 @@ export const SECCION_DE_ERROR_PLAN: Record<string, string> = {
   sellosPct: "iva",
   gastoOtorgamiento: "gastos",
   gastoTratamiento: "gastos",
-  cargoAdministrativo: "cargos",
+  cargos: "cargos",
   situacionesBcra: "bcra",
   condicionesLaborales: "laboral",
   perfilesInternos: "perfil",

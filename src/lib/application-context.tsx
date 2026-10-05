@@ -78,7 +78,7 @@ import { fechaHora, fechaHoy, onlyDigits, selloTiempo } from "./format";
 import { correrFecha } from "./corrimiento";
 import { formatTelefono } from "./telefono";
 import { BANCOS } from "./parametros";
-import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_SUPERVISOR, seleccionarLinea } from "./config";
+import { PLANES_CUOTAS, SESION, SESION_ANALISTA, SESION_CHEQUEADOR, SESION_SUPERVISOR, seleccionarLinea, terminosDe } from "./config";
 import { hidratarProductos } from "./productos";
 import { actorActivo } from "./actor";
 import { agregarNotificacion, extracto, hidratarNotificaciones } from "./notificaciones";
@@ -93,6 +93,7 @@ import {
   requiereChequeoTelefonico,
 } from "./firma";
 import { hidratarPlanes } from "./planes";
+import { hidratarServicios } from "./servicios";
 import { hidratarOrganismos } from "./organismos";
 import { hidratarLogPunitorios } from "./punitorios-cartera";
 import { hidratarMotivosObservacion } from "./motivos-observacion";
@@ -114,9 +115,8 @@ function pasoTrasFirma(firmada: CreditApplication, anterior: CreditApplication):
 
 function plazoValido(planId: string | null, plazo: Plazo): Plazo {
   const grilla = planId ? PLANES_CUOTAS[planId]?.grilla : undefined;
-  return grilla && grilla.length > 0 && !grilla.some((f) => f.plazo === plazo)
-    ? grilla[0].plazo
-    : plazo;
+  const plazos = grilla ? terminosDe(grilla) : [];
+  return plazos.length > 0 && !plazos.some((f) => f.plazo === plazo) ? plazos[0].plazo : plazo;
 }
 
 // Simula el emisor que devolvería la API de tokenización a partir de un identificador estable.
@@ -510,6 +510,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hidratarMotores();
       hidratarProductos();
       hidratarPlanes();
+      hidratarServicios();
       hidratarOrganismos();
       hidratarMotivosObservacion();
       hidratarPlantillasNotificacion();

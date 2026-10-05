@@ -39,7 +39,7 @@ export const MODALIDADES_COBRO = [
   "Pago voluntario",
 ];
 export const CANALES_NOTIFICACION = ["WhatsApp", "Email", "SMS"];
-export const MAX_TRAMOS_PUNITORIOS = 5;
+export const MAX_TRAMOS_PUNITORIOS = 6;
 
 export const CONDICIONES_RENOVACION = [
   { value: "PORCENTAJE", label: "Porcentaje mínimo del crédito pagado" },

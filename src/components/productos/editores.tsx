@@ -57,16 +57,19 @@ import { IconPencil, IconPlus, IconTrash } from "@/components/icons";
 // Editores compartidos por el ABM de Productos y el de Organismos (que hace excepciones sobre
 // los mismos valores).
 
-// --- Punitorios: hasta 5 tramos ---
+// --- Punitorios: hasta 6 tramos ---
 
 export function EditorTramos({
   idBase,
   tramos,
   onChange,
+  ancho,
 }: {
   idBase: string;
   tramos: TramoPunitorio[];
   onChange: (tramos: TramoPunitorio[]) => void;
+  // Ocupa todo el ancho: los cuatro campos del tramo en una sola fila.
+  ancho?: boolean;
 }) {
   const cambiar = (i: number, patch: Partial<TramoPunitorio>) =>
     onChange(tramos.map((t, j) => (j === i ? { ...t, ...patch } : t)));
@@ -86,7 +89,7 @@ export function EditorTramos({
               <IconTrash width={14} height={14} />
             </Button>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className={`grid gap-3 sm:grid-cols-2 ${ancho ? "lg:grid-cols-4" : ""}`}>
             <CampoNumero
               id={`${idBase}-desde-${i}`}
               label="Desde el día de atraso"

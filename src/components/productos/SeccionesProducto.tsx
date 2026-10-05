@@ -33,7 +33,6 @@ import {
   EditorTramos,
 } from "./editores";
 import { ESTADO_PRODUCTO_ABM_META } from "./ListaProductos";
-import { CarteraPunitorios } from "./CarteraPunitorios";
 
 export interface SeccionProps {
   p: ProductoAbm;
@@ -423,7 +422,7 @@ function Punitorios({ p, set, errores, ver }: SeccionProps) {
   return (
     <Panel
       titulo="Intereses punitorios"
-      descripcion="Hasta 5 tramos de atraso, cada uno con su porcentaje, gracia y tope."
+      descripcion="Hasta 6 tramos de atraso, cada uno con su porcentaje, gracia y tope."
       nota={`${NOTA_APLICA_ORGANISMOS} Valores de ejemplo.`}
     >
       {ver && errores.tramos && <ValidationMessage tipo="error">{errores.tramos}</ValidationMessage>}
@@ -432,13 +431,6 @@ function Punitorios({ p, set, errores, ver }: SeccionProps) {
         tramos={p.extras.tramosPunitorios}
         onChange={(v) => ex({ tramosPunitorios: v })}
       />
-      <Checkbox
-        checked={p.extras.modificarCarteraActiva}
-        onChange={(v) => ex({ modificarCarteraActiva: v })}
-        label="Modificar cartera activa"
-        description="Aplica el cambio de punitorios desde el primer mes en curso, también a los créditos ya activos."
-      />
-      {p.extras.modificarCarteraActiva && <CarteraPunitorios p={p} set={set} />}
     </Panel>
   );
 }

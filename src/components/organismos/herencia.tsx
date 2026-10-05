@@ -52,6 +52,7 @@ export function FilaHerencia({
   onCrear,
   onQuitar,
   error,
+  apilado,
 }: {
   etiqueta: string;
   ayuda?: string;
@@ -63,6 +64,8 @@ export function FilaHerencia({
   onCrear: () => void;
   onQuitar: () => void;
   error?: string;
+  // Producto y organismo uno debajo del otro, cada uno a todo el ancho.
+  apilado?: boolean;
 }) {
   const excepcion = editor !== null;
   return (
@@ -86,7 +89,7 @@ export function FilaHerencia({
           </span>
         )}
       </div>
-      <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+      <dl className={`mt-3 grid gap-4 ${apilado ? "" : "sm:grid-cols-2"}`}>
         <div className="min-w-0">
           <dt className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
             Producto · {productoNombre}
@@ -186,19 +189,21 @@ function texto(campo: CampoExtra, valor: unknown): ReactNode {
     case "tramos": {
       const t = valor as TramoPunitorio[];
       return (
-        <span>
+        <div>
           <strong>
             {t.length} tramo{t.length === 1 ? "" : "s"}
           </strong>
-          <span className="block text-xs text-ink-500">
-            {t
-              .map(
-                (x) =>
-                  `día ${x.desdeDia}+: ${x.punitorioPct} % s/tasa · gracia ${x.diasGracia} d · tope ${formatARS(x.montoTopeSinIva)}`
-              )
-              .join(" | ")}
-          </span>
-        </span>
+          <ul className="mt-1 grid gap-1 text-xs text-ink-500 sm:grid-cols-2 lg:grid-cols-3">
+            {t.map((x, i) => (
+              <li key={i} className="rounded-lg border border-ink-100 bg-ink-50 px-2.5 py-1.5">
+                <span className="font-semibold text-ink-700">Tramo {i + 1} · día {x.desdeDia}+</span>
+                <span className="block">
+                  {x.punitorioPct} % s/tasa · gracia {x.diasGracia} d · tope {formatARS(x.montoTopeSinIva)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       );
     }
     case "notif": {
@@ -298,7 +303,7 @@ function EditorExtra({
         />
       );
     case "tramos":
-      return <EditorTramos idBase={idBase} tramos={valor as TramoPunitorio[]} onChange={onChange} />;
+      return <EditorTramos idBase={idBase} tramos={valor as TramoPunitorio[]} onChange={onChange} ancho />;
     case "notif":
       return (
         <EditorNotificaciones
@@ -338,6 +343,7 @@ export function FilaExtra({
       etiqueta={campo.etiqueta}
       ayuda={campo.ayuda}
       productoNombre={p.config.nombre}
+      apilado={campo.tipo === "tramos"}
       heredado={texto(campo, heredado)}
       editor={
         enExcepcion ? (

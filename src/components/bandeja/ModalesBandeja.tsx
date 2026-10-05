@@ -9,7 +9,7 @@ import {
   ofertaAnalistaDe,
   planDeSolicitud,
 } from "@/lib/credit";
-import { pantallasVisibles } from "@/lib/config";
+import { cargosDe, pantallasVisibles } from "@/lib/config";
 import { useRol } from "@/lib/rol-context";
 import { esSuperior } from "@/lib/roles";
 import { correrFecha, etiquetaCorrimiento } from "@/lib/corrimiento";
@@ -492,7 +492,7 @@ export function ObservacionModal({
                     getTerm(oferta.plazo, planDeSolicitud(app)).tna,
                     planDeSolicitud(app).sistema,
                     planDeSolicitud(app).gastoOtorgamiento,
-                    planDeSolicitud(app).cargoAdministrativo
+                    cargosDe(planDeSolicitud(app))
                   )
                 ),
               },

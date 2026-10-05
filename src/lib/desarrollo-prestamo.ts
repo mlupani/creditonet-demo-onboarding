@@ -1,5 +1,5 @@
 import type { CreditApplication } from "./types";
-import { nombreOpcion, ORGANISMOS, PRODUCTOS, CANALES, VENDEDORES } from "./config";
+import { cargosDe, nombreOpcion, ORGANISMOS, PRODUCTOS, CANALES, VENDEDORES } from "./config";
 import { formatARS } from "./format";
 import {
   cronogramaCuotas,
@@ -124,7 +124,7 @@ export function generarDesarrolloCuotas(app: CreditApplication): CuotaDesarrollo
   // Si la cuota varía según el sistema (francés variable, alemán, americano), cada cuota sale del
   // cronograma del plan; el interés de la cuota incluye su IVA, como en la descomposición de arriba.
   const cronograma = cuotaEsVariable(plan.sistema)
-    ? cronogramaCuotas(monto, plazo, o.tna, plan.sistema, plan.gastoOtorgamiento, plan.cargoAdministrativo)
+    ? cronogramaCuotas(monto, plazo, o.tna, plan.sistema, plan.gastoOtorgamiento, cargosDe(plan))
     : null;
 
   // Crédito arrancando: aún sin pagos registrados. Todos los importes de

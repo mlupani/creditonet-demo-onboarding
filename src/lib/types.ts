@@ -221,7 +221,8 @@ export interface LaboralIngresos {
 
 // --- Oferta ---
 
-export type Plazo = 12 | 18 | 24 | 36 | 48 | 60 | 72 | 84 | 96 | 120;
+// Cantidad de cuotas: cualquier entero (los planes pueden ofrecer rangos de plazos).
+export type Plazo = number;
 
 export interface CreditoActivo {
   id: string;

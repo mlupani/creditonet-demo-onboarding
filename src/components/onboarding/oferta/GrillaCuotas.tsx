@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { calcularCuota, type OfferTerm } from "@/lib/credit";
-import type { CargoAdministrativo, GastoOtorgamiento, SistemaAmortizacion } from "@/lib/config";
+import type { CargosPlan, GastoOtorgamiento, SistemaAmortizacion } from "@/lib/config";
 import { formatARS } from "@/lib/format";
 import type { Plazo } from "@/lib/types";
 
@@ -32,7 +32,7 @@ export function GrillaCuotas({
   terms,
   sistema,
   gasto,
-  cargo,
+  cargos,
   capitalMaximo,
   capitalMinimo = 0,
   paso,
@@ -46,8 +46,8 @@ export function GrillaCuotas({
   sistema?: SistemaAmortizacion;
   // Gasto de otorgamiento del plan: capitalizado o repartido, cambia la cuota de cada celda.
   gasto?: GastoOtorgamiento;
-  // Cargo administrativo del plan: va dentro de la cuota de cada celda.
-  cargo?: CargoAdministrativo;
+  // Cargos periódicos del plan: van dentro de la cuota de cada celda.
+  cargos?: CargosPlan | null;
   capitalMaximo: number;
   // Se muestran sólo capitales por encima de este piso (ej. lo que se cancela de la oferta).
   capitalMinimo?: number;
@@ -130,7 +130,7 @@ export function GrillaCuotas({
                         type="button"
                         onClick={() => onSeleccionar(cap, term.plazo)}
                         aria-label={`${formatARS(cap)} en ${term.plazo} cuotas de ${formatARS(
-                          calcularCuota(cap, term.plazo, term.tna, sistema, gasto, cargo)
+                          calcularCuota(cap, term.plazo, term.tna, sistema, gasto, cargos)
                         )}`}
                         aria-pressed={elegida}
                         className={`block w-full px-2 py-2 text-right tabular-nums transition ${
@@ -141,7 +141,7 @@ export function GrillaCuotas({
                               : "text-ink-700 hover:bg-brand-50"
                         }`}
                       >
-                        {formatARS(calcularCuota(cap, term.plazo, term.tna, sistema, gasto, cargo))}
+                        {formatARS(calcularCuota(cap, term.plazo, term.tna, sistema, gasto, cargos))}
                       </button>
                     </td>
                   );

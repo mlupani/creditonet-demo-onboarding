@@ -18,7 +18,7 @@ import {
 import { formatARS } from "@/lib/format";
 import { reglaBloquea } from "@/lib/motores";
 import { TERMINOS } from "@/lib/terminologia";
-import { PLANES_CUOTAS, SESION_SUPERVISOR } from "@/lib/config";
+import { cargosDe, PLANES_CUOTAS, SESION_SUPERVISOR } from "@/lib/config";
 import type { DatoFinancieroCorregido, Plazo } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -101,7 +101,7 @@ export function CambiarOfertaModal({
     term.tna,
     plan.sistema,
     plan.gastoOtorgamiento,
-    plan.cargoAdministrativo
+    cargosDe(plan)
   );
   const cambio = monto !== o.montoSolicitado || plazo !== o.plazo;
 
@@ -611,7 +611,7 @@ export function CambiarOfertaModal({
           terms={terms}
           sistema={plan.sistema}
           gasto={plan.gastoOtorgamiento}
-          cargo={plan.cargoAdministrativo}
+          cargos={cargosDe(plan)}
           capitalMaximo={o.montoSolicitado}
           capital={monto}
           plazo={plazo}

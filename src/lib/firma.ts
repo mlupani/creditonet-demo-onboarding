@@ -12,7 +12,7 @@ import {
   type IntentoFirma,
   type MetodoFirma,
 } from "./types";
-import { extrasEfectivos, getProductos, type ModalidadFirma } from "./productos";
+import { extrasEfectivos, type ModalidadFirma } from "./productos";
 
 type Seleccion = CreditApplication["configuracion"];
 
@@ -24,8 +24,7 @@ export function modalidadFirma(sel: Seleccion): ModalidadFirma {
 }
 
 export function requiereChequeoTelefonico(sel: Seleccion): boolean {
-  // Sólo depende del producto: el organismo no tiene excepción para este valor.
-  return getProductos().find((r) => r.config.id === sel.productoId)?.extras.requiereChequeoTelefonico ?? false;
+  return extrasEfectivos(sel.productoId, sel.organismoId)?.requiereChequeoTelefonico ?? false;
 }
 
 // Método de firma con el que arranca el crédito. En "Ambas" lo elige el analista al aprobar.

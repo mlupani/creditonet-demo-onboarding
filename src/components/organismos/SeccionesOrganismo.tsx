@@ -135,8 +135,8 @@ function DatosGenerales({ o, productos, set, errores, ver }: SeccionOrgProps) {
           error={ver ? errores.vigenciaHasta : undefined}
           hint={
             producto
-              ? `Vigencia del producto: ${textoVigencia(producto.config)}.`
-              : "Vacío: sin vencimiento. Fuera de la vigencia el organismo no se ofrece."
+              ? `No puede superar al producto (vigencia del producto: ${textoVigencia(producto.config)}).`
+              : "No puede superar al producto. Vacío: sin vencimiento."
           }
         />
       </div>
@@ -198,12 +198,11 @@ function Producto({ o, productos, set }: SeccionOrgProps) {
 
 // --- 3. Planes de cuotas ---
 
-function Planes({ o, set }: SeccionOrgProps) {
+function Planes({ o }: SeccionOrgProps) {
   const planes = usePlanes();
-  const { cf } = useEditores(set);
   const vinculados = o.config.planes;
   const lista = planes
-    .filter((p) => p.config.estado === "ACTIVO" || vinculados.includes(p.config.id))
+    .filter((p) => vinculados.includes(p.config.id))
     .sort(
       (a, b) =>
         a.config.prioridad - b.config.prioridad || a.config.nombre.localeCompare(b.config.nombre, "es")
@@ -211,38 +210,28 @@ function Planes({ o, set }: SeccionOrgProps) {
   return (
     <Panel
       titulo="Planes de cuotas"
-      descripcion="Los planes asignados al organismo: condiciones financieras, límites y grilla de tasas."
+      descripcion="Los planes asignados al organismo, sólo lectura: condiciones financieras, límites y grilla de tasas."
       vivo
-      nota="Un organismo puede tener varios planes. Para cada solicitud se usa el primero, por prioridad, que habilita la condición laboral, la situación BCRA y el perfil interno del cliente. La prioridad y la habilitación se definen en cada plan."
+      nota="Un organismo puede tener varios planes. Para cada solicitud se usa el primero, por prioridad, que habilita la condición laboral, la situación BCRA y el perfil interno del cliente. La asignación al organismo, la prioridad y la habilitación se definen en cada plan."
     >
       {vinculados.length === 0 && (
         <Banner tone="warning" title="El organismo no tiene planes de cuotas">
           Sin un plan que lo habilite, las solicitudes de este organismo se rechazan por falta de
-          línea.
+          línea. Asigná el organismo desde el plan de cuotas.
         </Banner>
       )}
       <ul className="divide-y divide-ink-100 rounded-xl border border-ink-200">
         {lista.map((p) => {
           const c = p.config;
-          const activo = c.estado === "ACTIVO";
           return (
             <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1 basis-64">
-                <Checkbox
-                  checked={vinculados.includes(c.id)}
-                  disabled={!activo && !vinculados.includes(c.id)}
-                  onChange={(v) =>
-                    cf({
-                      planes: v
-                        ? [...vinculados.filter((x) => x !== c.id), c.id]
-                        : vinculados.filter((x) => x !== c.id),
-                    })
-                  }
-                  label={c.nombre}
-                  description={`${p.codigo} · Prioridad ${c.prioridad} · ${
+                <p className="text-sm font-semibold text-ink-900">{c.nombre}</p>
+                <p className="text-xs text-ink-500">
+                  {`${p.codigo} · Prioridad ${c.prioridad} · ${
                     SISTEMAS_AMORTIZACION.find((x) => x.value === c.sistema)?.label.split(" (")[0]
                   } · ${c.condicionesLaborales.join(", ")}`}
-                />
+                </p>
               </div>
               <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[c.estado].tone}>
                 {ESTADO_PRODUCTO_ABM_META[c.estado].label}
@@ -339,17 +328,23 @@ const CAMPOS_OPCIONES: CampoExtra[] = [
   { clave: "visibleDashboard", etiqueta: "Visible en dashboard", tipo: "bool" },
 ];
 
-function Opciones({ p }: SeccionOrgProps) {
+const CLAVES_OPCIONES_CON_EXCEPCION = ["modalidadFirma", "requiereChequeoTelefonico"];
+
+function Opciones({ o, p, set }: SeccionOrgProps) {
   return (
     <Panel
       titulo="Opciones generales"
       descripcion="Condiciones generales del producto."
-      nota="Estas opciones rigen igual para todos los organismos: no admiten excepción."
+      nota="La modalidad de firma y el chequeo telefónico admiten excepción por organismo. El resto rige igual para todos los organismos: no admite excepción."
     >
       <div className="space-y-3">
-        {CAMPOS_OPCIONES.map((c) => (
-          <FilaSoloLectura key={c.clave} campo={c} p={p} />
-        ))}
+        {CAMPOS_OPCIONES.map((c) =>
+          CLAVES_OPCIONES_CON_EXCEPCION.includes(c.clave) ? (
+            <FilaExtra key={c.clave} campo={c} o={o} p={p} set={set} />
+          ) : (
+            <FilaSoloLectura key={c.clave} campo={c} p={p} />
+          )
+        )}
       </div>
     </Panel>
   );
@@ -467,15 +462,14 @@ function Cobro(props: SeccionOrgProps) {
 // --- 9. Intereses punitorios ---
 
 const CAMPOS_PUNITORIOS: CampoExtra[] = [
-  { clave: "tramosPunitorios", etiqueta: "Punitorios", ayuda: "Hasta 5 tramos de atraso.", tipo: "tramos" },
-  { clave: "modificarCarteraActiva", etiqueta: "Modificar cartera activa", tipo: "bool" },
+  { clave: "tramosPunitorios", etiqueta: "Punitorios", ayuda: "Hasta 6 tramos de atraso.", tipo: "tramos" },
 ];
 
 function Punitorios(props: SeccionOrgProps) {
   return (
     <Panel
       titulo="Intereses punitorios"
-      descripcion="Hasta 5 tramos de atraso, cada uno con su porcentaje, gracia y tope."
+      descripcion="Hasta 6 tramos de atraso, cada uno con su porcentaje, gracia y tope."
       nota={NOTA_HERENCIA}
     >
       <Filas campos={CAMPOS_PUNITORIOS} {...props} />

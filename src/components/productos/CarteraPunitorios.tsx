@@ -6,6 +6,7 @@ import { crearXlsx } from "@/lib/xlsx";
 import { useProductos, type ProductoAbm, type TramoPunitorio } from "@/lib/productos";
 import {
   aplicarPunitorios,
+  organismosDelProducto,
   restaurarPunitorios,
   simular,
   useLogPunitorios,
@@ -81,6 +82,9 @@ export function CarteraPunitorios({
   const [retroactivo, setRetroactivo] = useState<boolean | null>(null);
   const [elegidos, setElegidos] = useState<number[]>([]);
   const [valores, setValores] = useState<Record<number, Partial<Pick<TramoPunitorio, "punitorioPct" | "montoTopeSinIva">>>>({});
+  // Organismos cuya cartera se modifica: por defecto todos los del producto.
+  const organismos = organismosDelProducto(productoId);
+  const [orgsElegidos, setOrgsElegidos] = useState<string[]>([]);
   const [descargado, setDescargado] = useState(false);
   const [revisado, setRevisado] = useState(false);
   const [entiendo, setEntiendo] = useState(false);
@@ -88,8 +92,8 @@ export function CarteraPunitorios({
 
   // Sólo hacia atrás hay créditos que cambian, y por eso hay que bajar y revisar el archivo.
   const pasos = retroactivo === false
-    ? ["Alcance", "Tramos", "Confirmar"]
-    : ["Alcance", "Tramos", "Archivo de créditos", "Confirmar"];
+    ? ["Alcance", "Tramos", "Organismos", "Confirmar"]
+    : ["Alcance", "Tramos", "Organismos", "Archivo de créditos", "Confirmar"];
   const etapa = pasos[paso];
 
   const nuevos = vigentes.map((t, i) =>
@@ -98,7 +102,7 @@ export function CarteraPunitorios({
   const hayCambio = elegidos.some(
     (i) => nuevos[i].punitorioPct !== vigentes[i].punitorioPct || nuevos[i].montoTopeSinIva !== vigentes[i].montoTopeSinIva
   );
-  const filas = simular(productoId, vigentes, nuevos, retroactivo !== false);
+  const filas = simular(productoId, vigentes, nuevos, retroactivo !== false, orgsElegidos);
   const totalAjuste = filas.reduce((s, f) => s + f.ajuste, 0);
 
   function abrir() {
@@ -106,6 +110,7 @@ export function CarteraPunitorios({
     setRetroactivo(null);
     setElegidos([]);
     setValores({});
+    setOrgsElegidos(organismosDelProducto(productoId).map((o) => o.id));
     setDescargado(false);
     setRevisado(false);
     setEntiendo(false);
@@ -134,10 +139,16 @@ export function CarteraPunitorios({
   }
 
   const puedeSeguir =
-    etapa === "Alcance" ? retroactivo !== null : etapa === "Tramos" ? hayCambio : revisado;
+    etapa === "Alcance"
+      ? retroactivo !== null
+      : etapa === "Tramos"
+        ? hayCambio
+        : etapa === "Organismos"
+          ? orgsElegidos.length > 0
+          : revisado;
 
   function aplicar() {
-    const r = aplicarPunitorios(productoId, nuevos, retroactivo !== false);
+    const r = aplicarPunitorios(productoId, nuevos, retroactivo !== false, orgsElegidos);
     if (r) set((x) => ({ ...x, extras: { ...x.extras, tramosPunitorios: r.tramosDespues } }));
     setAbierto(false);
   }
@@ -208,6 +219,11 @@ export function CarteraPunitorios({
                       <p className="mt-1 text-[11px] text-ink-500">
                         {r.retroactivo ? "Hacia atrás (cartera histórica)" : "Sólo desde ahora"}
                       </p>
+                      <p className="text-[11px] text-ink-500">
+                        {r.organismos
+                          ? `${r.organismos.length} organismo${r.organismos.length === 1 ? "" : "s"}`
+                          : "Todos los organismos"}
+                      </p>
                     </td>
                     <td className="px-3 py-2 text-ink-700">
                       {r.cambios.length === 0
@@ -238,7 +254,7 @@ export function CarteraPunitorios({
         open={abierto}
         onClose={() => setAbierto(false)}
         title="Modificar punitorios de la cartera"
-        maxWidth="max-w-2xl"
+        maxWidth="max-w-4xl"
         footer={
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
             <Button variant="outline" onClick={() => (paso === 0 ? setAbierto(false) : setPaso(paso - 1))}>
@@ -324,6 +340,41 @@ export function CarteraPunitorios({
           </div>
         )}
 
+        {etapa === "Organismos" && (
+          <div className="space-y-3">
+            <p className="text-sm text-ink-600">
+              Elegí los organismos del producto cuya cartera se modifica. Los créditos de los demás no cambian.
+            </p>
+            {organismos.length === 0 ? (
+              <Banner tone="warning" title="El producto no tiene organismos">
+                No hay cartera para modificar: asigná el producto a un organismo primero.
+              </Banner>
+            ) : (
+              <>
+                <Checkbox
+                  checked={orgsElegidos.length === organismos.length}
+                  onChange={(v) => setOrgsElegidos(v ? organismos.map((o) => o.id) : [])}
+                  label="Todos los organismos"
+                />
+                <div className="space-y-2">
+                  {organismos.map((o) => (
+                    <div key={o.id} className="rounded-xl border border-ink-200 p-3">
+                      <Checkbox
+                        checked={orgsElegidos.includes(o.id)}
+                        onChange={(v) =>
+                          setOrgsElegidos(v ? [...orgsElegidos, o.id] : orgsElegidos.filter((x) => x !== o.id))
+                        }
+                        label={o.nombre}
+                        description={o.detalle}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {etapa === "Archivo de créditos" && (
           <div className="space-y-4">
             <p className="text-sm text-ink-600">
@@ -362,6 +413,7 @@ export function CarteraPunitorios({
               ) : (
                 <>Los nuevos valores rigen sólo para los días de mora que vengan; no se modifica lo ya devengado.</>
               )}{" "}
+              Organismos incluidos: <strong>{organismos.filter((o) => orgsElegidos.includes(o.id)).map((o) => o.nombre).join(", ")}</strong>.{" "}
               Queda un checkpoint con la fecha y quién lo hizo, y podés volver a la versión anterior cuando quieras.
             </Banner>
             <ul className="space-y-1 text-sm text-ink-700">

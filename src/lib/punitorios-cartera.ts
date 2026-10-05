@@ -9,7 +9,7 @@
 // La cartera es de ejemplo: se genera siempre igual para un mismo producto, no hay créditos
 // activos reales en la demo.
 
-import { SESION_PARAMETROS } from "./config";
+import { ORGANISMOS, SESION_PARAMETROS } from "./config";
 import { fechaHora } from "./format";
 import { getProductos, guardarProducto, type TramoPunitorio } from "./productos";
 import { crearStoreAbm } from "./store-abm";
@@ -20,6 +20,8 @@ export interface CreditoCartera {
   id: string;
   numero: string;
   cliente: string;
+  // Organismo del colectivo al que pertenece el crédito ("" si el producto no tiene organismos).
+  organismoId: string;
   diasMora: number;
   importeCuota: number;
   // Tasa nominal anual del crédito (%): los punitorios son un porcentaje de esta tasa.
@@ -43,17 +45,28 @@ const NOMBRES = [
 const DIAS_MORA = [3, 12, 20, 35, 48, 62, 75, 93, 110, 8, 28, 135];
 const CUOTAS = [42_000, 58_500, 36_000, 71_000, 49_000, 64_000, 38_500, 83_000, 52_000, 45_500, 60_000, 77_000];
 
-/** Créditos activos en mora del producto: siempre los mismos, al menos 10. */
-export function carteraEnMora(productoId: string): CreditoCartera[] {
+/** Organismos que ofrecen el producto (los eliminados no cuentan). */
+export function organismosDelProducto(productoId: string) {
+  return ORGANISMOS.filter((o) => o.estado !== "ELIMINADO" && o.productos.includes(productoId));
+}
+
+/**
+ * Créditos activos en mora del producto: siempre los mismos, al menos 10, repartidos entre los
+ * organismos del producto. Con `organismoIds` sólo los de esos organismos.
+ */
+export function carteraEnMora(productoId: string, organismoIds?: string[]): CreditoCartera[] {
   const semilla = [...productoId].reduce((s, ch) => s + ch.charCodeAt(0), 0);
-  return NOMBRES.map((cliente, i) => ({
+  const organismos = organismosDelProducto(productoId);
+  const cartera = NOMBRES.map((cliente, i) => ({
     id: `${productoId}-cart-${i + 1}`,
     numero: `CR-${String(40_000 + ((semilla * 7 + i * 131) % 9_000)).padStart(5, "0")}`,
     cliente,
+    organismoId: organismos.length ? organismos[i % organismos.length].id : "",
     diasMora: DIAS_MORA[(i + semilla) % DIAS_MORA.length],
     importeCuota: CUOTAS[(i * 5 + semilla) % CUOTAS.length],
     tasaAnual: 90 + ((i * 11 + semilla) % 5) * 10,
   }));
+  return organismoIds ? cartera.filter((c) => organismoIds.includes(c.organismoId)) : cartera;
 }
 
 // --- Cálculo ---
@@ -87,9 +100,10 @@ export function simular(
   productoId: string,
   tramosActuales: TramoPunitorio[],
   tramosNuevos: TramoPunitorio[],
-  retroactivo = true
+  retroactivo = true,
+  organismoIds?: string[]
 ): FilaSimulacion[] {
-  return carteraEnMora(productoId).map((credito) => {
+  return carteraEnMora(productoId, organismoIds).map((credito) => {
     const antes = punitorioDe(credito, tramosActuales);
     // Sólo hacia adelante: lo ya devengado no cambia.
     const despues = retroactivo ? punitorioDe(credito, tramosNuevos) : antes;
@@ -122,6 +136,8 @@ export interface RegistroPunitorios {
   ajusteTotal: number;
   // true: recalculó toda la cartera histórica desde el primer día de mora; false: rige sólo hacia adelante.
   retroactivo: boolean;
+  // Organismos cuya cartera se modificó (los registros viejos no lo guardan: toda la cartera).
+  organismos?: string[];
 }
 
 const store = crearStoreAbm<RegistroPunitorios>({
@@ -156,12 +172,13 @@ export function cambiosDe(antes: TramoPunitorio[], despues: TramoPunitorio[]): C
 export function aplicarPunitorios(
   productoId: string,
   tramosNuevos: TramoPunitorio[],
-  retroactivo: boolean
+  retroactivo: boolean,
+  organismoIds?: string[]
 ): RegistroPunitorios | null {
   const producto = getProductos().find((p) => p.config.id === productoId);
   if (!producto) return null;
   const antes = structuredClone(producto.extras.tramosPunitorios);
-  const filas = simular(productoId, antes, tramosNuevos, retroactivo);
+  const filas = simular(productoId, antes, tramosNuevos, retroactivo, organismoIds);
   const registro: RegistroPunitorios = {
     id: `pun-${Date.now().toString(36)}`,
     fecha: fechaHora(),
@@ -175,6 +192,7 @@ export function aplicarPunitorios(
     creditos: filas.length,
     ajusteTotal: filas.reduce((s, f) => s + f.ajuste, 0),
     retroactivo,
+    organismos: organismoIds,
   };
   guardarProducto({ ...producto, extras: { ...producto.extras, tramosPunitorios: structuredClone(tramosNuevos) } });
   store.commit([registro, ...store.get()]);
@@ -188,7 +206,7 @@ export function restaurarPunitorios(checkpointId: string): RegistroPunitorios | 
   if (!checkpoint || !producto) return null;
   const actuales = producto.extras.tramosPunitorios;
   const original = checkpoint.tramosAntes;
-  const filas = simular(checkpoint.productoId, actuales, original, checkpoint.retroactivo);
+  const filas = simular(checkpoint.productoId, actuales, original, checkpoint.retroactivo, checkpoint.organismos);
   const registro: RegistroPunitorios = {
     id: `pun-${Date.now().toString(36)}`,
     fecha: fechaHora(),
@@ -202,6 +220,7 @@ export function restaurarPunitorios(checkpointId: string): RegistroPunitorios | 
     creditos: filas.length,
     ajusteTotal: filas.reduce((s, f) => s + f.ajuste, 0),
     retroactivo: checkpoint.retroactivo,
+    organismos: checkpoint.organismos,
   };
   guardarProducto({ ...producto, extras: { ...producto.extras, tramosPunitorios: structuredClone(original) } });
   store.commit([registro, ...store.get()]);

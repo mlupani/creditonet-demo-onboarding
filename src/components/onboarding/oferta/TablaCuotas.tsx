@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { SISTEMAS_AMORTIZACION, TRATAMIENTOS_GASTO } from "@/lib/config";
+import { cargosDe, SISTEMAS_AMORTIZACION, TRATAMIENTOS_GASTO } from "@/lib/config";
 import {
   calcularCuota,
   cuotaEsVariable,
@@ -141,18 +141,20 @@ export function TablaCuotas({
                 : formatARS(plan.gastoOtorgamiento.valor)
             } (${(TRATAMIENTOS_GASTO.find((t) => t.value === plan.gastoOtorgamiento.tratamiento)?.label ?? "").toLowerCase()})`,
           ],
-          ...(plan.cargoAdministrativo.valor > 0
-            ? [
-                [
-                  "Cargo administrativo",
-                  plan.cargoAdministrativo.tipo === "PORCENTAJE"
-                    ? `${formatPct(plan.cargoAdministrativo.valor)} s/cuota`
-                    : `${formatARS(plan.cargoAdministrativo.valor)} por cuota`,
-                ],
-              ]
-            : []),
-        ].map(([label, valor]) => (
-          <span key={label}>
+          ...plan.cargos
+            .filter((c) => c.valor > 0)
+            .map((c) => [
+              c.nombre || "Cargo",
+              `${
+                c.tipo === "PORCENTAJE_CUOTA"
+                  ? `${formatPct(c.valor)} s/cuota`
+                  : c.tipo === "PORCENTAJE_CAPITAL"
+                    ? `${formatPct(c.valor)} s/capital por cuota`
+                    : `${formatARS(c.valor)} por cuota`
+              } ${c.conIva ? "con IVA" : "+ IVA"}`,
+            ]),
+        ].map(([label, valor], i) => (
+          <span key={`${label}-${i}`}>
             {label} <strong className="font-semibold text-ink-700">{valor}</strong>
           </span>
         ))}
@@ -207,7 +209,7 @@ export function TablaCuotas({
                 term.tna,
                 plan.sistema,
                 plan.gastoOtorgamiento,
-                plan.cargoAdministrativo
+                cargosDe(plan)
               );
               return (
                 <button
@@ -276,7 +278,7 @@ export function TablaCuotas({
           terms={terms}
           sistema={plan.sistema}
           gasto={plan.gastoOtorgamiento}
-          cargo={plan.cargoAdministrativo}
+          cargos={cargosDe(plan)}
           capitalMaximo={capitalMaximo}
           capitalMinimo={capitalMinimo}
           capital={o.montoSolicitado}

@@ -31,6 +31,8 @@ function tituloRuta(pathname: string) {
   if (pathname.startsWith("/productos")) return "Parámetros · Productos";
   if (pathname.startsWith("/organismos")) return "Parámetros · Organismos";
   if (pathname.startsWith("/planes")) return "Parámetros · Planes de cuotas";
+  if (pathname.startsWith("/servicios")) return "Parámetros · Servicios";
+  if (pathname.startsWith("/mora")) return "Mora · Modificación de cartera";
   return "CreditoNet";
 }
 

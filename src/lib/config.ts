@@ -258,9 +258,20 @@ export function migrarSistemaAmortizacion(valor: string): SistemaAmortizacion {
     : "FRANCES_FIJA";
 }
 
-// Una fila de la grilla de tasas: TNA de cada plazo. Es lo que arma la oferta.
+// Una fila de la grilla de tasas: TNA de un plazo exacto o de un rango de plazos. Es lo que arma
+// la oferta (ver `terminosDe`).
+export type ModoPlazo = "EXACTO" | "CORRIDO";
+
+export const MAX_PLAZO_GRILLA = 120;
+
 export interface FilaGrilla {
+  // Plazo exacto o, en modo CORRIDO, el primero del rango.
   plazo: Plazo;
+  // EXACTO (por defecto): sólo ese plazo. CORRIDO: de `plazo` a `plazoHasta`, un plazo cada `cada`
+  // cuotas (por defecto, todos).
+  modo?: ModoPlazo;
+  plazoHasta?: Plazo;
+  cada?: number;
   tna: number;
   recomendada: boolean;
   // Regla simulada: el formato/fecha de la primera cuota es una decisión pendiente.
@@ -273,8 +284,6 @@ export interface RangoCapitalGrilla {
   maximo: number;
   salto: number;
 }
-
-export const SALTOS_CAPITAL_GRILLA = [100_000, 500_000, 1_000_000];
 
 export const RANGO_CAPITAL_GRILLA_BASE: RangoCapitalGrilla = {
   minimo: 100_000,
@@ -294,6 +303,32 @@ export const GRILLA_BASE: FilaGrilla[] = [
   { plazo: 96, tna: 87, recomendada: false, primeraCuota: "10/02/2027" },
   { plazo: 120, tna: 90, recomendada: false, primeraCuota: "10/02/2027" },
 ];
+
+// Plazos que ofrece una fila de la grilla, de menor a mayor. En un rango siempre entra el último.
+export function plazosDeFila(f: FilaGrilla): Plazo[] {
+  if (f.modo !== "CORRIDO") return [f.plazo];
+  const hasta = Math.max(f.plazoHasta ?? f.plazo, f.plazo);
+  const cada = Math.max(1, Math.floor(f.cada ?? 1));
+  const plazos: Plazo[] = [];
+  for (let n = f.plazo; n < hasta; n += cada) plazos.push(n);
+  plazos.push(hasta);
+  return plazos;
+}
+
+// La grilla expandida a un término por plazo (lo que ve la oferta), ordenada por plazo. La fila
+// recomendada marca su primer plazo.
+export function terminosDe(grilla: FilaGrilla[]): FilaGrilla[] {
+  return grilla
+    .flatMap((f) =>
+      plazosDeFila(f).map((plazo) => ({
+        plazo,
+        tna: f.tna,
+        recomendada: f.recomendada && plazo === f.plazo,
+        primeraCuota: f.primeraCuota,
+      }))
+    )
+    .sort((a, b) => a.plazo - b.plazo);
+}
 
 // Qué se hace con el gasto de otorgamiento: se suma al capital financiado (y paga interés) o se
 // reparte en partes iguales sobre cada cuota.
@@ -323,18 +358,73 @@ export function normalizarGasto(
   };
 }
 
-// Cargo administrativo / de cobranza: porcentaje de la cuota o monto fijo por cuota. Va dentro de
-// la cuota que paga el cliente.
-export interface CargoAdministrativo {
-  tipo: "PORCENTAJE" | "MONTO_FIJO";
+// Cargos periódicos del plan: cada uno va dentro de la cuota que paga el cliente. El importe es
+// un porcentaje de la cuota, un monto fijo por cuota o un porcentaje del capital solicitado
+// (por cuota). Con IVA, el valor ya lo incluye; sin IVA, se le suma el IVA del plan.
+export type TipoCargo = "PORCENTAJE_CUOTA" | "MONTO_FIJO" | "PORCENTAJE_CAPITAL";
+
+export const TIPOS_CARGO: { value: TipoCargo; label: string }[] = [
+  { value: "PORCENTAJE_CUOTA", label: "Porcentaje de la cuota" },
+  { value: "MONTO_FIJO", label: "Monto fijo por cuota" },
+  { value: "PORCENTAJE_CAPITAL", label: "Porcentaje del capital solicitado" },
+];
+
+export interface CargoPeriodico {
+  id: string;
+  nombre: string;
+  // Servicio del catálogo (ABM de servicios) que origina el cargo; null si es un cargo propio.
+  servicioId: string | null;
+  tipo: TipoCargo;
   valor: number;
+  conIva: boolean;
 }
 
-// Los planes guardados antes tenían `cargoAdministrativoPct` (siempre porcentaje de la cuota).
-export function normalizarCargo(
-  c: Partial<PlanCuotas> & { cargoAdministrativoPct?: number }
-): CargoAdministrativo {
-  return c.cargoAdministrativo ?? { tipo: "PORCENTAJE", valor: c.cargoAdministrativoPct ?? 0 };
+// Cargos del plan con el IVA que se les suma cuando el valor es sin IVA (0 si el plan no calcula IVA).
+export interface CargosPlan {
+  cargos: CargoPeriodico[];
+  ivaPct: number;
+}
+
+export function cargosDe(
+  plan?: Pick<PlanCuotas, "cargos" | "calculaIva" | "ivaPct"> | null
+): CargosPlan | null {
+  return plan ? { cargos: plan.cargos, ivaPct: plan.calculaIva ? plan.ivaPct : 0 } : null;
+}
+
+export function cargoNuevo(): CargoPeriodico {
+  return {
+    id: `cg-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+    nombre: "",
+    servicioId: null,
+    tipo: "MONTO_FIJO",
+    valor: 0,
+    conIva: false,
+  };
+}
+
+// Los planes guardados antes tenían un único cargo administrativo (`cargoAdministrativo`, y antes
+// `cargoAdministrativoPct`): pasa a ser el primer cargo de la lista, con IVA incluido para no
+// cambiar la cuota.
+export function normalizarCargos(
+  c: Partial<PlanCuotas> & {
+    cargoAdministrativo?: { tipo: "PORCENTAJE" | "MONTO_FIJO"; valor: number };
+    cargoAdministrativoPct?: number;
+  }
+): CargoPeriodico[] {
+  if (c.cargos) return c.cargos;
+  const previo =
+    c.cargoAdministrativo ?? { tipo: "PORCENTAJE" as const, valor: c.cargoAdministrativoPct ?? 0 };
+  if (!(previo.valor > 0)) return [];
+  return [
+    {
+      id: "cg-administrativo",
+      nombre: "Cargo administrativo / cobranza",
+      servicioId: null,
+      tipo: previo.tipo === "PORCENTAJE" ? "PORCENTAJE_CUOTA" : "MONTO_FIJO",
+      valor: previo.valor,
+      conIva: true,
+    },
+  ];
 }
 
 // Capital máximo por rango de sueldo neto del cliente. `hasta: null` es un rango sin tope.
@@ -447,8 +537,8 @@ export interface PlanCuotas {
   sellosPct: number;
   periodoGraciaDias: number;
   gastoOtorgamiento: GastoOtorgamiento;
-  // Cargo administrativo / de cobranza: % de la cuota o monto fijo, incluido en la cuota.
-  cargoAdministrativo: CargoAdministrativo;
+  // Cargos periódicos (administrativo, cobranza, servicios): incluidos en la cuota.
+  cargos: CargoPeriodico[];
   // Habilitación: para qué perfiles puede usarse el plan.
   situacionesBcra: number[];
   condicionesLaborales: string[];
@@ -487,7 +577,7 @@ function semillaAPlan(p: PlanSemilla, i: number): PlanCuotas {
       valor: p.cargoOtorgamientoPct,
       tratamiento: "DISTRIBUYE_CUOTAS",
     },
-    cargoAdministrativo: { tipo: "PORCENTAJE", valor: 0 },
+    cargos: [],
     // Hoy la situación BCRA y el perfil interno no bloquean el plan: sólo recortan capital.
     situacionesBcra: [1, 2, 3, 4, 5],
     condicionesLaborales: [...p.condicionesLaborales],

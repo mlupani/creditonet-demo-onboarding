@@ -17,10 +17,12 @@ import {
   GRILLA_BASE,
   PLANES_CUOTAS,
   SESION_ANALISTA,
+  cargosDe,
   configEfectiva,
   planesDelOrganismo,
+  terminosDe,
   type FilaGrilla,
-  type CargoAdministrativo,
+  type CargosPlan,
   type GastoOtorgamiento,
   type PlanCuotas,
   type SistemaAmortizacion,
@@ -142,7 +144,7 @@ export function subestadoObservado(app: CreditApplication): SubestadoObservado |
 
 // Grilla de un plan (o la base, si no hay plan).
 export function grillaDe(plan?: PlanCuotas | null): OfferTerm[] {
-  return plan && plan.grilla.length > 0 ? plan.grilla : OFFER_TERMS;
+  return plan && plan.grilla.length > 0 ? terminosDe(plan.grilla) : OFFER_TERMS;
 }
 
 export function getTerm(plazo: Plazo, plan?: PlanCuotas | null): OfferTerm {
@@ -169,7 +171,7 @@ export interface CuotaAmortizacion {
   saldo: number;
   // Parte de la cuota que corresponde al gasto de otorgamiento repartido en las cuotas.
   gasto: number;
-  // Parte de la cuota que corresponde al cargo administrativo / de cobranza.
+  // Parte de la cuota que corresponde a los cargos periódicos.
   cargo: number;
 }
 
@@ -192,10 +194,24 @@ export function gastoDeOtorgamiento(monto: number, gasto?: GastoOtorgamiento | n
   return gasto.tipo === "PORCENTAJE" ? (monto * gasto.valor) / 100 : gasto.valor;
 }
 
-// Cargo administrativo de una cuota: % de la cuota (sin el cargo) o monto fijo.
-export function cargoDeCuota(cuotaSinCargo: number, cargo?: CargoAdministrativo | null): number {
-  if (!cargo) return 0;
-  return cargo.tipo === "PORCENTAJE" ? (cuotaSinCargo * cargo.valor) / 100 : cargo.valor;
+// Cargos periódicos de una cuota: % de la cuota (sin los cargos), monto fijo o % del capital
+// solicitado. Los que son sin IVA se incrementan con el IVA del plan.
+export function cargoDeCuota(
+  cuotaSinCargo: number,
+  montoSolicitado: number,
+  cargos?: CargosPlan | null
+): number {
+  if (!cargos) return 0;
+  const conIva = 1 + cargos.ivaPct / 100;
+  return cargos.cargos.reduce((suma, c) => {
+    const base =
+      c.tipo === "PORCENTAJE_CUOTA"
+        ? (cuotaSinCargo * c.valor) / 100
+        : c.tipo === "PORCENTAJE_CAPITAL"
+          ? (montoSolicitado * c.valor) / 100
+          : c.valor;
+    return suma + (c.conIva ? base : base * conIva);
+  }, 0);
 }
 
 // Capital sobre el que se calculan los intereses: si el gasto se capitaliza, se suma al capital.
@@ -215,15 +231,15 @@ function cuotaFrancesa(monto: number, plazo: number, i: number): number {
 // interés y el capital en la última cuota. Tasa directa: interés sobre el capital original.
 // Alemán: capital constante, interés sobre saldo y cuota decreciente.
 // El gasto de otorgamiento se suma al capital financiado (se capitaliza) o se reparte en partes
-// iguales sobre cada cuota (se distribuye en las cuotas). El cargo administrativo va dentro de la
-// cuota: porcentaje de la cuota (con gasto incluido) o monto fijo.
+// iguales sobre cada cuota (se distribuye en las cuotas). Los cargos periódicos van dentro de la
+// cuota: porcentaje de la cuota (con gasto incluido), monto fijo o porcentaje del capital solicitado.
 export function cronogramaCuotas(
   montoSolicitado: number,
   plazo: number,
   tna: number,
   sistema: SistemaAmortizacion = "FRANCES_FIJA",
   gastoOtorgamiento?: GastoOtorgamiento | null,
-  cargoAdministrativo?: CargoAdministrativo | null
+  cargos?: CargosPlan | null
 ): CuotaAmortizacion[] {
   if (montoSolicitado <= 0 || plazo <= 0) return [];
   const monto = capitalFinanciadoDe(montoSolicitado, gastoOtorgamiento);
@@ -255,7 +271,7 @@ export function cronogramaCuotas(
     saldo -= capital;
     const ajuste = Math.pow(g, nro - 1);
     const sinCargo = (capital + interes) * ajuste + gastoCuota;
-    const cargo = cargoDeCuota(sinCargo, cargoAdministrativo);
+    const cargo = cargoDeCuota(sinCargo, montoSolicitado, cargos);
     filas.push({
       nro,
       cuota: sinCargo + cargo,
@@ -277,9 +293,9 @@ export function calcularCuota(
   tna: number,
   sistema: SistemaAmortizacion = "FRANCES_FIJA",
   gasto?: GastoOtorgamiento | null,
-  cargo?: CargoAdministrativo | null
+  cargos?: CargosPlan | null
 ): number {
-  const primera = cronogramaCuotas(monto, plazo, tna, sistema, gasto, cargo)[0];
+  const primera = cronogramaCuotas(monto, plazo, tna, sistema, gasto, cargos)[0];
   return primera ? Math.round(primera.cuota / 100) * 100 : 0;
 }
 
@@ -292,15 +308,19 @@ export function totalAPagarDe(
   cuota: number,
   sistema: SistemaAmortizacion = "FRANCES_FIJA",
   gasto?: GastoOtorgamiento | null,
-  cargo?: CargoAdministrativo | null
+  cargos?: CargosPlan | null
 ): number {
-  // La última cuota del americano devuelve el capital: el cargo en % también lo grava.
+  // La última cuota del americano devuelve el capital: los cargos en % de la cuota también lo gravan.
   if (sistema === "AMERICANO") {
     const capital = capitalFinanciadoDe(monto, gasto);
-    return cuota * plazo + capital + cargoDeCuota(capital, cargo?.tipo === "PORCENTAJE" ? cargo : null);
+    const porCuota = cargos && {
+      ...cargos,
+      cargos: cargos.cargos.filter((c) => c.tipo === "PORCENTAJE_CUOTA"),
+    };
+    return cuota * plazo + capital + cargoDeCuota(capital, 0, porCuota);
   }
   if (!cuotaEsVariable(sistema)) return cuota * plazo;
-  const total = cronogramaCuotas(monto, plazo, tna, sistema, gasto, cargo).reduce((s, f) => s + f.cuota, 0);
+  const total = cronogramaCuotas(monto, plazo, tna, sistema, gasto, cargos).reduce((s, f) => s + f.cuota, 0);
   return Math.round(total / 100) * 100;
 }
 
@@ -321,31 +341,47 @@ function capitalDeCuotaSinGasto(
 // Inversa de calcularCuota: qué capital soporta una cuota máxima (la primera, si varía). Se
 // trunca a $10.000. Con gasto capitalizado, el capital + gasto es lo que financia la cuota; con
 // gasto distribuido, la cuota = cuota financiera del capital + gasto / plazo (lineal en el capital).
+// Los cargos periódicos se descuentan antes de invertir: los % de la cuota la escalan, los montos
+// fijos se restan y los % del capital solicitado dependen del propio capital (se resuelve en cerrado
+// porque la cuota es lineal en el capital).
 export function capitalDesdeCuota(
   cuota: number,
   plazo: number,
   tna: number,
   sistema: SistemaAmortizacion = "FRANCES_FIJA",
   gasto?: GastoOtorgamiento | null,
-  cargoAdministrativo?: CargoAdministrativo | null
+  cargos?: CargosPlan | null
 ): number {
   if (cuota <= 0 || plazo <= 0) return 0;
-  // La cuota que paga el cliente incluye el cargo: se lo descuenta antes de invertir.
-  cuota =
-    cargoAdministrativo?.tipo === "PORCENTAJE"
-      ? cuota / (1 + cargoAdministrativo.valor / 100)
-      : cuota - (cargoAdministrativo?.valor ?? 0);
-  const pct = gasto?.tipo === "PORCENTAJE" ? gasto.valor / 100 : 0;
-  const fijo = gasto?.tipo === "MONTO_FIJO" ? gasto.valor : 0;
-  let capital: number;
-  if (gasto?.tratamiento === "CAPITALIZA") {
-    capital = (capitalDeCuotaSinGasto(cuota, plazo, tna, sistema) - fijo) / (1 + pct);
-  } else if (gasto?.tratamiento === "DISTRIBUYE_CUOTAS") {
-    const neta = capitalDeCuotaSinGasto(cuota - fijo / plazo, plazo, tna, sistema);
-    const porCuota = capitalDeCuotaSinGasto(1, plazo, tna, sistema);
-    capital = neta / (1 + (porCuota * pct) / plazo);
-  } else {
-    capital = capitalDeCuotaSinGasto(cuota, plazo, tna, sistema);
+  const conIva = 1 + (cargos?.ivaPct ?? 0) / 100;
+  let pctCuota = 0;
+  let fijo = 0;
+  let pctCapital = 0;
+  for (const c of cargos?.cargos ?? []) {
+    const f = c.conIva ? 1 : conIva;
+    if (c.tipo === "PORCENTAJE_CUOTA") pctCuota += (c.valor / 100) * f;
+    else if (c.tipo === "PORCENTAJE_CAPITAL") pctCapital += (c.valor / 100) * f;
+    else fijo += c.valor * f;
+  }
+  const gPct = gasto?.tipo === "PORCENTAJE" ? gasto.valor / 100 : 0;
+  const gFijo = gasto?.tipo === "MONTO_FIJO" ? gasto.valor : 0;
+  // Capital que soporta una cuota sin cargos (sin truncar).
+  const sinCargos = (x: number): number => {
+    if (gasto?.tratamiento === "CAPITALIZA")
+      return (capitalDeCuotaSinGasto(x, plazo, tna, sistema) - gFijo) / (1 + gPct);
+    if (gasto?.tratamiento === "DISTRIBUYE_CUOTAS") {
+      const neta = capitalDeCuotaSinGasto(x - gFijo / plazo, plazo, tna, sistema);
+      const porCuota = capitalDeCuotaSinGasto(1, plazo, tna, sistema);
+      return neta / (1 + (porCuota * gPct) / plazo);
+    }
+    return capitalDeCuotaSinGasto(x, plazo, tna, sistema);
+  };
+  const x0 = (cuota - fijo) / (1 + pctCuota);
+  let capital = sinCargos(x0);
+  if (pctCapital > 0) {
+    // capital = sinCargos(x0 - capital·pctCapital/(1+pctCuota)), con sinCargos afín (pendiente α).
+    const alfa = sinCargos(x0 + 1) - capital;
+    capital /= 1 + (alfa * pctCapital) / (1 + pctCuota);
   }
   // El margen evita que un error de coma flotante (1.199.999,99…) baje un escalón entero.
   return Math.max(Math.floor(capital / 10_000 + 1e-9) * 10_000, 0);
@@ -439,7 +475,7 @@ export function recalcularOferta(entrada: Oferta): Oferta {
     term.tna,
     plan?.sistema,
     plan?.gastoOtorgamiento,
-    plan?.cargoAdministrativo
+    cargosDe(plan)
   );
   return {
     ...oferta,
@@ -453,7 +489,7 @@ export function recalcularOferta(entrada: Oferta): Oferta {
       valorCuota,
       plan?.sistema,
       plan?.gastoOtorgamiento,
-      plan?.cargoAdministrativo
+      cargosDe(plan)
     ),
     primeraCuotaVencimiento: term.primeraCuota,
   };
@@ -615,7 +651,7 @@ export function calcularLimites(
         term.tna,
         plan.sistema,
         plan.gastoOtorgamiento,
-        plan.cargoAdministrativo
+        cargosDe(plan)
       ),
     },
   ];

@@ -14,10 +14,11 @@ import {
   PLANES_CUOTAS,
   migrarSistemaAmortizacion,
   RANGO_CAPITAL_GRILLA_BASE,
-  SALTOS_CAPITAL_GRILLA,
+  MAX_PLAZO_GRILLA,
+  terminosDe,
   MAX_RANGOS_SUELDO,
   rangosCuotaIniciales,
-  normalizarCargo,
+  normalizarCargos,
   normalizarLimitantes,
   normalizarGasto,
   TRATAMIENTOS_GASTO,
@@ -78,8 +79,9 @@ const store = crearStoreAbm<PlanAbm>({
     // Planes guardados con el check `seCapitaliza`: se pasan al select de tratamiento.
     for (const r of lista) {
       r.config.gastoOtorgamiento = normalizarGasto(r.config.gastoOtorgamiento);
-      // Planes guardados con `cargoAdministrativoPct`: pasan al cargo con tipo y valor.
-      r.config.cargoAdministrativo = normalizarCargo(r.config);
+      // Planes guardados con un único cargo administrativo: pasa a la lista de cargos periódicos.
+      r.config.cargos = normalizarCargos(r.config);
+      delete (r.config as { cargoAdministrativo?: unknown }).cargoAdministrativo;
       delete (r.config as { cargoAdministrativoPct?: number }).cargoAdministrativoPct;
       r.config.rangosSueldoNeto ??= [];
       // Bonificaciones guardadas con concepto y %: eran de ejemplo, se descartan.
@@ -212,9 +214,11 @@ export function validarPlan(p: PlanAbm, todos: PlanAbm[]): Record<string, string
     e.gastoOtorgamiento = "Revisá el valor del gasto de otorgamiento.";
   if (!TRATAMIENTOS_GASTO.some((t) => t.value === g.tratamiento))
     e.gastoTratamiento = "Elegí si el gasto se capitaliza o se distribuye en las cuotas.";
-  const cargo = c.cargoAdministrativo;
-  if (cargo.valor < 0 || (cargo.tipo === "PORCENTAJE" && cargo.valor > 100))
-    e.cargoAdministrativo = "Revisá el valor del cargo administrativo.";
+  const cargosInvalidos = c.cargos.some(
+    (g) => !g.nombre.trim() || g.valor < 0 || (g.tipo !== "MONTO_FIJO" && g.valor > 100)
+  );
+  if (cargosInvalidos)
+    e.cargos = "Cada cargo necesita nombre y un valor válido (los porcentajes van de 0 a 100 %).";
 
   if (c.situacionesBcra.length === 0) e.situacionesBcra = "Aceptá al menos una situación BCRA.";
   if (c.condicionesLaborales.length === 0)
@@ -257,15 +261,30 @@ export function validarPlan(p: PlanAbm, todos: PlanAbm[]): Record<string, string
   if (c.topes.montoAnalista > c.topes.montoSupervisor)
     e.topes = "El tope del analista no puede superar al del supervisor.";
 
-  const plazos = c.grilla.map((f) => f.plazo);
+  const enteroEnRango = (n: number | undefined, desde: number) =>
+    Number.isInteger(n) && (n as number) >= desde && (n as number) <= MAX_PLAZO_GRILLA;
   if (c.grilla.length === 0) e.grilla = "La grilla necesita al menos un plazo.";
-  else if (new Set(plazos).size !== plazos.length) e.grilla = "Hay plazos repetidos en la grilla.";
-  else if (c.grilla.some((f) => f.tna <= 0)) e.grilla = "Cada plazo necesita una TNA mayor a cero.";
+  else if (c.grilla.some((f) => !enteroEnRango(f.plazo, 1)))
+    e.grilla = `Los plazos son números enteros de cuotas, de 1 a ${MAX_PLAZO_GRILLA}.`;
+  else if (
+    c.grilla.some(
+      (f) =>
+        f.modo === "CORRIDO" &&
+        (!enteroEnRango(f.plazoHasta, f.plazo + 1) || !Number.isInteger(f.cada ?? 1) || (f.cada ?? 1) < 1)
+    )
+  )
+    e.grilla = "En cada rango, la cuota final tiene que ser mayor a la inicial y “cada” un entero desde 1.";
+  else {
+    const plazos = terminosDe(c.grilla).map((t) => t.plazo);
+    if (new Set(plazos).size !== plazos.length)
+      e.grilla = "Hay plazos repetidos o rangos que se superponen en la grilla.";
+    else if (c.grilla.some((f) => f.tna <= 0)) e.grilla = "Cada plazo o rango necesita una TNA mayor a cero.";
+  }
   const cg = c.capitalGrilla;
   if (!e.grilla) {
     if (cg.minimo <= 0 || cg.maximo < cg.minimo)
       e.grilla = "El capital máximo de la grilla tiene que ser mayor o igual al mínimo, y el mínimo mayor a cero.";
-    else if (!SALTOS_CAPITAL_GRILLA.includes(cg.salto)) e.grilla = "Elegí un salto de capital válido.";
+    else if (!(cg.salto > 0)) e.grilla = "El salto de capital tiene que ser mayor a cero.";
     else if (cg.maximo / cg.salto > 500)
       e.grilla = "El salto es muy chico para ese capital máximo: la grilla tendría más de 500 filas.";
   }

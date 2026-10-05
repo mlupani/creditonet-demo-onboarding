@@ -1,5 +1,6 @@
 "use client";
 
+import { cargosDe } from "@/lib/config";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
@@ -47,7 +48,7 @@ export function PasoOfertaAnalista() {
     getTerm(analista.plazo, plan).tna,
     plan.sistema,
     plan.gastoOtorgamiento,
-    plan.cargoAdministrativo
+    cargosDe(plan)
   );
   const esLaDelAnalista =
     o.montoSolicitado === analista.montoSolicitado && o.plazo === analista.plazo;
