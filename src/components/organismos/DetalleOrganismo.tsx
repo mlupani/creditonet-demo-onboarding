@@ -30,7 +30,27 @@ import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
 import { SECCIONES_ORGANISMO, SECCION_DE_ERROR_ORG } from "./SeccionesOrganismo";
-import { IconArrowLeft, IconCheckCircle, IconLoader } from "@/components/icons";
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconBell,
+  IconBriefcase,
+  IconCalendar,
+  IconCheckCircle,
+  IconClipboardPlus,
+  IconClock,
+  IconFileText,
+  IconIdCard,
+  IconLoader,
+  IconLock,
+  IconPencil,
+  IconPhone,
+  IconShieldCheck,
+  IconUsers,
+  IconWallet,
+} from "@/components/icons";
+import { useSidebarColapsado } from "@/lib/sidebar-colapsado";
+import { NavSecciones, type ItemNav } from "@/components/ui/NavSecciones";
 
 export const TEXTO_ACCION_ORG: Partial<
   Record<EstadoProducto, { titulo: string; descripcion: string; boton: string }>
@@ -47,6 +67,23 @@ export const TEXTO_ACCION_ORG: Partial<
       "Deja de ofrecerse y pasa a Eliminados. Se conserva para rotular las solicitudes históricas y se puede restaurar.",
     boton: "Eliminar organismo",
   },
+};
+
+const ICONOS_SECCION: Record<string, ItemNav["icon"]> = {
+  datos: IconFileText,
+  productos: IconBriefcase,
+  planes: IconCalendar,
+  vencimiento: IconClock,
+  permisos: IconLock,
+  motor: IconShieldCheck,
+  financieros: IconWallet,
+  punitorios: IconAlertTriangle,
+  formulario: IconIdCard,
+  onboarding: IconClipboardPlus,
+  firma: IconPencil,
+  canales: IconPhone,
+  vendedores: IconUsers,
+  notificaciones: IconBell,
 };
 
 export function DetalleOrganismo({ id }: { id: string }) {
@@ -96,6 +133,7 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
   const [seccion, setSeccion] = useState(SECCIONES_ORGANISMO[0].id);
   const [prodElegido, setProdElegido] = useState<string | null>(null);
   const [intentado, setIntentado] = useState(false);
+  const sidebarColapsado = useSidebarColapsado();
   const [guardado, setGuardado] = useState<null | { pendiente: boolean }>(null);
   const [pendienteEstado, setPendienteEstado] = useState<EstadoProducto | null>(null);
 
@@ -316,59 +354,45 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
         </div>
       </Card>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[15.5rem_minmax(0,1fr)]">
-        <nav aria-label="Secciones del organismo" className="lg:sticky lg:top-20 lg:self-start">
-          <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-            {SECCIONES_ORGANISMO.map((s, i) => {
-              const seleccionada = s.id === activa.id;
-              const conError = intentado && seccionesConError.has(s.id);
-              const excepciones = porSeccion[s.id as keyof typeof porSeccion] ?? 0;
-              const primeraDelProducto =
-                s.alcance === "producto" && SECCIONES_ORGANISMO[i - 1]?.alcance === "organismo";
-              return (
-                <li key={s.id} className="shrink-0">
-                  {i === 0 && (
-                    <p className="hidden px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-ink-400 lg:block">
-                      Del organismo
-                    </p>
-                  )}
-                  {primeraDelProducto && (
-                    <p className="hidden px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-ink-400 lg:block">
-                      Sobre {referencia?.config.nombre ?? "el producto"}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setSeccion(s.id)}
-                    aria-current={seleccionada ? "page" : undefined}
-                    className={`flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
-                      seleccionada
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
-                    }`}
-                  >
-                    <span className="flex-1">{s.label}</span>
-                    {conError ? (
-                      <span className="h-2 w-2 rounded-full bg-danger-500" title="Tiene errores" />
-                    ) : excepciones > 0 ? (
-                      <span
-                        className="rounded-full bg-warning-100 px-1.5 text-[11px] font-bold tabular-nums text-warning-700"
-                        title={`${excepciones} ${excepciones === 1 ? "excepción" : "excepciones"}`}
-                      >
-                        {excepciones}
-                      </span>
-                    ) : s.vivo ? (
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-brand-500"
-                        title="Conectado al flujo de la demo"
-                      />
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="mt-3 hidden space-y-1 px-3 text-[11px] text-ink-400 lg:block">
+      <NavSecciones
+        ariaLabel="Secciones del organismo"
+        items={SECCIONES_ORGANISMO.map((s, i) => {
+          const excepciones = porSeccion[s.id as keyof typeof porSeccion] ?? 0;
+          const primeraDelProducto =
+            s.alcance === "producto" && SECCIONES_ORGANISMO[i - 1]?.alcance === "organismo";
+          return {
+            id: s.id,
+            label: s.label,
+            icon: ICONOS_SECCION[s.id],
+            grupo:
+              i === 0
+                ? "Del organismo"
+                : primeraDelProducto
+                  ? `Sobre ${referencia?.config.nombre ?? "el producto"}`
+                  : undefined,
+            extra:
+              intentado && seccionesConError.has(s.id) ? (
+                <span className="block h-2 w-2 rounded-full bg-danger-500" title="Tiene errores" />
+              ) : excepciones > 0 ? (
+                <span
+                  className="rounded-full bg-warning-100 px-1.5 text-[11px] font-bold tabular-nums text-warning-700"
+                  title={`${excepciones} ${excepciones === 1 ? "excepción" : "excepciones"}`}
+                >
+                  {excepciones}
+                </span>
+              ) : s.vivo ? (
+                <span
+                  className="block h-1.5 w-1.5 rounded-full bg-brand-500"
+                  title="Conectado al flujo de la demo"
+                />
+              ) : null,
+          };
+        })}
+        activa={activa.id}
+        onSelect={setSeccion}
+        ancho="15.5rem"
+        leyenda={
+          <div className="space-y-1 px-3 text-[11px] text-ink-400">
             <p className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
               Conectado al flujo
@@ -380,9 +404,8 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
               Excepciones sobre este producto
             </p>
           </div>
-        </nav>
-
-        <div className="min-w-0">
+        }
+      >
           {referencia || activa.alcance === "organismo" ? (
             <SeccionActiva
               o={vista}
@@ -398,11 +421,10 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
               excepciones sobre él.
             </Banner>
           )}
-        </div>
-      </div>
+      </NavSecciones>
 
       {(sucio || guardado) && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 backdrop-blur lg:left-64">
+        <div className={`fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 backdrop-blur ${sidebarColapsado ? "lg:left-16" : "lg:left-64"}`}>
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
             {sucio ? (
               <p
