@@ -20,7 +20,36 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ESTADO_PRODUCTO_ABM_META, TEXTO_ACCION } from "./ListaProductos";
 import { SECCIONES, SECCION_DE_ERROR } from "./SeccionesProducto";
-import { IconArrowLeft, IconCheckCircle, IconLoader } from "@/components/icons";
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconBell,
+  IconBriefcase,
+  IconCalendar,
+  IconCheckCircle,
+  IconClipboardPlus,
+  IconCreditCard,
+  IconFileText,
+  IconLoader,
+  IconSettings,
+  IconShieldCheck,
+  IconWallet,
+} from "@/components/icons";
+import { useSidebarColapsado } from "@/lib/sidebar-colapsado";
+import { NavSecciones, type ItemNav } from "@/components/ui/NavSecciones";
+
+const ICONOS_SECCION: Record<string, ItemNav["icon"]> = {
+  datos: IconFileText,
+  vencimientos: IconCalendar,
+  opciones: IconSettings,
+  gestion: IconBriefcase,
+  financieros: IconWallet,
+  cobro: IconCreditCard,
+  punitorios: IconAlertTriangle,
+  onboarding: IconClipboardPlus,
+  motor: IconShieldCheck,
+  notificaciones: IconBell,
+};
 
 export function DetalleProducto({ id }: { id: string }) {
   const router = useRouter();
@@ -60,6 +89,7 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
   const [borrador, setBorrador] = useState<ProductoAbm>(() => structuredClone(registro));
   const [seccion, setSeccion] = useState(SECCIONES[0].id);
   const [intentado, setIntentado] = useState(false);
+  const sidebarColapsado = useSidebarColapsado();
   const [guardado, setGuardado] = useState(false);
   const [errorEstado, setErrorEstado] = useState<string | null>(null);
   const [pendiente, setPendiente] = useState<EstadoProductoAbm | null>(null);
@@ -199,51 +229,37 @@ function Editor({ registro, todos }: { registro: ProductoAbm; todos: ProductoAbm
         </div>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[14.5rem_minmax(0,1fr)]">
-        <nav aria-label="Secciones del producto" className="lg:sticky lg:top-20 lg:self-start">
-          <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-            {SECCIONES.map((s) => {
-              const seleccionada = s.id === activa.id;
-              const conError = intentado && seccionesConError.has(s.id);
-              return (
-                <li key={s.id} className="shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSeccion(s.id)}
-                    aria-current={seleccionada ? "page" : undefined}
-                    className={`flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
-                      seleccionada
-                        ? "bg-brand-50 text-brand-700"
-                        : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
-                    }`}
-                  >
-                    <span className="flex-1">{s.label}</span>
-                    {conError ? (
-                      <span className="h-2 w-2 rounded-full bg-danger-500" title="Tiene errores" />
-                    ) : s.vivo ? (
-                      <span
-                        className="h-1.5 w-1.5 rounded-full bg-brand-500"
-                        title="Conectado al flujo de la demo"
-                      />
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-3 hidden items-center gap-1.5 px-3 text-[11px] text-ink-400 lg:flex">
+      <NavSecciones
+        ariaLabel="Secciones del producto"
+        items={SECCIONES.map((s) => ({
+          id: s.id,
+          label: s.label,
+          icon: ICONOS_SECCION[s.id],
+          extra:
+            intentado && seccionesConError.has(s.id) ? (
+              <span className="block h-2 w-2 rounded-full bg-danger-500" title="Tiene errores" />
+            ) : s.vivo ? (
+              <span
+                className="block h-1.5 w-1.5 rounded-full bg-brand-500"
+                title="Conectado al flujo de la demo"
+              />
+            ) : null,
+        }))}
+        activa={activa.id}
+        onSelect={setSeccion}
+        ancho="14.5rem"
+        leyenda={
+          <p className="flex items-center gap-1.5 px-3 text-[11px] text-ink-400">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
             Conectado al flujo
           </p>
-        </nav>
-
-        <div className="min-w-0">
+        }
+      >
           <SeccionActiva p={borrador} set={editar} errores={errores} ver={intentado} />
-        </div>
-      </div>
+      </NavSecciones>
 
       {(sucio || guardado) && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 backdrop-blur lg:left-64">
+        <div className={`fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 backdrop-blur ${sidebarColapsado ? "lg:left-16" : "lg:left-64"}`}>
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
             {sucio ? (
               <p

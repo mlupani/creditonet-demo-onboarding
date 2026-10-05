@@ -456,7 +456,7 @@ export function EditorTokenizacion({
   const bloques = valor.proveedores;
   const libres = PROVEEDORES_TOKENIZACION.filter((x) => !bloques.some((b) => b.proveedorId === x.id));
   const cambiar = (i: number, patch: Partial<BloqueTokenizacion>) =>
-    onChange({ proveedores: bloques.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
+    onChange({ ...valor, proveedores: bloques.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
   return (
     <div className="space-y-3">
       {bloques.length === 0 && (
@@ -472,7 +472,7 @@ export function EditorTokenizacion({
               variant="ghost"
               size="sm"
               aria-label={`Quitar el proveedor ${i + 1}`}
-              onClick={() => onChange({ proveedores: bloques.filter((_, j) => j !== i) })}
+              onClick={() => onChange({ ...valor, proveedores: bloques.filter((_, j) => j !== i) })}
             >
               <IconTrash width={14} height={14} />
             </Button>
@@ -509,6 +509,7 @@ export function EditorTokenizacion({
         disabled={libres.length === 0}
         onClick={() =>
           onChange({
+            ...valor,
             proveedores: [...bloques, { proveedorId: libres[0].id, minimo: bloques.length === 0 ? 1 : 0, maximo: 1 }],
           })
         }
@@ -588,6 +589,16 @@ export function EditorCamposObligatorios({
                     label="Pedir tokenización"
                     description="Si está deshabilitado, el onboarding no pide tarjetas."
                   />
+                  {habilitadas.includes("tokenizacion") && (
+                    <div className="mt-3">
+                      <Checkbox
+                        checked={tokenizacion.obligatoria !== false}
+                        onChange={(v) => onTokenizacion({ ...tokenizacion, obligatoria: v })}
+                        label="Tokenización obligatoria"
+                        description="Si está deshabilitado, el cliente puede continuar sin tokenizar tarjeta."
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               {pantalla === "tokenizacion" && (

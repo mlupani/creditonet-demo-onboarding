@@ -44,8 +44,7 @@ export function ConfirmarOfertaModal({
     { label: "Producto", value: nombreOpcion(PRODUCTOS, app.configuracion.productoId) },
     { label: "Organismo", value: nombreOpcion(ORGANISMOS, app.configuracion.organismoId) },
     { label: "Plan de cuotas", value: planDeSolicitud(app).nombre },
-    { label: "Capital solicitado (bruto)", value: formatARS(o.montoSolicitado) },
-    { label: "Capital máximo disponible", value: formatARS(o.capitalMaximoActual) },
+    { label: "Capital solicitado", value: formatARS(o.montoSolicitado) },
     // Un renglón por crédito cancelado, cada uno con su monto.
     ...cancelados.map((c) => ({
       label: `Renovación ${c.id}${c.enMora ? " (en mora)" : ""}`,
