@@ -4,9 +4,11 @@ import {
   ORGANISMOS,
   AJUSTE_CUOTA_VARIABLE_PCT,
   SISTEMAS_AMORTIZACION,
+  TRATAMIENTOS_GASTO,
   type FilaGrilla,
   type PlanCuotas,
   type SistemaAmortizacion,
+  type TratamientoGasto,
 } from "@/lib/config";
 import { calcularCuota } from "@/lib/credit";
 import { CONDICIONES_LABORALES } from "@/lib/motores";
@@ -204,7 +206,7 @@ function Gastos({ p, set, errores, ver }: SeccionPlanProps) {
       titulo="Gastos de otorgamiento"
       descripcion="Gasto que se cobra al otorgar el crédito."
       vivo
-      nota="Se informa en la tabla de cuotas de la oferta."
+      nota="Cambia la cuota de la oferta y se informa en la tabla de cuotas."
     >
       <Grilla>
         <SelectField
@@ -237,11 +239,15 @@ function Gastos({ p, set, errores, ver }: SeccionPlanProps) {
           />
         )}
       </Grilla>
-      <Checkbox
-        checked={g.seCapitaliza}
-        onChange={(v) => setG({ seCapitaliza: v })}
-        label="Se capitaliza"
-        description="El gasto se suma al capital financiado en lugar de descontarse del desembolso."
+      <SelectField
+        id="pl-gasto-tratamiento"
+        label="Tratamiento del gasto"
+        value={g.tratamiento}
+        onChange={(v) => setG({ tratamiento: v as TratamientoGasto })}
+        options={TRATAMIENTOS_GASTO}
+        hint="Se capitaliza: el gasto se suma al capital financiado y paga interés · Se distribuye en las cuotas: se reparte en partes iguales sobre cada cuota."
+        error={ver ? errores.gastoTratamiento : undefined}
+        className="sm:max-w-md"
       />
     </Panel>
   );
@@ -668,7 +674,7 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
                   />
                 </td>
                 <td className="px-3 py-2 tabular-nums text-ink-700">
-                  {formatARS(calcularCuota(1_000_000, f.plazo, f.tna, p.config.sistema))}
+                  {formatARS(calcularCuota(1_000_000, f.plazo, f.tna, p.config.sistema, p.config.gastoOtorgamiento))}
                 </td>
                 <td className="px-3 py-2">
                   <input
@@ -797,6 +803,7 @@ export const SECCION_DE_ERROR_PLAN: Record<string, string> = {
   ivaPct: "iva",
   sellosPct: "iva",
   gastoOtorgamiento: "gastos",
+  gastoTratamiento: "gastos",
   cargoAdministrativoPct: "cargos",
   situacionesBcra: "bcra",
   condicionesLaborales: "laboral",

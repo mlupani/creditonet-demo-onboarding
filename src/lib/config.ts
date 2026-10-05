@@ -293,12 +293,32 @@ export const GRILLA_BASE: FilaGrilla[] = [
   { plazo: 120, tna: 90, recomendada: false, primeraCuota: "10/02/2027" },
 ];
 
+// Qué se hace con el gasto de otorgamiento: se suma al capital financiado (y paga interés) o se
+// reparte en partes iguales sobre cada cuota.
+export type TratamientoGasto = "CAPITALIZA" | "DISTRIBUYE_CUOTAS";
+
+export const TRATAMIENTOS_GASTO: { value: TratamientoGasto; label: string }[] = [
+  { value: "CAPITALIZA", label: "Se capitaliza" },
+  { value: "DISTRIBUYE_CUOTAS", label: "Se distribuye en las cuotas" },
+];
+
 export interface GastoOtorgamiento {
   tipo: "PORCENTAJE" | "MONTO_FIJO";
   // Porcentaje sobre el capital o monto fijo, según el tipo.
   valor: number;
-  // Si se capitaliza, el gasto se suma al capital financiado en vez de descontarse.
-  seCapitaliza: boolean;
+  tratamiento: TratamientoGasto;
+}
+
+// Los planes guardados antes tenían el check `seCapitaliza`: true pasa a "se capitaliza" y false
+// a "se distribuye en las cuotas".
+export function normalizarGasto(
+  g: Omit<GastoOtorgamiento, "tratamiento"> & { tratamiento?: TratamientoGasto; seCapitaliza?: boolean }
+): GastoOtorgamiento {
+  const { seCapitaliza, tratamiento, ...resto } = g;
+  return {
+    ...resto,
+    tratamiento: tratamiento ?? (seCapitaliza ? "CAPITALIZA" : "DISTRIBUYE_CUOTAS"),
+  };
 }
 
 export interface BonificacionPlan {
@@ -370,7 +390,11 @@ function semillaAPlan(p: PlanSemilla, i: number): PlanCuotas {
     ivaPct: p.ivaPct,
     sellosPct: p.sellosPct,
     periodoGraciaDias: p.periodoGraciaDias,
-    gastoOtorgamiento: { tipo: "PORCENTAJE", valor: p.cargoOtorgamientoPct, seCapitaliza: false },
+    gastoOtorgamiento: {
+      tipo: "PORCENTAJE",
+      valor: p.cargoOtorgamientoPct,
+      tratamiento: "DISTRIBUYE_CUOTAS",
+    },
     cargoAdministrativoPct: 0,
     // Hoy la situación BCRA y el perfil interno no bloquean el plan: sólo recortan capital.
     situacionesBcra: [1, 2, 3, 4, 5],
