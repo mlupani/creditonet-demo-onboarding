@@ -562,12 +562,12 @@ export function errorTokenizacion(t: TokenizacionConfig): string | null {
   return null;
 }
 
-// Con la pantalla de tokenización habilitada la tokenización es obligatoria: hay que tener al
-// menos un proveedor asignado y que entre todos pidan como mínimo una tarjeta.
+// Con la pantalla de tokenización habilitada hay que tener al menos un proveedor asignado y, si la
+// tokenización es obligatoria (por defecto), que entre todos pidan como mínimo una tarjeta.
 export function errorTokenizacionObligatoria(t: TokenizacionConfig): string | null {
   if (t.proveedores.length === 0)
     return "Asigná al menos un proveedor de tokenización o deshabilitá la pantalla de tokenización.";
-  if (!t.proveedores.some((b) => b.minimo >= 1))
+  if (t.obligatoria !== false && !t.proveedores.some((b) => b.minimo >= 1))
     return "La tokenización es obligatoria: pedí al menos una tarjeta (mínimo 1 en algún proveedor).";
   return null;
 }

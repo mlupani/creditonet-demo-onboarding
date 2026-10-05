@@ -30,14 +30,14 @@ test("importe del gasto: porcentaje del capital o monto fijo", () => {
 
 test("sin gasto la cuota no cambia", () => {
   assert.equal(
-    calcularCuota(1_000_000, 12, 60, "FRANCES", pct("CAPITALIZA", 0)),
-    calcularCuota(1_000_000, 12, 60, "FRANCES")
+    calcularCuota(1_000_000, 12, 60, "FRANCES_FIJA", pct("CAPITALIZA", 0)),
+    calcularCuota(1_000_000, 12, 60, "FRANCES_FIJA")
   );
 });
 
 test("se capitaliza: el gasto se suma al capital financiado", () => {
-  const cuota = calcularCuota(1_000_000, 12, 60, "FRANCES", pct("CAPITALIZA"));
-  assert.equal(cuota, calcularCuota(1_100_000, 12, 60, "FRANCES"));
+  const cuota = calcularCuota(1_000_000, 12, 60, "FRANCES_FIJA", pct("CAPITALIZA"));
+  assert.equal(cuota, calcularCuota(1_100_000, 12, 60, "FRANCES_FIJA"));
 });
 
 test("se distribuye: el gasto se reparte en partes iguales sobre cada cuota", () => {
@@ -46,22 +46,22 @@ test("se distribuye: el gasto se reparte en partes iguales sobre cada cuota", ()
 });
 
 test("capitalizar cuesta más intereses que distribuir en el sistema francés", () => {
-  const capitaliza = calcularCuota(1_000_000, 24, 60, "FRANCES", pct("CAPITALIZA"));
-  const distribuye = calcularCuota(1_000_000, 24, 60, "FRANCES", pct("DISTRIBUYE_CUOTAS"));
+  const capitaliza = calcularCuota(1_000_000, 24, 60, "FRANCES_FIJA", pct("CAPITALIZA"));
+  const distribuye = calcularCuota(1_000_000, 24, 60, "FRANCES_FIJA", pct("DISTRIBUYE_CUOTAS"));
   assert.ok(capitaliza > distribuye);
 });
 
 test("total a pagar: americano devuelve el capital financiado en la última cuota", () => {
   const g = pct("CAPITALIZA");
   const cuota = calcularCuota(1_000_000, 12, 60, "AMERICANO", g);
-  assert.equal(totalAPagarDe(1_000_000, 12, cuota, "AMERICANO", g), cuota * 12 + 1_100_000);
+  assert.equal(totalAPagarDe(1_000_000, 12, 60, cuota, "AMERICANO", g), cuota * 12 + 1_100_000);
   const d = pct("DISTRIBUYE_CUOTAS");
   const cuotaD = calcularCuota(1_000_000, 12, 60, "AMERICANO", d);
-  assert.equal(totalAPagarDe(1_000_000, 12, cuotaD, "AMERICANO", d), cuotaD * 12 + 1_000_000);
+  assert.equal(totalAPagarDe(1_000_000, 12, 60, cuotaD, "AMERICANO", d), cuotaD * 12 + 1_000_000);
 });
 
 test("capitalDesdeCuota invierte calcularCuota con el gasto (sin pasarse de la cuota)", () => {
-  for (const sistema of ["FRANCES", "AMERICANO", "TASA_DIRECTA"] as const) {
+  for (const sistema of ["FRANCES_FIJA", "AMERICANO", "TASA_DIRECTA"] as const) {
     for (const g of [
       pct("CAPITALIZA"),
       pct("DISTRIBUYE_CUOTAS"),

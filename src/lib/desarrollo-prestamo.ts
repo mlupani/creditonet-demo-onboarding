@@ -1,7 +1,14 @@
 import type { CreditApplication } from "./types";
 import { nombreOpcion, ORGANISMOS, PRODUCTOS, CANALES, VENDEDORES } from "./config";
 import { formatARS } from "./format";
-import { importeTerceros, netoAAcreditar, planDeSolicitud, totalPrecancelaciones } from "./credit";
+import {
+  cronogramaCuotas,
+  cuotaEsVariable,
+  importeTerceros,
+  netoAAcreditar,
+  planDeSolicitud,
+  totalPrecancelaciones,
+} from "./credit";
 import { parseFecha } from "./format";
 import { TERMINOS } from "./terminologia";
 
@@ -114,6 +121,11 @@ export function generarDesarrolloCuotas(app: CreditApplication): CuotaDesarrollo
   const capitalCuota = plazo > 0 ? monto / plazo : 0;
   const interesCuota = plazo > 0 && valorCuota > 0 ? (valorCuota - capitalCuota) / (1 + ivaPct / 100) : 0;
   const ivaCuota = interesCuota * (ivaPct / 100);
+  // Si la cuota varía según el sistema (francés variable, alemán, americano), cada cuota sale del
+  // cronograma del plan; el interés de la cuota incluye su IVA, como en la descomposición de arriba.
+  const cronograma = cuotaEsVariable(plan.sistema)
+    ? cronogramaCuotas(monto, plazo, o.tna, plan.sistema, plan.gastoOtorgamiento)
+    : null;
 
   // Crédito arrancando: aún sin pagos registrados. Todos los importes de
   // Pagos/NC, Saldo y Remanentes van en 0 hasta que se impute el primer pago.
@@ -123,9 +135,11 @@ export function generarDesarrolloCuotas(app: CreditApplication): CuotaDesarrollo
     const haber = formatHaber(haberDate);
     const vto = formatVto(vtoDate);
 
-    const capital = Number(capitalCuota.toFixed(2));
-    const interes = Number(interesCuota.toFixed(2));
-    const ivaInteres = Number(ivaCuota.toFixed(2));
+    const fila = cronograma?.[n - 1];
+    const interesFila = fila ? fila.interes / (1 + ivaPct / 100) : interesCuota;
+    const capital = Number((fila ? fila.capital : capitalCuota).toFixed(2));
+    const interes = Number(interesFila.toFixed(2));
+    const ivaInteres = Number((fila ? fila.interes - interesFila : ivaCuota).toFixed(2));
 
     const pagos = 0;
     const saldoCuota = 0;
@@ -135,7 +149,7 @@ export function generarDesarrolloCuotas(app: CreditApplication): CuotaDesarrollo
 
     cuotas.push({
       nro: n,
-      valorCuota: Number(valorCuota.toFixed(2)),
+      valorCuota: Number((fila ? fila.cuota : valorCuota).toFixed(2)),
       pagos: Number(pagos.toFixed(2)),
       saldoCuota: Number(saldoCuota.toFixed(2)),
       haber,

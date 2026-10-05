@@ -244,13 +244,32 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
 // oferta, los limitantes y la grilla de tasas. Un organismo puede tener varios planes: el plan de
 // cada solicitud es el primero, por prioridad, que habilita al perfil del cliente.
 
-export type SistemaAmortizacion = "FRANCES" | "AMERICANO" | "TASA_DIRECTA";
+export type SistemaAmortizacion =
+  | "FRANCES_FIJA"
+  | "FRANCES_VARIABLE"
+  | "AMERICANO"
+  | "TASA_DIRECTA"
+  | "ALEMAN";
 
 export const SISTEMAS_AMORTIZACION: { value: SistemaAmortizacion; label: string }[] = [
-  { value: "FRANCES", label: "Francés (cuota fija)" },
+  { value: "FRANCES_FIJA", label: "Francés cuota fija (cuota constante)" },
+  { value: "FRANCES_VARIABLE", label: "Francés cuota variable (cuota que se ajusta cada mes)" },
   { value: "AMERICANO", label: "Americano (interés + capital al final)" },
   { value: "TASA_DIRECTA", label: "Tasa directa (interés sobre capital original)" },
+  { value: "ALEMAN", label: "Alemán (capital constante, cuota decreciente)" },
 ];
+
+// Regla simulada: en el francés cuota variable la cuota arranca como la del francés y se ajusta
+// este porcentaje cada mes (como una cuota indexada).
+export const AJUSTE_CUOTA_VARIABLE_PCT = 2;
+
+// Los planes guardados antes de separar el francés tenían "FRANCES": pasan a cuota fija. Un
+// valor desconocido también cae en el francés cuota fija.
+export function migrarSistemaAmortizacion(valor: string): SistemaAmortizacion {
+  return SISTEMAS_AMORTIZACION.some((s) => s.value === valor)
+    ? (valor as SistemaAmortizacion)
+    : "FRANCES_FIJA";
+}
 
 // Una fila de la grilla de tasas: TNA de cada plazo. Es lo que arma la oferta.
 export interface FilaGrilla {
@@ -318,7 +337,8 @@ export interface TopesAutorizacion {
 export interface PlanCuotas {
   id: string;
   nombre: string;
-  estado: EstadoProducto;
+  // El plan nace en borrador y se ofrece recién cuando se lo activa.
+  estado: EstadoProductoAbm;
   // Vigencia comercial (dd/mm/aaaa).
   vigenciaDesde: string;
   vigenciaHasta: string | null;
@@ -365,7 +385,7 @@ function semillaAPlan(p: PlanSemilla, i: number): PlanCuotas {
     vigenciaDesde: "01/01/2026",
     vigenciaHasta: null,
     prioridad: 1,
-    sistema: "FRANCES",
+    sistema: "FRANCES_FIJA",
     calculaIva: true,
     ivaPct: p.ivaPct,
     sellosPct: p.sellosPct,
@@ -479,6 +499,14 @@ export interface TokenizacionConfig {
   tipoTarjeta?: TipoTarjeta;
   // false: el código de seguridad deja de ser obligatorio. Sin definir: se pide.
   pedirCodigoSeguridad?: boolean;
+  // false: la tokenización es opcional (el cliente puede seguir sin tarjeta y los mínimos no se
+  // exigen). Sin definir: obligatoria. Sólo aplica si la pantalla de tokenización está habilitada.
+  obligatoria?: boolean;
+}
+
+// Mínimo de tarjetas que se exige de un bloque: 0 si la tokenización es opcional.
+export function minimoTokenizacion(t: TokenizacionConfig, b: BloqueTokenizacion): number {
+  return t.obligatoria === false ? 0 : b.minimo;
 }
 
 // Producto: navegación entre las pantallas del onboarding. Libre: en cualquier orden.
