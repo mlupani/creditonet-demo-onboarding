@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useApplication } from "@/lib/application-context";
 import {
   AMBITOS,
+  CANALES_DESTINO,
   EVENTOS,
   MEDIOS,
   VARIABLES_TEXTO,
@@ -16,10 +17,12 @@ import {
   usePlantillasNotificacion,
   validarNotificacion,
   type AmbitoNotificacion,
+  type EstadoNotificacion,
   type MedioNotificacion,
   type Notificacion,
 } from "@/lib/plantillas-notificacion";
-import { useProductos } from "@/lib/productos";
+import { desvincularNotificacion, useProductos } from "@/lib/productos";
+import { limpiarNotificacionDeOrganismos } from "@/lib/organismos";
 import { EditorSeleccion } from "@/components/productos/editores";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Button } from "@/components/ui/Button";
@@ -42,18 +45,32 @@ const etiquetaMedio = (id: MedioNotificacion) => MEDIOS.find((m) => m.id === id)
 
 // ABM de notificaciones: plantillas con evento, texto, medios y parámetros, en dos solapas
 // (externas al cliente, internas a los equipos).
+const SIN_CANAL = "__todos";
+const nombreCanal = (id?: string) => CANALES_DESTINO.find((c) => c.id === id)?.nombre ?? "Todos los equipos";
+
+// Deshabilitada: se quita de los productos y de las excepciones de los organismos.
+function desvincularDeTodo(id: string) {
+  desvincularNotificacion(id);
+  limpiarNotificacionDeOrganismos(id);
+}
+
 export function ListaNotificaciones() {
   const { hidratado } = useApplication();
   const todas = usePlantillasNotificacion();
   const productos = useProductos();
   const [ambito, setAmbito] = useState<AmbitoNotificacion>("EXTERNO");
   const [busqueda, setBusqueda] = useState("");
+  // Filtro de canal (solapa internas): "" = sin filtro, SIN_CANAL = dirigidas a todos los canales.
+  const [canal, setCanal] = useState("");
+  const [estado, setEstado] = useState<"" | EstadoNotificacion>("");
   const [editando, setEditando] = useState<Notificacion | null>(null);
   const [aEliminar, setAEliminar] = useState<Notificacion | null>(null);
 
   const q = sinAcentos(busqueda.trim());
   const filas = todas
     .filter((n) => n.ambito === ambito)
+    .filter((n) => !estado || n.estado === estado)
+    .filter((n) => ambito !== "INTERNO" || !canal || (canal === SIN_CANAL ? !n.canal : n.canal === canal))
     .filter((n) => !q || sinAcentos(`${n.codigo} ${n.nombre} ${getEvento(n.evento)?.label ?? ""} ${n.texto}`).includes(q))
     .sort((a, b) => a.codigo.localeCompare(b.codigo));
 
@@ -88,6 +105,32 @@ export function ListaNotificaciones() {
             className="h-10 w-full rounded-lg border border-ink-300 bg-white pl-9 pr-3 text-sm shadow-xs outline-none transition placeholder:text-ink-400 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
         </div>
+        <select
+          value={estado}
+          onChange={(e) => setEstado(e.target.value as "" | EstadoNotificacion)}
+          aria-label="Filtrar por estado"
+          className="h-10 w-full rounded-lg border border-ink-300 bg-white px-3 text-sm shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:w-44"
+        >
+          <option value="">Todos los estados</option>
+          <option value="ACTIVA">Activas</option>
+          <option value="INACTIVA">Inactivas</option>
+        </select>
+        {ambito === "INTERNO" && (
+          <select
+            value={canal}
+            onChange={(e) => setCanal(e.target.value)}
+            aria-label="Filtrar por destinatario"
+            className="h-10 w-full rounded-lg border border-ink-300 bg-white px-3 text-sm shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:w-56"
+          >
+            <option value="">Todos los destinatarios</option>
+            {CANALES_DESTINO.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+            <option value={SIN_CANAL}>Todos los equipos</option>
+          </select>
+        )}
       </div>
 
       <div role="tablist" aria-label="Ámbito de la notificación" className="mt-5 inline-flex rounded-lg border border-ink-200 bg-ink-50 p-0.5">
@@ -126,6 +169,7 @@ export function ListaNotificaciones() {
                   <th className="w-20 px-4 py-2.5">ID</th>
                   <th className="px-4 py-2.5">Notificación</th>
                   <th className="px-4 py-2.5">Evento</th>
+                  {ambito === "INTERNO" && <th className="px-4 py-2.5">Dirigida a</th>}
                   <th className="px-4 py-2.5">Medios</th>
                   <th className="px-4 py-2.5">Parámetros</th>
                   <th className="px-4 py-2.5">Productos</th>
@@ -144,6 +188,13 @@ export function ListaNotificaciones() {
                       <p className="mt-0.5 line-clamp-2 max-w-xs text-xs text-ink-500">{n.texto}</p>
                     </td>
                     <td className="px-4 py-3 text-ink-700">{getEvento(n.evento)?.label ?? n.evento}</td>
+                    {ambito === "INTERNO" && (
+                      <td className="px-4 py-3">
+                        <span className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
+                          {nombreCanal(n.canal)}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {n.medios.map((m) => (
@@ -190,7 +241,11 @@ export function ListaNotificaciones() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => cambiarEstadoNotificacion(n.id, n.estado === "ACTIVA" ? "INACTIVA" : "ACTIVA")}
+                          onClick={() => {
+                            const nuevo = n.estado === "ACTIVA" ? "INACTIVA" : "ACTIVA";
+                            cambiarEstadoNotificacion(n.id, nuevo);
+                            if (nuevo === "INACTIVA") desvincularDeTodo(n.id);
+                          }}
                         >
                           {n.estado === "ACTIVA" ? "Desactivar" : "Activar"}
                         </Button>
@@ -283,6 +338,7 @@ function FormularioNotificacion({
     setIntentado(true);
     if (Object.keys(errores).length > 0) return;
     guardarNotificacion({ ...b, nombre: b.nombre.trim(), texto: b.texto.trim() });
+    if (b.estado === "INACTIVA" && b.id) desvincularDeTodo(b.id);
     onCerrar();
   }
 
@@ -327,6 +383,17 @@ function FormularioNotificacion({
             options={eventos.map((e) => ({ value: e.id, label: e.label }))}
             error={ver("evento")}
           />
+          {b.ambito === "INTERNO" && (
+            <SelectField
+              id="ntf-canal"
+              label="Dirigida a"
+              value={b.canal ?? ""}
+              onChange={(v) => set({ canal: v })}
+              placeholder="Todos los equipos"
+              options={CANALES_DESTINO.map((c) => ({ value: c.id, label: c.nombre }))}
+              hint="Equipo que recibe el aviso: canal de venta, analistas o telefonistas."
+            />
+          )}
         </div>
 
         <div>

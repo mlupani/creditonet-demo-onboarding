@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { IconCheck, IconSparkles } from "@/components/icons";
+import { useForzarErrores } from "./ForzarErrores";
 import { RequiredBadge } from "./RequiredBadge";
 import { ValidationMessage } from "./ValidationMessage";
 
@@ -46,7 +47,8 @@ export function FormField({
   onFocus,
 }: FormFieldProps) {
   const [touched, setTouched] = useState(false);
-  const showError = touched && !!error;
+  const forzar = useForzarErrores();
+  const showError = (touched || forzar) && !!error;
   const showOk = touched && !error && value.trim().length > 0;
 
   return (
