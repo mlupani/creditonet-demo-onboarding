@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import {
   ORGANISMOS,
   AJUSTE_CUOTA_VARIABLE_PCT,
+  SALTOS_CAPITAL_GRILLA,
   SISTEMAS_AMORTIZACION,
   TRATAMIENTOS_GASTO,
   type FilaGrilla,
@@ -33,7 +35,10 @@ import { MAX_RANGOS_SUELDO } from "@/lib/config";
 import { CampoNumero, Panel, Subtitulo } from "@/components/productos/campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
 import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
-import { IconPlus, IconTrash } from "@/components/icons";
+import { IconEye, IconPlus, IconTable, IconTrash } from "@/components/icons";
+import { Modal } from "@/components/ui/Modal";
+import { capitalesDe, GrillaCuotas } from "@/components/onboarding/oferta/GrillaCuotas";
+import { crearXlsx } from "@/lib/xlsx";
 
 export interface SeccionPlanProps {
   p: PlanAbm;
@@ -667,39 +672,41 @@ function Bonificaciones({ p, set, errores, ver }: SeccionPlanProps) {
   return (
     <Panel
       titulo="Bonificaciones"
-      descripcion="Descuentos sobre los cargos del plan bajo ciertas condiciones."
-      nota="Valores de ejemplo: se guardan pero no cambian el cálculo de la oferta."
+      descripcion="Campañas que bonifican cuotas al final del plan si el cliente paga al día."
+      nota="Valores de ejemplo: se guardan pero no cambian el cálculo de la oferta. Los cargos del propio plan no se bonifican acá."
     >
       {ver && errores.bonificaciones && (
         <ValidationMessage tipo="error">{errores.bonificaciones}</ValidationMessage>
       )}
-      {lista.length === 0 && <p className="text-sm text-ink-500">El plan no tiene bonificaciones.</p>}
+      {lista.length === 0 && <p className="text-sm text-ink-500">El plan no tiene campañas de bonificación.</p>}
       {lista.map((b) => (
         <div key={b.id} className="rounded-xl border border-ink-200 bg-white p-3">
-          <div className="grid gap-3 sm:grid-cols-[1fr_8rem_1fr_auto] sm:items-end">
+          <div className="grid gap-3 sm:grid-cols-[1fr_16rem_10rem_auto] sm:items-end">
             <FormField
-              id={`${b.id}-concepto`}
-              label="Concepto"
-              value={b.concepto}
-              onChange={(v) => cambiar(b.id, { concepto: v })}
+              id={`${b.id}-nombre`}
+              label="Nombre de la campaña"
+              value={b.nombre}
+              onChange={(v) => cambiar(b.id, { nombre: v })}
             />
             <CampoNumero
-              id={`${b.id}-pct`}
-              label="Bonifica"
-              sufijo="%"
-              value={b.pct}
-              onChange={(v) => cambiar(b.id, { pct: v })}
+              id={`${b.id}-cuotas`}
+              label="Cuotas bonificadas al final del plan"
+              sufijo="cuotas"
+              min={1}
+              value={b.cuotasBonificadas}
+              onChange={(v) => cambiar(b.id, { cuotasBonificadas: Math.round(v) })}
             />
             <FormField
               id={`${b.id}-condicion`}
               label="Condición"
-              value={b.condicion}
-              onChange={(v) => cambiar(b.id, { condicion: v })}
+              value="Paga al día"
+              onChange={() => {}}
+              disabled
             />
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Quitar la bonificación"
+              aria-label="Quitar la campaña"
               onClick={() => cf({ bonificaciones: lista.filter((x) => x.id !== b.id) })}
               className="mb-1.5"
             >
@@ -715,13 +722,13 @@ function Bonificaciones({ p, set, errores, ver }: SeccionPlanProps) {
           cf({
             bonificaciones: [
               ...lista,
-              { id: `bonif-${Date.now()}`, concepto: "", pct: 0, condicion: "" },
+              { id: `bonif-${Date.now()}`, nombre: "", cuotasBonificadas: 1, condicion: "PAGO_AL_DIA" },
             ],
           })
         }
       >
         <IconPlus width={14} height={14} />
-        Agregar bonificación
+        Agregar campaña
       </Button>
     </Panel>
   );
@@ -767,22 +774,67 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
   const recomendar = (i: number) =>
     cf({ grilla: grilla.map((f, j) => ({ ...f, recomendada: j === i })) });
   const libres = PLAZOS.filter((pl) => !grilla.some((f) => f.plazo === pl));
+  const [viendo, setViendo] = useState(false);
+  const cg = p.config.capitalGrilla;
+  const setCg = (patch: Partial<typeof cg>) => cf({ capitalGrilla: { ...cg, ...patch } });
+  const grillaValida = !errores.grilla;
+  const exportar = () => {
+    const plazos = [...grilla].sort((a, b) => a.plazo - b.plazo);
+    const capitales = capitalesDe(cg.maximo, 0, cg.minimo - 1, cg.salto);
+    const { sistema, gastoOtorgamiento: gasto, cargoAdministrativo: cargo } = p.config;
+    const filas = [
+      ["Capital", ...plazos.map((t) => `${t.plazo} cuotas`)],
+      ["TNA %", ...plazos.map((t) => String(t.tna))],
+      ...capitales.map((c) => [
+        formatARS(c),
+        ...plazos.map((t) => formatARS(calcularCuota(c, t.plazo, t.tna, sistema, gasto, cargo))),
+      ]),
+    ];
+    const blob = new Blob([crearXlsx("Grilla", filas) as BlobPart], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `grilla-${p.config.id}.xlsx`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   return (
     <Panel
       titulo="Grilla de tasas"
       descripcion="TNA de cada plazo. Es la grilla con la que se arma la oferta."
       vivo
-      nota={`La TNA de cada plazo sale de esta grilla y la cuota se calcula con el sistema del plan. La columna de cuota muestra el resultado para ${formatARS(1_000_000)}.`}
+      nota="La TNA de cada plazo sale de esta grilla y la cuota se calcula con el sistema del plan."
     >
       {ver && errores.grilla && <ValidationMessage tipo="error">{errores.grilla}</ValidationMessage>}
+      <Grilla cols={3}>
+        <MoneyInput
+          id="pl-grilla-min"
+          label="Capital mínimo de la grilla"
+          value={cg.minimo}
+          onChange={(v) => setCg({ minimo: v })}
+        />
+        <MoneyInput
+          id="pl-grilla-max"
+          label="Capital máximo de la grilla"
+          value={cg.maximo}
+          onChange={(v) => setCg({ maximo: v })}
+        />
+        <SelectField
+          id="pl-grilla-salto"
+          label="Salto de capital"
+          value={String(cg.salto)}
+          onChange={(v) => setCg({ salto: Number(v) })}
+          options={SALTOS_CAPITAL_GRILLA.map((s) => ({ value: String(s), label: `Cada ${formatARS(s)}` }))}
+        />
+      </Grilla>
       <div className="overflow-x-auto rounded-xl border border-ink-200">
-        <table className="w-full min-w-[40rem] text-left text-sm">
+        <table className="w-full min-w-[28rem] text-left text-sm">
           <thead>
             <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
               <th className="px-3 py-2.5">Plazo</th>
               <th className="px-3 py-2.5">TNA</th>
-              <th className="px-3 py-2.5">1ª cuota</th>
-              <th className="px-3 py-2.5">Cuota de ejemplo</th>
               <th className="px-3 py-2.5">Recomendada</th>
               <th className="px-3 py-2.5" />
             </tr>
@@ -814,25 +866,6 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
                     onChange={(e) => cambiar(i, { tna: Number(e.target.value) })}
                     className="h-9 w-full rounded-lg border border-ink-300 bg-white px-2 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
                   />
-                </td>
-                <td className="w-36 px-3 py-2">
-                  <input
-                    type="date"
-                    aria-label={`Primera cuota de la fila ${i + 1}`}
-                    value={fechaAIso(f.primeraCuota)}
-                    onChange={(e) => cambiar(i, { primeraCuota: isoAFecha(e.target.value) })}
-                    className="h-9 w-full rounded-lg border border-ink-300 bg-white px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                  />
-                </td>
-                <td className="px-3 py-2 tabular-nums text-ink-700">
-                  {formatARS(calcularCuota(
-                    1_000_000,
-                    f.plazo,
-                    f.tna,
-                    p.config.sistema,
-                    p.config.gastoOtorgamiento,
-                    p.config.cargoAdministrativo
-                  ))}
                 </td>
                 <td className="px-3 py-2">
                   <input
@@ -881,6 +914,47 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
         <IconPlus width={14} height={14} />
         Agregar plazo
       </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="subtle" size="sm" disabled={!grillaValida} onClick={() => setViendo(true)}>
+          <IconEye width={14} height={14} />
+          Ver grilla
+        </Button>
+        <Button variant="subtle" size="sm" disabled={!grillaValida} onClick={exportar}>
+          <IconTable width={14} height={14} />
+          Exportar a Excel
+        </Button>
+      </div>
+      <Modal
+        open={viendo}
+        onClose={() => setViendo(false)}
+        title="Grilla de cuotas"
+        maxWidth="max-w-4xl"
+        footer={
+          <Button variant="subtle" onClick={() => setViendo(false)}>
+            Cerrar
+          </Button>
+        }
+      >
+        <p className="mb-3 text-xs text-ink-500">
+          Cuota mensual de cada capital según la cantidad de cuotas, de {formatARS(cg.minimo)} a{" "}
+          {formatARS(cg.maximo)}, cada {formatARS(cg.salto)}.
+        </p>
+        {viendo && grillaValida && (
+          <GrillaCuotas
+            terms={[...grilla].sort((a, b) => a.plazo - b.plazo)}
+            sistema={p.config.sistema}
+            gasto={p.config.gastoOtorgamiento}
+            cargo={p.config.cargoAdministrativo}
+            capitalMaximo={cg.maximo}
+            capitalMinimo={cg.minimo - 1}
+            paso={cg.salto}
+            capital={0}
+            plazo={grilla[0].plazo}
+            seleccionable={false}
+            onSeleccionar={() => {}}
+          />
+        )}
+      </Modal>
     </Panel>
   );
 }
@@ -927,6 +1001,16 @@ function Vinculaciones({ p, set, errores, ver }: SeccionPlanProps) {
   );
 }
 
+// --- Beneficio de puntos (solo título por ahora) ---
+
+function BeneficioPuntos() {
+  return (
+    <Panel titulo="Beneficio de puntos" descripcion="">
+      <></>
+    </Panel>
+  );
+}
+
 // --- Registro de secciones ---
 
 export const SECCIONES_PLAN: {
@@ -948,6 +1032,7 @@ export const SECCIONES_PLAN: {
   { id: "limitantes", label: "Limitantes", vivo: true, Componente: Limitantes },
   { id: "bonificaciones", label: "Bonificaciones", vivo: false, Componente: Bonificaciones },
   { id: "topes", label: "Topes de autorización", vivo: false, Componente: Topes },
+  { id: "puntos", label: "Beneficio de puntos", vivo: false, Componente: BeneficioPuntos },
   { id: "grilla", label: "Grilla de tasas", vivo: true, Componente: GrillaTasas },
   { id: "vinculaciones", label: "Vinculaciones", vivo: true, Componente: Vinculaciones },
 ];

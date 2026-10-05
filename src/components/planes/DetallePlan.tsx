@@ -73,6 +73,7 @@ const ICONOS_SECCION: Record<string, ItemNav["icon"]> = {
   limitantes: IconLock,
   bonificaciones: IconSparkles,
   topes: IconKey,
+  puntos: IconSparkles,
   grilla: IconRows,
   vinculaciones: IconGitBranch,
 };

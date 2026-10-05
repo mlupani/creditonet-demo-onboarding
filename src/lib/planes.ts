@@ -13,6 +13,8 @@ import {
   ORGANISMOS,
   PLANES_CUOTAS,
   migrarSistemaAmortizacion,
+  RANGO_CAPITAL_GRILLA_BASE,
+  SALTOS_CAPITAL_GRILLA,
   MAX_RANGOS_SUELDO,
   rangosCuotaIniciales,
   normalizarCargo,
@@ -80,6 +82,11 @@ const store = crearStoreAbm<PlanAbm>({
       r.config.cargoAdministrativo = normalizarCargo(r.config);
       delete (r.config as { cargoAdministrativoPct?: number }).cargoAdministrativoPct;
       r.config.rangosSueldoNeto ??= [];
+      // Bonificaciones guardadas con concepto y %: eran de ejemplo, se descartan.
+      r.config.bonificaciones = (r.config.bonificaciones ?? []).filter(
+        (b) => typeof b.cuotasBonificadas === "number"
+      );
+      r.config.capitalGrilla ??= { ...RANGO_CAPITAL_GRILLA_BASE };
       r.config.limitantes = normalizarLimitantes(r.config.limitantes, r.config.situacionesBcra);
       // Planes guardados con RCI y SMVM únicos: se reparten en los 5 rangos iniciales.
       const previo = r.config as { rciMaxPct?: number; smvmBolsillo?: number };
@@ -240,8 +247,13 @@ export function validarPlan(p: PlanAbm, todos: PlanAbm[]): Record<string, string
   ];
   if (pcts.some((v) => v < 0 || v > 100)) e.limitantes = "Los recortes van de 0 a 100 %.";
 
-  if (c.bonificaciones.some((b) => b.pct < 0 || b.pct > 100 || !b.concepto.trim()))
-    e.bonificaciones = "Cada bonificación necesita un concepto y un porcentaje de 0 a 100 %.";
+  const plazoMinimo = Math.min(...c.grilla.map((f) => f.plazo));
+  if (c.bonificaciones.some((b) => !b.nombre.trim()))
+    e.bonificaciones = "Cada campaña necesita un nombre.";
+  else if (c.bonificaciones.some((b) => !Number.isInteger(b.cuotasBonificadas) || b.cuotasBonificadas < 1))
+    e.bonificaciones = "Las cuotas bonificadas tienen que ser un número entero de 1 en adelante.";
+  else if (c.bonificaciones.some((b) => b.cuotasBonificadas >= plazoMinimo))
+    e.bonificaciones = `Las cuotas bonificadas tienen que ser menos que el plazo más corto de la grilla (${plazoMinimo}).`;
   if (c.topes.montoAnalista > c.topes.montoSupervisor)
     e.topes = "El tope del analista no puede superar al del supervisor.";
 
@@ -249,5 +261,13 @@ export function validarPlan(p: PlanAbm, todos: PlanAbm[]): Record<string, string
   if (c.grilla.length === 0) e.grilla = "La grilla necesita al menos un plazo.";
   else if (new Set(plazos).size !== plazos.length) e.grilla = "Hay plazos repetidos en la grilla.";
   else if (c.grilla.some((f) => f.tna <= 0)) e.grilla = "Cada plazo necesita una TNA mayor a cero.";
+  const cg = c.capitalGrilla;
+  if (!e.grilla) {
+    if (cg.minimo <= 0 || cg.maximo < cg.minimo)
+      e.grilla = "El capital máximo de la grilla tiene que ser mayor o igual al mínimo, y el mínimo mayor a cero.";
+    else if (!SALTOS_CAPITAL_GRILLA.includes(cg.salto)) e.grilla = "Elegí un salto de capital válido.";
+    else if (cg.maximo / cg.salto > 500)
+      e.grilla = "El salto es muy chico para ese capital máximo: la grilla tendría más de 500 filas.";
+  }
   return e;
 }

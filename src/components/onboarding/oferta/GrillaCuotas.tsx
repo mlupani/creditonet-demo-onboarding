@@ -10,10 +10,15 @@ const PASO_CAPITAL = 100_000;
 
 // Capitales que se muestran: del máximo hacia abajo de a $100.000, más el máximo y el monto
 // elegido si no caen justo en un paso. Nunca superan el capital máximo otorgable.
-function capitalesDe(maximo: number, elegido: number, minimo: number): number[] {
+export function capitalesDe(
+  maximo: number,
+  elegido: number,
+  minimo: number,
+  paso: number = PASO_CAPITAL
+): number[] {
   const capitales = new Set<number>();
   if (maximo > 0) capitales.add(maximo);
-  for (let c = Math.floor(maximo / PASO_CAPITAL) * PASO_CAPITAL; c >= PASO_CAPITAL; c -= PASO_CAPITAL)
+  for (let c = Math.floor(maximo / paso) * paso; c >= paso; c -= paso)
     capitales.add(c);
   if (elegido > 0 && elegido <= maximo) capitales.add(elegido);
   return Array.from(capitales)
@@ -30,6 +35,7 @@ export function GrillaCuotas({
   cargo,
   capitalMaximo,
   capitalMinimo = 0,
+  paso,
   capital,
   plazo,
   seleccionable,
@@ -45,6 +51,8 @@ export function GrillaCuotas({
   capitalMaximo: number;
   // Se muestran sólo capitales por encima de este piso (ej. lo que se cancela de la oferta).
   capitalMinimo?: number;
+  // Cada cuánto se abre una fila (por defecto, $100.000).
+  paso?: number;
   capital: number;
   plazo: Plazo;
   // Falso si la combinación elegida quedó obsoleta (cambió la renovación).
@@ -52,8 +60,8 @@ export function GrillaCuotas({
   onSeleccionar: (capital: number, plazo: Plazo) => void;
 }) {
   const capitales = useMemo(
-    () => capitalesDe(capitalMaximo, capital, capitalMinimo),
-    [capitalMaximo, capital, capitalMinimo]
+    () => capitalesDe(capitalMaximo, capital, capitalMinimo, paso),
+    [capitalMaximo, capital, capitalMinimo, paso]
   );
   const contenedor = useRef<HTMLDivElement>(null);
 

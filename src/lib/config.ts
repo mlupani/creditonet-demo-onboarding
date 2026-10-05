@@ -267,6 +267,21 @@ export interface FilaGrilla {
   primeraCuota: string;
 }
 
+// Rango de capitales que cubre la grilla del plan y cada cuánto se abre una fila.
+export interface RangoCapitalGrilla {
+  minimo: number;
+  maximo: number;
+  salto: number;
+}
+
+export const SALTOS_CAPITAL_GRILLA = [100_000, 500_000, 1_000_000];
+
+export const RANGO_CAPITAL_GRILLA_BASE: RangoCapitalGrilla = {
+  minimo: 100_000,
+  maximo: 2_000_000,
+  salto: 100_000,
+};
+
 export const GRILLA_BASE: FilaGrilla[] = [
   { plazo: 12, tna: 58, recomendada: true, primeraCuota: "10/10/2026" },
   { plazo: 18, tna: 63, recomendada: false, primeraCuota: "25/10/2026" },
@@ -390,11 +405,13 @@ export function rangosCuotaIniciales(rciPct: number, smvmBolsillo: number): Rang
   }));
 }
 
+// Campaña de bonificación de cuotas: si el cliente paga al día, se bonifican las últimas
+// `cuotasBonificadas` cuotas del plan.
 export interface BonificacionPlan {
   id: string;
-  concepto: string;
-  pct: number;
-  condicion: string;
+  nombre: string;
+  cuotasBonificadas: number;
+  condicion: "PAGO_AL_DIA";
 }
 
 // Hasta qué monto autoriza cada rol; por encima interviene el siguiente.
@@ -439,6 +456,7 @@ export interface PlanCuotas {
   bonificaciones: BonificacionPlan[];
   topes: TopesAutorizacion;
   grilla: FilaGrilla[];
+  capitalGrilla: RangoCapitalGrilla;
 }
 
 function semillaAPlan(p: PlanSemilla, i: number): PlanCuotas {
@@ -473,14 +491,15 @@ function semillaAPlan(p: PlanSemilla, i: number): PlanCuotas {
         ? [
             {
               id: "bonif-1",
-              concepto: "Bonificación del gasto de otorgamiento",
-              pct: 50,
-              condicion: "Cliente existente",
+              nombre: "Campaña pago al día",
+              cuotasBonificadas: 3,
+              condicion: "PAGO_AL_DIA",
             },
           ]
         : [],
     topes: { montoAnalista: 1_500_000, montoSupervisor: 3_000_000 },
     grilla: GRILLA_BASE.filter((f) => p.plazos.includes(f.plazo)).map((f) => ({ ...f })),
+    capitalGrilla: { ...RANGO_CAPITAL_GRILLA_BASE },
   };
 }
 
