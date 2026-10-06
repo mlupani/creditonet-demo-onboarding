@@ -5,7 +5,6 @@ import {
   normalizarAsignacion,
   type OverridesOrganismo,
 } from "@/lib/config";
-import { CAMPOS_POST_OFERTA, getCampo } from "@/lib/campos-post-oferta";
 import { textoVigencia, type ProductoAbm } from "@/lib/productos";
 import {
   EXTRAS_POR_SECCION,
@@ -359,78 +358,7 @@ const Punitorios = espejo(SECCIONES.find((x) => x.id === "punitorios")!.Componen
 
 // --- 10. Configuración del onboarding ---
 
-const OnboardingProducto = espejo(SECCIONES.find((x) => x.id === "onboarding")!.Componente, "onboarding");
-
-function Onboarding(props: SeccionOrgProps) {
-  return (
-    <div className="space-y-5">
-      <OnboardingProducto {...props} />
-      <CamposQuitados {...props} />
-    </div>
-  );
-}
-
-// Quitar campos del formulario es propio del organismo: el producto siempre muestra todos.
-function CamposQuitados({ o, p, set }: SeccionOrgProps) {
-  const { ov, quitarOv } = useEditores(set);
-  const ovs = o.config.overrides;
-  return (
-    <Panel
-      titulo="Campos quitados del formulario"
-      descripcion="Excepción propia del organismo sobre la configuración del onboarding."
-      vivo
-      nota="Los cambios se reflejan en Solicitar crédito."
-    >
-      <FilaHerencia
-        etiqueta="Campos quitados del formulario"
-        ayuda="Un campo quitado no se muestra ni se valida en la carga."
-        productoNombre={p.config.nombre}
-        heredado="Se muestran todos los campos"
-        editor={
-          ovs.camposQuitados ? (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {ovs.camposQuitados.length === 0 && (
-                  <span className="text-xs text-ink-500">Todavía no se quitó ningún campo.</span>
-                )}
-                {ovs.camposQuitados.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() =>
-                      ov({ camposQuitados: (ovs.camposQuitados ?? []).filter((x) => x !== id) })
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-warning-300 bg-white px-2.5 py-1 text-xs font-medium text-warning-700 hover:bg-warning-50"
-                    aria-label={`Volver a mostrar ${getCampo(id)?.label ?? id}`}
-                  >
-                    {getCampo(id)?.label ?? id} ✕
-                  </button>
-                ))}
-              </div>
-              <SelectField
-                id="o-campo-quitar"
-                label=""
-                value=""
-                placeholder="Quitar un campo…"
-                onChange={(id) =>
-                  id && ov({ camposQuitados: [...(ovs.camposQuitados ?? []), id] })
-                }
-                options={CAMPOS_POST_OFERTA.filter(
-                  (c) => c.origen !== "NO_MODIFICABLE" && !(ovs.camposQuitados ?? []).includes(c.id)
-                ).map((c) => ({
-                  value: c.id,
-                  label: `${c.label} (${c.pantalla === "personales" ? "personales" : "laborales"})`,
-                }))}
-              />
-            </div>
-          ) : null
-        }
-        onCrear={() => ov({ camposQuitados: [] })}
-        onQuitar={() => quitarOv("camposQuitados")}
-      />
-    </Panel>
-  );
-}
+const Onboarding = espejo(SECCIONES.find((x) => x.id === "onboarding")!.Componente, "onboarding");
 
 // --- 11. Motor de riesgo ---
 

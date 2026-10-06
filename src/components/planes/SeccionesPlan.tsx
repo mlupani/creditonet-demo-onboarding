@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { MultiSelectField } from "@/components/ui/MultiSelectField";
 import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ValidationMessage } from "@/components/ui/ValidationMessage";
@@ -1092,6 +1093,7 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
 // --- 15. Vinculaciones ---
 
 function Vinculaciones({ p, set }: SeccionPlanProps) {
+  const elegidos = ORGANISMOS.filter((o) => p.organismos.includes(o.id));
   return (
     <Panel
       titulo="Vinculaciones"
@@ -1106,15 +1108,39 @@ function Vinculaciones({ p, set }: SeccionPlanProps) {
             Mientras no lo asignes a uno, no se usa en ninguna solicitud.
           </Banner>
         )}
-        {ORGANISMOS.map((o) => (
-          <Checkbox
-            key={o.id}
-            checked={p.organismos.includes(o.id)}
-            onChange={(v) => set((x) => ({ ...x, organismos: alternar(x.organismos, o.id, v) }))}
-            label={o.nombre}
-            description={o.detalle}
-          />
-        ))}
+        <MultiSelectField
+          id="plan-organismos"
+          label="Organismos vinculados"
+          values={elegidos.map((o) => o.nombre)}
+          onChange={(nombres) =>
+            set((x) => ({ ...x, organismos: ORGANISMOS.filter((o) => nombres.includes(o.nombre)).map((o) => o.id) }))
+          }
+          options={ORGANISMOS.map((o) => o.nombre)}
+          placeholder="Elegí los organismos…"
+          plural="organismos"
+          className="sm:max-w-md"
+        />
+        {/* Los elegidos quedan a la vista: con muchos organismos el select solo muestra la cantidad. */}
+        {elegidos.length > 0 && (
+          <ul className="divide-y divide-ink-100 rounded-lg border border-ink-200">
+            {elegidos.map((o) => (
+              <li key={o.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-ink-900">{o.nombre}</p>
+                  {o.detalle && <p className="truncate text-xs text-ink-500">{o.detalle}</p>}
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Quitar ${o.nombre}`}
+                  onClick={() => set((x) => ({ ...x, organismos: x.organismos.filter((id) => id !== o.id) }))}
+                  className="shrink-0 rounded-md p-1.5 text-ink-400 transition hover:bg-ink-50 hover:text-danger-600"
+                >
+                  <IconTrash width={16} height={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </Panel>
   );
