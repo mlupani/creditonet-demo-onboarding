@@ -1,5 +1,5 @@
 import type { CreditApplication } from "./types";
-import { cargosDe, nombreOpcion, ORGANISMOS, PRODUCTOS, CANALES, VENDEDORES } from "./config";
+import { cargosDe, impuestosDe, nombreOpcion, ORGANISMOS, PRODUCTOS, CANALES, VENDEDORES } from "./config";
 import { formatARS } from "./format";
 import {
   cronogramaCuotas,
@@ -105,7 +105,7 @@ export function generarDesarrolloCuotas(app: CreditApplication): CuotaDesarrollo
   const plazo = o.plazo;
   const monto = o.montoSolicitado;
   const valorCuota = o.valorCuota;
-  const ivaPct = plan.ivaPct ?? 21;
+  const ivaPct = impuestosDe(app.configuracion.productoId).ivaPct;
 
   // Fechas: primera cuota vence según oferta; si no hay fecha válida, hoy
   const baseVto = parseFecha(o.primeraCuotaVencimiento) ?? new Date(2026, 1, 10);
@@ -124,7 +124,7 @@ export function generarDesarrolloCuotas(app: CreditApplication): CuotaDesarrollo
   // Si la cuota varía según el sistema (francés variable, alemán, americano), cada cuota sale del
   // cronograma del plan; el interés de la cuota incluye su IVA, como en la descomposición de arriba.
   const cronograma = cuotaEsVariable(plan.sistema)
-    ? cronogramaCuotas(monto, plazo, o.tna, plan.sistema, plan.gastoOtorgamiento, cargosDe(plan))
+    ? cronogramaCuotas(monto, plazo, o.tna, plan.sistema, plan.gastoOtorgamiento, cargosDe(plan, app.configuracion.productoId))
     : null;
 
   // Crédito arrancando: aún sin pagos registrados. Todos los importes de

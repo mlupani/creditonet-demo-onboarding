@@ -207,8 +207,6 @@ export function validarPlan(p: PlanAbm, todos: PlanAbm[]): Record<string, string
     else if (desde && hasta < desde) e.vigenciaHasta = "El fin no puede ser anterior al inicio.";
   }
 
-  if (c.calculaIva && (c.ivaPct < 0 || c.ivaPct > 100)) e.ivaPct = "El IVA va de 0 a 100 %.";
-  if (c.sellosPct < 0 || c.sellosPct > 100) e.sellosPct = "Los sellos van de 0 a 100 %.";
   const g = c.gastoOtorgamiento;
   if (g.valor < 0 || (g.tipo === "PORCENTAJE" && g.valor > 100))
     e.gastoOtorgamiento = "Revisá el valor del gasto de otorgamiento.";

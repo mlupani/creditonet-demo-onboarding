@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useApplication } from "@/lib/application-context";
-import { cargosDe, SISTEMAS_AMORTIZACION, TRATAMIENTOS_GASTO } from "@/lib/config";
+import { cargosDe, impuestosDe, SISTEMAS_AMORTIZACION, TRATAMIENTOS_GASTO } from "@/lib/config";
 import {
   calcularCuota,
   cuotaEsVariable,
@@ -45,6 +45,8 @@ export function TablaCuotas({
   const o = app.oferta;
   // Plan y grilla de tasas de la solicitud: la TNA de cada plazo sale del plan.
   const plan = planDeSolicitud(app);
+  // IVA y sellos los define el producto de la solicitud.
+  const impuestos = impuestosDe(app.configuracion.productoId);
   const terms = grillaDe(plan);
   const capitalMaximo = tope ? Math.min(tope.capital, o.capitalMaximoActual) : o.capitalMaximoActual;
   // Con tope, no se ofrecen capitales que las cancelaciones se comerían por completo.
@@ -131,8 +133,8 @@ export function TablaCuotas({
               .toLowerCase(),
           ],
           ["Gracia", `${plan.periodoGraciaDias} días`],
-          ["IVA", plan.calculaIva ? formatPct(plan.ivaPct) : "no aplica"],
-          ["Sellos", formatPct(plan.sellosPct)],
+          ["IVA", impuestos.calculaIva ? formatPct(impuestos.ivaPct) : "no aplica"],
+          ["Sellos", formatPct(impuestos.sellosPct)],
           [
             "Gasto de otorgamiento",
             `${
@@ -209,7 +211,7 @@ export function TablaCuotas({
                 term.tna,
                 plan.sistema,
                 plan.gastoOtorgamiento,
-                cargosDe(plan)
+                cargosDe(plan, app.configuracion.productoId)
               );
               return (
                 <button
@@ -278,7 +280,7 @@ export function TablaCuotas({
           terms={terms}
           sistema={plan.sistema}
           gasto={plan.gastoOtorgamiento}
-          cargos={cargosDe(plan)}
+          cargos={cargosDe(plan, app.configuracion.productoId)}
           capitalMaximo={capitalMaximo}
           capitalMinimo={capitalMinimo}
           capital={o.montoSolicitado}

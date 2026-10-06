@@ -369,8 +369,16 @@ export function hidratarProductos() {
           extras.cancelacionMinCuotasPagas ??= EXTRAS_BASE.cancelacionMinCuotasPagas;
           extras.cobraPunitorios ??= EXTRAS_BASE.cobraPunitorios;
           extras.datosFinancieros ??= structuredClone(EXTRAS_BASE.datosFinancieros);
+          // Productos guardados antes de que el IVA y los sellos pasaran del plan al producto.
+          const config = {
+            ...r.config,
+            calculaIva: r.config.calculaIva ?? true,
+            ivaPct: r.config.ivaPct ?? 21,
+            sellosPct: r.config.sellosPct ?? 1.2,
+          };
           return {
             ...r,
+            config,
             extras: extras.gestionPrestamos
               ? { ...extras, gestionPrestamos: normalizarGestion(extras.gestionPrestamos) }
               : extras,
@@ -669,6 +677,8 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
     if (x.gestionPrestamos.cuit.replace(/\D/g, "").length !== 11)
       e.gestionCuit = "El CUIT debe tener 11 dígitos.";
   }
+  if (c.calculaIva && (c.ivaPct < 0 || c.ivaPct > 100)) e.ivaPct = "El IVA va de 0 a 100 %.";
+  if (c.sellosPct < 0 || c.sellosPct > 100) e.sellosPct = "Los sellos van de 0 a 100 %.";
   const t = x.tramosPunitorios;
   // Sin punitorios no se validan los tramos.
   if (x.cobraPunitorios) {

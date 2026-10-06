@@ -117,8 +117,6 @@ interface PlanSemilla {
   };
   // Parámetros del cálculo financiero (Plan de Cuotas §6). Valores de demo.
   periodoGraciaDias: number;
-  ivaPct: number;
-  sellosPct: number;
   cargoOtorgamientoPct: number;
 }
 
@@ -139,8 +137,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
       situacionBcraDistintaDeUnoPct: 25,
     },
     periodoGraciaDias: 30,
-    ivaPct: 21,
-    sellosPct: 1.2,
     cargoOtorgamientoPct: 3,
   },
   "linea-seguridad-2026": {
@@ -159,8 +155,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
       situacionBcraDistintaDeUnoPct: 30,
     },
     periodoGraciaDias: 30,
-    ivaPct: 21,
-    sellosPct: 1.2,
     cargoOtorgamientoPct: 2.5,
   },
   "linea-pasivos-2026": {
@@ -179,8 +173,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
       situacionBcraDistintaDeUnoPct: 40,
     },
     periodoGraciaDias: 45,
-    ivaPct: 21,
-    sellosPct: 1.2,
     cargoOtorgamientoPct: 3.5,
   },
   "linea-docentes-2026": {
@@ -199,8 +191,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
       situacionBcraDistintaDeUnoPct: 25,
     },
     periodoGraciaDias: 30,
-    ivaPct: 21,
-    sellosPct: 1.2,
     cargoOtorgamientoPct: 3,
   },
   "linea-municipal-2026": {
@@ -219,8 +209,6 @@ const PLANES_SEMILLA: Record<string, PlanSemilla> = {
       situacionBcraDistintaDeUnoPct: 30,
     },
     periodoGraciaDias: 30,
-    ivaPct: 21,
-    sellosPct: 1.2,
     cargoOtorgamientoPct: 3,
   },
 };
@@ -381,16 +369,35 @@ export interface CargoPeriodico {
   conIva: boolean;
 }
 
-// Cargos del plan con el IVA que se les suma cuando el valor es sin IVA (0 si el plan no calcula IVA).
+// Cargos del plan con el IVA que se les suma cuando el valor es sin IVA (0 si el producto no
+// calcula IVA).
 export interface CargosPlan {
   cargos: CargoPeriodico[];
   ivaPct: number;
 }
 
+// IVA y sellos los define el producto (antes, el plan de cuotas).
+export function impuestosDe(productoId: string): Pick<ProductoConfig, "calculaIva" | "ivaPct" | "sellosPct"> {
+  const { calculaIva, ivaPct, sellosPct } = getProductoConfig(productoId);
+  return { calculaIva, ivaPct, sellosPct };
+}
+
+// Producto con el que se usa un plan: el del primer organismo vigente que lo tiene vinculado.
+export function productoDelPlan(planId: string): string {
+  return (
+    ORGANISMOS.find((o) => o.estado !== "ELIMINADO" && o.planes.includes(planId))?.productos[0] ??
+    "prestamo-personal"
+  );
+}
+
+// Con `productoId` (el de la solicitud) el IVA sale de ese producto; sin él, del producto del plan.
 export function cargosDe(
-  plan?: Pick<PlanCuotas, "cargos" | "calculaIva" | "ivaPct"> | null
+  plan?: Pick<PlanCuotas, "id" | "cargos"> | null,
+  productoId?: string
 ): CargosPlan | null {
-  return plan ? { cargos: plan.cargos, ivaPct: plan.calculaIva ? plan.ivaPct : 0 } : null;
+  if (!plan) return null;
+  const imp = impuestosDe(productoId ?? productoDelPlan(plan.id));
+  return { cargos: plan.cargos, ivaPct: imp.calculaIva ? imp.ivaPct : 0 };
 }
 
 export function cargoNuevo(): CargoPeriodico {
@@ -534,9 +541,6 @@ export interface PlanCuotas {
   prioridad: number;
   // Condiciones generales
   sistema: SistemaAmortizacion;
-  calculaIva: boolean;
-  ivaPct: number;
-  sellosPct: number;
   periodoGraciaDias: number;
   gastoOtorgamiento: GastoOtorgamiento;
   // Cargos periódicos (administrativo, cobranza, servicios): incluidos en la cuota.
@@ -570,9 +574,6 @@ function semillaAPlan(p: PlanSemilla, i: number): PlanCuotas {
     vigenciaHasta: null,
     prioridad: 1,
     sistema: "FRANCES_FIJA",
-    calculaIva: true,
-    ivaPct: p.ivaPct,
-    sellosPct: p.sellosPct,
     periodoGraciaDias: p.periodoGraciaDias,
     gastoOtorgamiento: {
       tipo: "PORCENTAJE",
@@ -897,6 +898,10 @@ export interface ProductoConfig {
   // Canales en los que se ofrece el producto (Producto §3).
   canales: string[];
   onboarding: OnboardingConfig;
+  // IVA y sellos de la operación (antes en el plan de cuotas). El IVA se suma a los cargos sin IVA.
+  calculaIva: boolean;
+  ivaPct: number;
+  sellosPct: number;
 }
 
 export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
@@ -909,6 +914,9 @@ export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
     motor: asignacionMotorVacia(),
     permiteDeudaTerceros: true,
     capitalMaximo: 4_000_000,
+    calculaIva: true,
+    ivaPct: 21,
+    sellosPct: 1.2,
     canales: ["sucursal", "digital"],
     onboarding: {
       pantallas: pantallas(),
@@ -935,6 +943,9 @@ export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
     motor: asignacionMotorVacia("motor-judicial"),
     permiteDeudaTerceros: false,
     capitalMaximo: 6_000_000,
+    calculaIva: true,
+    ivaPct: 21,
+    sellosPct: 1.2,
     // Requiere presentar la sentencia y firmar la cesión de cobro en persona.
     canales: ["sucursal"],
     onboarding: {

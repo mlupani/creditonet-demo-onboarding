@@ -101,7 +101,7 @@ export function CambiarOfertaModal({
     term.tna,
     plan.sistema,
     plan.gastoOtorgamiento,
-    cargosDe(plan)
+    cargosDe(plan, app.configuracion.productoId)
   );
   const cambio = monto !== o.montoSolicitado || plazo !== o.plazo;
 
@@ -611,7 +611,7 @@ export function CambiarOfertaModal({
           terms={terms}
           sistema={plan.sistema}
           gasto={plan.gastoOtorgamiento}
-          cargos={cargosDe(plan)}
+          cargos={cargosDe(plan, app.configuracion.productoId)}
           capitalMaximo={o.montoSolicitado}
           capital={monto}
           plazo={plazo}

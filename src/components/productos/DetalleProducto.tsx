@@ -23,6 +23,7 @@ import { SECCIONES, SECCION_DE_ERROR } from "./SeccionesProducto";
 import {
   IconAlertTriangle,
   IconArrowLeft,
+  IconBarChart,
   IconBell,
   IconBriefcase,
   IconCalendar,
@@ -44,6 +45,7 @@ const ICONOS_SECCION: Record<string, ItemNav["icon"]> = {
   opciones: IconSettings,
   gestion: IconBriefcase,
   financieros: IconWallet,
+  impuestos: IconBarChart,
   cobro: IconCreditCard,
   punitorios: IconAlertTriangle,
   onboarding: IconClipboardPlus,

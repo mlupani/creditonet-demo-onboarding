@@ -21,7 +21,6 @@ import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos"
 import { SECCIONES_PLAN, SECCION_DE_ERROR_PLAN } from "./SeccionesPlan";
 import {
   IconArrowLeft,
-  IconBarChart,
   IconBriefcase,
   IconCalendar,
   IconCheckCircle,
@@ -62,7 +61,6 @@ export const TEXTO_ACCION_PLAN: Partial<
 const ICONOS_SECCION: Record<string, ItemNav["icon"]> = {
   datos: IconFileText,
   amortizacion: IconTable,
-  iva: IconBarChart,
   gastos: IconWallet,
   cargos: IconRefresh,
   bcra: IconLandmark,

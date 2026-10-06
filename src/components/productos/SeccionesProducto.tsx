@@ -350,6 +350,44 @@ function Financieros({ p, set }: SeccionProps) {
   );
 }
 
+// --- 5 bis. IVA / Sellos ---
+
+function Impuestos({ p, set, errores, ver }: SeccionProps) {
+  const { cf } = useEditores(set);
+  return (
+    <Panel
+      titulo="IVA / Sellos"
+      descripcion="Impuestos que se aplican sobre la operación."
+      vivo
+      nota="Rigen para todos los planes de cuotas con los que se ofrece el producto. El IVA se suma a los cargos periódicos sin IVA; ambos se informan en la tabla de cuotas de la oferta."
+    >
+      <Checkbox checked={p.config.calculaIva} onChange={(v) => cf({ calculaIva: v })} label="Calcula IVA" />
+      <Grilla>
+        {p.config.calculaIva && (
+          <CampoNumero
+            id="p-iva"
+            label="IVA"
+            sufijo="%"
+            step={0.5}
+            value={p.config.ivaPct}
+            onChange={(v) => cf({ ivaPct: v })}
+            error={ver ? errores.ivaPct : undefined}
+          />
+        )}
+        <CampoNumero
+          id="p-sellos"
+          label="Sellos"
+          sufijo="%"
+          step={0.1}
+          value={p.config.sellosPct}
+          onChange={(v) => cf({ sellosPct: v })}
+          error={ver ? errores.sellosPct : undefined}
+        />
+      </Grilla>
+    </Panel>
+  );
+}
+
 // --- 6. Modalidades de cobro, canales y vendedores ---
 
 function Cobro({ p, set, errores, ver, organismo }: SeccionProps) {
@@ -752,6 +790,7 @@ export const SECCIONES: {
   { id: "opciones", label: "Opciones generales", vivo: false, Componente: Opciones },
   { id: "gestion", label: "Gestión de préstamos", vivo: false, Componente: Gestion },
   { id: "financieros", label: "Datos financieros", vivo: false, Componente: Financieros },
+  { id: "impuestos", label: "IVA / Sellos", vivo: true, Componente: Impuestos },
   { id: "cobro", label: "Cobro, canales y vendedores", vivo: true, Componente: Cobro },
   { id: "punitorios", label: "Intereses punitorios", vivo: false, Componente: Punitorios },
   { id: "onboarding", label: "Configuración del onboarding", vivo: true, Componente: Onboarding },
@@ -770,6 +809,8 @@ export const SECCION_DE_ERROR: Record<string, string> = {
   diasPrimerVencimiento: "vencimientos",
   gestionRazonSocial: "gestion",
   gestionCuit: "gestion",
+  ivaPct: "impuestos",
+  sellosPct: "impuestos",
   canales: "cobro",
   motor: "motor",
   tramos: "punitorios",

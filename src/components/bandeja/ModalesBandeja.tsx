@@ -492,7 +492,7 @@ export function ObservacionModal({
                     getTerm(oferta.plazo, planDeSolicitud(app)).tna,
                     planDeSolicitud(app).sistema,
                     planDeSolicitud(app).gastoOtorgamiento,
-                    cargosDe(planDeSolicitud(app))
+                    cargosDe(planDeSolicitud(app), app.configuracion.productoId)
                   )
                 ),
               },

@@ -651,7 +651,7 @@ export function calcularLimites(
         term.tna,
         plan.sistema,
         plan.gastoOtorgamiento,
-        cargosDe(plan)
+        cargosDe(plan, app.configuracion.productoId)
       ),
     },
   ];

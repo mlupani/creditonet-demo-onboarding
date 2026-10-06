@@ -167,48 +167,6 @@ function Amortizacion({ p, set }: SeccionPlanProps) {
   );
 }
 
-// --- 3. IVA / Sellos ---
-
-function IvaSellos({ p, set, errores, ver }: SeccionPlanProps) {
-  const { cf } = useEditores(set);
-  return (
-    <Panel
-      titulo="IVA / Sellos"
-      descripcion="Impuestos que el plan aplica sobre la operación."
-      vivo
-      nota="Se informan en la tabla de cuotas de la oferta."
-    >
-      <Checkbox
-        checked={p.config.calculaIva}
-        onChange={(v) => cf({ calculaIva: v })}
-        label="Calcula IVA"
-      />
-      <Grilla>
-        {p.config.calculaIva && (
-          <CampoNumero
-            id="pl-iva"
-            label="IVA"
-            sufijo="%"
-            step={0.5}
-            value={p.config.ivaPct}
-            onChange={(v) => cf({ ivaPct: v })}
-            error={ver ? errores.ivaPct : undefined}
-          />
-        )}
-        <CampoNumero
-          id="pl-sellos"
-          label="Sellos"
-          sufijo="%"
-          step={0.1}
-          value={p.config.sellosPct}
-          onChange={(v) => cf({ sellosPct: v })}
-          error={ver ? errores.sellosPct : undefined}
-        />
-      </Grilla>
-    </Panel>
-  );
-}
-
 // --- 4. Gastos de otorgamiento ---
 
 function Gastos({ p, set, errores, ver }: SeccionPlanProps) {
@@ -273,7 +231,8 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
   const { cf } = useEditores(set);
   const servicios = useServicios();
   const cargos = p.config.cargos;
-  const ivaPlan = p.config.calculaIva ? p.config.ivaPct : 0;
+  // El IVA lo define el producto con el que se usa el plan.
+  const ivaPlan = cargosDe(p.config)?.ivaPct ?? 0;
   const cambiar = (id: string, patch: Partial<CargoPeriodico>) =>
     cf({ cargos: cargos.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
   // La forma de cálculo viene del servicio: al cambiar de cargo, el valor anterior deja de valer.
@@ -297,7 +256,7 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
           Agregar cargo
         </Button>
       }
-      nota="Cambian la cuota de la oferta y se informan en la tabla de cuotas. Si el valor es sin IVA, se le suma el IVA del plan."
+      nota="Cambian la cuota de la oferta y se informan en la tabla de cuotas. Si el valor es sin IVA, se le suma el IVA del producto."
     >
       {ver && errores.cargos && <ValidationMessage tipo="error">{errores.cargos}</ValidationMessage>}
       {cargos.length === 0 && (
@@ -358,7 +317,7 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
                 value={c.conIva ? "CON" : "SIN"}
                 onChange={(v) => cambiar(c.id, { conIva: v === "CON" })}
                 options={[
-                  { value: "SIN", label: "Sin IVA (se suma el IVA del plan)" },
+                  { value: "SIN", label: "Sin IVA (se suma el IVA del producto)" },
                   { value: "CON", label: "Con IVA incluido" },
                 ]}
                 hint={
@@ -366,7 +325,7 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
                     ? "El valor ya incluye el IVA."
                     : ivaPlan > 0
                       ? `Se le suma ${ivaPlan} % de IVA.`
-                      : "El plan no calcula IVA: no se suma."
+                      : "El producto no calcula IVA: no se suma."
                 }
               />
             </div>
@@ -1166,7 +1125,6 @@ export const SECCIONES_PLAN: {
 }[] = [
   { id: "datos", label: "Datos generales", vivo: true, Componente: DatosGenerales },
   { id: "amortizacion", label: "Amortización", vivo: true, Componente: Amortizacion },
-  { id: "iva", label: "IVA / Sellos", vivo: true, Componente: IvaSellos },
   { id: "gastos", label: "Gastos de otorgamiento", vivo: true, Componente: Gastos },
   { id: "cargos", label: "Cargos periódicos", vivo: true, Componente: Cargos },
   { id: "bcra", label: "Condiciones BCRA", vivo: true, Componente: CondicionesBcra },
@@ -1188,8 +1146,6 @@ export const SECCION_DE_ERROR_PLAN: Record<string, string> = {
   vigenciaDesde: "datos",
   vigenciaHasta: "datos",
   prioridad: "vinculaciones",
-  ivaPct: "iva",
-  sellosPct: "iva",
   gastoOtorgamiento: "gastos",
   gastoTratamiento: "gastos",
   cargos: "cargos",
