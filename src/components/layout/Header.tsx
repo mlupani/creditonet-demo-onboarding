@@ -27,7 +27,7 @@ function tituloRuta(pathname: string) {
   if (pathname.startsWith("/onboarding")) return "Solicitar crédito";
   if (pathname.startsWith("/analisis")) return "Bandeja del analista de riesgo";
   if (pathname.startsWith("/chequeo")) return "Bandeja de chequeo telefónico";
-  if (pathname.startsWith("/graph")) return "Diagrama de flujo · Onboarding";
+  if (pathname.startsWith("/graph")) return "Diagrama de flujo";
   if (pathname.startsWith("/productos")) return "Parámetros · Productos";
   if (pathname.startsWith("/organismos")) return "Parámetros · Organismos";
   if (pathname.startsWith("/planes")) return "Parámetros · Planes de cuotas";

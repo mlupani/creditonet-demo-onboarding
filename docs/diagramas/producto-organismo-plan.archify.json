@@ -1,0 +1,1086 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Producto · Organismo · Plan de cuotas",
+    "quality_profile": "standard",
+    "legend": {
+      "entries": {
+        "database": {
+          "label": "Producto y sus secciones"
+        },
+        "security": {
+          "label": "Organismo y sus excepciones"
+        },
+        "cloud": {
+          "label": "Sin excepción"
+        },
+        "messagebus": {
+          "label": "Plan de cuotas y sus secciones"
+        },
+        "backend": {
+          "label": "Paso de la solicitud"
+        },
+        "frontend": {
+          "label": "Resultado"
+        },
+        "external": {
+          "label": "Rechazo"
+        }
+      }
+    },
+    "views": [
+      {
+        "id": "excepciones",
+        "label": "Secciones y excepciones",
+        "focus": [
+          "producto",
+          "organismo",
+          "p_datos",
+          "p_venc",
+          "p_opciones",
+          "p_gestion",
+          "p_financieros",
+          "p_impuestos",
+          "p_cobro",
+          "p_punitorios",
+          "p_pantallas",
+          "p_operaciones",
+          "p_notif",
+          "p_motor_p",
+          "e_datos",
+          "e_venc",
+          "e_opciones",
+          "e_gestion",
+          "e_financieros",
+          "e_impuestos",
+          "e_cobro",
+          "e_punitorios",
+          "e_pantallas",
+          "e_operaciones",
+          "e_notif",
+          "e_motor_p"
+        ],
+        "note": "Cada sección del producto con un ejemplo y, enfrente, cómo la pisa un organismo. La excepción rige cuando el supervisor la refrenda."
+      },
+      {
+        "id": "sin_excepcion",
+        "label": "Lo que no admite excepción",
+        "focus": [
+          "p_gestion",
+          "e_gestion",
+          "p_impuestos",
+          "e_impuestos"
+        ],
+        "note": "Gestión de préstamos e IVA/sellos rigen siempre como los define el producto."
+      },
+      {
+        "id": "plan",
+        "label": "Secciones del plan de cuotas",
+        "focus": [
+          "plan",
+          "organismo",
+          "pl_datos",
+          "pl_bcra",
+          "pl_laboral",
+          "pl_perfil",
+          "pl_vinc",
+          "pl_topes",
+          "pl_capital",
+          "pl_cuota",
+          "pl_limitantes",
+          "pl_amort",
+          "pl_gastos",
+          "pl_cargos",
+          "pl_bonif",
+          "pl_puntos",
+          "pl_grilla"
+        ],
+        "note": "Habilitación, límites y condiciones de la oferta. El plan se vincula a organismos y cada organismo evalúa sus planes por prioridad."
+      },
+      {
+        "id": "solicitud",
+        "label": "Recorrido de la solicitud",
+        "focus": [
+          "alta",
+          "motor",
+          "linea",
+          "limites",
+          "oferta",
+          "e_motor_p",
+          "pl_vinc",
+          "pl_limitantes",
+          "pl_grilla"
+        ],
+        "note": "Cuota máxima: la menor entre SMVM, RCI, rango y endeudamiento. Capital: el menor de los límites, con el mayor recorte de limitantes."
+      },
+      {
+        "id": "rechazos",
+        "label": "Dónde se corta",
+        "focus": [
+          "motor",
+          "rech_riesgo",
+          "linea",
+          "sin_linea"
+        ],
+        "note": "El motor o una regla institucional rechazan; sin un plan que habilite al cliente, se rechaza por falta de línea."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "producto",
+      "type": "database",
+      "label": "Producto",
+      "sublabel": "ej.: Préstamo personal",
+      "pos": [
+        80,
+        60
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "organismo",
+      "type": "security",
+      "label": "Organismo",
+      "sublabel": "vigencia · condición laboral · 1 producto",
+      "pos": [
+        450,
+        60
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "messagebus",
+      "label": "Plan de cuotas",
+      "sublabel": "ej.: Línea Salud 2026",
+      "pos": [
+        1140,
+        60
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "p_datos",
+      "type": "database",
+      "label": "Datos generales",
+      "sublabel": "vigencia · capital máx. $ 4.000.000",
+      "pos": [
+        80,
+        170
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_datos",
+      "type": "security",
+      "label": "Capital máx. $ 2.000.000",
+      "sublabel": "Jubilados y pensionados",
+      "pos": [
+        450,
+        170
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_venc",
+      "type": "database",
+      "label": "Vencimientos",
+      "sublabel": "corte día 20 · 1.ª cuota a 30 días",
+      "pos": [
+        80,
+        246
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_venc",
+      "type": "security",
+      "label": "Día de corte 25",
+      "sublabel": "Policía de la Provincia",
+      "pos": [
+        450,
+        246
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_opciones",
+      "type": "database",
+      "label": "Opciones generales",
+      "sublabel": "firma física o electrónica",
+      "pos": [
+        80,
+        322
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_opciones",
+      "type": "security",
+      "label": "Firma o chequeo propios",
+      "sublabel": "ej.: exige chequeo telefónico",
+      "pos": [
+        450,
+        322
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_gestion",
+      "type": "database",
+      "label": "Gestión de préstamos",
+      "sublabel": "gestor: razón social y CUIT",
+      "pos": [
+        80,
+        398
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_gestion",
+      "type": "cloud",
+      "label": "Sin excepción",
+      "sublabel": "rige la del producto",
+      "pos": [
+        450,
+        398
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_financieros",
+      "type": "database",
+      "label": "Datos financieros",
+      "sublabel": "recálculo del neto: disponible, saldo",
+      "pos": [
+        80,
+        474
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_financieros",
+      "type": "security",
+      "label": "Deja de pedir un dato",
+      "sublabel": "ej.: no pide el saldo del día",
+      "pos": [
+        450,
+        474
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_impuestos",
+      "type": "database",
+      "label": "IVA / Sellos",
+      "sublabel": "IVA 21 % · sellos 1,2 %",
+      "pos": [
+        80,
+        550
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_impuestos",
+      "type": "cloud",
+      "label": "Sin excepción",
+      "sublabel": "rige el del producto",
+      "pos": [
+        450,
+        550
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_cobro",
+      "type": "database",
+      "label": "Cobro, canales y vendedores",
+      "sublabel": "por haberes · sucursal y digital",
+      "pos": [
+        80,
+        626
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_cobro",
+      "type": "security",
+      "label": "Sólo algunos canales",
+      "sublabel": "ej.: sólo sucursal",
+      "pos": [
+        450,
+        626
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_punitorios",
+      "type": "database",
+      "label": "Intereses punitorios",
+      "sublabel": "5 tramos, del 50 % al 100 %",
+      "pos": [
+        80,
+        702
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_punitorios",
+      "type": "security",
+      "label": "3 tramos, del 30 % al 50 %",
+      "sublabel": "Jubilados y pensionados",
+      "pos": [
+        450,
+        702
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_pantallas",
+      "type": "database",
+      "label": "Onboarding · pantallas",
+      "sublabel": "7 pantallas · 1–2 referencias",
+      "pos": [
+        80,
+        778
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_pantallas",
+      "type": "security",
+      "label": "Referencias y garantes mín. 0",
+      "sublabel": "Policía de la Provincia",
+      "pos": [
+        450,
+        778
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_operaciones",
+      "type": "database",
+      "label": "Onboarding · operaciones",
+      "sublabel": "renueva con 50 % pagado · cargo 2 %",
+      "pos": [
+        80,
+        854
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_operaciones",
+      "type": "security",
+      "label": "Otra condición para renovar",
+      "sublabel": "ej.: 6 cuotas pagas",
+      "pos": [
+        450,
+        854
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_notif",
+      "type": "database",
+      "label": "Notificaciones",
+      "sublabel": "5 plantillas asignadas",
+      "pos": [
+        80,
+        930
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_notif",
+      "type": "security",
+      "label": "Quita una notificación",
+      "sublabel": "sigue asignada, no se envía",
+      "pos": [
+        450,
+        930
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "p_motor_p",
+      "type": "database",
+      "label": "Motor de riesgo",
+      "sublabel": "Motor General + combinaciones",
+      "pos": [
+        80,
+        1006
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "e_motor_p",
+      "type": "security",
+      "label": "Motor Empleados de Salud",
+      "sublabel": "Empleados de salud",
+      "pos": [
+        450,
+        1006
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "pl_datos",
+      "type": "messagebus",
+      "label": "Datos generales",
+      "sublabel": "prioridad 1 · vigente desde 01/01/2026",
+      "pos": [
+        830,
+        170
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_bcra",
+      "type": "messagebus",
+      "label": "Condiciones BCRA",
+      "sublabel": "admite situaciones 1 a 5",
+      "pos": [
+        830,
+        246
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_laboral",
+      "type": "messagebus",
+      "label": "Condición laboral",
+      "sublabel": "empleado fijo · contratado",
+      "pos": [
+        830,
+        322
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_perfil",
+      "type": "messagebus",
+      "label": "Perfil de riesgo",
+      "sublabel": "perfiles internos 1 a 5",
+      "pos": [
+        830,
+        398
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_vinc",
+      "type": "messagebus",
+      "label": "Vinculaciones",
+      "sublabel": "productos › organismos › canales",
+      "pos": [
+        830,
+        474
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_topes",
+      "type": "messagebus",
+      "label": "Topes de autorización",
+      "sublabel": "analista $ 1,5 M · superior $ 3 M",
+      "pos": [
+        1140,
+        170
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_capital",
+      "type": "messagebus",
+      "label": "Capital máximo",
+      "sublabel": "por rango de sueldo neto (hasta 6)",
+      "pos": [
+        1140,
+        246
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_cuota",
+      "type": "messagebus",
+      "label": "Cuota máxima",
+      "sublabel": "SMVM · RCI 40 % · endeudamiento",
+      "pos": [
+        1140,
+        322
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_limitantes",
+      "type": "messagebus",
+      "label": "Limitantes",
+      "sublabel": "recorte % por BCRA, buró o sueldo",
+      "pos": [
+        1140,
+        398
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_amort",
+      "type": "messagebus",
+      "label": "Amortización",
+      "sublabel": "francés cuota fija · gracia",
+      "pos": [
+        1450,
+        170
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_gastos",
+      "type": "messagebus",
+      "label": "Gastos de otorgamiento",
+      "sublabel": "3 % · se distribuye en cuotas",
+      "pos": [
+        1450,
+        246
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_cargos",
+      "type": "messagebus",
+      "label": "Cargos periódicos",
+      "sublabel": "% de cuota, fijo o % de capital",
+      "pos": [
+        1450,
+        322
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_bonif",
+      "type": "messagebus",
+      "label": "Bonificaciones",
+      "sublabel": "3 cuotas si paga al día",
+      "pos": [
+        1450,
+        398
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_puntos",
+      "type": "messagebus",
+      "label": "Beneficio de puntos",
+      "sublabel": "en definición",
+      "pos": [
+        1450,
+        474
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "pl_grilla",
+      "type": "messagebus",
+      "label": "Grilla de tasas",
+      "sublabel": "12 a 120 cuotas · TNA 58 % a 90 %",
+      "pos": [
+        1450,
+        550
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "alta",
+      "type": "backend",
+      "label": "Alta de solicitud",
+      "sublabel": "organismo, producto y canal vigentes",
+      "pos": [
+        80,
+        1160
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "motor",
+      "type": "backend",
+      "label": "Motor de riesgo",
+      "sublabel": "el del organismo o el del producto",
+      "pos": [
+        450,
+        1160
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "linea",
+      "type": "backend",
+      "label": "Plan aplicable",
+      "sublabel": "1.º por prioridad que habilita",
+      "pos": [
+        830,
+        1160
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "limites",
+      "type": "backend",
+      "label": "Límites",
+      "sublabel": "capital del producto u organismo",
+      "pos": [
+        1140,
+        1160
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "oferta",
+      "type": "frontend",
+      "label": "Oferta",
+      "sublabel": "cuota con cargos e IVA del producto",
+      "pos": [
+        1450,
+        1160
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "rech_riesgo",
+      "type": "external",
+      "label": "Rechazo de riesgo",
+      "sublabel": "institucional o motor",
+      "pos": [
+        450,
+        1290
+      ],
+      "size": [
+        250,
+        56
+      ]
+    },
+    {
+      "id": "sin_linea",
+      "type": "external",
+      "label": "Rechazo sin línea",
+      "sublabel": "no llega al analista",
+      "pos": [
+        830,
+        1290
+      ],
+      "size": [
+        230,
+        56
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Producto · reglas base",
+      "wraps": [
+        "producto",
+        "p_datos",
+        "p_venc",
+        "p_opciones",
+        "p_gestion",
+        "p_financieros",
+        "p_impuestos",
+        "p_cobro",
+        "p_punitorios",
+        "p_pantallas",
+        "p_operaciones",
+        "p_notif",
+        "p_motor_p"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Organismo · excepciones (las refrenda el supervisor)",
+      "wraps": [
+        "organismo",
+        "e_datos",
+        "e_venc",
+        "e_opciones",
+        "e_gestion",
+        "e_financieros",
+        "e_impuestos",
+        "e_cobro",
+        "e_punitorios",
+        "e_pantallas",
+        "e_operaciones",
+        "e_notif",
+        "e_motor_p"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Plan de cuotas · habilitación, límites y oferta",
+      "wraps": [
+        "plan",
+        "pl_datos",
+        "pl_bcra",
+        "pl_laboral",
+        "pl_perfil",
+        "pl_vinc",
+        "pl_topes",
+        "pl_capital",
+        "pl_cuota",
+        "pl_limitantes",
+        "pl_amort",
+        "pl_gastos",
+        "pl_cargos",
+        "pl_bonif",
+        "pl_puntos",
+        "pl_grilla"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Solicitud",
+      "wraps": [
+        "alta",
+        "motor",
+        "linea",
+        "limites",
+        "oferta"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Rechazos",
+      "wraps": [
+        "rech_riesgo",
+        "sin_linea"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "hereda",
+      "from": "producto",
+      "to": "organismo",
+      "label": "hereda · 1 → N"
+    },
+    {
+      "id": "vinculo",
+      "from": "plan",
+      "to": "organismo",
+      "label": "N ↔ N · por prioridad"
+    },
+    {
+      "id": "x_datos",
+      "from": "p_datos",
+      "to": "e_datos"
+    },
+    {
+      "id": "x_venc",
+      "from": "p_venc",
+      "to": "e_venc"
+    },
+    {
+      "id": "x_opciones",
+      "from": "p_opciones",
+      "to": "e_opciones"
+    },
+    {
+      "id": "x_gestion",
+      "from": "p_gestion",
+      "to": "e_gestion",
+      "variant": "dashed"
+    },
+    {
+      "id": "x_financieros",
+      "from": "p_financieros",
+      "to": "e_financieros"
+    },
+    {
+      "id": "x_impuestos",
+      "from": "p_impuestos",
+      "to": "e_impuestos",
+      "variant": "dashed"
+    },
+    {
+      "id": "x_cobro",
+      "from": "p_cobro",
+      "to": "e_cobro"
+    },
+    {
+      "id": "x_punitorios",
+      "from": "p_punitorios",
+      "to": "e_punitorios"
+    },
+    {
+      "id": "x_pantallas",
+      "from": "p_pantallas",
+      "to": "e_pantallas"
+    },
+    {
+      "id": "x_operaciones",
+      "from": "p_operaciones",
+      "to": "e_operaciones"
+    },
+    {
+      "id": "x_notif",
+      "from": "p_notif",
+      "to": "e_notif"
+    },
+    {
+      "id": "x_motor_p",
+      "from": "p_motor_p",
+      "to": "e_motor_p"
+    },
+    {
+      "id": "f_motor",
+      "from": "e_motor_p",
+      "to": "motor",
+      "label": "rige si lo define",
+      "labelAt": [
+        575,
+        1111
+      ]
+    },
+    {
+      "id": "f_linea",
+      "from": "pl_vinc",
+      "to": "linea",
+      "label": "planes del organismo",
+      "labelAt": [
+        945,
+        845
+      ]
+    },
+    {
+      "id": "f_limites",
+      "from": "pl_limitantes",
+      "to": "limites",
+      "label": "límites del plan",
+      "labelAt": [
+        1255,
+        807
+      ]
+    },
+    {
+      "id": "f_oferta",
+      "from": "pl_grilla",
+      "to": "oferta",
+      "label": "TNA por plazo",
+      "labelAt": [
+        1565,
+        883
+      ]
+    },
+    {
+      "id": "s1",
+      "from": "alta",
+      "to": "motor",
+      "variant": "emphasis"
+    },
+    {
+      "id": "s2",
+      "from": "motor",
+      "to": "linea",
+      "variant": "emphasis",
+      "label": "pasa"
+    },
+    {
+      "id": "s3",
+      "from": "linea",
+      "to": "limites",
+      "variant": "emphasis",
+      "label": "habilita"
+    },
+    {
+      "id": "s4",
+      "from": "limites",
+      "to": "oferta",
+      "variant": "emphasis",
+      "label": "gana el menor"
+    },
+    {
+      "id": "no_pasa",
+      "from": "motor",
+      "to": "rech_riesgo",
+      "variant": "security",
+      "label": "no pasa",
+      "labelAt": [
+        575,
+        1253
+      ]
+    },
+    {
+      "id": "sin_plan",
+      "from": "linea",
+      "to": "sin_linea",
+      "variant": "security",
+      "label": "ninguno habilita",
+      "labelAt": [
+        945,
+        1253
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "Reglas de vinculación",
+      "items": [
+        "Un organismo ofrece un solo producto; al cambiarlo se descartan sus excepciones",
+        "Un producto en borrador se activa sólo con al menos un organismo",
+        "Una excepción guardada queda pendiente: rige cuando el supervisor la refrenda",
+        "La vigencia del organismo no puede terminar después que la del producto"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Cómo sale la oferta",
+      "items": [
+        "Motor: el del organismo o el del producto; gana la combinación más específica",
+        "Plan: el primero, por prioridad, que admite BCRA, condición laboral y perfil",
+        "Cuota y capital: gana el límite menor y después el mayor recorte",
+        "Cuota: TNA de la grilla, sistema del plan, gasto y cargos con el IVA del producto"
+      ]
+    }
+  ]
+}

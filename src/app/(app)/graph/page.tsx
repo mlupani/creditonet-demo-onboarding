@@ -7,6 +7,7 @@ const DIAGRAMAS = [
   { id: "d1", label: "1 · Pedido", src: "/diagramas/onboarding-1-pedido.html" },
   { id: "d2", label: "2 · Oferta", src: "/diagramas/onboarding-2-oferta.html" },
   { id: "d3", label: "3 · Carga y análisis", src: "/diagramas/onboarding-3-carga.html" },
+  { id: "parametros", label: "Producto · Organismo · Plan", src: "/diagramas/producto-organismo-plan.html" },
 ] as const;
 
 export default function GraphPage() {
@@ -29,7 +30,7 @@ export default function GraphPage() {
           </button>
         ))}
       </div>
-      {/* Los 4 iframes quedan siempre montados: si se desmontan mientras la
+      {/* Los iframes quedan siempre montados: si se desmontan mientras la
           animación "Live" está corriendo, el visor Archify tira un error al
           limpiar su estado. Alternar visibilidad evita eso y conserva el
           zoom/pan de cada diagrama al volver a su pestaña. */}
