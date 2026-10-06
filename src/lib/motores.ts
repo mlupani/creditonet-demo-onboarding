@@ -768,8 +768,8 @@ export interface SeleccionMotor {
 /**
  * Motor §2 y resumen del Producto: el producto asigna el motor (grupo de reglas) según el tipo
  * de cliente (nuevo / existente), la condición laboral, la situación BCRA y la situación en buró
- * interno, y el organismo puede pisar esa asignación. Si el organismo define la suya y ésta aplica al cliente, manda; si no, la del
- * producto; si tampoco, el motor general. Un grupo suspendido, eliminado o con la fecha de
+ * interno, y el organismo puede pisar esa asignación. Si el organismo tiene la suya, rige sólo ésa
+ * (no se mira la del producto); si no, la del producto; si ninguna aplica, el motor general. Un grupo suspendido, eliminado o con la fecha de
  * vigencia vencida no está disponible: se usa el motor general.
  */
 export function seleccionarMotor(
@@ -790,7 +790,7 @@ export function seleccionarMotor(
   const delOrganismo = motorOrganismo
     ? motorAsignado(motorOrganismo, condicion, tipoCliente, situaciones)
     : null;
-  const delProducto = motorAsignado(producto.motor, condicion, tipoCliente, situaciones);
+  const delProducto = motorOrganismo ? null : motorAsignado(producto.motor, condicion, tipoCliente, situaciones);
   if (delOrganismo) {
     motorId = delOrganismo;
     criterio = `Excepción del organismo ${organismo.nombre} sobre ${nombreProducto}`;

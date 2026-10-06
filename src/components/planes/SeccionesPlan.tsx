@@ -18,7 +18,6 @@ import {
   type FilaGrilla,
   type PlanCuotas,
   type SistemaAmortizacion,
-  type TipoCargo,
   type TratamientoGasto,
 } from "@/lib/config";
 import { calcularCuota } from "@/lib/credit";
@@ -276,13 +275,14 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
   const ivaPlan = p.config.calculaIva ? p.config.ivaPct : 0;
   const cambiar = (id: string, patch: Partial<CargoPeriodico>) =>
     cf({ cargos: cargos.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
+  // La forma de cálculo viene del servicio: al cambiar de cargo, el valor anterior deja de valer.
   const elegirServicio = (c: CargoPeriodico, servicioId: string) => {
-    const previo = servicios.find((x) => x.id === c.servicioId)?.nombre;
     const nuevo = servicios.find((x) => x.id === servicioId);
-    // El nombre sigue al servicio mientras no se lo haya personalizado.
     cambiar(c.id, {
       servicioId: servicioId || null,
-      nombre: nuevo && (!c.nombre || c.nombre === previo) ? nuevo.nombre : c.nombre,
+      nombre: nuevo?.nombre ?? "",
+      tipo: nuevo?.tipo ?? c.tipo,
+      valor: nuevo && nuevo.tipo !== c.tipo ? 0 : c.valor,
     });
   };
   return (
@@ -322,47 +322,35 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <SelectField
                 id={`pl-cargo-servicio-${c.id}`}
-                label="Servicio"
+                label="Cargo"
                 value={c.servicioId ?? ""}
-                placeholder="Sin servicio (cargo propio)"
+                placeholder="Elegí un cargo"
                 onChange={(v) => elegirServicio(c, v)}
-                options={[
-                  { value: "", label: "Sin servicio (cargo propio)" },
-                  ...disponibles.map((x) => ({ value: x.id, label: x.nombre })),
-                ]}
-                hint="Se administran en Servicios."
+                options={disponibles.map((x) => ({ value: x.id, label: x.nombre }))}
+                hint={
+                  c.servicioId
+                    ? `Se calcula como ${TIPOS_CARGO.find((t) => t.value === c.tipo)?.label.toLowerCase()} (definido en Servicios).`
+                    : "Se administran en Servicios."
+                }
               />
-              <FormField
-                id={`pl-cargo-nombre-${c.id}`}
-                label="Nombre del cargo"
-                value={c.nombre}
-                onChange={(v) => cambiar(c.id, { nombre: v })}
-                placeholder="Ej.: Cargo administrativo"
-              />
-              <SelectField
-                id={`pl-cargo-tipo-${c.id}`}
-                label="Se cobra como"
-                value={c.tipo}
-                onChange={(v) => cambiar(c.id, { tipo: v as TipoCargo })}
-                options={TIPOS_CARGO}
-              />
-              {c.tipo === "MONTO_FIJO" ? (
-                <MoneyInput
-                  id={`pl-cargo-valor-${c.id}`}
-                  label="Monto por cuota"
-                  value={c.valor}
-                  onChange={(v) => cambiar(c.id, { valor: v })}
-                />
-              ) : (
-                <CampoNumero
-                  id={`pl-cargo-valor-${c.id}`}
-                  label="Porcentaje"
-                  sufijo={c.tipo === "PORCENTAJE_CUOTA" ? "% s/cuota" : "% s/capital"}
-                  step={0.01}
-                  value={c.valor}
-                  onChange={(v) => cambiar(c.id, { valor: v })}
-                />
-              )}
+              {c.servicioId &&
+                (c.tipo === "MONTO_FIJO" ? (
+                  <MoneyInput
+                    id={`pl-cargo-valor-${c.id}`}
+                    label="Monto por cuota"
+                    value={c.valor}
+                    onChange={(v) => cambiar(c.id, { valor: v })}
+                  />
+                ) : (
+                  <CampoNumero
+                    id={`pl-cargo-valor-${c.id}`}
+                    label="Porcentaje"
+                    sufijo={c.tipo === "PORCENTAJE_CUOTA" ? "% s/cuota" : "% s/capital"}
+                    step={0.01}
+                    value={c.valor}
+                    onChange={(v) => cambiar(c.id, { valor: v })}
+                  />
+                ))}
               <SelectField
                 id={`pl-cargo-iva-${c.id}`}
                 label="IVA"

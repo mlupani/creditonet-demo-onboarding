@@ -215,10 +215,10 @@ export function validarPlan(p: PlanAbm, todos: PlanAbm[]): Record<string, string
   if (!TRATAMIENTOS_GASTO.some((t) => t.value === g.tratamiento))
     e.gastoTratamiento = "Elegí si el gasto se capitaliza o se distribuye en las cuotas.";
   const cargosInvalidos = c.cargos.some(
-    (g) => !g.nombre.trim() || g.valor < 0 || (g.tipo !== "MONTO_FIJO" && g.valor > 100)
+    (g) => !g.servicioId || g.valor < 0 || (g.tipo !== "MONTO_FIJO" && g.valor > 100)
   );
   if (cargosInvalidos)
-    e.cargos = "Cada cargo necesita nombre y un valor válido (los porcentajes van de 0 a 100 %).";
+    e.cargos = "Elegí el cargo de cada fila y cargá un valor válido (los porcentajes van de 0 a 100 %).";
 
   if (c.situacionesBcra.length === 0) e.situacionesBcra = "Aceptá al menos una situación BCRA.";
   if (c.condicionesLaborales.length === 0)

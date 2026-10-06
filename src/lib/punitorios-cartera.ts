@@ -180,7 +180,7 @@ export function aplicarPunitorios(
   const antes = structuredClone(producto.extras.tramosPunitorios);
   const filas = simular(productoId, antes, tramosNuevos, retroactivo, organismoIds);
   const registro: RegistroPunitorios = {
-    id: `pun-${Date.now().toString(36)}`,
+    id: `pun-${Date.now().toString(36)}-${productoId}`,
     fecha: fechaHora(),
     usuario: SESION_PARAMETROS.nombre,
     accion: "APLICAR",
@@ -208,7 +208,7 @@ export function restaurarPunitorios(checkpointId: string): RegistroPunitorios | 
   const original = checkpoint.tramosAntes;
   const filas = simular(checkpoint.productoId, actuales, original, checkpoint.retroactivo, checkpoint.organismos);
   const registro: RegistroPunitorios = {
-    id: `pun-${Date.now().toString(36)}`,
+    id: `pun-${Date.now().toString(36)}-${checkpoint.productoId}`,
     fecha: fechaHora(),
     usuario: SESION_PARAMETROS.nombre,
     accion: "RESTAURAR",

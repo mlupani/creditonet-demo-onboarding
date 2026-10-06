@@ -122,6 +122,16 @@ export interface RecalculoNeto {
   noRemunerativosHorasExtra: boolean;
 }
 
+// Datos financieros que el onboarding le pide al cliente. El producto pide todos; el organismo
+// puede dejar de pedir alguno como excepción.
+export interface DatosFinancierosPedidos {
+  ingresoBruto: boolean;
+  ingresoNeto: boolean;
+  disponible: boolean;
+  saldoDiaAcreditacion: boolean;
+  extraccionesTransferencias: boolean;
+}
+
 // Interés punitorio por tramo (hasta 5).
 export interface TramoPunitorio {
   desdeDia: number;
@@ -183,11 +193,13 @@ export interface ExtrasProducto {
   gestionPrestamos: GestionPrestamos;
   // Datos financieros
   recalculoNeto: RecalculoNeto;
+  datosFinancieros: DatosFinancierosPedidos;
   // Modalidad de cobro (una sola), canales y vendedores (los canales están en `config.canales`).
   modalidadCobro: string;
   canalesTodos: boolean;
   vendedores: SeleccionLista;
-  // Intereses punitorios
+  // Intereses punitorios: los tramos sólo rigen si el producto cobra punitorios.
+  cobraPunitorios: boolean;
   tramosPunitorios: TramoPunitorio[];
   modificarCarteraActiva: boolean;
   // Permisos de operación (Onboarding)
@@ -244,9 +256,17 @@ const EXTRAS_BASE: ExtrasProducto = {
     cuotasBuroExterno: true,
     noRemunerativosHorasExtra: false,
   },
+  datosFinancieros: {
+    ingresoBruto: true,
+    ingresoNeto: true,
+    disponible: true,
+    saldoDiaAcreditacion: true,
+    extraccionesTransferencias: true,
+  },
   modalidadCobro: "Descuento por haberes",
   canalesTodos: true,
   vendedores: { todos: true, ids: VENDEDORES.map((v) => v.id) },
+  cobraPunitorios: true,
   tramosPunitorios: [
     { desdeDia: 1, punitorioPct: 50, diasGracia: 5, montoTopeSinIva: 50_000 },
     { desdeDia: 16, punitorioPct: 60, diasGracia: 0, montoTopeSinIva: 80_000 },
@@ -347,6 +367,8 @@ export function hidratarProductos() {
           extras.condicionCancelacion ??= EXTRAS_BASE.condicionCancelacion;
           extras.cancelacionMinPctPagado ??= EXTRAS_BASE.cancelacionMinPctPagado;
           extras.cancelacionMinCuotasPagas ??= EXTRAS_BASE.cancelacionMinCuotasPagas;
+          extras.cobraPunitorios ??= EXTRAS_BASE.cobraPunitorios;
+          extras.datosFinancieros ??= structuredClone(EXTRAS_BASE.datosFinancieros);
           return {
             ...r,
             extras: extras.gestionPrestamos
@@ -648,10 +670,13 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
       e.gestionCuit = "El CUIT debe tener 11 dígitos.";
   }
   const t = x.tramosPunitorios;
-  if (t.length === 0 || t.length > MAX_TRAMOS_PUNITORIOS)
-    e.tramos = `Cargá entre 1 y ${MAX_TRAMOS_PUNITORIOS} tramos de punitorios.`;
-  else if (t.some((tr, i) => i > 0 && tr.desdeDia <= t[i - 1].desdeDia))
-    e.tramos = "Los tramos deben ir en orden creciente de días.";
+  // Sin punitorios no se validan los tramos.
+  if (x.cobraPunitorios) {
+    if (t.length === 0 || t.length > MAX_TRAMOS_PUNITORIOS)
+      e.tramos = `Cargá entre 1 y ${MAX_TRAMOS_PUNITORIOS} tramos de punitorios.`;
+    else if (t.some((tr, i) => i > 0 && tr.desdeDia <= t[i - 1].desdeDia))
+      e.tramos = "Los tramos deben ir en orden creciente de días.";
+  }
   return e;
 }
 

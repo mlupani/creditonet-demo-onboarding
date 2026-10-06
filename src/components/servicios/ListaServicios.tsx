@@ -12,6 +12,7 @@ import {
   type Servicio,
 } from "@/lib/servicios";
 import { usePlanes } from "@/lib/planes";
+import { TIPOS_CARGO, type TipoCargo } from "@/lib/config";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -33,6 +34,7 @@ export function ListaServicios() {
   const [aviso, setAviso] = useState<string | null>(null);
 
   const errores = editando ? validarServicio(editando, servicios) : {};
+  const enUso = editando && !esNuevo ? planesDelServicio(editando.id) : [];
 
   function abrir(s: Servicio | null) {
     setEsNuevo(!s);
@@ -92,6 +94,7 @@ export function ListaServicios() {
               <thead className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
                 <tr>
                   <th className="px-4 py-2.5">Servicio</th>
+                  <th className="px-4 py-2.5">Forma de cálculo</th>
                   <th className="px-4 py-2.5">Estado</th>
                   <th className="px-4 py-2.5">Planes que lo usan</th>
                   <th className="px-4 py-2.5">
@@ -107,6 +110,9 @@ export function ListaServicios() {
                       <td className="px-4 py-3">
                         <p className="font-semibold text-ink-900">{s.nombre}</p>
                         {s.descripcion && <p className="text-xs text-ink-500">{s.descripcion}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-ink-600">
+                        {TIPOS_CARGO.find((t) => t.value === s.tipo)?.label}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge tone={s.estado === "ACTIVO" ? "success" : "neutral"}>
@@ -169,6 +175,20 @@ export function ListaServicios() {
               label="Descripción"
               value={editando.descripcion}
               onChange={(v) => setEditando({ ...editando, descripcion: v })}
+            />
+            <SelectField
+              id="srv-tipo"
+              label="Forma de cálculo"
+              value={editando.tipo}
+              onChange={(v) => setEditando({ ...editando, tipo: v as TipoCargo })}
+              options={TIPOS_CARGO}
+              // Los planes que lo usan cargaron el valor con esta forma: cambiarla lo desvirtuaría.
+              disabled={enUso.length > 0}
+              hint={
+                enUso.length > 0
+                  ? `No se puede cambiar: lo usan ${enUso.join(", ")}.`
+                  : "En el plan sólo se carga el valor: monto o porcentaje según esta forma."
+              }
             />
             <SelectField
               id="srv-estado"

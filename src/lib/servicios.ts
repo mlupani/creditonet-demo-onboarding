@@ -4,6 +4,7 @@
 // El estado vive acá y se persiste en la sesión. Un servicio inactivo no se puede elegir en un
 // cargo nuevo; uno que algún plan usa no se puede eliminar (se desactiva).
 
+import type { TipoCargo } from "./config";
 import { getPlanes } from "./planes";
 import { crearStoreAbm } from "./store-abm";
 
@@ -13,13 +14,16 @@ export interface Servicio {
   id: string;
   nombre: string;
   descripcion: string;
+  // Forma de cálculo del cargo: el plan sólo carga el valor (monto o porcentaje).
+  tipo: TipoCargo;
   estado: EstadoServicio;
 }
 
 const INICIAL: Servicio[] = [
-  { id: "srv-seguro-vida", nombre: "Seguro de vida", descripcion: "Cobertura por fallecimiento e invalidez del titular.", estado: "ACTIVO" },
-  { id: "srv-asistencia", nombre: "Asistencia al cliente", descripcion: "Asistencia médica y legal telefónica.", estado: "ACTIVO" },
-  { id: "srv-sepelio", nombre: "Servicio de sepelio", descripcion: "Cobertura de gastos de sepelio.", estado: "ACTIVO" },
+  { id: "srv-cargo-administrativo", nombre: "Cargo administrativo / cobranza", descripcion: "Gastos de administración y cobranza de la cuota.", tipo: "PORCENTAJE_CUOTA", estado: "ACTIVO" },
+  { id: "srv-seguro-vida", nombre: "Seguro de vida", descripcion: "Cobertura por fallecimiento e invalidez del titular.", tipo: "PORCENTAJE_CAPITAL", estado: "ACTIVO" },
+  { id: "srv-asistencia", nombre: "Asistencia al cliente", descripcion: "Asistencia médica y legal telefónica.", tipo: "MONTO_FIJO", estado: "ACTIVO" },
+  { id: "srv-sepelio", nombre: "Servicio de sepelio", descripcion: "Cobertura de gastos de sepelio.", tipo: "MONTO_FIJO", estado: "ACTIVO" },
 ];
 
 const store = crearStoreAbm<Servicio>({
@@ -27,6 +31,8 @@ const store = crearStoreAbm<Servicio>({
   inicial: INICIAL,
   valido: (s) => !!s?.id && typeof s.nombre === "string",
   aplicar: () => {},
+  // Servicios guardados antes de tener forma de cálculo: monto fijo por cuota.
+  migrar: (s) => ({ ...s, tipo: s.tipo ?? "MONTO_FIJO" }),
 });
 
 export const useServicios = store.useLista;
@@ -39,7 +45,7 @@ export function guardarServicio(s: Servicio) {
 }
 
 export function nuevoServicio(): Servicio {
-  return { id: `srv-${Date.now().toString(36)}`, nombre: "", descripcion: "", estado: "ACTIVO" };
+  return { id: `srv-${Date.now().toString(36)}`, nombre: "", descripcion: "", tipo: "MONTO_FIJO", estado: "ACTIVO" };
 }
 
 // Planes que cobran el servicio como cargo.

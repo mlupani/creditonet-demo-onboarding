@@ -53,8 +53,8 @@ export interface OrganismoAbm {
 }
 
 // Qué valores del producto puede pisar el organismo, agrupados por sección del detalle. Las
-// secciones espejan las del producto; "Opciones generales" y "Gestión de préstamos" no admiten
-// excepción.
+// secciones espejan las del producto; "Gestión de préstamos" y parte de "Opciones generales" no
+// admiten excepción.
 export const EXTRAS_POR_SECCION = {
   vencimientos: [
     "diaCorte",
@@ -66,9 +66,9 @@ export const EXTRAS_POR_SECCION = {
     "diasPlazoObservacion",
   ],
   opciones: ["modalidadFirma", "requiereChequeoTelefonico"],
-  financieros: ["recalculoNeto"],
-  cobro: ["modalidadCobro", "vendedores"],
-  punitorios: ["tramosPunitorios", "modificarCarteraActiva"],
+  financieros: ["datosFinancieros"],
+  cobro: ["modalidadCobro", "canalesTodos", "vendedores"],
+  punitorios: ["cobraPunitorios", "tramosPunitorios", "modificarCarteraActiva"],
   operaciones: [
     "permiteRenovacion",
     "condicionRenovacion",

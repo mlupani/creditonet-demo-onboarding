@@ -40,6 +40,9 @@ export interface SeccionProps {
   errores: Record<string, string>;
   // Los errores sólo se muestran después del primer intento de guardar.
   ver: boolean;
+  // La sección se muestra desde un organismo: `p` es el producto con sus excepciones aplicadas y
+  // lo que se cambie queda como excepción (ver organismo-virtual.ts).
+  organismo?: boolean;
 }
 
 // Atajos para editar la parte de config (la que lee el flujo) o la de ejemplo.
@@ -63,6 +66,11 @@ const CAPITAL_MAXIMO_INICIAL = 1_000_000;
 // --- 1. Datos generales ---
 const NOTA_APLICA_ORGANISMOS =
   "Las reglas del producto se aplican a todos los organismos vinculados; cada organismo puede hacer excepciones.";
+const NOTA_EXCEPCION =
+  "Se ve lo que define el producto. Lo que cambies acá queda como excepción de este organismo.";
+const notaAplica = (organismo?: boolean) => (organismo ? NOTA_EXCEPCION : NOTA_APLICA_ORGANISMOS);
+// Desde el organismo, lo que rige igual para todos los organismos se ve pero no se edita.
+const SIN_EXCEPCION = "Rige igual para todos los organismos: no admite excepción.";
 
 function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
   const { cf, ex } = useEditores(set);
@@ -159,13 +167,13 @@ function DatosGenerales({ p, set, errores, ver }: SeccionProps) {
 
 // --- 2. Vencimientos ---
 
-function Vencimientos({ p, set, errores, ver }: SeccionProps) {
+function Vencimientos({ p, set, errores, ver, organismo }: SeccionProps) {
   const { ex } = useEditores(set);
   return (
     <Panel
       titulo="Vencimientos"
       descripcion="Día de corte y modalidad de vencimiento de las cuotas."
-      nota={`${NOTA_APLICA_ORGANISMOS} Valores de ejemplo: no alteran el cálculo de la demo.`}
+      nota={`${notaAplica(organismo)} Valores de ejemplo: no alteran el cálculo de la demo.`}
     >
       <CampoNumero
         id="p-dia-corte"
@@ -244,19 +252,24 @@ function Vencimientos({ p, set, errores, ver }: SeccionProps) {
 
 // --- 3. Opciones generales ---
 
-function Opciones({ p, set }: SeccionProps) {
+function Opciones({ p, set, organismo }: SeccionProps) {
   const { ex } = useEditores(set);
   return (
     <Panel
       titulo="Opciones generales"
       descripcion="Condiciones generales del producto."
-      nota={`${NOTA_APLICA_ORGANISMOS} Valores de ejemplo.`}
+      nota={
+        organismo
+          ? `${NOTA_EXCEPCION} Sólo la modalidad de firma y el chequeo telefónico admiten excepción.`
+          : `${NOTA_APLICA_ORGANISMOS} Valores de ejemplo.`
+      }
     >
       <Checkbox
         checked={p.extras.permiteCreditosParalelos}
         onChange={(v) => ex({ permiteCreditosParalelos: v })}
         label="Permite producto en paralelo"
-        description="El cliente puede tener este producto en más de un crédito a la vez."
+        description={`El cliente puede tener este producto en más de un crédito a la vez.${organismo ? ` ${SIN_EXCEPCION}` : ""}`}
+        disabled={organismo}
       />
       <SelectField
         id="p-firma"
@@ -276,7 +289,8 @@ function Opciones({ p, set }: SeccionProps) {
         checked={p.extras.seContabiliza}
         onChange={(v) => ex({ seContabiliza: v })}
         label="Se contabiliza"
-        description="Al contabilizarse se imputa a un centro de costos."
+        description={`Al contabilizarse se imputa a un centro de costos.${organismo ? ` ${SIN_EXCEPCION}` : ""}`}
+        disabled={organismo}
       />
       {p.extras.seContabiliza && (
         <FormField
@@ -285,12 +299,15 @@ function Opciones({ p, set }: SeccionProps) {
           value={p.extras.centroCostos}
           onChange={(v) => ex({ centroCostos: v })}
           className="sm:max-w-md"
+          disabled={organismo}
         />
       )}
       <Checkbox
         checked={p.extras.visibleDashboard}
         onChange={(v) => ex({ visibleDashboard: v })}
         label="Visible en dashboard"
+        description={organismo ? SIN_EXCEPCION : undefined}
+        disabled={organismo}
       />
     </Panel>
   );
@@ -335,7 +352,7 @@ function Financieros({ p, set }: SeccionProps) {
 
 // --- 6. Modalidades de cobro, canales y vendedores ---
 
-function Cobro({ p, set, errores, ver }: SeccionProps) {
+function Cobro({ p, set, errores, ver, organismo }: SeccionProps) {
   const { ex } = useEditores(set);
   const vendedores = vendedoresDeCanales(p.config.canales);
   const organismos = ORGANISMOS.filter((o) => p.organismos.includes(o.id));
@@ -344,7 +361,11 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
       titulo="Modalidades de cobro, canales y vendedores"
       descripcion="Cómo se cobra, dónde se ofrece y quién lo vende."
       vivo
-      nota="Los canales y los organismos deciden dónde aparece el producto en Solicitar crédito. Las modalidades y los vendedores son de ejemplo: el vendedor real sale de la sesión."
+      nota={
+        organismo
+          ? `${NOTA_EXCEPCION} Con excepción de canales, el producto sólo se ofrece en los que ambos habilitan. El vendedor real sale de la sesión.`
+          : "Los canales y los organismos deciden dónde aparece el producto en Solicitar crédito. Las modalidades y los vendedores son de ejemplo: el vendedor real sale de la sesión."
+      }
     >
       <SelectField
         id="p-cobro"
@@ -390,6 +411,7 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
         )}
       </div>
 
+      {!organismo && (
       <div className="space-y-3">
         <Subtitulo>Organismos que lo ofrecen</Subtitulo>
         {organismos.length === 0 ? (
@@ -411,26 +433,37 @@ function Cobro({ p, set, errores, ver }: SeccionProps) {
           Sólo lectura: la vinculación entre producto y organismo se hace desde el organismo.
         </p>
       </div>
+      )}
     </Panel>
   );
 }
 
 // --- 7. Intereses punitorios ---
 
-function Punitorios({ p, set, errores, ver }: SeccionProps) {
+function Punitorios({ p, set, errores, ver, organismo }: SeccionProps) {
   const { ex } = useEditores(set);
   return (
     <Panel
       titulo="Intereses punitorios"
       descripcion="Hasta 6 tramos de atraso, cada uno con su porcentaje, gracia y tope."
-      nota={`${NOTA_APLICA_ORGANISMOS} Valores de ejemplo.`}
+      nota={`${notaAplica(organismo)} Valores de ejemplo.`}
     >
-      {ver && errores.tramos && <ValidationMessage tipo="error">{errores.tramos}</ValidationMessage>}
-      <EditorTramos
-        idBase="p-tramo"
-        tramos={p.extras.tramosPunitorios}
-        onChange={(v) => ex({ tramosPunitorios: v })}
+      <Checkbox
+        checked={p.extras.cobraPunitorios}
+        onChange={(v) => ex({ cobraPunitorios: v })}
+        label="Cobra punitorios"
+        description="Si no cobra, los créditos en mora no generan interés punitorio."
       />
+      {p.extras.cobraPunitorios && (
+        <>
+          {ver && errores.tramos && <ValidationMessage tipo="error">{errores.tramos}</ValidationMessage>}
+          <EditorTramos
+            idBase="p-tramo"
+            tramos={p.extras.tramosPunitorios}
+            onChange={(v) => ex({ tramosPunitorios: v })}
+          />
+        </>
+      )}
     </Panel>
   );
 }
@@ -442,7 +475,7 @@ const NAVEGACIONES = [
   { value: "SECUENCIAL", label: "Secuencial: no se avanza sin completar las obligatorias anteriores" },
 ];
 
-function Onboarding({ p, set, errores, ver }: SeccionProps) {
+function Onboarding({ p, set, errores, ver, organismo }: SeccionProps) {
   const { cf, ex } = useEditores(set);
   const ob = p.config.onboarding;
   const setOb = (patch: Partial<typeof ob>) => cf({ onboarding: { ...ob, ...patch } });
@@ -469,7 +502,7 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
       titulo="Configuración del onboarding"
       descripcion="Pantallas P1 a P7, navegación, campos y permisos de operación (Producto §7 bis)."
       vivo
-      nota={`${NOTA_APLICA_ORGANISMOS} Los cambios se reflejan en Solicitar crédito.`}
+      nota={`${notaAplica(organismo)} Los cambios se reflejan en Solicitar crédito.`}
     >
       <div className="space-y-3">
         <Subtitulo>Pantallas / solapas</Subtitulo>
@@ -555,8 +588,10 @@ function Onboarding({ p, set, errores, ver }: SeccionProps) {
           <div className="space-y-3 border-t border-ink-100 px-4 py-4">
             <p className="text-xs text-ink-500">
               Documentos que forman el legajo virtual, obligatoriedad y cantidad mínima y máxima por
-              ítem (Producto §7 bis). El organismo puede reemplazar esta lista con su propia
-              documentación.
+              ítem (Producto §7 bis).{" "}
+              {organismo
+                ? "Si cambiás algo, esta lista reemplaza a la del producto para este organismo."
+                : "El organismo puede reemplazar esta lista con su propia documentación."}
             </p>
             <EditorDocumentos
               docs={ob.documentos}

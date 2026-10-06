@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import {
+  asignadasDe,
   efectivasDe,
+  quitadasDe,
+  type DatosFinancierosPedidos,
   type ExtrasProducto,
   type GestionPrestamos,
   type NotificacionesProducto,
@@ -359,5 +362,200 @@ export function FilaExtra({
         })
       }
     />
+  );
+}
+
+const DATOS_FINANCIEROS: { clave: keyof DatosFinancierosPedidos; label: string; detalle: string }[] = [
+  { clave: "ingresoBruto", label: "Ingreso bruto", detalle: "Haberes brutos mensuales." },
+  { clave: "ingresoNeto", label: "Ingreso neto", detalle: "Ingreso mensual de bolsillo. Base del cálculo de RCI." },
+  { clave: "disponible", label: TERMINOS.disponible, detalle: "Dinero que el cliente tiene libre para extraer de su cuenta." },
+  { clave: "saldoDiaAcreditacion", label: TERMINOS.saldoDiaAcreditacion, detalle: "Saldo de la cuenta el día de la acreditación del sueldo." },
+  { clave: "extraccionesTransferencias", label: TERMINOS.transferenciasExtracciones, detalle: "Movimientos que reducen el ingreso neto efectivo." },
+];
+
+// Datos financieros que se le piden al cliente: se ven tildados según el producto y la excepción
+// es destildar los que este organismo no pide. "Volver a heredar" descarta la excepción.
+export function FilaDatosFinancieros({
+  o,
+  p,
+  set,
+}: {
+  o: VistaOrganismo;
+  p: ProductoAbm;
+  set: (cambio: (o: VistaOrganismo) => VistaOrganismo) => void;
+}) {
+  const heredado = p.extras.datosFinancieros;
+  const propio = o.excepciones.datosFinancieros;
+  const valor = propio ?? heredado;
+  const marcar = (clave: keyof DatosFinancierosPedidos, v: boolean) =>
+    set((x) => {
+      const nuevo = { ...(x.excepciones.datosFinancieros ?? heredado), [clave]: v };
+      // Si vuelve a coincidir con el producto, deja de ser excepción.
+      const igual = DATOS_FINANCIEROS.every((d) => nuevo[d.clave] === heredado[d.clave]);
+      const { datosFinancieros: _quitada, ...resto } = x.excepciones;
+      void _quitada;
+      return { ...x, excepciones: igual ? resto : { ...resto, datosFinancieros: nuevo } };
+    });
+  const quitar = () =>
+    set((x) => {
+      const { datosFinancieros: _quitada, ...resto } = x.excepciones;
+      void _quitada;
+      return { ...x, excepciones: resto };
+    });
+  return (
+    <MarcoExcepcion
+      etiqueta="Datos que se le piden al cliente"
+      ayuda="Destildá los que este organismo no pide."
+      excepcion={propio !== undefined}
+      onQuitar={quitar}
+    >
+      <div className="mt-3 space-y-3">
+        {DATOS_FINANCIEROS.map((d) => (
+          <Checkbox
+            key={d.clave}
+            checked={valor[d.clave]}
+            onChange={(v) => marcar(d.clave, v)}
+            label={d.label}
+            description={
+              valor[d.clave] === heredado[d.clave] ? d.detalle : `${d.detalle} En el producto: ${heredado[d.clave] ? "se pide" : "no se pide"}.`
+            }
+          />
+        ))}
+      </div>
+    </MarcoExcepcion>
+  );
+}
+
+// Fila que se edita en el lugar, a todo el ancho: muestra lo del producto y, en cuanto se cambia
+// algo, pasa a ser excepción del organismo. "Volver a heredar" descarta la excepción.
+export function MarcoExcepcion({
+  etiqueta,
+  ayuda,
+  excepcion,
+  onQuitar,
+  children,
+}: {
+  etiqueta: string;
+  ayuda?: string;
+  excepcion: boolean;
+  onQuitar: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-4 ${
+        excepcion ? "border-warning-300 bg-warning-50/50" : "border-ink-200 bg-white"
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink-900">{etiqueta}</p>
+          {ayuda && <p className="text-xs text-ink-500">{ayuda}</p>}
+        </div>
+        {excepcion ? (
+          <span className="shrink-0 rounded-full border border-warning-300 bg-warning-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
+            ⚠ Excepción del organismo
+          </span>
+        ) : (
+          <span className="shrink-0 rounded-full border border-ink-200 bg-ink-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-500">
+            Heredado del producto
+          </span>
+        )}
+      </div>
+      {children}
+      {excepcion && (
+        <div className="mt-3 flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onQuitar}>
+            Volver a heredar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Mismas asignadas y mismas quitadas, sin importar el orden.
+const mismasNotificaciones = (a: NotificacionesProducto, b: NotificacionesProducto) => {
+  const clave = (n: NotificacionesProducto) =>
+    JSON.stringify([[...asignadasDe(n)].sort(), [...quitadasDe(n)].sort()]);
+  return clave(a) === clave(b);
+};
+
+// Notificaciones: vienen del producto y se modifican en el lugar; cualquier cambio queda como
+// excepción del organismo.
+export function FilaNotificaciones({
+  o,
+  p,
+  set,
+}: {
+  o: VistaOrganismo;
+  p: ProductoAbm;
+  set: (cambio: (o: VistaOrganismo) => VistaOrganismo) => void;
+}) {
+  const heredado = p.extras.notificaciones;
+  const propio = o.excepciones.notificaciones;
+  const quitar = () =>
+    set((x) => {
+      const { notificaciones: _quitada, ...resto } = x.excepciones;
+      void _quitada;
+      return { ...x, excepciones: resto };
+    });
+  const cambiar = (valor: NotificacionesProducto) =>
+    set((x) => {
+      const { notificaciones: _quitada, ...resto } = x.excepciones;
+      void _quitada;
+      // Si vuelve a quedar igual a la del producto, deja de ser excepción.
+      return { ...x, excepciones: mismasNotificaciones(valor, heredado) ? resto : { ...resto, notificaciones: valor } };
+    });
+  return (
+    <MarcoExcepcion
+      etiqueta="Notificaciones"
+      ayuda="Las que envía el producto. Quitá o agregá las que cambian para este organismo."
+      excepcion={propio !== undefined}
+      onQuitar={quitar}
+    >
+      <div className="mt-4">
+        <EditorNotificaciones
+          idBase="o-notificaciones"
+          valor={propio ?? heredado}
+          onChange={cambiar}
+          productoId={p.config.id}
+        />
+      </div>
+    </MarcoExcepcion>
+  );
+}
+
+// Encabezado de una sección del organismo que muestra la pantalla del producto: cuántas
+// excepciones tiene y cómo descartarlas.
+export function BarraHerencia({
+  cantidad,
+  productoNombre,
+  onQuitar,
+}: {
+  cantidad: number;
+  productoNombre: string;
+  onQuitar: () => void;
+}) {
+  const excepcion = cantidad > 0;
+  return (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-2.5 ${
+        excepcion ? "border-warning-300 bg-warning-50/50" : "border-ink-200 bg-white"
+      }`}
+    >
+      {excepcion ? (
+        <span className="text-xs font-semibold text-warning-700">
+          ⚠ {cantidad} {cantidad === 1 ? "excepción" : "excepciones"} del organismo sobre {productoNombre}
+        </span>
+      ) : (
+        <span className="text-xs text-ink-500">Heredado de {productoNombre}: sin excepciones.</span>
+      )}
+      {excepcion && (
+        <Button variant="ghost" size="sm" onClick={onQuitar}>
+          Volver a heredar
+        </Button>
+      )}
+    </div>
   );
 }

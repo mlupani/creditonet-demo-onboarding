@@ -371,9 +371,11 @@ export const TIPOS_CARGO: { value: TipoCargo; label: string }[] = [
 
 export interface CargoPeriodico {
   id: string;
+  // Nombre del servicio elegido.
   nombre: string;
-  // Servicio del catálogo (ABM de servicios) que origina el cargo; null si es un cargo propio.
+  // Servicio del catálogo (ABM de servicios) que origina el cargo; null sólo en cargos viejos.
   servicioId: string | null;
+  // Forma de cálculo: la define el servicio en su ABM y se copia al elegirlo.
   tipo: TipoCargo;
   valor: number;
   conIva: boolean;
@@ -419,7 +421,7 @@ export function normalizarCargos(
     {
       id: "cg-administrativo",
       nombre: "Cargo administrativo / cobranza",
-      servicioId: null,
+      servicioId: "srv-cargo-administrativo",
       tipo: previo.tipo === "PORCENTAJE" ? "PORCENTAJE_CUOTA" : "MONTO_FIJO",
       valor: previo.valor,
       conIva: true,
@@ -705,7 +707,8 @@ export interface OnboardingConfig {
   documentos: DocumentoConfig[];
 }
 
-type CambiosPantalla = Partial<Record<PantallaPostOfertaId, { visible?: boolean }>>;
+// El organismo puede habilitar/deshabilitar una pantalla y cambiarla de lugar.
+export type CambiosPantalla = Partial<Record<PantallaPostOfertaId, { visible?: boolean; orden?: number }>>;
 
 // Onboarding §3: las 7 pantallas disponibles, en el orden de la documentación.
 const PANTALLAS_BASE: PantallaPostOfertaConfig[] = [
