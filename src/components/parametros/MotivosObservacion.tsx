@@ -70,15 +70,9 @@ export function MotivosObservacion() {
   const [baja, setBaja] = useState<MotivoObservacion | null>(null);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+    <div>
       <div className="animate-fade-in">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-          Módulo Créditos · Parámetros
-        </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">
-          Motivos de observación
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-500">
+        <p className="max-w-2xl text-sm text-ink-500">
           Tipificación de las observaciones. El analista elige uno de estos motivos al observar una
           solicitud; los cambios se aplican a las próximas observaciones.
         </p>

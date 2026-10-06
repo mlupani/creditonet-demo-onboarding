@@ -22,7 +22,8 @@ import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { IconPencil, IconPlus, IconTrash } from "@/components/icons";
 
-// ABM de servicios: catálogo que los planes de cuotas cobran como cargo periódico.
+// ABM de cargos/servicios: catálogo que los planes de cuotas cobran como cargo periódico. Es una
+// solapa del módulo Parámetros.
 export function ListaServicios() {
   const { hidratado } = useApplication();
   const servicios = useServicios();
@@ -56,13 +57,9 @@ export function ListaServicios() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <div>
       <div className="animate-fade-in">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-          Módulo Créditos · Parámetros
-        </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">Servicios</h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-500">
+        <p className="max-w-2xl text-sm text-ink-500">
           Servicios que un plan de cuotas puede cobrar como cargo periódico dentro de la cuota
           (seguros, asistencias, sepelio…). Un plan puede cargar más de uno.
         </p>

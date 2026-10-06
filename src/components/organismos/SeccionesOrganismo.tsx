@@ -31,9 +31,7 @@ import {
   FilaDatosFinancieros,
   FilaHerencia,
   FilaNotificaciones,
-  FilaSoloLectura,
   MarcoExcepcion,
-  type CampoExtra,
 } from "./herencia";
 
 export interface SeccionOrgProps {
@@ -318,25 +316,6 @@ function Capital({ o, p, set, errores, ver }: SeccionOrgProps) {
 const Vencimientos = espejo(SECCIONES.find((x) => x.id === "vencimientos")!.Componente, "vencimientos");
 const Opciones = espejo(SECCIONES.find((x) => x.id === "opciones")!.Componente, "opciones");
 
-const CAMPO_GESTION: CampoExtra = {
-  clave: "gestionPrestamos",
-  etiqueta: "Gestión de préstamos",
-  ayuda: "Activar o desactivar la gestión y datos de quien gestiona la cartera.",
-  tipo: "gestion",
-};
-
-function Gestion({ p }: SeccionOrgProps) {
-  return (
-    <Panel
-      titulo="Gestión de préstamos"
-      descripcion="Activar o desactivar la gestión y datos de quien gestiona la cartera."
-      nota="Rige igual para todos los organismos: no admite excepción."
-    >
-      <FilaSoloLectura campo={CAMPO_GESTION} p={p} />
-    </Panel>
-  );
-}
-
 // --- 7. Datos financieros ---
 
 function Financieros({ o, p, set }: SeccionOrgProps) {
@@ -433,7 +412,6 @@ export const SECCIONES_ORGANISMO: {
   { id: "capital", alcance: "producto", label: "Capital máximo", vivo: true, Componente: Capital },
   { id: "vencimientos", alcance: "producto", label: "Vencimientos", vivo: false, Componente: Vencimientos },
   { id: "opciones", alcance: "producto", label: "Opciones generales", vivo: false, Componente: Opciones },
-  { id: "gestion", alcance: "producto", label: "Gestión de préstamos", vivo: false, Componente: Gestion },
   { id: "financieros", alcance: "producto", label: "Datos financieros", vivo: false, Componente: Financieros },
   { id: "cobro", alcance: "producto", label: "Cobro, canales y vendedores", vivo: true, Componente: Cobro },
   { id: "punitorios", alcance: "producto", label: "Intereses punitorios", vivo: false, Componente: Punitorios },

@@ -1,7 +1,7 @@
 "use client";
 
-import { MotivosObservacion } from "@/components/parametros/MotivosObservacion";
+import { ModuloParametros } from "@/components/parametros/ModuloParametros";
 
 export default function ParametrosPage() {
-  return <MotivosObservacion />;
+  return <ModuloParametros />;
 }

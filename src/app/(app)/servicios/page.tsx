@@ -1,7 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { ListaServicios } from "@/components/servicios/ListaServicios";
-
+// Servicios ahora es una solapa de Parámetros.
 export default function ServiciosPage() {
-  return <ListaServicios />;
+  redirect("/parametros?solapa=servicios");
 }

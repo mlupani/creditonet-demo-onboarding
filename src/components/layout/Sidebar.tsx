@@ -27,7 +27,6 @@ import {
   IconSettings,
   IconShieldCheck,
   IconUsers,
-  IconWallet,
   IconX,
 } from "@/components/icons";
 
@@ -49,7 +48,6 @@ const NAV: NavItem[] = [
   { label: "Productos", href: "/productos", icon: IconBriefcase, disponible: true },
   { label: "Organismos", href: "/organismos", icon: IconBuilding, disponible: true },
   { label: "Planes de cuotas", href: "/planes", icon: IconCalendar, disponible: true },
-  { label: "Servicios", href: "/servicios", icon: IconWallet, disponible: true },
   { label: "Liquidación", icon: IconLandmark },
   { label: "Clientes", icon: IconUsers },
   { label: "Créditos", icon: IconCreditCard },

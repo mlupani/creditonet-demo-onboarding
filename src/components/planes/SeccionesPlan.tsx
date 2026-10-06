@@ -323,15 +323,15 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <SelectField
                 id={`pl-cargo-servicio-${c.id}`}
-                label="Cargo"
+                label="Cargo/servicio"
                 value={c.servicioId ?? ""}
                 placeholder="Elegí un cargo"
                 onChange={(v) => elegirServicio(c, v)}
                 options={disponibles.map((x) => ({ value: x.id, label: x.nombre }))}
                 hint={
                   c.servicioId
-                    ? `Se calcula como ${TIPOS_CARGO.find((t) => t.value === c.tipo)?.label.toLowerCase()} (definido en Servicios).`
-                    : "Se administran en Servicios."
+                    ? `Se calcula como ${TIPOS_CARGO.find((t) => t.value === c.tipo)?.label.toLowerCase()} (definido en Parámetros › Cargos/servicios).`
+                    : "Se administran en Parámetros › Cargos/servicios."
                 }
               />
               {c.servicioId &&
@@ -373,8 +373,8 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
           </div>
         );
       })}
-      <Link href="/servicios" className="text-xs font-semibold text-brand-600 hover:text-brand-700">
-        Administrar servicios
+      <Link href="/parametros?solapa=servicios" className="text-xs font-semibold text-brand-600 hover:text-brand-700">
+        Administrar cargos/servicios
       </Link>
     </Panel>
   );

@@ -42,7 +42,6 @@ import {
   IconLock,
   IconSettings,
   IconShieldCheck,
-  IconUsers,
   IconWallet,
 } from "@/components/icons";
 import { useSidebarColapsado } from "@/lib/sidebar-colapsado";
@@ -72,7 +71,6 @@ const ICONOS_SECCION: Record<string, ItemNav["icon"]> = {
   capital: IconLock,
   vencimientos: IconClock,
   opciones: IconSettings,
-  gestion: IconUsers,
   financieros: IconWallet,
   cobro: IconCreditCard,
   punitorios: IconAlertTriangle,
@@ -381,14 +379,28 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
         }
       >
           {referencia || activa.alcance === "organismo" ? (
-            <SeccionActiva
-              o={vista}
-              p={referencia ?? productos[0]}
-              productos={productos}
-              set={editar}
-              errores={erroresDe(errores, prodId)}
-              ver={intentado}
-            />
+            <div className="space-y-4">
+              {/* Recordatorio en cada sección: qué viene del producto y qué se define acá. */}
+              {activa.alcance === "producto" && referencia ? (
+                <Banner tone="info" title={`Hereda del producto ${referencia.config.nombre}`}>
+                  Todo lo que ves en esta sección viene del producto. Acá sólo se configuran las{" "}
+                  <strong>excepciones de este organismo</strong>: lo que cambies rige únicamente para{" "}
+                  {registro.config.nombre} y el resto sigue heredado del producto.
+                </Banner>
+              ) : (
+                <Banner tone="info" title="Datos propios del organismo">
+                  Esta sección no se hereda del producto: se define sólo para {registro.config.nombre}.
+                </Banner>
+              )}
+              <SeccionActiva
+                o={vista}
+                p={referencia ?? productos[0]}
+                productos={productos}
+                set={editar}
+                errores={erroresDe(errores, prodId)}
+                ver={intentado}
+              />
+            </div>
           ) : (
             <Banner tone="warning" title="El organismo no tiene producto">
               Elegí un producto en “Producto habilitado” para poder definir excepciones sobre él.
