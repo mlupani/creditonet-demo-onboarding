@@ -97,6 +97,7 @@ import { hidratarServicios } from "./servicios";
 import { hidratarOrganismos } from "./organismos";
 import { hidratarLogPunitorios } from "./punitorios-cartera";
 import { hidratarMotivosObservacion } from "./motivos-observacion";
+import { hidratarProvinciasImpuestos } from "./provincias-impuestos";
 import { hidratarPlantillasNotificacion } from "./plantillas-notificacion";
 
 // Plazo de la oferta dentro de la grilla del plan; si el plan no lo tiene, el primero de la grilla.
@@ -513,6 +514,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hidratarServicios();
       hidratarOrganismos();
       hidratarMotivosObservacion();
+      hidratarProvinciasImpuestos();
       hidratarPlantillasNotificacion();
       hidratarLogPunitorios();
       hidratarNotificaciones();
