@@ -10,8 +10,11 @@
 // relación plan ↔ organismo se guarda del lado del plan (Vinculaciones).
 
 import {
+  CANALES,
   ORGANISMOS,
   PLANES_CUOTAS,
+  PRODUCTOS_CONFIG,
+  VENDEDORES,
   migrarSistemaAmortizacion,
   RANGO_CAPITAL_GRILLA_BASE,
   MAX_PLAZO_GRILLA,
@@ -26,6 +29,7 @@ import {
   type PlanCuotas,
 } from "./config";
 import { fechaHoy, parseFecha } from "./format";
+import { PROVINCIAS } from "./parametros";
 import type { ResultadoEstado } from "./productos";
 import { crearStoreAbm } from "./store-abm";
 
@@ -33,8 +37,62 @@ export interface PlanAbm {
   codigo: string;
   // Lo que lee el flujo.
   config: PlanCuotas;
-  // Organismos a los que se asigna el plan (Vinculaciones).
+  // Vinculaciones, en cascada: productos → organismos de esos productos → canales de venta →
+  // vendedores de esos canales → provincias. Sólo los organismos cambian el flujo (deciden qué
+  // planes evalúa cada solicitud); el resto es de ejemplo.
+  productos: string[];
   organismos: string[];
+  canales: string[];
+  vendedores: string[];
+  provincias: string[];
+}
+
+// --- Vinculaciones en cascada ---
+
+export const productosVinculables = () =>
+  Object.values(PRODUCTOS_CONFIG).filter((p) => p.estado !== "ELIMINADO");
+
+export const organismosDeProductos = (productos: string[]) =>
+  ORGANISMOS.filter((o) => o.estado !== "ELIMINADO" && o.productos.some((p) => productos.includes(p)));
+
+// Canales en los que se ofrece alguno de los productos.
+export const canalesDeProductos = (productos: string[]) =>
+  CANALES.filter((c) => productos.some((p) => PRODUCTOS_CONFIG[p]?.canales.includes(c.id)));
+
+export const vendedoresDeCanalesPlan = (canales: string[]) =>
+  VENDEDORES.filter((v) => v.canales.some((c) => canales.includes(c)));
+
+// Cada nivel queda acotado a lo que permite el anterior. Los organismos de un producto recién
+// elegido entran todos tildados (se pueden quitar); los de un producto que se quita, salen.
+export function ajustarVinculaciones(r: PlanAbm, productosAntes: string[] = r.productos): PlanAbm {
+  const nuevos = r.productos.filter((p) => !productosAntes.includes(p));
+  const validos = organismosDeProductos(r.productos).map((o) => o.id);
+  const agregados = organismosDeProductos(nuevos)
+    .map((o) => o.id)
+    .filter((id) => !r.organismos.includes(id));
+  const organismos = [...r.organismos.filter((id) => validos.includes(id)), ...agregados];
+  const canalesValidos = canalesDeProductos(r.productos).map((c) => c.id);
+  const canales = r.canales.filter((id) => canalesValidos.includes(id));
+  const vendedoresValidos = vendedoresDeCanalesPlan(canales).map((v) => v.id);
+  const vendedores = r.vendedores.filter((id) => vendedoresValidos.includes(id));
+  return { ...r, organismos, canales, vendedores };
+}
+
+// Planes guardados antes de la cascada: los productos salen de sus organismos y el resto arranca
+// con todo lo que esos productos permiten.
+function conVinculaciones(r: Partial<PlanAbm> & Pick<PlanAbm, "organismos">) {
+  const productos =
+    r.productos ??
+    Object.keys(PRODUCTOS_CONFIG).filter((p) =>
+      ORGANISMOS.some((o) => r.organismos.includes(o.id) && o.productos.includes(p))
+    );
+  const canales = r.canales ?? canalesDeProductos(productos).map((c) => c.id);
+  return {
+    productos,
+    canales,
+    vendedores: r.vendedores ?? vendedoresDeCanalesPlan(canales).map((v) => v.id),
+    provincias: r.provincias ?? [...PROVINCIAS],
+  };
 }
 
 export const SITUACIONES_BCRA = [1, 2, 3, 4, 5];
@@ -57,11 +115,15 @@ export const ROTULO_PERFIL: Record<number, string> = {
 };
 
 function estadoInicial(): PlanAbm[] {
-  return Object.values(PLANES_CUOTAS).map((p, i) => ({
-    codigo: String(i + 1).padStart(3, "0"),
-    config: structuredClone(p),
-    organismos: ORGANISMOS.filter((o) => o.planes.includes(p.id)).map((o) => o.id),
-  }));
+  return Object.values(PLANES_CUOTAS).map((p, i) => {
+    const organismos = ORGANISMOS.filter((o) => o.planes.includes(p.id)).map((o) => o.id);
+    return {
+      codigo: String(i + 1).padStart(3, "0"),
+      config: structuredClone(p),
+      organismos,
+      ...conVinculaciones({ organismos }),
+    };
+  });
 }
 
 const porPrioridad = (a: PlanAbm, b: PlanAbm) =>
@@ -73,6 +135,7 @@ const store = crearStoreAbm<PlanAbm>({
   valido: (r) => !!r?.config?.id && Array.isArray(r.config.grilla) && Array.isArray(r.organismos),
   migrar: (r) => ({
     ...r,
+    ...conVinculaciones(r),
     config: { ...r.config, sistema: migrarSistemaAmortizacion(r.config.sistema) },
   }),
   aplicar: (lista) => {
@@ -138,12 +201,19 @@ export function asignarPlanesAOrganismo(organismoId: string, planIds: string[]) 
       const asignado = planIds.includes(r.config.id);
       const tiene = r.organismos.includes(organismoId);
       if (asignado === tiene) return r;
-      return {
-        ...r,
-        organismos: asignado
-          ? [...r.organismos, organismoId]
-          : r.organismos.filter((o) => o !== organismoId),
-      };
+      const organismos = asignado
+        ? [...r.organismos, organismoId]
+        : r.organismos.filter((o) => o !== organismoId);
+      // Asignado desde el organismo: su producto pasa a estar vinculado al plan.
+      const productos = asignado
+        ? [
+            ...r.productos,
+            ...(ORGANISMOS.find((o) => o.id === organismoId)?.productos ?? []).filter(
+              (p) => !r.productos.includes(p)
+            ),
+          ]
+        : r.productos;
+      return { ...r, organismos, productos };
     })
   );
 }
@@ -179,7 +249,11 @@ export function crearPlan(datos: { nombre: string; copiarDeId: string | null }):
       vigenciaHasta: null,
       prioridad: Math.max(0, ...lista.map((r) => r.config.prioridad)) + 1,
     },
+    productos: [],
     organismos: [],
+    canales: [],
+    vendedores: [],
+    provincias: [],
   };
   store.commit([...lista, nuevo]);
   return id;

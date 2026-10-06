@@ -21,6 +21,7 @@ export function MultiSelectField({
   className = "",
   placeholder = "Seleccioná bancos…",
   plural = "bancos",
+  femenino = false,
 }: {
   id: string;
   label: string;
@@ -35,6 +36,8 @@ export function MultiSelectField({
   placeholder?: string;
   // Con más de dos elegidos se muestra "N <plural> seleccionados".
   plural?: string;
+  // Concordancia del resumen: "N provincias seleccionadas".
+  femenino?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -69,7 +72,7 @@ export function MultiSelectField({
       ? placeholder
       : values.length <= 2
         ? values.join(", ")
-        : `${values.length} ${plural} seleccionados`;
+        : `${values.length} ${plural} ${femenino ? "seleccionadas" : "seleccionados"}`;
 
   return (
     <div ref={ref} className={className}>

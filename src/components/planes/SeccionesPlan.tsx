@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ORGANISMOS,
   AJUSTE_CUOTA_VARIABLE_PCT,
   CONDICIONES_BONIFICACION,
   TIPOS_CARGO,
@@ -27,8 +26,14 @@ import {
   ROTULO_BCRA,
   ROTULO_PERFIL,
   SITUACIONES_BCRA,
+  ajustarVinculaciones,
+  canalesDeProductos,
+  organismosDeProductos,
+  productosVinculables,
+  vendedoresDeCanalesPlan,
   type PlanAbm,
 } from "@/lib/planes";
+import { PROVINCIAS } from "@/lib/parametros";
 import { formatARS } from "@/lib/format";
 import { useServicios } from "@/lib/servicios";
 import { Banner } from "@/components/ui/Banner";
@@ -1051,56 +1056,113 @@ function GrillaTasas({ p, set, errores, ver }: SeccionPlanProps) {
 
 // --- 15. Vinculaciones ---
 
+// Selector múltiple sobre un catálogo con id y nombre (MultiSelectField trabaja con los nombres).
+function SelectorVinculos({
+  id,
+  label,
+  opciones,
+  valores,
+  onChange,
+  placeholder,
+  plural,
+  femenino,
+  hint,
+}: {
+  id: string;
+  label: string;
+  opciones: { id: string; nombre: string }[];
+  valores: string[];
+  onChange: (ids: string[]) => void;
+  placeholder: string;
+  plural: string;
+  femenino?: boolean;
+  hint?: string;
+}) {
+  return (
+    <MultiSelectField
+      id={id}
+      label={label}
+      values={opciones.filter((o) => valores.includes(o.id)).map((o) => o.nombre)}
+      onChange={(nombres) => onChange(opciones.filter((o) => nombres.includes(o.nombre)).map((o) => o.id))}
+      options={opciones.map((o) => o.nombre)}
+      placeholder={placeholder}
+      plural={plural}
+      femenino={femenino}
+      hint={hint}
+      className="sm:max-w-md"
+    />
+  );
+}
+
 function Vinculaciones({ p, set }: SeccionPlanProps) {
-  const elegidos = ORGANISMOS.filter((o) => p.organismos.includes(o.id));
+  const productos = productosVinculables();
+  const organismos = organismosDeProductos(p.productos);
+  const canales = canalesDeProductos(p.productos);
+  const vendedores = vendedoresDeCanalesPlan(p.canales);
+  // Cada cambio se propaga hacia abajo: lo que deja de corresponder se quita.
+  const cambiar = (patch: Partial<PlanAbm>) =>
+    set((x) => ajustarVinculaciones({ ...x, ...patch }, x.productos));
   return (
     <Panel
       titulo="Vinculaciones"
-      descripcion="Organismos a los que se asigna el plan."
+      descripcion="Productos, organismos, canales de venta, vendedores y provincias en los que se usa el plan."
       vivo
-      nota="Un organismo puede tener varios planes."
+      nota="Es una cascada: cada selector ofrece sólo lo que permite el anterior. Los organismos deciden qué planes se evalúan en cada solicitud (un organismo puede tener varios planes); canales, vendedores y provincias son de ejemplo."
     >
-      <div className="space-y-3">
-        <Subtitulo>Organismos</Subtitulo>
-        {p.organismos.length === 0 && (
-          <Banner tone="warning" title="El plan no está asignado a ningún organismo">
-            Mientras no lo asignes a uno, no se usa en ninguna solicitud.
-          </Banner>
-        )}
-        <MultiSelectField
-          id="plan-organismos"
-          label="Organismos vinculados"
-          values={elegidos.map((o) => o.nombre)}
-          onChange={(nombres) =>
-            set((x) => ({ ...x, organismos: ORGANISMOS.filter((o) => nombres.includes(o.nombre)).map((o) => o.id) }))
-          }
-          options={ORGANISMOS.map((o) => o.nombre)}
-          placeholder="Elegí los organismos…"
-          plural="organismos"
-          className="sm:max-w-md"
-        />
-        {/* Los elegidos quedan a la vista: con muchos organismos el select solo muestra la cantidad. */}
-        {elegidos.length > 0 && (
-          <ul className="divide-y divide-ink-100 rounded-lg border border-ink-200">
-            {elegidos.map((o) => (
-              <li key={o.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink-900">{o.nombre}</p>
-                  {o.detalle && <p className="truncate text-xs text-ink-500">{o.detalle}</p>}
-                </div>
-                <button
-                  type="button"
-                  aria-label={`Quitar ${o.nombre}`}
-                  onClick={() => set((x) => ({ ...x, organismos: x.organismos.filter((id) => id !== o.id) }))}
-                  className="shrink-0 rounded-md p-1.5 text-ink-400 transition hover:bg-ink-50 hover:text-danger-600"
-                >
-                  <IconTrash width={16} height={16} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {p.organismos.length === 0 && (
+        <Banner tone="warning" title="El plan no está asignado a ningún organismo">
+          Mientras no lo asignes a uno, no se usa en ninguna solicitud.
+        </Banner>
+      )}
+      <SelectorVinculos
+        id="plan-productos"
+        label="1. Productos"
+        opciones={productos.map((x) => ({ id: x.id, nombre: x.nombre }))}
+        valores={p.productos}
+        onChange={(ids) => cambiar({ productos: ids })}
+        placeholder="Elegí los productos…"
+        plural="productos"
+      />
+      <SelectorVinculos
+        id="plan-organismos"
+        label="2. Organismos"
+        opciones={organismos}
+        valores={p.organismos}
+        onChange={(ids) => cambiar({ organismos: ids })}
+        placeholder={p.productos.length === 0 ? "Elegí primero los productos" : "Elegí los organismos…"}
+        plural="organismos"
+        hint="Al elegir un producto entran todos sus organismos; podés quitar los que no correspondan."
+      />
+      <SelectorVinculos
+        id="plan-canales"
+        label="3. Canales de venta habilitados"
+        opciones={canales}
+        valores={p.canales}
+        onChange={(ids) => cambiar({ canales: ids })}
+        placeholder={p.productos.length === 0 ? "Elegí primero los productos" : "Elegí los canales…"}
+        plural="canales"
+        hint="Sólo los canales en los que se ofrecen los productos elegidos."
+      />
+      <SelectorVinculos
+        id="plan-vendedores"
+        label="4. Vendedores"
+        opciones={vendedores}
+        valores={p.vendedores}
+        onChange={(ids) => cambiar({ vendedores: ids })}
+        placeholder={p.canales.length === 0 ? "Elegí primero los canales" : "Elegí los vendedores…"}
+        plural="vendedores"
+        hint="Sólo los vendedores de los canales elegidos."
+      />
+      <SelectorVinculos
+        id="plan-provincias"
+        label="5. Provincias"
+        opciones={PROVINCIAS.map((x) => ({ id: x, nombre: x }))}
+        valores={p.provincias}
+        onChange={(ids) => cambiar({ provincias: ids })}
+        placeholder="Elegí las provincias…"
+        plural="provincias"
+        femenino
+      />
     </Panel>
   );
 }
