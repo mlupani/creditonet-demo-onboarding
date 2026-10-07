@@ -33,7 +33,7 @@ import {
   vendedoresDeCanalesPlan,
   type PlanAbm,
 } from "@/lib/planes";
-import { PROVINCIAS } from "@/lib/parametros";
+import { PROVINCIAS_ARGENTINA, useProvinciasImpuestos } from "@/lib/provincias-impuestos";
 import { formatARS } from "@/lib/format";
 import { useServicios } from "@/lib/servicios";
 import { Banner } from "@/components/ui/Banner";
@@ -1099,6 +1099,9 @@ function Vinculaciones({ p, set }: SeccionPlanProps) {
   const organismos = organismosDeProductos(p.productos);
   const canales = canalesDeProductos(p.productos);
   const vendedores = vendedoresDeCanalesPlan(p.canales);
+  // Las provincias cargadas en el ABM de Parámetros, en el orden de siempre.
+  const cargadas = new Set(useProvinciasImpuestos().map((x) => x.provincia));
+  const provincias = PROVINCIAS_ARGENTINA.filter((x) => cargadas.has(x));
   // Cada cambio se propaga hacia abajo: lo que deja de corresponder se quita.
   const cambiar = (patch: Partial<PlanAbm>) =>
     set((x) => ajustarVinculaciones({ ...x, ...patch }, x.productos));
@@ -1107,7 +1110,7 @@ function Vinculaciones({ p, set }: SeccionPlanProps) {
       titulo="Vinculaciones"
       descripcion="Productos, organismos, canales de venta, vendedores y provincias en los que se usa el plan."
       vivo
-      nota="Es una cascada: cada selector ofrece sólo lo que permite el anterior. Los organismos deciden qué planes se evalúan en cada solicitud (un organismo puede tener varios planes); canales, vendedores y provincias son de ejemplo."
+      nota="Es una cascada: cada selector ofrece sólo lo que permite el anterior. Los organismos deciden qué planes se evalúan en cada solicitud (un organismo puede tener varios planes); canales y vendedores son de ejemplo; las provincias salen de Parámetros."
     >
       {p.organismos.length === 0 && (
         <Banner tone="warning" title="El plan no está asignado a ningún organismo">
@@ -1156,7 +1159,7 @@ function Vinculaciones({ p, set }: SeccionPlanProps) {
       <SelectorVinculos
         id="plan-provincias"
         label="5. Provincias"
-        opciones={PROVINCIAS.map((x) => ({ id: x, nombre: x }))}
+        opciones={provincias.map((x) => ({ id: x, nombre: x }))}
         valores={p.provincias}
         onChange={(ids) => cambiar({ provincias: ids })}
         placeholder="Elegí las provincias…"
