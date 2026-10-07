@@ -814,6 +814,118 @@
         230,
         56
       ]
+    },
+    {
+      "id": "carga",
+      "type": "backend",
+      "label": "Carga post oferta",
+      "sublabel": "datos, tarjeta, referencias, legajo",
+      "pos": [
+        1450,
+        1470
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "analisis",
+      "type": "backend",
+      "label": "Análisis",
+      "sublabel": "toma la preaprobada y revisa",
+      "pos": [
+        1100,
+        1470
+      ],
+      "size": [
+        220,
+        56
+      ]
+    },
+    {
+      "id": "firma",
+      "type": "backend",
+      "label": "Aprobado y firma",
+      "sublabel": "FEL electrónica · AFEL física",
+      "pos": [
+        760,
+        1470
+      ],
+      "size": [
+        220,
+        56
+      ]
+    },
+    {
+      "id": "chequeo",
+      "type": "backend",
+      "label": "Chequeo telefónico",
+      "sublabel": "si el producto lo pide",
+      "pos": [
+        420,
+        1470
+      ],
+      "size": [
+        220,
+        56
+      ]
+    },
+    {
+      "id": "liquidar",
+      "type": "frontend",
+      "label": "Para liquidar",
+      "sublabel": "listo para Tesorería",
+      "pos": [
+        80,
+        1470
+      ],
+      "size": [
+        220,
+        56
+      ]
+    },
+    {
+      "id": "observado",
+      "type": "backend",
+      "label": "Observado / cambio de oferta",
+      "sublabel": "vuelve con la pantalla a corregir",
+      "pos": [
+        1450,
+        1610
+      ],
+      "size": [
+        230,
+        56
+      ]
+    },
+    {
+      "id": "superior",
+      "type": "backend",
+      "label": "Superior (opcional)",
+      "sublabel": "visto bueno pedido por el analista",
+      "pos": [
+        760,
+        1610
+      ],
+      "size": [
+        220,
+        56
+      ]
+    },
+    {
+      "id": "rech_post",
+      "type": "external",
+      "label": "Rechazado o anulado",
+      "sublabel": "NO OK, analista o desistimiento",
+      "pos": [
+        420,
+        1610
+      ],
+      "size": [
+        220,
+        56
+      ]
     }
   ],
   "boundaries": [
@@ -894,6 +1006,44 @@
       "wraps": [
         "rech_riesgo",
         "sin_linea"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Bandeja canal de venta · vendedor",
+      "wraps": [
+        "carga",
+        "observado"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Bandeja de análisis · analista y superior",
+      "wraps": [
+        "analisis",
+        "firma",
+        "superior"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Bandeja de chequeo",
+      "wraps": [
+        "chequeo"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Liquidación",
+      "wraps": [
+        "liquidar"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Fin sin crédito",
+      "wraps": [
+        "rech_post"
       ]
     }
   ],
@@ -1070,6 +1220,86 @@
         945,
         1253
       ]
+    },
+    {
+      "id": "f_carga",
+      "from": "oferta",
+      "to": "carga",
+      "label": "acepta",
+      "variant": "emphasis",
+      "labelAt": [
+        1565,
+        1343
+      ]
+    },
+    {
+      "id": "p1",
+      "from": "carga",
+      "to": "analisis",
+      "label": "preaprobado",
+      "variant": "emphasis"
+    },
+    {
+      "id": "p2",
+      "from": "analisis",
+      "to": "firma",
+      "label": "aprueba",
+      "variant": "emphasis"
+    },
+    {
+      "id": "p3",
+      "from": "firma",
+      "to": "chequeo",
+      "label": "firmado",
+      "variant": "emphasis"
+    },
+    {
+      "id": "p4",
+      "from": "chequeo",
+      "to": "liquidar",
+      "label": "OK",
+      "variant": "emphasis"
+    },
+    {
+      "id": "observa",
+      "from": "analisis",
+      "to": "observado",
+      "label": "observa o cambia oferta"
+    },
+    {
+      "id": "reenvia",
+      "from": "observado",
+      "to": "carga",
+      "label": "corrige y reenvía"
+    },
+    {
+      "id": "pide_sup",
+      "from": "firma",
+      "to": "superior",
+      "label": "pide visto bueno",
+      "variant": "dashed",
+      "labelAt": [
+        870,
+        1568
+      ]
+    },
+    {
+      "id": "sup_ok",
+      "from": "superior",
+      "to": "chequeo",
+      "label": "aprueba",
+      "variant": "dashed"
+    },
+    {
+      "id": "no_ok",
+      "from": "chequeo",
+      "to": "rech_post",
+      "label": "NO OK",
+      "variant": "security",
+      "labelAt": [
+        530,
+        1568
+      ]
     }
   ],
   "cards": [
@@ -1091,6 +1321,17 @@
         "Plan: el primero, por prioridad, que admite BCRA, condición laboral y perfil",
         "Cuota y capital: gana el límite menor y después el mayor recorte",
         "Cuota: TNA de la grilla, sistema del plan, gasto y cargos con el IVA del producto"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Después de la oferta",
+      "items": [
+        "El vendedor completa las pantallas post oferta: datos personales y laborales, tarjeta, referencias, garantías, legajo e impresión",
+        "El analista observa o cambia la oferta: vuelve al vendedor, que corrige y reenvía",
+        "Firma electrónica (FEL) o física (AFEL), con una sola refirma; el superior da el visto bueno si el analista lo pide",
+        "Chequeo telefónico sólo si el producto lo pide; si no, pasa directo a liquidar",
+        "Vendedor o analista pueden anular si el cliente desiste"
       ]
     }
   ]
