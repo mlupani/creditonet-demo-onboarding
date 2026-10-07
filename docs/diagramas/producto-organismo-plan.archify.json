@@ -110,7 +110,8 @@
           "e_motor_p",
           "pl_vinc",
           "pl_limitantes",
-          "pl_grilla"
+          "pl_grilla",
+          "p_motor_p"
         ],
         "note": "Cuota máxima: la menor entre SMVM, RCI, rango y endeudamiento. Capital: el menor de los límites, con el mayor recorte de limitantes."
       },
@@ -970,6 +971,16 @@
       "id": "x_motor_p",
       "from": "p_motor_p",
       "to": "e_motor_p"
+    },
+    {
+      "id": "f_producto",
+      "from": "p_motor_p",
+      "to": "alta",
+      "label": "reglas base del producto",
+      "labelAt": [
+        205,
+        1111
+      ]
     },
     {
       "id": "f_motor",
