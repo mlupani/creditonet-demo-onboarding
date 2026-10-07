@@ -3,14 +3,16 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { MotivosObservacion } from "./MotivosObservacion";
 import { ProvinciasImpuestos } from "./ProvinciasImpuestos";
+import { Impositivos } from "./Impositivos";
 import { ListaServicios } from "@/components/servicios/ListaServicios";
 import { NavSecciones } from "@/components/ui/NavSecciones";
-import { IconFileText, IconMapPin, IconWallet } from "@/components/icons";
+import { IconFileText, IconLandmark, IconMapPin, IconWallet } from "@/components/icons";
 
 const SOLAPAS = [
   { id: "motivos", label: "Motivos de observación", icon: IconFileText, Componente: MotivosObservacion },
   { id: "servicios", label: "Cargos/servicios", icon: IconWallet, Componente: ListaServicios },
-  { id: "provincias", label: "Provincias (IVA y sellado)", icon: IconMapPin, Componente: ProvinciasImpuestos },
+  { id: "provincias", label: "Provincias (sellado)", icon: IconMapPin, Componente: ProvinciasImpuestos },
+  { id: "impositivos", label: "Impositivos", icon: IconLandmark, Componente: Impositivos },
 ] as const;
 
 // Módulo Parámetros: cada parámetro editable es una sección, con el mismo menú lateral que los

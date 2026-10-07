@@ -1,4 +1,4 @@
-// Impuestos por provincia: alícuota de IVA y de sellado (ambas en %).
+// Impuestos por provincia: alícuota de sellado (%). El IVA es nacional: está en Parámetros › Impositivos.
 //
 // Es un parámetro editable (alta, edición y baja desde /parametros). El estado vive acá y se
 // persiste en la sesión. Los valores iniciales son de ejemplo: la definitiva la carga el negocio.
@@ -8,7 +8,6 @@ import { crearStoreAbm } from "./store-abm";
 export interface ProvinciaImpuestos {
   id: string;
   provincia: string;
-  iva: number;
   sellado: number;
 }
 
@@ -39,8 +38,6 @@ export const PROVINCIAS_ARGENTINA = [
   "Tierra del Fuego",
   "Tucumán",
 ];
-
-const IVA_INICIAL = 21;
 
 // Sellado de ejemplo por provincia (%).
 const SELLADO_INICIAL: Record<string, number> = {
@@ -75,13 +72,11 @@ const store = crearStoreAbm<ProvinciaImpuestos>({
   inicial: PROVINCIAS_ARGENTINA.map((provincia, i) => ({
     id: `pi-${i + 1}`,
     provincia,
-    iva: IVA_INICIAL,
     sellado: SELLADO_INICIAL[provincia] ?? 1,
   })),
   valido: (r) =>
     typeof r?.id === "string" &&
     typeof r?.provincia === "string" &&
-    typeof r?.iva === "number" &&
     typeof r?.sellado === "number",
   aplicar: () => {},
 });
@@ -113,21 +108,20 @@ export function errorPorcentaje(texto: string, nombre: string): string | undefin
     : undefined;
 }
 
-export function crearProvinciasImpuestos(provincias: string[], iva: number, sellado: number) {
+export function crearProvinciasImpuestos(provincias: string[], sellado: number) {
   const actuales = store.get();
   const usados = actuales.map((p) => Number(p.id.replace("pi-", "")) || 0);
   let n = Math.max(0, ...usados);
   const nuevas = PROVINCIAS_ARGENTINA.filter((p) => provincias.includes(p)).map((provincia) => ({
     id: `pi-${++n}`,
     provincia,
-    iva,
     sellado,
   }));
   store.commit([...actuales, ...nuevas]);
 }
 
-export function editarProvinciaImpuestos(id: string, iva: number, sellado: number) {
-  store.commit(store.get().map((p) => (p.id === id ? { ...p, iva, sellado } : p)));
+export function editarProvinciaImpuestos(id: string, sellado: number) {
+  store.commit(store.get().map((p) => (p.id === id ? { ...p, sellado } : p)));
 }
 
 export function eliminarProvinciaImpuestos(id: string) {

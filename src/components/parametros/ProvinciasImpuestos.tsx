@@ -29,22 +29,19 @@ function ProvinciaModal({ edicion, onClose }: { edicion: Edicion; onClose: () =>
   const registro = edicion?.registro ?? null;
   const disponibles = provinciasSinCargar();
   const [provincias, setProvincias] = useState<string[]>([]);
-  const [iva, setIva] = useState(registro ? String(registro.iva).replace(".", ",") : "21");
   const [sellado, setSellado] = useState(registro ? String(registro.sellado).replace(".", ",") : "");
   const [intentado, setIntentado] = useState(false);
 
   const errorProvincias =
     !registro && provincias.length === 0 ? "Elegí al menos una provincia." : undefined;
-  const errorIva = errorPorcentaje(iva, "el IVA");
   const errorSellado = errorPorcentaje(sellado, "el sellado");
 
   function guardar() {
     setIntentado(true);
-    if (errorProvincias || errorIva || errorSellado) return;
-    const i = parsearPorcentaje(iva) as number;
+    if (errorProvincias || errorSellado) return;
     const s = parsearPorcentaje(sellado) as number;
-    if (registro) editarProvinciaImpuestos(registro.id, i, s);
-    else crearProvinciasImpuestos(provincias, i, s);
+    if (registro) editarProvinciaImpuestos(registro.id, s);
+    else crearProvinciasImpuestos(provincias, s);
     onClose();
   }
 
@@ -79,20 +76,10 @@ function ProvinciaModal({ edicion, onClose }: { edicion: Edicion; onClose: () =>
             hint={
               disponibles.length === 0
                 ? "Ya están cargadas todas las provincias."
-                : "Los valores de abajo se aplican a todas las que elijas."
+                : "El sellado de abajo se aplica a todas las que elijas."
             }
           />
         )}
-        <FormField
-          id="provincias-impuestos-iva"
-          label="IVA (%)"
-          required
-          inputMode="text"
-          value={iva}
-          onChange={setIva}
-          placeholder="Ej.: 21"
-          error={intentado ? errorIva : undefined}
-        />
         <FormField
           id="provincias-impuestos-sellado"
           label="Sellado (%)"
@@ -119,8 +106,8 @@ export function ProvinciasImpuestos() {
     <div>
       <div className="animate-fade-in">
         <p className="max-w-2xl text-sm text-ink-500">
-          Alícuota de IVA y de sellado de cada provincia. Se cargan de a varias provincias con los
-          mismos valores y después se ajustan una por una.
+          Alícuota de sellado de cada provincia. Se cargan de a varias provincias con el
+          mismo valor y después se ajustan una por una. El IVA es nacional: está en Impositivos.
         </p>
       </div>
 
@@ -144,14 +131,12 @@ export function ProvinciasImpuestos() {
           <ul className="divide-y divide-ink-100">
             <li className="flex items-center gap-3 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
               <span className="flex-1">Provincia</span>
-              <span className="w-20 text-right">IVA</span>
               <span className="w-20 text-right">Sellado</span>
               <span className="w-[11.5rem]" />
             </li>
             {lista.map((p) => (
               <li key={p.id} className="flex items-center gap-3 px-5 py-3">
                 <span className="flex-1 text-sm font-medium text-ink-900">{p.provincia}</span>
-                <span className="w-20 text-right text-sm text-ink-700">{fmt(p.iva)}</span>
                 <span className="w-20 text-right text-sm text-ink-700">{fmt(p.sellado)}</span>
                 <span className="flex w-[11.5rem] justify-end gap-2">
                   <Button
@@ -188,10 +173,9 @@ export function ProvinciasImpuestos() {
       <ConfirmationModal
         open={baja !== null}
         title="Dar de baja la provincia"
-        descripcion="Se quitan sus valores de IVA y sellado. Podés volver a cargarla cuando quieras."
+        descripcion="Se quita su sellado. Podés volver a cargarla cuando quieras."
         rows={[
           { label: "Provincia", value: baja?.provincia ?? "" },
-          { label: "IVA", value: baja ? fmt(baja.iva) : "" },
           { label: "Sellado", value: baja ? fmt(baja.sellado) : "" },
         ]}
         confirmLabel="Dar de baja"

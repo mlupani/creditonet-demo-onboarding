@@ -352,7 +352,7 @@ function Financieros({ p, set }: SeccionProps) {
 
 // --- 5 bis. IVA / Sellos ---
 
-function Impuestos({ p, set, errores, ver }: SeccionProps) {
+function Impuestos({ p, set }: SeccionProps) {
   const { cf } = useEditores(set);
   return (
     <Panel
@@ -365,30 +365,6 @@ function Impuestos({ p, set, errores, ver }: SeccionProps) {
         <Checkbox checked={p.config.calculaIva} onChange={(v) => cf({ calculaIva: v })} label="Calcula IVA" />
         <Checkbox checked={p.config.calculaSellos} onChange={(v) => cf({ calculaSellos: v })} label="Cobra sellos" />
       </div>
-      <Grilla>
-        {p.config.calculaIva && (
-          <CampoNumero
-            id="p-iva"
-            label="IVA"
-            sufijo="%"
-            step={0.5}
-            value={p.config.ivaPct}
-            onChange={(v) => cf({ ivaPct: v })}
-            error={ver ? errores.ivaPct : undefined}
-          />
-        )}
-        {p.config.calculaSellos && (
-          <CampoNumero
-            id="p-sellos"
-            label="Sellos"
-            sufijo="%"
-            step={0.1}
-            value={p.config.sellosPct}
-            onChange={(v) => cf({ sellosPct: v })}
-            error={ver ? errores.sellosPct : undefined}
-          />
-        )}
-      </Grilla>
     </Panel>
   );
 }

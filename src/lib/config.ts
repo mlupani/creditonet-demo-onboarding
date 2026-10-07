@@ -6,6 +6,7 @@
 
 import type { PantallaPostOfertaId, Plazo, TipoCliente } from "./types";
 import { parseFecha } from "./format";
+import { getIvaPct } from "./impositivos";
 import type { ExtrasProducto } from "./productos";
 
 export interface OpcionCatalogo {
@@ -376,10 +377,10 @@ export interface CargosPlan {
   ivaPct: number;
 }
 
-// IVA y sellos los define el producto (antes, el plan de cuotas).
+// El producto define si calcula IVA y sellos; la alícuota de IVA sale de Parámetros › Impositivos.
 export function impuestosDe(productoId: string): Pick<ProductoConfig, "calculaIva" | "ivaPct" | "calculaSellos" | "sellosPct"> {
-  const { calculaIva, ivaPct, calculaSellos, sellosPct } = getProductoConfig(productoId);
-  return { calculaIva, ivaPct, calculaSellos, sellosPct };
+  const { calculaIva, calculaSellos, sellosPct } = getProductoConfig(productoId);
+  return { calculaIva, ivaPct: getIvaPct(), calculaSellos, sellosPct };
 }
 
 // Producto con el que se usa un plan: el del primer organismo vigente que lo tiene vinculado.
