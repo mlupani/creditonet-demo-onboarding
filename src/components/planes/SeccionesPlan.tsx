@@ -274,11 +274,11 @@ function Cargos({ p, set, errores, ver }: SeccionPlanProps) {
         return (
           <div key={c.id} className="rounded-xl border border-ink-200 bg-white p-4">
             <div className="mb-3 flex items-center justify-between">
-              <Subtitulo>Cargo {i + 1}</Subtitulo>
+              <Subtitulo>Cargo/servicio {i + 1}</Subtitulo>
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label={`Quitar el cargo ${i + 1}`}
+                aria-label={`Quitar el cargo/servicio ${i + 1}`}
                 onClick={() => cf({ cargos: cargos.filter((x) => x.id !== c.id) })}
               >
                 <IconTrash width={14} height={14} />
