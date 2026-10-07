@@ -25,7 +25,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Panel } from "@/components/productos/campos";
 import { fechaAIso, isoAFecha } from "@/lib/format";
 import { EditorMotor } from "@/components/productos/editores";
-import { ESTADO_PRODUCTO_ABM_META, ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
 import {
   BarraHerencia,
   FilaDatosFinancieros,
@@ -170,11 +170,11 @@ function DatosGenerales({ o, productos, set, errores, ver }: SeccionOrgProps) {
       </div>
       <div className="flex items-center gap-3 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2.5">
         <span className="text-sm font-medium text-ink-700">Estado</span>
-        <StatusBadge tone={ESTADO_PRODUCTO_META[o.config.estado].tone}>
-          {ESTADO_PRODUCTO_META[o.config.estado].label}
+        <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[o.config.estado].tone}>
+          {ESTADO_PRODUCTO_ABM_META[o.config.estado].label}
         </StatusBadge>
         <span className="text-xs text-ink-500">
-          Activo, suspendido o eliminado: se cambia con los botones del encabezado.
+          Borrador, activo, suspendido o eliminado: se cambia con los botones del encabezado.
         </span>
       </div>
     </Panel>

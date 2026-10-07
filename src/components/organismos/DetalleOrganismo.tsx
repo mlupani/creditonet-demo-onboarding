@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import { SESION_SUPERVISOR, type EstadoProducto } from "@/lib/config";
+import { SESION_SUPERVISOR, type EstadoProductoAbm } from "@/lib/config";
 import { estadoVigencia, textoVigencia, useProductos } from "@/lib/productos";
 import {
   borradorDe,
@@ -25,7 +25,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
 import { SECCIONES_ORGANISMO, SECCION_DE_ERROR_ORG } from "./SeccionesOrganismo";
 import {
   IconAlertTriangle,
@@ -48,7 +48,7 @@ import { useSidebarColapsado } from "@/lib/sidebar-colapsado";
 import { NavSecciones, type ItemNav } from "@/components/ui/NavSecciones";
 
 export const TEXTO_ACCION_ORG: Partial<
-  Record<EstadoProducto, { titulo: string; descripcion: string; boton: string }>
+  Record<EstadoProductoAbm, { titulo: string; descripcion: string; boton: string }>
 > = {
   SUSPENDIDO: {
     titulo: "¿Suspender el organismo?",
@@ -126,7 +126,8 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
   const [intentado, setIntentado] = useState(false);
   const sidebarColapsado = useSidebarColapsado();
   const [guardado, setGuardado] = useState<null | { pendiente: boolean }>(null);
-  const [pendienteEstado, setPendienteEstado] = useState<EstadoProducto | null>(null);
+  const [pendienteEstado, setPendienteEstado] = useState<EstadoProductoAbm | null>(null);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
 
   const errores = validarOrganismo(borrador, todos);
   const seccionesConError = new Set(
@@ -134,7 +135,7 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
   );
   const sucio = claveDe(borrador) !== claveDe(borradorDe(registro));
   const activa = SECCIONES_ORGANISMO.find((s) => s.id === seccion) ?? SECCIONES_ORGANISMO[0];
-  const meta = ESTADO_PRODUCTO_META[registro.config.estado];
+  const meta = ESTADO_PRODUCTO_ABM_META[registro.config.estado];
   const vigencia = estadoVigencia(registro.config);
 
   // Producto sobre el que se editan las excepciones: el único que el organismo habilita.
@@ -173,12 +174,17 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
   }
 
   // El estado se aplica directo: no forma parte de los cambios pendientes de guardar.
-  function aplicarEstado(estado: EstadoProducto) {
-    cambiarEstadoOrganismo(registro.config.id, estado);
+  function aplicarEstado(estado: EstadoProductoAbm) {
+    const r = cambiarEstadoOrganismo(registro.config.id, estado);
+    if (!r.ok) {
+      setErrorEstado(r.error);
+      return;
+    }
+    setErrorEstado(null);
     setBorrador((b) => ({ ...b, config: { ...b.config, estado } }));
   }
 
-  function pedirEstado(estado: EstadoProducto) {
+  function pedirEstado(estado: EstadoProductoAbm) {
     if (estado === "ACTIVO" || registro.config.estado === "ELIMINADO") aplicarEstado(estado);
     else setPendienteEstado(estado);
   }
@@ -240,7 +246,7 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
               Suspender
             </Button>
           )}
-          {registro.config.estado === "SUSPENDIDO" && (
+          {(registro.config.estado === "SUSPENDIDO" || registro.config.estado === "BORRADOR") && (
             <Button variant="outline" onClick={() => pedirEstado("ACTIVO")}>
               Activar
             </Button>
@@ -257,7 +263,17 @@ function Editor({ registro, todos }: { registro: OrganismoAbm; todos: OrganismoA
         </div>
       </div>
 
-      {registro.config.estado !== "ACTIVO" ? (
+      {errorEstado && (
+        <Banner tone="error" title="No se pudo activar el organismo" className="mt-4">
+          {errorEstado}
+        </Banner>
+      )}
+      {registro.config.estado === "BORRADOR" ? (
+        <Banner tone="warning" title="Organismo en borrador" className="mt-4">
+          No se ofrece en Solicitar crédito. Para activarlo tiene que tener un producto asociado y al
+          menos un plan de cuotas vinculado. Los planes se vinculan desde el propio plan de cuotas.
+        </Banner>
+      ) : registro.config.estado !== "ACTIVO" ? (
         <Banner
           tone="warning"
           title={registro.config.estado === "ELIMINADO" ? "Organismo eliminado" : "Organismo suspendido"}

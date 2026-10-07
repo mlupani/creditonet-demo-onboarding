@@ -134,7 +134,7 @@ export function TablaCuotas({
           ],
           ["Gracia", `${plan.periodoGraciaDias} días`],
           ["IVA", impuestos.calculaIva ? formatPct(impuestos.ivaPct) : "no aplica"],
-          ["Sellos", formatPct(impuestos.sellosPct)],
+          ["Sellos", impuestos.calculaSellos ? formatPct(impuestos.sellosPct) : "no aplica"],
           [
             "Gasto de otorgamiento",
             `${

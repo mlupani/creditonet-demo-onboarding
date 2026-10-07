@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
-import type { EstadoProducto } from "@/lib/config";
+import type { EstadoProductoAbm } from "@/lib/config";
 import { estadoVigencia, useProductos } from "@/lib/productos";
 import {
   cambiarEstadoOrganismo,
@@ -12,17 +12,18 @@ import {
   type OrganismoAbm,
 } from "@/lib/organismos";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ESTADO_PRODUCTO_META } from "@/components/productos/ListaProductos";
+import { ESTADO_PRODUCTO_ABM_META } from "@/components/productos/ListaProductos";
 import { NuevoOrganismoModal } from "./NuevoOrganismoModal";
 import { TEXTO_ACCION_ORG } from "./DetalleOrganismo";
 import { IconChevronDown, IconPlus, IconSearch } from "@/components/icons";
 
 type Campo = "codigo" | "nombre" | "estado" | "vigencia" | "productos" | "excepciones";
 
-const ORDEN_ESTADOS: EstadoProducto[] = ["ACTIVO", "SUSPENDIDO", "ELIMINADO"];
+const ORDEN_ESTADOS: EstadoProductoAbm[] = ["BORRADOR", "ACTIVO", "SUSPENDIDO", "ELIMINADO"];
 
 // Anchos fijos para que las columnas queden alineadas entre los tres grupos.
 const COLUMNAS: { campo: Campo; label: string; ancho: string }[] = [
@@ -72,15 +73,17 @@ export function ListaOrganismos() {
   const nombreProducto = (o: OrganismoAbm) =>
     productos.find((p) => p.config.id === o.config.productos[0])?.config.nombre ?? "";
   const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState<EstadoProducto | "">("");
+  const [filtro, setFiltro] = useState<EstadoProductoAbm | "">("");
   const [orden, setOrden] = useState<{ campo: Campo; asc: boolean }>({ campo: "codigo", asc: true });
-  const [abiertos, setAbiertos] = useState<Record<EstadoProducto, boolean>>({
+  const [abiertos, setAbiertos] = useState<Record<EstadoProductoAbm, boolean>>({
+    BORRADOR: true,
     ACTIVO: true,
     SUSPENDIDO: false,
     ELIMINADO: false,
   });
   const [nuevo, setNuevo] = useState(false);
-  const [pendiente, setPendiente] = useState<{ id: string; estado: EstadoProducto } | null>(null);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
+  const [pendiente, setPendiente] = useState<{ id: string; estado: EstadoProductoAbm } | null>(null);
 
   const q = sinAcentos(busqueda.trim());
   const coincide = (o: OrganismoAbm) =>
@@ -97,10 +100,11 @@ export function ListaOrganismos() {
   });
 
   const abrir = (o: OrganismoAbm) => router.push(`/organismos/${o.config.id}`);
-  const cambiar = (o: OrganismoAbm, estado: EstadoProducto) => {
-    if (estado === "ACTIVO" || (estado === "SUSPENDIDO" && o.config.estado === "ELIMINADO"))
-      cambiarEstadoOrganismo(o.config.id, estado);
-    else setPendiente({ id: o.config.id, estado });
+  const cambiar = (o: OrganismoAbm, estado: EstadoProductoAbm) => {
+    if (estado === "ACTIVO" || (estado === "SUSPENDIDO" && o.config.estado === "ELIMINADO")) {
+      const r = cambiarEstadoOrganismo(o.config.id, estado);
+      setErrorEstado(r.ok ? null : r.error);
+    } else setPendiente({ id: o.config.id, estado });
   };
   const organismoPendiente = organismos.find((o) => o.config.id === pendiente?.id);
   const textoPendiente = pendiente ? (TEXTO_ACCION_ORG[pendiente.estado] ?? null) : null;
@@ -140,18 +144,24 @@ export function ListaOrganismos() {
         </div>
         <select
           value={filtro}
-          onChange={(e) => setFiltro(e.target.value as EstadoProducto | "")}
+          onChange={(e) => setFiltro(e.target.value as EstadoProductoAbm | "")}
           aria-label="Filtrar por estado"
           className="h-10 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-700 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         >
           <option value="">Estado: todos</option>
           {ORDEN_ESTADOS.map((e) => (
             <option key={e} value={e}>
-              {ESTADO_PRODUCTO_META[e].label}
+              {ESTADO_PRODUCTO_ABM_META[e].label}
             </option>
           ))}
         </select>
       </div>
+
+      {errorEstado && (
+        <Banner tone="error" title="No se pudo activar el organismo" className="mt-4">
+          {errorEstado}
+        </Banner>
+      )}
 
       <div className="mt-5 space-y-4">
         {!hidratado ? (
@@ -171,7 +181,7 @@ export function ListaOrganismos() {
                   className={`text-ink-400 transition-transform ${abierto ? "" : "-rotate-90"}`}
                 />
                 <h2 className="text-xs font-bold uppercase tracking-widest text-ink-700">
-                  {ESTADO_PRODUCTO_META[estado].grupo}
+                  {ESTADO_PRODUCTO_ABM_META[estado].grupo}
                 </h2>
                 <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">
                   {q || filtro ? `${filas.length} de ${total}` : total}
@@ -183,7 +193,7 @@ export function ListaOrganismos() {
                     <p className="px-5 py-6 text-center text-sm text-ink-400">
                       {q
                         ? "Ningún organismo coincide con la búsqueda."
-                        : `No hay organismos ${ESTADO_PRODUCTO_META[estado].grupo.toLowerCase()}.`}
+                        : `No hay organismos ${ESTADO_PRODUCTO_ABM_META[estado].grupo.toLowerCase()}.`}
                     </p>
                   ) : (
                     <table className="w-full min-w-[62rem] table-fixed text-left text-sm">
@@ -238,8 +248,8 @@ export function ListaOrganismos() {
                                 <p className="text-xs text-ink-500">{o.config.detalle}</p>
                               </td>
                               <td className="px-3 py-3">
-                                <StatusBadge tone={ESTADO_PRODUCTO_META[o.config.estado].tone}>
-                                  {ESTADO_PRODUCTO_META[o.config.estado].label}
+                                <StatusBadge tone={ESTADO_PRODUCTO_ABM_META[o.config.estado].tone}>
+                                  {ESTADO_PRODUCTO_ABM_META[o.config.estado].label}
                                 </StatusBadge>
                               </td>
                               <td className="whitespace-nowrap px-3 py-3 text-ink-700">
@@ -291,7 +301,7 @@ export function ListaOrganismos() {
                                       Suspender
                                     </Button>
                                   )}
-                                  {o.config.estado === "SUSPENDIDO" && (
+                                  {(o.config.estado === "SUSPENDIDO" || o.config.estado === "BORRADOR") && (
                                     <Button size="sm" variant="ghost" onClick={() => cambiar(o, "ACTIVO")}>
                                       Activar
                                     </Button>

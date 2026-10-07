@@ -361,7 +361,10 @@ function Impuestos({ p, set, errores, ver }: SeccionProps) {
       vivo
       nota="Rigen para todos los planes de cuotas con los que se ofrece el producto. El IVA se suma a los cargos periódicos sin IVA; ambos se informan en la tabla de cuotas de la oferta."
     >
-      <Checkbox checked={p.config.calculaIva} onChange={(v) => cf({ calculaIva: v })} label="Calcula IVA" />
+      <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+        <Checkbox checked={p.config.calculaIva} onChange={(v) => cf({ calculaIva: v })} label="Calcula IVA" />
+        <Checkbox checked={p.config.calculaSellos} onChange={(v) => cf({ calculaSellos: v })} label="Cobra sellos" />
+      </div>
       <Grilla>
         {p.config.calculaIva && (
           <CampoNumero
@@ -374,15 +377,17 @@ function Impuestos({ p, set, errores, ver }: SeccionProps) {
             error={ver ? errores.ivaPct : undefined}
           />
         )}
-        <CampoNumero
-          id="p-sellos"
-          label="Sellos"
-          sufijo="%"
-          step={0.1}
-          value={p.config.sellosPct}
-          onChange={(v) => cf({ sellosPct: v })}
-          error={ver ? errores.sellosPct : undefined}
-        />
+        {p.config.calculaSellos && (
+          <CampoNumero
+            id="p-sellos"
+            label="Sellos"
+            sufijo="%"
+            step={0.1}
+            value={p.config.sellosPct}
+            onChange={(v) => cf({ sellosPct: v })}
+            error={ver ? errores.sellosPct : undefined}
+          />
+        )}
       </Grilla>
     </Panel>
   );

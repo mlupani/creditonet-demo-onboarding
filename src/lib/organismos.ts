@@ -18,7 +18,7 @@ import {
   SESION_SUPERVISOR,
   errorAsignacionMotor,
   excepcionesVacias,
-  type EstadoProducto,
+  type EstadoProductoAbm,
   type ExcepcionesOrganismo,
   type OrganismoConfig,
 } from "./config";
@@ -30,6 +30,7 @@ import {
   errorTokenizacionObligatoria,
   getProductos,
   type ExtrasProducto,
+  type ResultadoEstado,
 } from "./productos";
 import { alCambiarPlanes, asignarPlanesAOrganismo, getPlanes } from "./planes";
 import { fechaHoy, parseFecha, selloTiempo } from "./format";
@@ -267,10 +268,23 @@ export function rechazarExcepciones(id: string) {
   store.commit(store.get().map((r) => (r.config.id === id ? { ...r, pendiente: null } : r)));
 }
 
-export function cambiarEstadoOrganismo(id: string, estado: EstadoProducto) {
+export const ERROR_ACTIVAR_ORGANISMO =
+  "No se puede activar el organismo: necesita un producto asociado y al menos un plan de cuotas vinculado (la vinculación del plan se hace desde el propio plan).";
+
+// Único punto donde cambia el estado: un borrador no se activa sin producto ni plan vinculados.
+export function cambiarEstadoOrganismo(id: string, estado: EstadoProductoAbm): ResultadoEstado {
+  const actual = store.get().find((r) => r.config.id === id);
+  if (!actual) return { ok: false, error: "El organismo no existe." };
+  if (
+    estado === "ACTIVO" &&
+    actual.config.estado === "BORRADOR" &&
+    (productosDe(id).length === 0 || planesDe(id).length === 0)
+  )
+    return { ok: false, error: ERROR_ACTIVAR_ORGANISMO };
   store.commit(
     store.get().map((r) => (r.config.id === id ? { ...r, config: { ...r.config, estado } } : r))
   );
+  return { ok: true };
 }
 
 function idLibre(nombre: string): string {
@@ -311,7 +325,7 @@ export function crearOrganismo(datos: {
       id,
       nombre: datos.nombre,
       detalle: datos.detalle,
-      estado: "ACTIVO",
+      estado: "BORRADOR",
       vigenciaDesde: fechaHoy(),
       vigenciaHasta: null,
       productos,

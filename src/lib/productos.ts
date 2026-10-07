@@ -374,6 +374,7 @@ export function hidratarProductos() {
             ...r.config,
             calculaIva: r.config.calculaIva ?? true,
             ivaPct: r.config.ivaPct ?? 21,
+            calculaSellos: r.config.calculaSellos ?? true,
             sellosPct: r.config.sellosPct ?? 1.2,
           };
           return {
@@ -678,7 +679,7 @@ export function validarProducto(p: ProductoAbm, todos: ProductoAbm[]): Record<st
       e.gestionCuit = "El CUIT debe tener 11 dígitos.";
   }
   if (c.calculaIva && (c.ivaPct < 0 || c.ivaPct > 100)) e.ivaPct = "El IVA va de 0 a 100 %.";
-  if (c.sellosPct < 0 || c.sellosPct > 100) e.sellosPct = "Los sellos van de 0 a 100 %.";
+  if (c.calculaSellos && (c.sellosPct < 0 || c.sellosPct > 100)) e.sellosPct = "Los sellos van de 0 a 100 %.";
   const t = x.tramosPunitorios;
   // Sin punitorios no se validan los tramos.
   if (x.cobraPunitorios) {

@@ -377,9 +377,9 @@ export interface CargosPlan {
 }
 
 // IVA y sellos los define el producto (antes, el plan de cuotas).
-export function impuestosDe(productoId: string): Pick<ProductoConfig, "calculaIva" | "ivaPct" | "sellosPct"> {
-  const { calculaIva, ivaPct, sellosPct } = getProductoConfig(productoId);
-  return { calculaIva, ivaPct, sellosPct };
+export function impuestosDe(productoId: string): Pick<ProductoConfig, "calculaIva" | "ivaPct" | "calculaSellos" | "sellosPct"> {
+  const { calculaIva, ivaPct, calculaSellos, sellosPct } = getProductoConfig(productoId);
+  return { calculaIva, ivaPct, calculaSellos, sellosPct };
 }
 
 // Producto con el que se usa un plan: el del primer organismo vigente que lo tiene vinculado.
@@ -901,6 +901,7 @@ export interface ProductoConfig {
   // IVA y sellos de la operación (antes en el plan de cuotas). El IVA se suma a los cargos sin IVA.
   calculaIva: boolean;
   ivaPct: number;
+  calculaSellos: boolean;
   sellosPct: number;
 }
 
@@ -916,6 +917,7 @@ export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
     capitalMaximo: 4_000_000,
     calculaIva: true,
     ivaPct: 21,
+    calculaSellos: true,
     sellosPct: 1.2,
     canales: ["sucursal", "digital"],
     onboarding: {
@@ -945,6 +947,7 @@ export const PRODUCTOS_CONFIG: Record<string, ProductoConfig> = {
     capitalMaximo: 6_000_000,
     calculaIva: true,
     ivaPct: 21,
+    calculaSellos: true,
     sellosPct: 1.2,
     // Requiere presentar la sentencia y firmar la cesión de cobro en persona.
     canales: ["sucursal"],
@@ -1013,8 +1016,8 @@ export function excepcionesVacias(): ExcepcionesOrganismo {
 
 export interface OrganismoConfig extends OpcionCatalogo {
   // Alta, baja y suspensión lógicas (igual que el producto). Sólo un organismo activo y vigente
-  // se ofrece.
-  estado: EstadoProducto;
+  // se ofrece. Nace en borrador y no se activa sin producto ni plan de cuotas vinculados.
+  estado: EstadoProductoAbm;
   // Vigencia comercial (dd/mm/aaaa).
   vigenciaDesde: string;
   vigenciaHasta: string | null;
