@@ -6,19 +6,45 @@ import { ProvinciasImpuestos } from "./ProvinciasImpuestos";
 import { Impositivos } from "./Impositivos";
 import { ListaServicios } from "@/components/servicios/ListaServicios";
 import { NavSecciones } from "@/components/ui/NavSecciones";
-import { IconFileText, IconLandmark, IconMapPin, IconWallet } from "@/components/icons";
+import { useRol } from "@/lib/rol-context";
+import { solapaVisible } from "@/lib/navegacion";
+import { Sucursales } from "@/components/caja/abm/Sucursales";
+import { Cajas } from "@/components/caja/abm/Cajas";
+import { Denominaciones } from "@/components/caja/abm/Denominaciones";
+import { MotivosDiferencia } from "@/components/caja/abm/MotivosDiferencia";
+import { TiposMovimiento } from "@/components/caja/abm/TiposMovimiento";
+import { EstadosMovimiento } from "@/components/caja/abm/EstadosMovimiento";
+import {
+  IconAlertTriangle,
+  IconBuilding,
+  IconFileText,
+  IconLandmark,
+  IconLock,
+  IconMapPin,
+  IconRows,
+  IconSend,
+  IconTable,
+  IconWallet,
+} from "@/components/icons";
 
 const SOLAPAS = [
   { id: "motivos", label: "Motivos de observación", icon: IconFileText, Componente: MotivosObservacion },
   { id: "servicios", label: "Cargos/servicios", icon: IconWallet, Componente: ListaServicios },
   { id: "provincias", label: "Provincias (sellado)", icon: IconMapPin, Componente: ProvinciasImpuestos },
   { id: "impositivos", label: "Impositivos", icon: IconLandmark, Componente: Impositivos },
+  { id: "sucursales", label: "Sucursales", icon: IconBuilding, Componente: Sucursales },
+  { id: "cajas", label: "Cajas", icon: IconLock, Componente: Cajas },
+  { id: "denominaciones", label: "Denominaciones", icon: IconTable, Componente: Denominaciones },
+  { id: "motivos-diferencia", label: "Motivos de diferencia de caja", icon: IconAlertTriangle, Componente: MotivosDiferencia },
+  { id: "tipos-movimiento", label: "Tipos de movimiento de tesorería", icon: IconSend, Componente: TiposMovimiento },
+  { id: "estados-movimiento", label: "Estados de movimientos de tesorería", icon: IconRows, Componente: EstadosMovimiento },
 ] as const;
 
 // Módulo Parámetros: cada parámetro editable es una sección, con el mismo menú lateral que los
 // demás módulos. La sección activa va en la URL (?solapa=servicios) para poder linkearla.
 export function ModuloParametros() {
   const router = useRouter();
+  const { rol } = useRol();
   const pathname = usePathname();
   const params = useSearchParams();
   const pedida = params.get("solapa");
@@ -28,19 +54,20 @@ export function ModuloParametros() {
     q.set("solapa", id);
     router.replace(`${pathname}?${q.toString()}`);
   };
-  const activa = SOLAPAS.find((s) => s.id === pedida) ?? SOLAPAS[0];
+  const visibles = SOLAPAS.filter((s) => solapaVisible(rol, s.id));
+  const activa = visibles.find((s) => s.id === pedida) ?? visibles[0] ?? SOLAPAS[0];
   const Activa = activa.Componente;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="animate-fade-in">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">Módulo Créditos</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">{rol === "caja" ? "Módulo Caja y Bancos" : "Módulo Créditos"}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">Parámetros</h1>
       </div>
 
       <NavSecciones
         ariaLabel="Secciones de parámetros"
-        items={SOLAPAS.map((s) => ({ id: s.id, label: s.label, icon: s.icon }))}
+        items={visibles.map((s) => ({ id: s.id, label: s.label, icon: s.icon }))}
         activa={activa.id}
         onSelect={irA}
         ancho="14.5rem"

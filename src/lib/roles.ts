@@ -4,12 +4,13 @@
 import {
   SESION,
   SESION_ANALISTA,
+  SESION_CAJA,
   SESION_CHEQUEADOR,
   SESION_SUPERVISOR,
   SESION_SUPERVISOR_2,
 } from "./config";
 
-export type Rol = "venta" | "analista" | "chequeo" | "superior" | "superior2";
+export type Rol = "venta" | "analista" | "chequeo" | "caja" | "superior" | "superior2";
 
 export const ROL_POR_DEFECTO: Rol = "venta";
 
@@ -20,6 +21,7 @@ export const ROLES: Record<
   venta: { corto: "Venta", sesion: SESION, inicio: "/" },
   analista: { corto: "Analista", sesion: SESION_ANALISTA, inicio: "/analisis" },
   chequeo: { corto: "Chequeo", sesion: SESION_CHEQUEADOR, inicio: "/chequeo" },
+  caja: { corto: "Caja", sesion: SESION_CAJA, inicio: "/caja/apertura" },
   superior: { corto: "Superior", sesion: SESION_SUPERVISOR, inicio: "/" },
   superior2: { corto: "Superior 2", sesion: SESION_SUPERVISOR_2, inicio: "/" },
 };
@@ -42,7 +44,8 @@ const PERMISOS: { ruta: string; roles: Rol[] }[] = [
   { ruta: "/organismos", roles: ["analista"] },
   { ruta: "/planes", roles: ["analista"] },
   { ruta: "/mora", roles: ["analista"] },
-  { ruta: "/parametros", roles: ["analista"] },
+  { ruta: "/parametros", roles: ["analista", "caja"] },
+  { ruta: "/caja", roles: ["caja"] },
   { ruta: "/motor-riesgo", roles: ["analista"] },
   { ruta: "/notificaciones", roles: ["analista"] },
   { ruta: "/graph", roles: ["venta", "analista", "chequeo"] },

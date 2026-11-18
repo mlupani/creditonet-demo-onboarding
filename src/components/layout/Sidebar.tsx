@@ -1,127 +1,250 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useApplication } from "@/lib/application-context";
 import { useRol } from "@/lib/rol-context";
-import { esSuperior, puedeVer } from "@/lib/roles";
+import {
+  contienePantalla,
+  esGrupo,
+  esProximamente,
+  hrefPantalla,
+  menuVisible,
+  pantallaActiva,
+  primeraPantalla,
+  type IconoMenu,
+  type MenuEntrada,
+  type MenuGrupo,
+  type MenuPantalla,
+} from "@/lib/navegacion";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { alternarSidebarColapsado, useSidebarColapsado } from "@/lib/sidebar-colapsado";
 import {
   IconBarChart,
-  IconBell,
-  IconBriefcase,
-  IconBuilding,
-  IconCalendar,
-  IconClipboardPlus,
+  IconChevronDown,
   IconChevronsLeft,
   IconChevronsRight,
   IconCreditCard,
-  IconFileStack,
   IconGitBranch,
-  IconHome,
+  IconIdCard,
   IconLandmark,
-  IconClock,
-  IconPhone,
   IconRefresh,
   IconSettings,
-  IconShieldCheck,
   IconUsers,
+  IconWallet,
   IconX,
 } from "@/components/icons";
 
-interface NavItem {
-  label: string;
-  href?: string;
-  icon: (props: { width?: number; height?: number }) => React.ReactNode;
-  disponible?: boolean;
+const ICONOS: Record<IconoMenu, (props: { width?: number; height?: number }) => React.ReactNode> = {
+  creditos: IconCreditCard,
+  onboarding: IconIdCard,
+  parametros: IconSettings,
+  usuarios: IconUsers,
+  caja: IconWallet,
+  contable: IconLandmark,
+  reportes: IconBarChart,
+  flujo: IconGitBranch,
+};
+
+const PRONTO_TIP = "Módulo disponible próximamente en la demo";
+
+// Grupos abiertos o cerrados a mano (por ruta del árbol); valen mientras no cambie la pantalla activa.
+interface Toggles {
+  activa?: MenuPantalla;
+  abiertos: Record<string, boolean>;
 }
 
-// Bandejas operativas de la Guía §7: canal de venta → analista de riesgo → chequeo telefónico
-// (si el producto lo pide) → liquidación.
-const NAV: NavItem[] = [
-  { label: "Bandeja canal de venta", href: "/", icon: IconHome, disponible: true },
-  { label: "Solicitar crédito", href: "/onboarding", icon: IconClipboardPlus, disponible: true },
-  { label: "Bandeja de análisis", href: "/analisis", icon: IconFileStack, disponible: true },
-  { label: "Bandeja de chequeo", href: "/chequeo", icon: IconPhone, disponible: true },
-  { label: "Diagrama de flujo", href: "/graph", icon: IconGitBranch, disponible: true },
-  { label: "Productos", href: "/productos", icon: IconBriefcase, disponible: true },
-  { label: "Organismos", href: "/organismos", icon: IconBuilding, disponible: true },
-  { label: "Planes de cuotas", href: "/planes", icon: IconCalendar, disponible: true },
-  { label: "Liquidación", icon: IconLandmark },
-  { label: "Clientes", icon: IconUsers },
-  { label: "Créditos", icon: IconCreditCard },
-  { label: "Mora", href: "/mora", icon: IconClock, disponible: true },
-  { label: "Motor de riesgo", href: "/motor-riesgo", icon: IconShieldCheck, disponible: true },
-  { label: "Notificaciones", href: "/notificaciones", icon: IconBell, disponible: true },
-  { label: "Reportes", icon: IconBarChart },
-  { label: "Parámetros", href: "/parametros", icon: IconSettings, disponible: true },
-];
-
-// `compacto`: sidebar de escritorio colapsado, solo íconos (la etiqueta pasa a tooltip).
+// `compacto`: sidebar de escritorio colapsado, sólo íconos (la etiqueta pasa a tooltip). Cada módulo
+// de primer nivel enlaza a su primera pantalla visible.
 function NavList({ onNavigate, compacto }: { onNavigate?: () => void; compacto?: boolean }) {
   const pathname = usePathname();
+  const solapa = useSearchParams().get("solapa");
   const { rol } = useRol();
-  // Sólo se listan las pantallas del rol; los módulos "Pronto" (sin ruta) son del superior.
-  const items = NAV.filter((i) => (i.href ? puedeVer(rol, i.href) : esSuperior(rol)));
-  return (
-    <nav className={`flex flex-1 flex-col gap-1 px-3 ${compacto ? "items-center" : ""}`}>
-      {items.map((item) => {
-        const activo = item.href && (pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)));
-        if (!item.disponible) {
-          return (
-            <Tooltip
-              key={item.label}
-              label={compacto ? `${item.label} · próximamente` : "Módulo disponible próximamente en la demo"}
-            >
-              <span
-                aria-label={compacto ? item.label : undefined}
-                className={`flex cursor-not-allowed items-center gap-3 rounded-lg py-2 text-sm font-medium text-ink-400 ${
-                  compacto ? "justify-center px-2.5" : "w-full px-3"
-                }`}
-              >
-                <item.icon />
-                {!compacto && (
-                  <>
-                    <span className="flex-1">{item.label}</span>
-                    <span className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-400">
-                      Pronto
-                    </span>
-                  </>
-                )}
+  const items = menuVisible(rol);
+  const activa = pantallaActiva(pathname, solapa);
+
+  const [toggles, setToggles] = useState<Toggles>({ activa, abiertos: {} });
+  // Al cambiar de pantalla se descartan los cambios manuales: los grupos de la nueva se abren solos.
+  const cambio = toggles.activa !== activa;
+  if (cambio) setToggles({ activa, abiertos: {} });
+  const manuales = cambio ? {} : toggles.abiertos;
+
+  const abierto = (clave: string, g: MenuGrupo) => manuales[clave] ?? contienePantalla(g, activa);
+  const alternar = (clave: string, g: MenuGrupo) =>
+    setToggles({ activa, abiertos: { ...manuales, [clave]: !abierto(clave, g) } });
+
+  const proximo = (e: MenuEntrada, clave: string, anidado: boolean) => {
+    const Icono = !anidado && "icono" in e && e.icono ? ICONOS[e.icono] : null;
+    const contenido = (
+      <span
+        aria-label={compacto ? `${e.label} · próximamente` : undefined}
+        title={!compacto && anidado ? "Disponible próximamente" : undefined}
+        className={`flex cursor-not-allowed items-center gap-3 rounded-lg text-sm font-medium text-ink-400 ${
+          anidado ? "min-h-7 px-3 py-1" : "py-2"
+        } ${compacto ? "justify-center px-2.5" : anidado ? "w-full" : "w-full px-3"}`}
+      >
+        {Icono && <Icono />}
+        {!compacto && (
+          <>
+            <span className="flex-1 truncate">{e.label}</span>
+            {!anidado && (
+              <span className="rounded-full bg-ink-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ink-400">
+                Pronto
               </span>
-            </Tooltip>
-          );
-        }
-        const link = (
-          <Link
-            key={item.label}
-            href={item.href!}
-            onClick={onNavigate}
-            aria-label={compacto ? item.label : undefined}
-            className={`relative flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition ${
-              compacto ? "justify-center px-2.5" : "px-3"
-            } ${
-              activo
-                ? "bg-brand-50 text-brand-700"
-                : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+            )}
+          </>
+        )}
+      </span>
+    );
+    return (
+      <li key={clave}>
+        {compacto || !anidado ? (
+          <Tooltip label={compacto ? `${e.label} · próximamente` : PRONTO_TIP}>{contenido}</Tooltip>
+        ) : (
+          contenido
+        )}
+      </li>
+    );
+  };
+
+  // Opción interna (segundo nivel o posterior): más compacta, con borde guía por grupo.
+  const anidada = (e: MenuEntrada, clave: string): React.ReactNode => {
+    if (esProximamente(e)) return proximo(e, clave, true);
+    if (esGrupo(e)) {
+      const open = abierto(clave, e);
+      return (
+        <li key={clave}>
+          <button
+            type="button"
+            onClick={() => alternar(clave, e)}
+            aria-expanded={open}
+            className={`flex min-h-7 w-full items-center gap-2 rounded-lg px-3 py-1 text-left text-sm font-medium transition hover:bg-ink-100 hover:text-ink-900 ${
+              open ? "text-ink-900" : "text-ink-600"
             }`}
           >
-            {activo && (
-              <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-brand-600" />
-            )}
-            <item.icon />
-            {!compacto && item.label}
-          </Link>
-        );
-        return compacto ? (
-          <Tooltip key={item.label} label={item.label}>
-            {link}
+            <span className="flex-1 truncate">{e.label}</span>
+            <IconChevronDown
+              width={14}
+              height={14}
+              className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+          <ul
+            aria-label={e.label}
+            hidden={!open}
+            className="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-ink-200 pl-2"
+          >
+            {e.children.map((c, i) => anidada(c, `${clave}/${i}`))}
+          </ul>
+        </li>
+      );
+    }
+    const esActiva = e === activa;
+    return (
+      <li key={clave}>
+        <Link
+          href={hrefPantalla(e)}
+          onClick={onNavigate}
+          aria-current={esActiva ? "page" : undefined}
+          className={`flex min-h-7 w-full items-center rounded-lg px-3 py-1 text-sm font-medium transition ${
+            esActiva ? "bg-brand-50 text-brand-700" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+          }`}
+        >
+          <span className="truncate">{e.label}</span>
+        </Link>
+      </li>
+    );
+  };
+
+  const primerNivel = (e: MenuEntrada, indice: number): React.ReactNode => {
+    const clave = String(indice);
+    if (esProximamente(e)) return proximo(e, clave, false);
+    const Icono = e.icono ? ICONOS[e.icono] : null;
+    const contiene = contienePantalla(e, activa);
+
+    // Colapsado: sólo el ícono, enlazado a la primera pantalla del módulo.
+    if (compacto) {
+      const destino = primeraPantalla(e);
+      if (!destino) return proximo({ label: e.label, proximamente: true }, clave, false);
+      return (
+        <li key={clave}>
+          <Tooltip label={e.label}>
+            <Link
+              href={hrefPantalla(destino)}
+              onClick={onNavigate}
+              aria-label={e.label}
+              aria-current={contiene ? "page" : undefined}
+              className={`relative flex items-center justify-center rounded-lg px-2.5 py-2 text-sm font-medium transition ${
+                contiene ? "bg-brand-50 text-brand-700" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+              }`}
+            >
+              {contiene && (
+                <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-brand-600" />
+              )}
+              {Icono && <Icono />}
+            </Link>
           </Tooltip>
-        ) : (
-          link
-        );
-      })}
+        </li>
+      );
+    }
+
+    if (esGrupo(e)) {
+      const open = abierto(clave, e);
+      return (
+        <li key={clave}>
+          <button
+            type="button"
+            onClick={() => alternar(clave, e)}
+            aria-expanded={open}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition hover:bg-ink-100 hover:text-ink-900 ${
+              contiene ? "text-brand-700" : "text-ink-600"
+            }`}
+          >
+            {Icono && <Icono />}
+            <span className="flex-1 truncate">{e.label}</span>
+            <IconChevronDown
+              width={16}
+              height={16}
+              className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+          <ul
+            aria-label={e.label}
+            hidden={!open}
+            className="ml-5 mt-0.5 flex flex-col gap-0.5 border-l border-ink-200 pl-3"
+          >
+            {e.children.map((c, i) => anidada(c, `${clave}/${i}`))}
+          </ul>
+        </li>
+      );
+    }
+
+    // Pantalla suelta de primer nivel (Diagrama de flujo).
+    const esActiva = e === activa;
+    return (
+      <li key={clave}>
+        <Link
+          href={hrefPantalla(e)}
+          onClick={onNavigate}
+          aria-current={esActiva ? "page" : undefined}
+          className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+            esActiva ? "bg-brand-50 text-brand-700" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+          }`}
+        >
+          {esActiva && (
+            <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-brand-600" />
+          )}
+          {Icono && <Icono />}
+          {e.label}
+        </Link>
+      </li>
+    );
+  };
+
+  return (
+    <nav aria-label="Menú principal" className={`flex-1 px-3 ${compacto ? "" : "scroll-thin overflow-y-auto"}`}>
+      <ul className="flex flex-col gap-1">{items.map(primerNivel)}</ul>
     </nav>
   );
 }

@@ -1385,6 +1385,14 @@ export const SESION_CHEQUEADOR = {
   organizacion: "CreditoNet · Chequeo telefónico",
 };
 
+// Módulo Caja y Bancos: el usuario que opera se elige dentro del módulo (cajero, tesorero, supervisor).
+export const SESION_CAJA = {
+  nombre: "Equipo de Caja",
+  iniciales: "CB",
+  rol: "Caja y Bancos",
+  organizacion: "CreditoNet · Caja y Bancos",
+};
+
 export const SESION_ANALISTA = {
   nombre: "Lucía Martínez",
   iniciales: "LM",

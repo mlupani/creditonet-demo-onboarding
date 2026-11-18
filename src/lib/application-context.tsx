@@ -97,6 +97,7 @@ import { hidratarServicios } from "./servicios";
 import { hidratarOrganismos } from "./organismos";
 import { hidratarLogPunitorios } from "./punitorios-cartera";
 import { hidratarMotivosObservacion } from "./motivos-observacion";
+import { hidratarCaja, reiniciarCaja } from "./caja-store";
 import { hidratarProvinciasImpuestos } from "./provincias-impuestos";
 import { hidratarImpositivos } from "./impositivos";
 import { hidratarPlantillasNotificacion } from "./plantillas-notificacion";
@@ -469,6 +470,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMenuAbierto(false);
     // La demo nueva no está ligada a ningún registro de la DB simulada.
     setAppDbId(null);
+    reiniciarCaja();
   }, [setAppRaw]);
 
   // Sincronización entre pestañas (creditonet-92). `ultimoDB` es la última base escrita o leída
@@ -515,6 +517,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hidratarServicios();
       hidratarOrganismos();
       hidratarMotivosObservacion();
+      hidratarCaja();
       hidratarProvinciasImpuestos();
       hidratarImpositivos();
       hidratarPlantillasNotificacion();

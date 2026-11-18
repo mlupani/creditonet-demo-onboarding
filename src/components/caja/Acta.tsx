@@ -1,0 +1,145 @@
+"use client";
+
+import { useRef, type ReactNode } from "react";
+import { useDenominaciones, nombreUsuario } from "@/lib/caja-store";
+import { formatNumber } from "@/lib/format";
+import { denominacionesDe } from "@/lib/caja-reglas";
+import { NOMBRE_MONEDA, monedasDe, type Caja, type Recuento } from "@/lib/caja-tipos";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { IconPrinter } from "@/components/icons";
+import { dinero, dineroConSigno } from "./comunes";
+
+const ESTILO_IMPRESION = `
+  body{font-family:system-ui,sans-serif;color:#111;margin:32px;font-size:13px}
+  h1{font-size:20px;margin:0 0 4px} h2{font-size:14px;margin:18px 0 6px}
+  table{border-collapse:collapse;width:100%;margin-top:6px}
+  th,td{border:1px solid #ccc;padding:5px 8px;text-align:left} td.n,th.n{text-align:right}
+  dl{display:grid;grid-template-columns:200px 1fr;gap:4px 12px;margin:8px 0} dt{color:#555} dd{margin:0}
+  .firma{margin-top:48px;display:flex;gap:48px} .firma div{border-top:1px solid #111;padding-top:4px;min-width:200px}
+`;
+
+// Acta imprimible: se abre en una ventana limpia para imprimir o guardar como PDF.
+export function ActaModal({ open, onClose, titulo, children }: { open: boolean; onClose: () => void; titulo: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const imprimir = () => {
+    const w = window.open("", "_blank", "width=820,height=900");
+    if (!w || !ref.current) return;
+    w.document.write(`<html><head><title>${titulo}</title><style>${ESTILO_IMPRESION}</style></head><body>${ref.current.innerHTML}</body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={titulo}
+      maxWidth="max-w-3xl"
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
+          <Button onClick={imprimir}>
+            <IconPrinter width={16} height={16} />
+            Imprimir / PDF
+          </Button>
+        </div>
+      }
+    >
+      <div ref={ref} className="text-sm text-ink-800">
+        {children}
+      </div>
+    </Modal>
+  );
+}
+
+export function ActaDatos({ filas }: { filas: [string, ReactNode][] }) {
+  return (
+    <dl className="my-2 grid grid-cols-[180px_1fr] gap-x-3 gap-y-1">
+      {filas.map(([k, v]) => (
+        <div key={k} className="contents">
+          <dt className="text-ink-500">{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+// Recuento, esperado, diferencia, responsable y supervisor de un conteo.
+export function ActaRecuento({ caja, titulo, recuento }: { caja: Caja; titulo: string; recuento: Recuento }) {
+  const denominaciones = useDenominaciones();
+  const monedas = monedasDe(caja.moneda);
+  return (
+    <div>
+      <h2 className="mt-4 text-sm font-bold text-ink-900">{titulo}</h2>
+      <ActaDatos
+        filas={[
+          ["Contó", `${nombreUsuario(recuento.usuarioId)} · ${recuento.fechaHora}`],
+          ...(recuento.aprobacion
+            ? ([[recuento.aprobacion.resultado === "APROBADA" ? "Aprobó" : "Rechazó", `${nombreUsuario(recuento.aprobacion.supervisorId)} · ${recuento.aprobacion.fechaHora}${recuento.aprobacion.nota ? ` · ${recuento.aprobacion.nota}` : ""}`]] as [string, string][])
+            : []),
+        ]}
+      />
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="bg-ink-50 text-left">
+            <th className="border border-ink-200 px-2 py-1">Moneda</th>
+            <th className="n border border-ink-200 px-2 py-1 text-right">Contado</th>
+            <th className="n border border-ink-200 px-2 py-1 text-right">Esperado</th>
+            <th className="n border border-ink-200 px-2 py-1 text-right">Diferencia</th>
+            <th className="border border-ink-200 px-2 py-1">Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {monedas.map((m) => {
+            const ajuste = recuento.ajustes.find((a) => a.moneda === m);
+            return (
+              <tr key={m}>
+                <td className="border border-ink-200 px-2 py-1">{NOMBRE_MONEDA[m]}</td>
+                <td className="n border border-ink-200 px-2 py-1 text-right">{dinero(m, recuento.contado[m])}</td>
+                <td className="n border border-ink-200 px-2 py-1 text-right">{dinero(m, recuento.esperado[m])}</td>
+                <td className="n border border-ink-200 px-2 py-1 text-right">{dineroConSigno(m, recuento.diferencia[m])}</td>
+                <td className="border border-ink-200 px-2 py-1">{ajuste ? `${ajuste.motivoId}${ajuste.nota ? ` · ${ajuste.nota}` : ""}` : recuento.diferencia[m] === 0 ? "—" : "Dentro de la tolerancia"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {monedas.map((m) => {
+        const dens = denominacionesDe(denominaciones, m).filter((d) => (recuento.detalle[d.id] ?? 0) > 0);
+        if (dens.length === 0) return null;
+        return (
+          <div key={m}>
+            <h3 className="mt-3 text-xs font-bold uppercase tracking-wider text-ink-500">Detalle en {NOMBRE_MONEDA[m].toLowerCase()}</h3>
+            <table className="mt-1 w-full border-collapse text-sm">
+              <tbody>
+                {dens.map((d) => (
+                  <tr key={d.id}>
+                    <td className="border border-ink-200 px-2 py-1">{d.tipo === "BILLETE" ? "Billete" : "Moneda"} de {formatNumber(d.valor)}</td>
+                    <td className="n border border-ink-200 px-2 py-1 text-right">{recuento.detalle[d.id]}</td>
+                    <td className="n border border-ink-200 px-2 py-1 text-right">{dinero(m, (recuento.detalle[d.id] ?? 0) * d.valor)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ActaFirmas({ firmas }: { firmas: string[] }) {
+  return (
+    <div className="mt-10 flex flex-wrap gap-10">
+      {firmas.map((f) => (
+        <div key={f} className="min-w-48 border-t border-ink-900 pt-1 text-xs text-ink-600">
+          {f}
+        </div>
+      ))}
+    </div>
+  );
+}
