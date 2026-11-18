@@ -18,7 +18,7 @@ import {
   totalRecuento,
   turnoActivoEn,
 } from "./caja-reglas";
-import { CUENTAS_BANCARIAS, TIPO_REFUERZO_ID } from "./caja-datos";
+import { TIPO_REFUERZO_ID } from "./caja-datos";
 import {
   ahoraTexto,
   auditar,
@@ -30,6 +30,7 @@ import {
   usuarioActual,
 } from "./caja-store";
 import {
+  TIPO_CUENTA_LABEL,
   esTesoro,
   monedasDe,
   type AjusteDiferencia,
@@ -491,9 +492,10 @@ export function errorNuevoMovimiento(n: NuevoMovimiento): string | undefined {
   if (!monedasDe(origen.moneda).includes(n.moneda)) return "El origen no opera en esa moneda.";
 
   if (n.destino.tipo === "BANCO") {
-    const cuenta = CUENTAS_BANCARIAS.find((c) => c.id === (n.destino as { cuentaId: string }).cuentaId);
+    const cuenta = S.cuentasBancarias.get().find((c) => c.id === (n.destino as { cuentaId: string }).cuentaId);
     if (!tipo.destinos.includes("BANCO")) return `El tipo "${tipo.descripcion}" no admite un banco como destino.`;
     if (!cuenta) return "Elegí la cuenta bancaria de destino.";
+    if (cuenta.estado !== "ACTIVO") return "La cuenta bancaria no está activa.";
     if (cuenta.moneda !== n.moneda) return "La cuenta bancaria es de otra moneda.";
   } else {
     const destino = cajaPorId(n.destino.cajaId);
@@ -575,8 +577,8 @@ export function enviarMovimiento(id: string, detalle: DetalleRecuento, conformid
 }
 
 const bancoTexto = (cuentaId: string) => {
-  const c = CUENTAS_BANCARIAS.find((x) => x.id === cuentaId);
-  return c ? `${c.banco} · ${c.numero}` : cuentaId;
+  const c = S.cuentasBancarias.get().find((x) => x.id === cuentaId);
+  return c ? `${c.banco} · ${TIPO_CUENTA_LABEL[c.tipo]} ${c.numero}` : cuentaId;
 };
 export { bancoTexto };
 
@@ -648,6 +650,42 @@ export function cargarBoletaDeposito(id: string, boleta: string): Res {
   if (!boleta.trim()) return error("Ingresá el número de la boleta de depósito.");
   actualizarMovimiento(id, { estado: "ACEPTADO", boletaDeposito: boleta.trim() });
   return { ok: true };
+}
+
+// Conciliación: la acreditación del depósito se confirma contra el extracto del banco. Se concilia un
+// depósito enviado (en tránsito o con boleta cargada) por el importe exacto acreditado.
+export function conciliarDeposito(id: string, importe: number, fechaAcreditacion: string, referencia: string): Res {
+  const m = movimientoPorId(id);
+  const u = usuarioActual();
+  if (!m || m.destino.tipo !== "BANCO" || !["EN_TRANSITO", "ACEPTADO"].includes(m.estado) || !m.envio || m.conciliacion)
+    return error("El depósito no está pendiente de conciliar.");
+  if (!u.roles.includes("TESORERO")) return error("Sólo el Tesorero concilia las acreditaciones.");
+  if (!fechaAcreditacion) return error("Ingresá la fecha de acreditación.");
+  if (!referencia.trim()) return error("Ingresá la referencia del extracto bancario.");
+  if (importe !== m.importe) return error("El importe acreditado no coincide con el depositado: revisalo con el banco antes de conciliar.");
+  actualizarMovimiento(id, {
+    estado: "ACEPTADO",
+    conciliacion: { usuarioId: u.id, fechaHora: ahoraTexto(), fechaAcreditacion, importe, referencia: referencia.trim() },
+  });
+  return { ok: true };
+}
+
+export interface SaldoBancario {
+  cuentaId: string;
+  conciliado: number; // acreditaciones conciliadas
+  enTransito: number; // enviado al banco y todavía sin conciliar
+}
+
+// Posición de cada cuenta bancaria a partir de los depósitos: lo conciliado y lo que viaja.
+export function saldosBancarios(): SaldoBancario[] {
+  return S.cuentasBancarias.get().map((c) => {
+    const deps = S.movimientos.get().filter((m) => m.destino.tipo === "BANCO" && m.destino.cuentaId === c.id && m.envio);
+    return {
+      cuentaId: c.id,
+      conciliado: deps.filter((m) => m.conciliacion).reduce((s, m) => s + m.importe, 0),
+      enTransito: deps.filter((m) => !m.conciliacion).reduce((s, m) => s + m.importe, 0),
+    };
+  });
 }
 
 // ---------- Pedidos de refuerzo ----------

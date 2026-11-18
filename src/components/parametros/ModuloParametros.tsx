@@ -11,6 +11,7 @@ import { solapaVisible } from "@/lib/navegacion";
 import { Sucursales } from "@/components/caja/abm/Sucursales";
 import { Cajas } from "@/components/caja/abm/Cajas";
 import { Denominaciones } from "@/components/caja/abm/Denominaciones";
+import { CuentasBancarias } from "@/components/caja/abm/CuentasBancarias";
 import { MotivosDiferencia } from "@/components/caja/abm/MotivosDiferencia";
 import { TiposMovimiento } from "@/components/caja/abm/TiposMovimiento";
 import { EstadosMovimiento } from "@/components/caja/abm/EstadosMovimiento";
@@ -35,6 +36,7 @@ const SOLAPAS = [
   { id: "sucursales", label: "Sucursales", icon: IconBuilding, Componente: Sucursales },
   { id: "cajas", label: "Cajas", icon: IconLock, Componente: Cajas },
   { id: "denominaciones", label: "Denominaciones", icon: IconTable, Componente: Denominaciones },
+  { id: "cuentas-bancarias", label: "Cuentas bancarias", icon: IconLandmark, Componente: CuentasBancarias },
   { id: "motivos-diferencia", label: "Motivos de diferencia de caja", icon: IconAlertTriangle, Componente: MotivosDiferencia },
   { id: "tipos-movimiento", label: "Tipos de movimiento de tesorería", icon: IconSend, Componente: TiposMovimiento },
   { id: "estados-movimiento", label: "Estados de movimientos de tesorería", icon: IconRows, Componente: EstadosMovimiento },

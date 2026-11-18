@@ -4,6 +4,7 @@
 import { crearStoreAbm } from "./store-abm";
 import {
   CAJAS_INICIALES,
+  CUENTAS_BANCARIAS_INICIALES,
   DENOMINACIONES_INICIALES,
   HORA_DEMO_INICIAL,
   LIBRO_INICIAL,
@@ -20,6 +21,7 @@ import type {
   Arqueo,
   Caja,
   CambioTurno,
+  CuentaBancaria,
   Denominacion,
   ExcepcionHorario,
   Jornada,
@@ -46,6 +48,7 @@ export const cajaStores = {
   sucursales: crear<Sucursal>("sucursales", SUCURSALES_INICIALES),
   cajas: crear<Caja>("cajas", CAJAS_INICIALES),
   denominaciones: crear<Denominacion>("denominaciones", DENOMINACIONES_INICIALES),
+  cuentasBancarias: crear<CuentaBancaria>("cuentas-bancarias", CUENTAS_BANCARIAS_INICIALES),
   motivos: crear<MotivoDiferencia>("motivos", MOTIVOS_DIFERENCIA_INICIALES),
   tipos: crear<TipoMovimientoTesoreria>("tipos", TIPOS_MOVIMIENTO_INICIALES),
   libro: crear<MovimientoCaja>("libro", LIBRO_INICIAL),
@@ -71,6 +74,7 @@ const contextoStore = crear<ContextoCaja>("contexto", CONTEXTO_INICIAL);
 export const useSucursales = cajaStores.sucursales.useLista;
 export const useCajas = cajaStores.cajas.useLista;
 export const useDenominaciones = cajaStores.denominaciones.useLista;
+export const useCuentasBancarias = cajaStores.cuentasBancarias.useLista;
 export const useMotivosDiferencia = cajaStores.motivos.useLista;
 export const useTiposMovimiento = cajaStores.tipos.useLista;
 export const useLibro = cajaStores.libro.useLista;
@@ -166,6 +170,7 @@ export function reiniciarCaja() {
   cajaStores.sucursales.commit(SUCURSALES_INICIALES);
   cajaStores.cajas.commit(CAJAS_INICIALES);
   cajaStores.denominaciones.commit(DENOMINACIONES_INICIALES);
+  cajaStores.cuentasBancarias.commit(CUENTAS_BANCARIAS_INICIALES);
   cajaStores.motivos.commit(MOTIVOS_DIFERENCIA_INICIALES);
   cajaStores.tipos.commit(TIPOS_MOVIMIENTO_INICIALES);
   cajaStores.libro.commit(LIBRO_INICIAL);

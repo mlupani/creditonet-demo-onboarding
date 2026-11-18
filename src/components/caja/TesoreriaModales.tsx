@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CUENTAS_BANCARIAS } from "@/lib/caja-datos";
+import { useCuentasBancarias } from "@/lib/caja-store";
 import {
   bancoTexto,
   cargarBoletaDeposito,
@@ -61,7 +61,8 @@ export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: st
   const [origenId, setOrigenId] = useState(propias.some((c) => c.id === cajaInicial) ? cajaInicial : (propias[0]?.id ?? ""));
   const [haciaBanco, setHaciaBanco] = useState(false);
   const [destinoId, setDestinoId] = useState("");
-  const [cuentaId, setCuentaId] = useState(CUENTAS_BANCARIAS[0].id);
+  const cuentas = useCuentasBancarias().filter((c) => c.estado === "ACTIVO");
+  const [cuentaId, setCuentaId] = useState(cuentas[0]?.id ?? "");
   const [moneda, setMoneda] = useState<Moneda>("ARS");
   const [importe, setImporte] = useState(0);
   const [motivo, setMotivo] = useState("");
@@ -80,7 +81,7 @@ export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: st
   const destinoElegido = destinosCaja.some((c) => c.id === destinoId) ? destinoId : (destinosCaja[0]?.id ?? "");
   const monedas = origen ? monedasDe(origen.moneda) : (["ARS"] as Moneda[]);
   const monedaElegida = monedas.includes(moneda) ? moneda : monedas[0];
-  const cuentasMoneda = CUENTAS_BANCARIAS.filter((c) => c.moneda === monedaElegida);
+  const cuentasMoneda = cuentas.filter((c) => c.moneda === monedaElegida);
   const cuentaElegida = cuentasMoneda.some((c) => c.id === cuentaId) ? cuentaId : (cuentasMoneda[0]?.id ?? "");
 
   const nuevo: NuevoMovimiento = {

@@ -142,9 +142,19 @@ export interface CuentaContable {
 export interface CuentaBancaria {
   id: string;
   banco: string;
+  tipo: "CUENTA_CORRIENTE" | "CAJA_AHORRO";
   numero: string;
+  cbu: string;
   moneda: Moneda;
+  cuentaContable: string;
+  estado: EstadoAbm;
+  fechaAlta: string;
+  usuarioAlta: string;
 }
+export const TIPO_CUENTA_LABEL: Record<CuentaBancaria["tipo"], string> = {
+  CUENTA_CORRIENTE: "Cuenta corriente",
+  CAJA_AHORRO: "Caja de ahorro",
+};
 
 // Cantidad de billetes y monedas por id de denominación.
 export type DetalleRecuento = Record<string, number>;
@@ -289,6 +299,8 @@ export interface MovimientoTesoreria {
   recepcion?: { usuarioId: string; fechaHora: string; detalle: DetalleRecuento; importe: number };
   resolucion?: Aprobacion & { importeAceptado: number };
   boletaDeposito?: string;
+  // Conciliación de un depósito: la acreditación se confirma contra el extracto del banco.
+  conciliacion?: { usuarioId: string; fechaHora: string; fechaAcreditacion: string; importe: number; referencia: string };
   pedidoId?: string;
 }
 

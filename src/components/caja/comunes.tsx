@@ -112,17 +112,19 @@ export function CajaBarra() {
 export function PaginaCaja({
   titulo,
   descripcion,
+  seccion = "Caja",
   children,
 }: {
   titulo: string;
   descripcion: string;
+  seccion?: string;
   children: ReactNode;
 }) {
   const { hidratado } = useApplication();
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="animate-fade-in">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">Módulo Caja y Bancos · Caja</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-brand-600">Módulo Caja y Bancos · {seccion}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">{titulo}</h1>
         <p className="mt-1 max-w-2xl text-sm text-ink-500">{descripcion}</p>
       </div>

@@ -37,16 +37,40 @@ export const CUENTAS_CONTABLES: CuentaContable[] = [
   { codigo: "1.1.01.04", nombre: "Caja · Fondos fijos" },
   { codigo: "1.1.02.01", nombre: "Valores a depositar en tránsito" },
   { codigo: "1.1.02.02", nombre: "Fondos en tránsito entre tesoros" },
+  { codigo: "1.1.03.01", nombre: "Bancos · Cuenta corriente Banco Nación" },
+  { codigo: "1.1.03.02", nombre: "Bancos · Cuenta corriente Banco Galicia" },
+  { codigo: "1.1.03.03", nombre: "Bancos · Caja de ahorro USD Banco Galicia" },
   { codigo: "4.9.01.01", nombre: "Sobrantes de caja" },
   { codigo: "5.9.01.01", nombre: "Faltantes de caja" },
   { codigo: "5.9.01.02", nombre: "Pérdida por billetes falsos" },
   { codigo: "5.9.01.03", nombre: "Diferencias a regularizar" },
 ];
 
-export const CUENTAS_BANCARIAS: CuentaBancaria[] = [
-  { id: "cb-1", banco: "Banco Nación", numero: "Cta. Cte. 0110-4412-90", moneda: "ARS" },
-  { id: "cb-2", banco: "Banco Galicia", numero: "Cta. Cte. 0070-8821-15", moneda: "ARS" },
-  { id: "cb-3", banco: "Banco Galicia", numero: "Cta. Cte. USD 0070-8821-77", moneda: "USD" },
+const cuentaBancaria = (
+  n: number,
+  banco: string,
+  tipo: CuentaBancaria["tipo"],
+  numero: string,
+  cbu: string,
+  moneda: "ARS" | "USD",
+  cuentaContable: string
+): CuentaBancaria => ({
+  id: `CB-${String(n).padStart(3, "0")}`,
+  banco,
+  tipo,
+  numero,
+  cbu,
+  moneda,
+  cuentaContable,
+  estado: "ACTIVO",
+  fechaAlta: "2026-11-01",
+  usuarioAlta: "Marina Costa",
+});
+
+export const CUENTAS_BANCARIAS_INICIALES: CuentaBancaria[] = [
+  cuentaBancaria(1, "Banco Nación", "CUENTA_CORRIENTE", "0110-4412-90", "0110441230044129000019", "ARS", "1.1.03.01"),
+  cuentaBancaria(2, "Banco Galicia", "CUENTA_CORRIENTE", "0070-8821-15", "0070882130008821150014", "ARS", "1.1.03.02"),
+  cuentaBancaria(3, "Banco Galicia", "CAJA_AHORRO", "0070-8821-77", "0070882140008821770016", "USD", "1.1.03.03"),
 ];
 
 export const SUCURSALES_INICIALES: Sucursal[] = [

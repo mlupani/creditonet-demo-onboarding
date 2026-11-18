@@ -6,6 +6,7 @@ import {
   autorizarMovimiento,
   cargarArqueoRelevo,
   cargarBoletaDeposito,
+  conciliarDeposito,
   crearMovimiento,
   crearPedidoRefuerzo,
   enviarMovimiento,
@@ -20,6 +21,7 @@ import {
   resolverApertura,
   resolverIncidenciaMovimiento,
   resolverPedidoRefuerzo,
+  saldosBancarios,
   solicitarCambioTurno,
   type NuevoMovimiento,
 } from "./caja-operaciones";
@@ -195,7 +197,7 @@ test("depósito en banco: queda en tránsito hasta cargar la boleta", () => {
   const c = crearMovimiento({
     tipoId: "TMT-007",
     origenId: "CAJ-002",
-    destino: { tipo: "BANCO", cuentaId: "cb-1" },
+    destino: { tipo: "BANCO", cuentaId: "CB-001" },
     moneda: "ARS",
     importe: 1000000,
     motivo: "Depósito semanal",
@@ -212,6 +214,39 @@ test("depósito en banco: queda en tránsito hasta cargar la boleta", () => {
   assert.ok(!cargarBoletaDeposito(id, " ").ok);
   assert.ok(cargarBoletaDeposito(id, "BOL-123").ok);
   assert.equal(S.movimientos.get().find((m) => m.id === id)?.estado, "ACEPTADO");
+});
+
+test("conciliación: sólo el tesorero, por el importe exacto, y suma al saldo de la cuenta", () => {
+  abrir("CAJ-002", "tomas-ruiz", ["ARS", "USD"]);
+  como("tomas-ruiz");
+  const c = crearMovimiento({
+    tipoId: "TMT-007",
+    origenId: "CAJ-002",
+    destino: { tipo: "BANCO", cuentaId: "CB-001" },
+    moneda: "ARS",
+    importe: 500000,
+    motivo: "Depósito",
+    transportista: { tipo: "EMPRESA", nombre: "Transportadora Andina", documento: "30-1" },
+    precinto: "",
+    observaciones: "",
+  });
+  const id = c.ok ? c.movimientoId : "";
+  como("marta-diaz");
+  autorizarMovimiento(id, true, "");
+  como("tomas-ruiz");
+  enviarMovimiento(id, contar("ARS", 500000), true);
+  assert.equal(saldosBancarios().find((s) => s.cuentaId === "CB-001")?.enTransito, 500000);
+
+  como("ana-gomez");
+  assert.ok(!conciliarDeposito(id, 500000, "2026-11-19", "ext-1").ok, "Ana no es tesorera");
+  como("tomas-ruiz");
+  assert.ok(!conciliarDeposito(id, 499000, "2026-11-19", "ext-1").ok, "el importe tiene que coincidir");
+  assert.ok(!conciliarDeposito(id, 500000, "2026-11-19", " ").ok, "falta la referencia");
+  assert.ok(conciliarDeposito(id, 500000, "2026-11-19", "ext-1").ok);
+  assert.ok(!conciliarDeposito(id, 500000, "2026-11-19", "ext-1").ok, "no se concilia dos veces");
+  const s = saldosBancarios().find((x) => x.cuentaId === "CB-001");
+  assert.equal(s?.conciliado, 500000);
+  assert.equal(s?.enTransito, 0);
 });
 
 test("pedido de refuerzo: no mueve dinero y al aprobarlo genera el movimiento", () => {
