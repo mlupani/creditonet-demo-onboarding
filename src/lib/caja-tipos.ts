@@ -83,10 +83,37 @@ export interface Caja {
   toleranciaFaltante: PorMoneda;
   relevo: ModalidadRelevo;
   frecuenciaArqueo: FrecuenciaArqueo;
+  // Días en que opera (0 = domingo … 6 = sábado). En feriado no opera, salvo excepción.
+  diasOperativos: number[];
+  // Piso que protege al tesoro de origen al autorizar un movimiento (uno por moneda).
+  minimoOperativo: PorMoneda;
+  // Minutos posteriores a la hora de fin a partir de los cuales una caja abierta dispara alerta.
+  margenAlertaMin: number;
   cuentaContable: string;
   estado: EstadoAbm;
   fechaAlta: string;
   usuarioAlta: string;
+}
+
+export const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+export interface Feriado {
+  id: string;
+  fecha: string; // YYYY-MM-DD
+  descripcion: string;
+  estado: EstadoAbm;
+}
+
+// Cierre diario de sucursal: el tesorero confirma que todas sus cajas cerraron y se bloquea la fecha
+// operativa. La reapertura requiere autorización de un supervisor.
+export interface CierreSucursal {
+  id: string;
+  sucursalId: string;
+  fecha: string;
+  usuarioId: string;
+  fechaHora: string;
+  estado: "CERRADA" | "REABIERTA";
+  reapertura?: Aprobacion;
 }
 
 export const monedasDe = (m: MonedaCaja): Moneda[] => (m === "AMBAS" ? MONEDAS : [m]);
@@ -207,6 +234,8 @@ export interface Jornada {
 export type TipoArqueo = "ORDINARIO" | "SORPRESIVO";
 export interface Arqueo {
   id: string;
+  // Arqueos hechos en el mismo corte (un tesoro de sucursal con sus cajas de cajero).
+  grupoId?: string;
   cajaId: string;
   tipo: TipoArqueo;
   controladorId: string;

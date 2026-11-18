@@ -19,16 +19,21 @@ const ESTILO_IMPRESION = `
   .firma{margin-top:48px;display:flex;gap:48px} .firma div{border-top:1px solid #111;padding-top:4px;min-width:200px}
 `;
 
+// Abre un documento en una ventana limpia para imprimir o guardar como PDF.
+export function imprimirDocumento(titulo: string, html: string, estiloExtra = "") {
+  const w = window.open("", "_blank", "width=820,height=900");
+  if (!w) return;
+  w.document.write(`<html><head><title>${titulo}</title><style>${ESTILO_IMPRESION}${estiloExtra}</style></head><body>${html}</body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
 // Acta imprimible: se abre en una ventana limpia para imprimir o guardar como PDF.
 export function ActaModal({ open, onClose, titulo, children }: { open: boolean; onClose: () => void; titulo: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const imprimir = () => {
-    const w = window.open("", "_blank", "width=820,height=900");
-    if (!w || !ref.current) return;
-    w.document.write(`<html><head><title>${titulo}</title><style>${ESTILO_IMPRESION}</style></head><body>${ref.current.innerHTML}</body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
+    if (ref.current) imprimirDocumento(titulo, ref.current.innerHTML);
   };
   return (
     <Modal

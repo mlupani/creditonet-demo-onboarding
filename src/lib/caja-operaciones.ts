@@ -4,8 +4,13 @@
 
 import {
   aMinutos,
+  cierreVigente,
   diferenciaRecuento,
+  disponibleParaAutorizar,
   enHorario,
+  enTransito,
+  motivoNoOperativo,
+  reservado,
   esResponsable,
   excepcionVigente,
   jornadaVigente,
@@ -122,6 +127,9 @@ function asentarAjuste(cajaId: string, moneda: Moneda, diferencia: number, compr
 
 // Un arqueo en curso o un cambio de turno abierto congelan la caja: no se puede operar.
 export function bloqueoCaja(cajaId: string): string | undefined {
+  const sucursalId = cajaPorId(cajaId)?.sucursalId;
+  if (sucursalId && cierreVigente(S.cierresSucursal.get(), sucursalId, hoy()))
+    return "La sucursal cerró la fecha operativa: no se puede operar hasta que un supervisor autorice la reapertura.";
   if (S.arqueos.get().some((a) => a.cajaId === cajaId && a.estado === "EN_CURSO"))
     return "La caja está en arqueo: las operaciones están suspendidas hasta que termine.";
   if (S.cambiosTurno.get().some((c) => c.cajaId === cajaId && c.estado !== "COMPLETADO"))
@@ -202,6 +210,8 @@ export function registrarApertura(cajaId: string, entrada: EntradaRecuento): Res
   const dentroDeTurno = caja.tesoreroId === u.id ? enHorario(caja, hora) : turnoActivoEn(caja, hora)?.usuarioId === u.id;
   if (!dentroDeTurno && !excepcionVigente(S.excepciones.get(), caja.id, u.id, hoy(), hora))
     return error("La apertura se hace dentro de tu turno y del horario operativo de la caja.");
+  const noOperativo = motivoNoOperativo(caja, hoy(), S.feriados.get());
+  if (noOperativo && !excepcionVigente(S.excepciones.get(), caja.id, u.id, hoy(), hora)) return error(noOperativo);
   const jornadas = S.jornadas.get();
   if (jornadaVigente(jornadas, caja.id)) return error("La caja ya tiene una apertura activa.");
   if (jornadas.some((j) => j.cajaId === caja.id && j.fecha === hoy())) return error("La caja ya se cerró hoy: el cierre es definitivo.");
@@ -282,27 +292,34 @@ export function resolverCierre(jornadaId: string, aprobar: boolean, nota: string
 
 // ---------- Arqueo ----------
 
-export function iniciarArqueo(cajaId: string, tipo: TipoArqueo): Res<{ arqueoId: string }> {
+// Al arquear un tesoro de sucursal se pueden incluir sus cajas de cajero en el mismo corte: cada caja
+// tiene su arqueo y todos comparten corte y grupo.
+export function iniciarArqueo(cajaId: string, tipo: TipoArqueo, incluirIds: string[] = []): Res<{ arqueoId: string; arqueoIds: string[] }> {
   const caja = cajaPorId(cajaId);
   const u = usuarioActual();
   if (!caja) return error("Elegí la caja.");
   if (!puedeArquear(u)) return error("Hace falta el permiso Realizar arqueo (Supervisor o Tesorero).");
-  if (esResponsable(caja, u.id)) return error("El controlador no puede ser responsable de la caja arqueada.");
-  if (caja.estado !== "ACTIVO") return error("La caja no está activa.");
-  const bloqueo = bloqueoCaja(caja.id);
-  if (bloqueo) return error(bloqueo);
+  if (incluirIds.length > 0 && caja.tipo !== "TESORO_SUCURSAL") return error("Sólo un tesoro de sucursal puede incluir cajas de cajero en el corte.");
+  const cajas = [caja, ...incluirIds.map(cajaPorId)];
+  for (const c of cajas) {
+    if (!c) return error("Una de las cajas elegidas no existe.");
+    if (c.id !== caja.id && (c.tipo !== "CAJA_CAJERO" || c.sucursalId !== caja.sucursalId))
+      return error(`${c.nombre} no es una caja de cajero de la misma sucursal.`);
+    if (esResponsable(c, u.id)) return error(`El controlador no puede ser responsable de la caja arqueada (${c.nombre}).`);
+    if (c.estado !== "ACTIVO") return error(`${c.nombre} no está activa.`);
+    const bloqueo = bloqueoCaja(c.id);
+    if (bloqueo) return error(`${c.nombre}: ${bloqueo}`);
+  }
   const arqueos = S.arqueos.get();
-  const arqueo: Arqueo = {
-    id: siguienteId("ARQ", arqueos.map((a) => a.id), 4),
-    cajaId,
-    tipo,
-    controladorId: u.id,
-    corte: ahoraTexto(),
-    estado: "EN_CURSO",
-    conteos: [],
-  };
-  S.arqueos.commit([...arqueos, arqueo]);
-  return { ok: true, arqueoId: arqueo.id };
+  const corte = ahoraTexto();
+  const ids: string[] = [];
+  const nuevos = (cajas as Caja[]).map((c, i): Arqueo => {
+    const id = siguienteId("ARQ", [...arqueos.map((a) => a.id), ...ids], 4);
+    ids.push(id);
+    return { id, grupoId: cajas.length > 1 ? `GRP-${ids[0]}` : undefined, cajaId: c.id, tipo, controladorId: u.id, corte, estado: "EN_CURSO", conteos: [] };
+  });
+  S.arqueos.commit([...arqueos, ...nuevos]);
+  return { ok: true, arqueoId: ids[0], arqueoIds: ids };
 }
 
 // Recuento ciego: el esperado se calcula al registrar el conteo, no antes. Se puede cargar un
@@ -506,7 +523,8 @@ export function errorNuevoMovimiento(n: NuevoMovimiento): string | undefined {
     if (!monedasDe(destino.moneda).includes(n.moneda)) return "El destino no opera en esa moneda.";
   }
   if (!(n.importe > 0)) return "Ingresá un importe mayor a cero.";
-  if (n.importe > saldoCaja(S.libro.get(), origen.id, n.moneda)) return "El origen no tiene saldo suficiente.";
+  if (n.importe > saldoCaja(S.libro.get(), origen.id, n.moneda) - reservado(S.movimientos.get(), origen.id, n.moneda))
+    return "El origen no tiene saldo suficiente (descontado lo ya reservado para otros movimientos autorizados).";
   if (!n.motivo.trim()) return "Ingresá el motivo del movimiento.";
   const entreCajeros = origen.tipo === "CAJA_CAJERO" && n.destino.tipo === "CAJA" && cajaPorId(n.destino.cajaId)?.tipo === "CAJA_CAJERO";
   if (!entreCajeros && (!n.transportista?.nombre.trim() || !n.transportista.documento.trim()))
@@ -542,8 +560,18 @@ export function autorizarMovimiento(id: string, aprobar: boolean, nota: string):
   if (!m || m.estado !== "SOLICITADO") return error("El movimiento no está esperando autorización.");
   if (!puedeAprobar(usuarioActual(), m.solicitanteId)) return error("Sólo un supervisor distinto del solicitante puede autorizarlo.");
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
+  // Al autorizar se reserva el importe: no puede dejar al origen por debajo de su mínimo operativo.
+  const origen = cajaPorId(m.origenId);
+  if (aprobar && origen && m.importe > disponibleParaAutorizar(S.libro.get(), S.movimientos.get(), origen, m.moneda, m.id))
+    return error("Al autorizarlo, el origen quedaría por debajo de su mínimo operativo o comprometería fondos ya reservados.");
   actualizarMovimiento(id, { estado: aprobar ? "AUTORIZADO" : "RECHAZADO", autorizacion: aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota) });
   return { ok: true };
+}
+
+// Fuera del horario operativo ningún cajero opera, salvo una excepción habilitada por el Tesorero.
+function errorFueraDeHorario(caja: Caja): string | undefined {
+  if (enHorario(caja, horaActual()) || excepcionVigente(S.excepciones.get(), caja.id, usuarioActual().id, hoy(), horaActual())) return undefined;
+  return "Fuera del horario operativo la caja no admite operaciones: hace falta una excepción habilitada por el Tesorero.";
 }
 
 const abierta = (cajaId: string) => jornadaVigente(S.jornadas.get(), cajaId)?.estado === "ABIERTA";
@@ -556,7 +584,7 @@ export function enviarMovimiento(id: string, detalle: DetalleRecuento, conformid
   if (!m || !origen || m.estado !== "AUTORIZADO") return error("El movimiento no está autorizado para salir.");
   if (!esResponsable(origen, usuarioActual().id)) return error("Sólo un responsable del origen registra el envío.");
   if (!abierta(origen.id)) return error("El origen no tiene la caja abierta: sin apertura no se puede operar.");
-  const bloqueo = bloqueoCaja(origen.id);
+  const bloqueo = bloqueoCaja(origen.id) ?? errorFueraDeHorario(origen);
   if (bloqueo) return error(bloqueo);
   if (!conformidad) return error("El origen tiene que confirmar lo que entrega al transportista.");
   const contado = totalRecuento(detalle, S.denominaciones.get())[m.moneda];
@@ -591,7 +619,7 @@ export function recibirMovimiento(id: string, detalle: DetalleRecuento): Res<{ e
   if (!m || !destino || m.estado !== "EN_TRANSITO") return error("No hay nada para recibir en este movimiento.");
   if (!esResponsable(destino, usuarioActual().id)) return error("Sólo un responsable del destino puede aceptarlo.");
   if (!abierta(destino.id)) return error("El destino no tiene la caja abierta: sin apertura no se puede operar.");
-  const bloqueo = bloqueoCaja(destino.id);
+  const bloqueo = bloqueoCaja(destino.id) ?? errorFueraDeHorario(destino);
   if (bloqueo) return error(bloqueo);
   const contado = totalRecuento(detalle, S.denominaciones.get())[m.moneda];
   const recepcion = { usuarioId: usuarioActual().id, fechaHora: ahoraTexto(), detalle, importe: contado };
@@ -756,6 +784,43 @@ export function resolverPedidoRefuerzo(id: string, aprobar: boolean, importeApro
     S.pedidos.get().map((x) => (x.id === id ? { ...x, estado: "APROBADO" as const, importeAprobado, resolucion, movimientoId: mov.id } : x))
   );
   return { ok: true, movimientoId: mov.id };
+}
+
+// ---------- Cierre diario de sucursal ----------
+
+// El tesorero confirma que todas las cajas de la sucursal cerraron y que no quedan tránsitos ni
+// incidencias abiertas; entonces se bloquea la fecha operativa.
+export function cerrarSucursal(sucursalId: string): Res<{ cierreId: string }> {
+  const sucursal = S.sucursales.get().find((s) => s.id === sucursalId);
+  const u = usuarioActual();
+  if (!sucursal) return error("Elegí la sucursal.");
+  const cajas = S.cajas.get().filter((c) => c.sucursalId === sucursalId && c.estado === "ACTIVO");
+  if (!cajas.some((c) => esTesoro(c.tipo) && c.tesoreroId === u.id)) return error("Sólo el tesorero de la sucursal puede cerrar la fecha operativa.");
+  if (cierreVigente(S.cierresSucursal.get(), sucursalId, hoy())) return error("La sucursal ya cerró la fecha operativa.");
+  const problemas: string[] = [];
+  for (const c of cajas) {
+    const j = jornadaVigente(S.jornadas.get(), c.id);
+    if (j) problemas.push(`${c.nombre} ${j.estado === "ABIERTA" ? "sigue abierta" : "tiene una apertura o un cierre pendiente de autorización"}.`);
+    const bloqueo = bloqueoCaja(c.id);
+    if (bloqueo) problemas.push(`${c.nombre}: ${bloqueo}`);
+    for (const m of pendientesDeCaja(c.id).filter(enTransito))
+      problemas.push(`${m.id} está ${m.estado === "EN_TRANSITO" ? "en tránsito" : "con incidencia"} (${c.nombre}).`);
+  }
+  if (problemas.length > 0) return error([...new Set(problemas)].join(" "));
+  const cierres = S.cierresSucursal.get();
+  const cierre = { id: siguienteId("CS", cierres.map((c) => c.id), 4), sucursalId, fecha: hoy(), usuarioId: u.id, fechaHora: ahoraTexto(), estado: "CERRADA" as const };
+  S.cierresSucursal.commit([...cierres, cierre]);
+  return { ok: true, cierreId: cierre.id };
+}
+
+// La reapertura de una fecha cerrada sólo la autoriza un supervisor, con su motivo.
+export function reabrirSucursal(cierreId: string, nota: string): Res {
+  const cierre = S.cierresSucursal.get().find((c) => c.id === cierreId);
+  if (!cierre || cierre.estado !== "CERRADA") return error("La fecha ya está abierta.");
+  if (!puedeAprobar(usuarioActual(), cierre.usuarioId)) return error("Sólo un supervisor distinto de quien cerró la fecha puede autorizar la reapertura.");
+  if (!nota.trim()) return error("Indicá el motivo de la reapertura.");
+  S.cierresSucursal.commit(S.cierresSucursal.get().map((c) => (c.id === cierreId ? { ...c, estado: "REABIERTA" as const, reapertura: aprobacion("APROBADA", nota) } : c)));
+  return { ok: true };
 }
 
 // ---------- Horario ----------

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { imprimirDocumento } from "./Acta";
 import { CLASE_INPUT, Dato, PaginaCaja, descargarXlsx, dinero, sinAcentos } from "./comunes";
 
 interface Filtros {
@@ -33,6 +34,9 @@ interface Filtros {
   medio: string;
   estado: string;
   responsableId: string;
+  turnoId: string;
+  horaDesde: string;
+  horaHasta: string;
   texto: string;
   minimo: string;
   maximo: string;
@@ -51,6 +55,9 @@ const VACIOS: Filtros = {
   medio: "",
   estado: "",
   responsableId: "",
+  turnoId: "",
+  horaDesde: "",
+  horaHasta: "",
   texto: "",
   minimo: "",
   maximo: "",
@@ -103,7 +110,10 @@ function calcularBloques(f: Filtros, cajas: Caja[], libro: MovimientoCaja[]): Bl
             (!f.sentido || (f.sentido === "ingreso" ? m.ingreso > 0 : m.egreso > 0)) &&
             (!f.medio || m.medio === f.medio) &&
             (!f.estado || m.estado === f.estado) &&
-            (!f.responsableId || m.responsableId === f.responsableId || m.turnoUsuarioId === f.responsableId) &&
+            (!f.responsableId || m.responsableId === f.responsableId) &&
+            (!f.turnoId || m.turnoUsuarioId === f.turnoId) &&
+            (!f.horaDesde || m.hora >= f.horaDesde) &&
+            (!f.horaHasta || m.hora <= f.horaHasta) &&
             (!q || sinAcentos(`${m.id} ${m.comprobante} ${m.descripcion} ${m.refId ?? ""}`).includes(q)) &&
             importe >= minimo &&
             importe <= maximo &&
@@ -129,6 +139,60 @@ function calcularBloques(f: Filtros, cajas: Caja[], libro: MovimientoCaja[]): Bl
     }
   }
   return bloques;
+}
+
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+function resumenFiltros(f: Filtros, sucursal?: string, caja?: string): string {
+  const partes: string[] = [];
+  if (f.sucursalId) partes.push(`Sucursal: ${sucursal ?? f.sucursalId}`);
+  if (f.cajaId) partes.push(`Caja: ${caja ?? f.cajaId}`);
+  if (f.tipoCaja) partes.push(`Tipo de caja: ${TIPO_CAJA_LABEL[f.tipoCaja as TipoCaja]}`);
+  if (f.moneda) partes.push(`Moneda: ${f.moneda === "ARS" ? "Pesos" : "Dólares"}`);
+  if (f.horaDesde || f.horaHasta) partes.push(`Horario: ${f.horaDesde || "00:00"} a ${f.horaHasta || "23:59"}`);
+  if (f.turnoId) partes.push(`Turno: ${nombreUsuario(f.turnoId)}`);
+  if (f.responsableId) partes.push(`Responsable: ${nombreUsuario(f.responsableId)}`);
+  if (f.tipo) partes.push(`Tipo de movimiento: ${f.tipo}`);
+  if (f.sentido) partes.push(f.sentido === "ingreso" ? "Sólo ingresos" : "Sólo egresos");
+  if (f.medio) partes.push(`Medio: ${MEDIO_LABEL[f.medio as MedioMovimiento]}`);
+  if (f.estado) partes.push(`Estado: ${f.estado === "ANULADO" ? "Anulado" : "Confirmado"}`);
+  if (f.texto.trim()) partes.push(`Texto: ${f.texto.trim()}`);
+  if (f.minimo || f.maximo) partes.push(`Importe: ${f.minimo || "0"} a ${f.maximo || "sin tope"}`);
+  if (f.soloDiferencia) partes.push("Sólo con diferencia o incidencia");
+  return partes.join(" · ");
+}
+
+interface Consolidado {
+  moneda: Moneda;
+  bloques: number;
+  inicial: number;
+  ingresos: number;
+  egresos: number;
+  final: number;
+}
+
+// Mayor de caja listo para imprimir: un bloque por caja y moneda y, con varias cajas, el consolidado.
+function htmlLibro(bloques: Bloque[], consolidado: Consolidado[], periodo: string, filtros: string): string {
+  const num = (m: Moneda, v: number) => esc(dinero(m, v));
+  const bloquesHtml = bloques
+    .map((b) => {
+      const filas = b.filas
+        .map(
+          ({ mov, saldo }) =>
+            `<tr${mov.estado === "ANULADO" ? ' style="color:#888;text-decoration:line-through"' : ""}><td>${esc(`${mov.fecha} ${mov.hora}`)}</td><td>${esc(nombreUsuario(mov.turnoUsuarioId))}</td><td>${esc(mov.tipo)}</td><td>${esc(mov.descripcion)}</td><td>${esc(mov.comprobante)}</td><td class="n">${mov.ingreso > 0 ? num(mov.moneda, mov.ingreso) : ""}</td><td class="n">${mov.egreso > 0 ? num(mov.moneda, mov.egreso) : ""}</td><td class="n">${num(mov.moneda, saldo)}</td><td>${esc(MEDIO_LABEL[mov.medio])}</td><td>${esc(nombreUsuario(mov.responsableId))}</td><td>${mov.estado === "ANULADO" ? "Anulado" : "Confirmado"}</td></tr>`
+        )
+        .join("");
+      return `<h2>${esc(b.caja.nombre)} · ${b.moneda === "ARS" ? "Pesos" : "Dólares"}</h2><p>Período: ${esc(periodo)} · Saldo inicial: <strong>${num(b.moneda, b.inicial)}</strong></p><table><thead><tr><th>Fecha y hora</th><th>Turno</th><th>Tipo</th><th>Descripción</th><th>Comprobante</th><th class="n">Ingreso</th><th class="n">Egreso</th><th class="n">Saldo</th><th>Medio</th><th>Responsable</th><th>Estado</th></tr></thead><tbody>${filas || '<tr><td colspan="11">Sin movimientos en el período.</td></tr>'}</tbody><tfoot><tr><th colspan="5">Totales (efectivo confirmado)</th><th class="n">${num(b.moneda, b.ingresos)}</th><th class="n">${num(b.moneda, b.egresos)}</th><th class="n">${num(b.moneda, b.final)}</th><th colspan="3">Saldo final</th></tr></tfoot></table>`;
+    })
+    .join("");
+  const consolidadoHtml = consolidado
+    .map(
+      (c) =>
+        `<h2>Consolidado · ${c.moneda === "ARS" ? "Pesos" : "Dólares"} (${c.bloques} cajas)</h2><table><tbody><tr><th>Saldo inicial</th><td class="n">${num(c.moneda, c.inicial)}</td><th>Total de ingresos</th><td class="n">${num(c.moneda, c.ingresos)}</td><th>Total de egresos</th><td class="n">${num(c.moneda, c.egresos)}</td><th>Saldo final</th><td class="n">${num(c.moneda, c.final)}</td></tr></tbody></table>`
+    )
+    .join("");
+  const cuerpo = bloques.length === 0 ? "<p>Ningún movimiento coincide con los filtros.</p>" : bloquesHtml + consolidadoHtml;
+  return `<h1>Libro de movimientos de caja</h1><p>Período: ${esc(periodo)}${filtros ? ` · Filtros: ${esc(filtros)}` : ""}</p>${cuerpo}`;
 }
 
 function DetalleFila({ mov, onClose }: { mov: MovimientoCaja; onClose: () => void }) {
@@ -183,8 +247,9 @@ export function PantallaLibro() {
   const [detalle, setDetalle] = useState<MovimientoCaja | null>(null);
   const set = <K extends keyof Filtros>(k: K, v: Filtros[K]) => setF((x) => ({ ...x, [k]: v }));
   const tiposMov = [...new Set(libro.map((m) => m.tipo))].sort();
+  const turnos = [...new Set(libro.map((m) => m.turnoUsuarioId))].sort((a, b) => nombreUsuario(a).localeCompare(nombreUsuario(b), "es"));
   const bloques = calcularBloques(f, cajas, libro);
-  const visibles = bloques.filter((b) => b.filas.length > 0 || (!f.texto && !f.tipo && !f.sentido && !f.medio && !f.estado && !f.responsableId && !f.minimo && !f.maximo && !f.soloDiferencia && !f.hasta));
+  const visibles = bloques.filter((b) => b.filas.length > 0 || (!f.texto && !f.tipo && !f.sentido && !f.medio && !f.estado && !f.responsableId && !f.turnoId && !f.horaDesde && !f.horaHasta && !f.minimo && !f.maximo && !f.soloDiferencia && !f.hasta));
   const consolidado = MONEDAS.map((m) => {
     const bs = bloques.filter((b) => b.moneda === m && (b.filas.length > 0 || b.inicial !== 0));
     return { moneda: m, bloques: bs.length, inicial: bs.reduce((s, b) => s + b.inicial, 0), ingresos: bs.reduce((s, b) => s + b.ingresos, 0), egresos: bs.reduce((s, b) => s + b.egresos, 0), final: bs.reduce((s, b) => s + b.final, 0) };
@@ -198,6 +263,13 @@ export function PantallaLibro() {
         filas.push([b.caja.nombre, b.moneda, mov.fecha, mov.hora, nombreUsuario(mov.turnoUsuarioId), mov.tipo, mov.descripcion, mov.comprobante, String(mov.ingreso), String(mov.egreso), String(saldo), MEDIO_LABEL[mov.medio], nombreUsuario(mov.responsableId), mov.estado === "ANULADO" ? "Anulado" : "Confirmado"]);
     descargarXlsx("libro-de-caja.xlsx", "Libro de caja", filas);
     auditar("Exportación del libro de caja", "LIBRO", "ALTA", null, `Exportó ${filas.length - 1} movimientos a Excel (período ${periodo})`);
+  };
+
+  const exportarPdf = () => {
+    const resumen = resumenFiltros(f, sucursales.find((s) => s.id === f.sucursalId)?.nombre, cajas.find((c) => c.id === f.cajaId)?.nombre);
+    const movimientos = visibles.reduce((n, b) => n + b.filas.length, 0);
+    imprimirDocumento("Libro de movimientos de caja", htmlLibro(visibles, consolidado, periodo, resumen), "@page{size:landscape} table{font-size:11px} th,td{padding:3px 5px}");
+    auditar("Exportación del libro de caja", "LIBRO", "ALTA", null, `Exportó ${movimientos} movimientos a PDF (período ${periodo})`);
   };
 
   const cajasLista = cajas.filter((c) => !f.sucursalId || c.sucursalId === f.sucursalId);
@@ -264,11 +336,23 @@ export function PantallaLibro() {
               <option value="ANULADO">Anulado</option>
             </select>
           </Campo>
-          <Campo label="Responsable o turno">
+          <Campo label="Responsable">
             <select value={f.responsableId} onChange={(e) => set("responsableId", e.target.value)} className={CLASE_INPUT} aria-label="Responsable">
               <option value="">Todos</option>
               {USUARIOS_CAJA.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
             </select>
+          </Campo>
+          <Campo label="Turno">
+            <select value={f.turnoId} onChange={(e) => set("turnoId", e.target.value)} className={CLASE_INPUT} aria-label="Turno">
+              <option value="">Todos</option>
+              {turnos.map((id) => <option key={id} value={id}>{nombreUsuario(id)}</option>)}
+            </select>
+          </Campo>
+          <Campo label="Hora desde">
+            <input type="time" value={f.horaDesde} onChange={(e) => set("horaDesde", e.target.value)} className={CLASE_INPUT} aria-label="Hora desde" />
+          </Campo>
+          <Campo label="Hora hasta">
+            <input type="time" value={f.horaHasta} onChange={(e) => set("horaHasta", e.target.value)} className={CLASE_INPUT} aria-label="Hora hasta" />
           </Campo>
           <Campo label="Comprobante, ID de crédito o cliente">
             <input value={f.texto} onChange={(e) => set("texto", e.target.value)} className={CLASE_INPUT} aria-label="Comprobante, crédito o cliente" placeholder="Ej.: MT-0001" />
@@ -288,7 +372,10 @@ export function PantallaLibro() {
 
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-ink-500">Período: {periodo}</p>
-        <Button variant="outline" onClick={exportar}>Exportar a Excel</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportar}>Exportar a Excel</Button>
+          <Button variant="outline" onClick={exportarPdf}>Exportar a PDF</Button>
+        </div>
       </div>
 
       <div className="mt-3 space-y-5">

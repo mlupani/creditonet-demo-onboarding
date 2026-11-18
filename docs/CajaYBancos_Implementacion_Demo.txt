@@ -1,0 +1,349 @@
+CREDITONET - DEMO DE ONBOARDING
+MODULO CAJA Y BANCOS - QUE SE IMPLEMENTO EN LA DEMO
+Basado en: docs/CajaYBancos_Avance01_Caja_2026-11-11_4.pdf (Avance 01, Funcion 1 Caja)
+
+====================================================================
+1. ALCANCE Y CRITERIO
+====================================================================
+
+- Todo funciona solo en el front. No hay backend: los datos son de ejemplo y el
+  estado se guarda en la sesion del navegador (sessionStorage, claves
+  "creditonet.caja.*"). "Reiniciar demo" (menu lateral) vuelve a los datos de
+  ejemplo, junto con el resto de la demo.
+- Se implemento la Funcion 1 (Caja) completa con sus ABM de Parametros, mas
+  piezas de la Funcion 2 (Bancos) y de la Funcion 6 (Posicion de caja y bancos)
+  en la medida en que el documento las menciona.
+- Lo que el documento marca como "propuesto" o "sugerido" y todavia no esta
+  confirmado se implemento igual, pero queda senalado en pantalla como
+  "Propuesto, pendiente de confirmar".
+- Las Funciones 3, 4, 5, 7 y 8 (liquidacion de creditos, pago a proveedores,
+  autorizaciones, cash flow y proveedores) no estan especificadas en el
+  documento y no se implementaron: en el menu figuran como "Pronto".
+
+====================================================================
+2. COMO ACCEDER
+====================================================================
+
+- Rol de la demo "Caja" (selector de roles del header, o ?rol=caja en la URL).
+  El rol "Superior" tambien ve todo.
+- Menu lateral: Caja y Bancos > Caja (6 pantallas + Cierre de sucursal),
+  Bancos, Posicion de caja y bancos. Los ABM estan en Parametros > Caja y Bancos.
+- Rutas:
+    /caja/apertura          Apertura de caja
+    /caja/cierre            Cierre de caja
+    /caja/arqueo            Arqueo de caja
+    /caja/tesoreria         Movimientos de tesoreria
+    /caja/turno             Cambio de turno
+    /caja/libro             Libro de movimientos de caja
+    /caja/cierre-sucursal   Cierre diario de sucursal (propuesto)
+    /caja/bancos            Bancos (posicion y conciliacion de depositos)
+    /caja/posicion          Posicion de caja y bancos (tablero y alertas)
+    /parametros?solapa=...  ABM (ver seccion 5)
+
+Barra de la demo (arriba de cada pantalla de Caja):
+- "Actuar como": elige el usuario que opera. Hay 6 usuarios, para poder probar la
+  regla de que nadie aprueba lo que cargo el mismo:
+    Ana Gomez       Cajero
+    Luis Pereyra    Cajero
+    Tomas Ruiz      Tesorero y Cajero (Tesoro Sucursal Bariloche, Fondo fijo)
+    Carlos Ibarra   Tesorero (Tesoro central)
+    Marta Diaz      Supervisor
+    Raul Molina     Supervisor
+- "Hora operativa de la demo" (11:00 por defecto) y "Fecha operativa de la demo"
+  (por defecto la fecha real, con boton "Fecha real"): son simuladas para poder
+  probar apertura, cierre, feriados y alertas cualquier dia y a cualquier hora.
+  Atencion: si la fecha es fin de semana o feriado, la apertura da error por
+  la regla de dias operativos; cambiando la fecha se prueba el resto.
+- Los recuentos tienen un boton "Autocompletar con el saldo (ayuda de demo)"
+  rotulado como tal: arma el recuento exacto con las denominaciones activas.
+
+====================================================================
+3. DATOS DE EJEMPLO
+====================================================================
+
+Sucursales: Casa Central, Sucursal Bariloche, Sucursal Neuquen, Sucursal Mendoza
+(esta ultima suspendida).
+
+Cajas (horario 10:00 a 18:00; el tesoro central 09:00 a 18:00; lunes a viernes):
+- CAJ-001 Tesoro central (tesorero Carlos Ibarra). Saldo: $ 57.000.000 y
+  US$ 120.000. Minimo operativo $ 5.000.000 / US$ 10.000.
+- CAJ-002 Tesoro Sucursal Bariloche (tesorero Tomas Ruiz). Saldo: $ 8.000.000 y
+  US$ 5.000. Minimo operativo $ 500.000 / US$ 500.
+- CAJ-003 Caja 1 Sucursal Bariloche, caja de cajero en pesos. Saldo $ 600.000.
+  Turnos: Ana Gomez 10:00-14:00 y Luis Pereyra 14:00-18:00. Relevo directo.
+- CAJ-004 Fondo fijo Sucursal Bariloche, en pesos. Saldo $ 150.000.
+
+Los saldos salen del libro: los saldos iniciales son asientos "Saldo inicial", asi
+que el recuento de apertura se puede contar contra el esperado.
+
+Denominaciones: pesos (billetes 20.000, 10.000, 2.000, 1.000, 500, 200, 100;
+monedas 50, 25, 10, 5, 2, 1) y dolares (billetes 100, 50, 20, 10, 5, 1).
+
+Motivos de diferencia: error de vuelto, billete falso, error de carga de una
+operacion, diferencia sin explicar (cada uno con cuenta de sobrante y de faltante).
+
+Tipos de movimiento de tesoreria (9): fondo inicial, pedido de refuerzo, refuerzo,
+retiro de excedente, remesa, pase entre cajeros, deposito en banco, reposicion de
+fondo fijo y fondo de cierre. Cada uno define origenes y destinos permitidos,
+si requiere autorizacion y su cuenta contable de transito.
+
+Cuentas bancarias: Banco Nacion cta. cte. en pesos, Banco Galicia cta. cte. en
+pesos y Banco Galicia caja de ahorro en dolares.
+
+Feriados: 23/11/2026, 08/12/2026 y 25/12/2026.
+
+Movimientos precargados: MT-0001 (remesa de $ 3.000.000 del tesoro central al de
+Bariloche, aceptada), MT-0002 (refuerzo de $ 400.000 del tesoro de Bariloche a la
+Caja 1, solicitado, listo para autorizar) y el pedido de refuerzo PR-0001
+($ 2.000.000 del tesoro de Bariloche al central, pendiente).
+
+====================================================================
+4. FUNCION CAJA: PANTALLAS Y REGLAS
+====================================================================
+
+4.1 Apertura de caja (/caja/apertura)
+- El usuario elige una de SUS cajas (asignado a la caja en Parametros), dentro de
+  su turno y del horario operativo.
+- Recuento ciego por denominacion y por moneda (separado en pesos y dolares si la
+  caja opera ambas). Recien al pulsar "Ver diferencia" se muestra el saldo
+  esperado y la diferencia; el recuento queda bloqueado ("Repetir recuento").
+- Sin diferencia o dentro de la tolerancia: la caja queda Abierta (la diferencia
+  dentro de la tolerancia igual se registra).
+- Diferencia mayor a la tolerancia (por moneda, sin compensar entre monedas):
+  pide motivo y nota; la caja queda "Pendiente de autorizacion" y no opera.
+- Un supervisor distinto de quien cargo el recuento aprueba (la caja queda
+  Abierta) o rechaza con motivo (se repite el recuento).
+- Una sola apertura activa por caja. Una caja cerrada hoy no se reabre el mismo dia.
+- La diferencia aprobada genera un movimiento de ajuste propio en el libro con la
+  cuenta contable del motivo; nunca modifica el recuento.
+- Acta de apertura imprimible (recuento, esperado, diferencia, responsable y
+  supervisor).
+
+4.2 Cierre de caja (/caja/cierre)
+- Mismo circuito que la apertura, con: resumen de los movimientos del dia y
+  advertencia de movimientos de tesoreria pendientes antes del recuento.
+- Saldo esperado = saldo de apertura + ingresos - egresos del dia.
+- Sin diferencia, o con la diferencia aprobada, la caja queda Cerrada y se
+  bloquean los movimientos de esa fecha. Un cierre rechazado vuelve a Abierta.
+- Se puede cerrar despues de la hora de fin, pero desde esa hora no admite
+  operaciones.
+- Alerta de caja sin cerrar (hora de fin + margen configurable). Acta de cierre.
+
+4.3 Arqueo de caja (/caja/arqueo)
+- Ordinario (con frecuencia minima configurable por caja y alerta si vence) o
+  sorpresivo. Lo hace un Supervisor o un Tesorero con el permiso "Realizar
+  arqueo"; el controlador no puede ser responsable de la caja arqueada.
+- Corte: fija fecha y hora y suspende las operaciones de la caja hasta terminar.
+- Recuento ciego, comparacion contra el esperado congelado en el corte, segundo
+  conteo opcional (se conservan ambos con sus responsables), acta de conformidad
+  o de diferencia (no se modifican ni se eliminan).
+- El arqueo no corrige saldos: la diferencia se regulariza solo con un ajuste
+  autorizado por un supervisor distinto del controlador.
+- Al arquear un tesoro de sucursal se pueden incluir sus cajas de cajero en el
+  mismo corte (una pestana por caja; cada una con su acta).
+- Historial por caja con filtros (caja, tipo, resultado) y acceso a cada acta.
+
+4.4 Movimientos de tesoreria (/caja/tesoreria)
+- Bandeja unica con 7 secciones y contadores: Pedidos realizados, Pedidos
+  recibidos, Por autorizar, Enviados en transito, Por recibir, Con incidencia y
+  Finalizados. Busqueda por ID, fecha, origen, destino o importe y exportacion a
+  Excel. El supervisor ve todas las cajas.
+- Nuevo movimiento: tipo, destino (caja o banco con cuenta), moneda, importe,
+  motivo, responsable del traslado (empleado o empresa, con nombre y documento),
+  precinto y observaciones. Se valida en vivo: cajas activas, saldo suficiente,
+  origenes y destinos permitidos por el tipo, no a la misma caja.
+- Circuito: Solicitud -> Autorizacion (supervisor distinto del solicitante, con
+  motivo si rechaza) -> Envio (recuento por denominacion que debe coincidir con
+  el importe, conformidad del que entrega; el importe pasa a En transito y sale
+  del libro del origen) -> Recepcion (el destino cuenta y acepta; el importe
+  entra a su libro con el mismo ID de referencia).
+- Si el recuento del destino no coincide, el movimiento queda Con incidencia y el
+  dinero no se integra hasta que un supervisor que no cargo ni recibio resuelva
+  (importe a integrar y constancia).
+- Un movimiento autorizado no se edita. Solo se completa con la aceptacion del
+  receptor. Un tipo que no requiere autorizacion nace Autorizado.
+- Pedido de refuerzo: un tesoro pide fondos a otro; el pedido no mueve dinero. El
+  tesoro que recibe lo aprueba total o parcialmente (o lo rechaza) y se genera el
+  movimiento de refuerzo, que sigue el circuito general.
+- Deposito en banco: queda En transito hasta cargar la boleta de deposito o
+  conciliar la acreditacion (ver 6). Los depositos aceptados se muestran como
+  "Depositado".
+- Horario: fuera del horario operativo no se envia ni se recibe, salvo excepcion
+  del Tesorero.
+- Minimo operativo y reserva (sugerencia del documento): al autorizar, el importe
+  queda reservado y no puede dejar al origen por debajo de su minimo operativo ni
+  comprometer fondos ya reservados. Tesoreria muestra saldo, reservado y
+  disponible.
+
+4.5 Cambio de turno (/caja/turno)
+- Relevo con arqueo: el cajero saliente solicita (corte en el ultimo movimiento y
+  caja bloqueada) -> arqueo de relevo ciego por moneda y denominacion -> si hay
+  diferencia mayor a la tolerancia, la autoriza un supervisor y queda atribuida al
+  saliente -> el entrante cuenta y acepta el saldo real; si no coincide, se abre
+  una incidencia para el supervisor -> se cierra el turno saliente y se abre el
+  entrante. La caja sigue abierta.
+- Cada usuario ve solo la accion que le toca. Se puede cancelar el relevo.
+- El cambio de turno solo se hace entre usuarios asignados a la caja.
+
+4.6 Libro de movimientos de caja (/caja/libro)
+- Consulta en formato de mayor de caja, por caja y moneda: encabezado con saldo
+  inicial, una fila por movimiento (fecha y hora, turno, tipo, descripcion,
+  comprobante, ingreso, egreso, saldo acumulado, medio, responsable y estado) y
+  pie con totales y saldo final. Con varias cajas: un bloque por caja y un
+  consolidado. Detalle de cada fila con movimientos vinculados.
+- Filtros: sucursal, caja, tipo de caja, rango de fechas, rango horario, turno,
+  responsable, moneda, tipo de movimiento, sentido, medio, estado, comprobante o
+  ID de credito o cliente, rango de importe y solo con diferencia o incidencia.
+- Exportacion a Excel y a PDF (vista imprimible); cada exportacion queda auditada
+  con quien exporto y cuando.
+- Los movimientos confirmados no se borran ni se modifican; los anulados quedan
+  visibles. Solo el efectivo mueve el saldo; tarjeta y transferencia figuran sin
+  modificarlo.
+
+4.7 Cierre de sucursal (/caja/cierre-sucursal) - PROPUESTO
+- El tesorero de la sucursal confirma que todas sus cajas cerraron y que no hay
+  movimientos en transito ni incidencias abiertas, y se bloquea la fecha
+  operativa de la sucursal.
+- La reapertura solo la autoriza un supervisor distinto de quien cerro, con
+  motivo. Incluye historial de cierres.
+
+4.8 Reglas transversales
+- Nadie aprueba una operacion que cargo el mismo.
+- Sin apertura no se puede operar. Caja en arqueo, en cambio de turno o con la
+  sucursal cerrada: operaciones suspendidas.
+- Dias operativos y feriados: en feriado o dia no operativo la caja no opera salvo
+  excepcion habilitada por el Tesorero (se registra quien, cuando, hasta que hora
+  y motivo). - PROPUESTO
+- Todo lo que cambia saldos pasa por el libro; el saldo de cada caja se calcula
+  desde el libro, no se guarda.
+
+====================================================================
+5. ABM EN PARAMETROS (Parametros > Caja y Bancos)
+====================================================================
+
+Todos siguen el esquema del ABM de Productos/Planes: inventario agrupado por
+estado (Activos abierto; Suspendidos y Eliminados colapsados), busqueda por nombre
+o ID, filtro por estado, columnas ordenables, Nuevo, Exportar a Excel, Modificar
+(Grabar/Cancelar), Activar/Suspender/Eliminar con confirmacion e Historial. Cada
+alta, modificacion y cambio de estado se audita (usuario, fecha y hora, valor
+anterior y nuevo). El ID lo asigna el sistema.
+
+- Sucursales: nombre, direccion, localidad, provincia, CP, telefono, mail.
+  Regla: no se suspende ni elimina una sucursal con cajas activas.
+- Cajas: sucursal, tipo, moneda, tesorero (obligatorio en tesoros), grilla de
+  cajeros y turnos, horario operativo, importe maximo y tolerancias por moneda,
+  modalidad de relevo, frecuencia de arqueo, cuenta contable. Reglas: un unico
+  Tesoro central, como maximo un Tesoro de sucursal por sucursal, las cajas de
+  cajero dependen del tesoro de su sucursal, turnos sin superposicion y dentro del
+  horario, no se suspende ni elimina una caja con saldo o abierta, no se cambian
+  responsables con la caja abierta. Campos propuestos: dias operativos, minimo
+  operativo y margen de alerta de caja sin cerrar.
+- Denominaciones: moneda, billete o moneda, valor; Activa/Inactiva (solo las
+  activas aparecen en los recuentos).
+- Motivos de diferencia de caja: descripcion y cuentas contables de sobrante y de
+  faltante. Regla de la demo: tiene que quedar al menos un motivo activo.
+- Tipos de movimiento de tesoreria: origenes y destinos permitidos (Banco como
+  destino), si requiere autorizacion, cuenta de transito. El tipo Refuerzo no se
+  suspende ni elimina (lo usan los pedidos de refuerzo).
+- Estados de movimientos de tesoreria: tabla de solo lectura (Solicitado,
+  Autorizado, Rechazado, En transito, Con incidencia, Aceptado); los fija el sistema.
+- Cuentas bancarias: banco, tipo, numero, CBU, moneda, cuenta contable. No se
+  suspende ni elimina una cuenta con depositos sin conciliar.
+- Feriados (propuesto): fecha y descripcion; no puede haber dos activos en la
+  misma fecha.
+
+Visibilidad: el rol Caja ve estos ABM; el rol Analista ve los suyos (motivos de
+observacion, cargos/servicios, provincias, impositivos); el Superior ve todos.
+
+====================================================================
+6. BANCOS Y POSICION
+====================================================================
+
+Bancos (/caja/bancos)
+- Tarjeta por cuenta con lo acreditado y conciliado y lo que esta en transito o sin
+  conciliar. Lista de depositos (a conciliar, conciliados, todos) y exportacion.
+- Conciliar acreditacion: solo el Tesorero, con importe acreditado, fecha de
+  acreditacion y referencia del extracto. El importe debe coincidir con lo
+  depositado (el documento no define que pasa si difiere).
+
+Posicion de caja y bancos (/caja/posicion) - notas de la Funcion 6
+- Alertas (con destinatarios): importe maximo superado (sugiere un retiro de
+  excedente), caja abierta pasado el horario de fin mas el margen, y arqueo
+  ordinario vencido segun la frecuencia de la caja.
+- Resumen: pendientes de autorizacion, fondos en transito, cajas sobre el maximo,
+  diferencias a favor y en contra.
+- Tablero de tesoros: una fila por caja con estado en color (verde abierta, rojo
+  cerrada o sin abrir, ambar pendiente), sucursal, tipo, responsable del turno y
+  saldos en pesos y dolares; diferencias por turno cuando hubo mas de uno.
+- Saldos bancarios por cuenta y moneda. Excepciones de horario (alta para el
+  Tesorero y lista para el resto). Exportacion a Excel.
+
+====================================================================
+7. DESVIOS Y DECISIONES RESPECTO DEL DOCUMENTO
+====================================================================
+
+- Apertura y cierre: el importe y el signo de la diferencia los calcula el sistema;
+  el usuario solo elige el motivo y la nota (el documento dice que los carga el
+  usuario).
+- Un movimiento "Autorizado" (listo para enviar) se muestra en "Enviados en
+  transito" con la leyenda "Listo para enviar": el documento no le da seccion propia.
+- Conciliacion de depositos: solo por el importe exacto; no hay circuito de
+  diferencias contra el banco.
+- Cambio de turno: la modalidad de relevo (directo o por tesoro) se guarda y se
+  muestra por caja, pero el circuito implementado es el mismo para ambas.
+- Los campos de importe de los ABM muestran siempre "$", incluso para dolares
+  (limitacion del campo de importe del proyecto).
+- En el libro, el saldo acumulado se calcula sobre las filas filtradas; el saldo
+  inicial no se recalcula por rango horario.
+
+====================================================================
+8. NO IMPLEMENTADO
+====================================================================
+
+- Funciones 3, 4, 5, 7 y 8 (no especificadas). La Funcion 2 Bancos solo en lo que
+  el documento deja entrever: cuentas bancarias y conciliacion de depositos.
+- Cheques y valores en caja contados por separado del efectivo.
+- Compra y venta de dolares y cotizacion por operacion.
+- Asientos contables automaticos, control de operaciones en efectivo de alto
+  monto, latas y precintos, contingencia (sugerencias sin definicion).
+- Rendicion de comprobantes y reposicion del fondo fijo (punto abierto 3 del
+  documento).
+- Sucursales supervisadas por cada supervisor (alcance del supervisor: punto abierto 1).
+- Cobros de cuotas y operacion diaria de la caja (se trabajan en la Funcion 5).
+- Alertas enviadas como notificacion: el destino de las alertas es punto abierto
+  (4); se resolvio con un panel en la Posicion.
+
+====================================================================
+9. ORGANIZACION DEL CODIGO
+====================================================================
+
+Menu:
+- src/lib/navegacion.ts: arbol del menu (estructura de creditonet-fe) con Caja y
+  Bancos y los ABM en Parametros. src/lib/roles.ts: rol "caja".
+
+Nucleo (sin React, con tests):
+- src/lib/caja-tipos.ts: tipos y catalogos.
+- src/lib/caja-datos.ts: datos de ejemplo.
+- src/lib/caja-store.ts: stores persistidos en sesion, usuario/fecha/hora de la
+  demo, auditoria, hidratacion y reinicio.
+- src/lib/caja-reglas.ts: reglas puras (saldos, tolerancias, validaciones de ABM,
+  horarios, feriados, reservas, permisos).
+- src/lib/caja-operaciones.ts: operaciones con sus controles (apertura, cierre,
+  arqueo, cambio de turno, tesoreria, pedidos, conciliacion, cierre de sucursal,
+  excepciones).
+- src/lib/caja-posicion.ts: tablero y alertas.
+
+Pantallas:
+- src/components/caja/: Jornada (apertura y cierre), Arqueo, Tesoreria y
+  TesoreriaModales, Turno, Libro, CierreSucursal, Bancos, Posicion,
+  ExcepcionesHorario, RecuentoForm, Acta y comunes (barra, pagina, utilidades).
+- src/components/caja/abm/: AbmCaja (ABM generico) y un archivo por ABM.
+- src/app/(app)/caja/*/page.tsx: rutas. src/components/parametros/
+  ModuloParametros.tsx: solapas de Parametros.
+
+Tests (npm test):
+- src/lib/caja.test.ts: circuitos y reglas (apertura, cierre, tesoreria,
+  incidencias, deposito y conciliacion, pedidos, arqueo, relevo, feriados,
+  horario, minimo y reserva, cierre de sucursal, ABM).
+- src/lib/caja-posicion.test.ts: tablero y alertas.
+- src/lib/navegacion.test.ts: arbol del menu por rol.

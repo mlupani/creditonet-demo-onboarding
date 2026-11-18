@@ -2,15 +2,18 @@
 // permisos. No leen stores ni React, así que se prueban solas (caja-reglas.test.ts).
 
 import {
+  DIAS_SEMANA,
   FRECUENCIA_ARQUEO_DIAS,
   MONEDAS,
   esTesoro,
   monedasDe,
   type Arqueo,
   type Caja,
+  type CierreSucursal,
   type DetalleRecuento,
   type Denominacion,
   type ExcepcionHorario,
+  type Feriado,
   type Jornada,
   type Moneda,
   type MovimientoCaja,
@@ -119,6 +122,40 @@ export const excepcionVigente = (
 export const esResponsable = (caja: Caja, usuarioId: string) =>
   caja.tesoreroId === usuarioId || caja.cajeros.some((c) => c.usuarioId === usuarioId && c.estado === "ACTIVO");
 
+// ---------- Días operativos y feriados ----------
+
+export const esFeriado = (feriados: Feriado[], fecha: string) =>
+  feriados.some((f) => f.estado === "ACTIVO" && f.fecha === fecha);
+
+export const diaDeSemana = (fecha: string) => new Date(`${fecha}T12:00:00`).getDay();
+
+// En feriado, o un día que la caja no opera, la caja no opera salvo excepción.
+export function motivoNoOperativo(caja: Caja, fecha: string, feriados: Feriado[]): string | undefined {
+  const feriado = feriados.find((f) => f.estado === "ACTIVO" && f.fecha === fecha);
+  if (feriado) return `Hoy es feriado (${feriado.descripcion}) y la caja no opera.`;
+  if (!caja.diasOperativos.includes(diaDeSemana(fecha))) return `La caja no opera los ${DIAS_SEMANA[diaDeSemana(fecha)].toLowerCase()}.`;
+  return undefined;
+}
+
+// ---------- Cierre diario de sucursal ----------
+
+export const cierreVigente = (cierres: CierreSucursal[], sucursalId: string, fecha: string) =>
+  cierres.find((c) => c.sucursalId === sucursalId && c.fecha === fecha && c.estado === "CERRADA");
+
+// ---------- Reserva y mínimo operativo ----------
+
+// Importe aprobado que espera su envío: queda reservado y no se puede comprometer en otro movimiento.
+export function reservado(movimientos: MovimientoTesoreria[], cajaId: string, moneda: Moneda, ignorarId?: string): number {
+  return movimientos
+    .filter((m) => m.origenId === cajaId && m.moneda === moneda && m.estado === "AUTORIZADO" && m.id !== ignorarId)
+    .reduce((s, m) => s + m.importe, 0);
+}
+
+// Lo que se puede comprometer: saldo menos lo reservado y menos el mínimo operativo de la caja.
+export function disponibleParaAutorizar(libro: MovimientoCaja[], movimientos: MovimientoTesoreria[], caja: Caja, moneda: Moneda, ignorarId?: string): number {
+  return saldoCaja(libro, caja.id, moneda) - reservado(movimientos, caja.id, moneda, ignorarId) - (caja.minimoOperativo?.[moneda] ?? 0);
+}
+
 // ---------- Roles y permisos ----------
 
 export const tieneRol = (u: UsuarioCaja | undefined, rol: RolCaja) => !!u?.roles.includes(rol);
@@ -209,9 +246,13 @@ export function erroresCaja(
 
   if (!caja.cuentaContable) e.cuentaContable = "Elegí la cuenta contable.";
   for (const m of monedasDe(caja.moneda)) {
-    if (caja.importeMaximo[m] < 0 || caja.toleranciaSobrante[m] < 0 || caja.toleranciaFaltante[m] < 0)
+    if (caja.importeMaximo[m] < 0 || caja.toleranciaSobrante[m] < 0 || caja.toleranciaFaltante[m] < 0 || caja.minimoOperativo[m] < 0)
       e.importes = "Los importes no pueden ser negativos.";
+    else if (caja.importeMaximo[m] > 0 && caja.minimoOperativo[m] > caja.importeMaximo[m])
+      e.importes = "El mínimo operativo no puede superar el importe máximo.";
   }
+  if (caja.diasOperativos.length === 0) e.diasOperativos = "Elegí al menos un día operativo.";
+  if (!(caja.margenAlertaMin >= 0)) e.margenAlertaMin = "El margen no puede ser negativo.";
   return e;
 }
 

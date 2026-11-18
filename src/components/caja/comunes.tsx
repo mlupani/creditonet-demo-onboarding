@@ -7,11 +7,13 @@ import { crearXlsx } from "@/lib/xlsx";
 import { USUARIOS_CAJA } from "@/lib/caja-datos";
 import { esResponsable } from "@/lib/caja-reglas";
 import {
+  fijarFechaDemo,
   fijarHoraDemo,
   fijarUsuarioActual,
   hoy,
   horaActual,
   nombreUsuario,
+  useFechaDemo,
   useHoraDemo,
   useUsuarioActual,
 } from "@/lib/caja-store";
@@ -58,6 +60,7 @@ export const CLASE_INPUT =
 export function CajaBarra() {
   const usuario = useUsuarioActual();
   const hora = useHoraDemo();
+  const fecha = useFechaDemo();
   return (
     <div className="mb-6 flex flex-wrap items-end gap-4 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3">
       <label className="block">
@@ -77,6 +80,23 @@ export function CajaBarra() {
           ))}
         </select>
       </label>
+      <div className="block">
+        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+          Fecha operativa de la demo
+        </span>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={fecha}
+            onChange={(e) => e.target.value && fijarFechaDemo(e.target.value)}
+            aria-label="Fecha operativa de la demo"
+            className={`${CLASE_INPUT} w-40`}
+          />
+          <Button size="sm" variant="outline" onClick={() => fijarFechaDemo("")}>
+            Fecha real
+          </Button>
+        </div>
+      </div>
       <div className="block">
         <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">
           Hora operativa de la demo
@@ -102,8 +122,8 @@ export function CajaBarra() {
         </div>
       </div>
       <p className="min-w-56 flex-1 text-xs text-ink-500">
-        Simulación de demo: la hora es simulada para poder abrir y cerrar cajas a cualquier hora, y el usuario
-        se cambia para probar que nadie aprueba lo que cargó. Hoy es {hoy()}.
+        Simulación de demo: la fecha y la hora son simuladas para poder probar apertura, cierre, feriados y alertas
+        a cualquier día y hora, y el usuario se cambia para probar que nadie aprueba lo que cargó.
       </p>
     </div>
   );

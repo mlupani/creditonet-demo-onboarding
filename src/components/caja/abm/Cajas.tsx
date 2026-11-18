@@ -5,6 +5,7 @@ import { CUENTAS_CONTABLES, USUARIOS_CAJA } from "@/lib/caja-datos";
 import { errorBajaCaja, errorCambioResponsables, erroresCaja } from "@/lib/caja-reglas";
 import { cajaStores, hoy, siguienteId, useCajas, useJornadas, useLibro, usuarioActual, useSucursales } from "@/lib/caja-store";
 import {
+  DIAS_SEMANA,
   MONEDAS,
   NOMBRE_MONEDA,
   TIPO_CAJA_LABEL,
@@ -19,6 +20,7 @@ import {
   type TipoCaja,
 } from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
@@ -45,6 +47,17 @@ const opcionesUsuario = (rol: "TESORERO" | "OPERADOR") =>
 
 const cuentasOpciones = CUENTAS_CONTABLES.map((c) => ({ value: c.codigo, label: `${c.codigo} · ${c.nombre}` }));
 
+// De lunes a domingo.
+const ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0];
+
+function Propuesto() {
+  return (
+    <span className="rounded-full border border-warning-200 bg-warning-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning-700">
+      Propuesto, pendiente de confirmar
+    </span>
+  );
+}
+
 function FormularioCaja({ inicial, onClose }: { inicial: Caja | null; onClose: () => void }) {
   const cajas = useCajas();
   const sucursales = useSucursales();
@@ -65,6 +78,9 @@ function FormularioCaja({ inicial, onClose }: { inicial: Caja | null; onClose: (
       toleranciaFaltante: { ARS: 0, USD: 0 },
       relevo: "DIRECTO",
       frecuenciaArqueo: "MENSUAL",
+      diasOperativos: [1, 2, 3, 4, 5],
+      minimoOperativo: { ARS: 0, USD: 0 },
+      margenAlertaMin: 30,
       cuentaContable: "",
       estado: "ACTIVO",
       fechaAlta: "",
@@ -83,8 +99,13 @@ function FormularioCaja({ inicial, onClose }: { inicial: Caja | null; onClose: (
   const monedas = monedasDe(c.moneda);
 
   const set = <K extends keyof Caja>(k: K, v: Caja[K]) => setC((x) => ({ ...x, [k]: v }));
-  const setImporte = (k: "importeMaximo" | "toleranciaSobrante" | "toleranciaFaltante", m: "ARS" | "USD", v: number) =>
+  const setImporte = (k: "importeMaximo" | "toleranciaSobrante" | "toleranciaFaltante" | "minimoOperativo", m: "ARS" | "USD", v: number) =>
     setC((x) => ({ ...x, [k]: { ...x[k], [m]: v } as PorMoneda }));
+  const alternarDia = (dia: number) =>
+    setC((x) => ({
+      ...x,
+      diasOperativos: x.diasOperativos.includes(dia) ? x.diasOperativos.filter((d) => d !== dia) : [...x.diasOperativos, dia].sort((a, b) => a - b),
+    }));
   const setCajero = (i: number, parche: Partial<CajeroTurno>) =>
     setC((x) => ({ ...x, cajeros: x.cajeros.map((r, j) => (j === i ? { ...r, ...parche } : r)) }));
 
@@ -189,6 +210,22 @@ function FormularioCaja({ inicial, onClose }: { inicial: Caja | null; onClose: (
         </section>
 
         <section>
+          <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-900">
+            Días operativos
+            <Propuesto />
+          </h3>
+          <p className="mt-0.5 text-xs text-ink-500">En un día no operativo o en feriado la caja no opera, salvo excepción habilitada por el Tesorero.</p>
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+            {ORDEN_DIAS.map((dia) => (
+              <div key={dia} className="w-28">
+                <Checkbox checked={c.diasOperativos.includes(dia)} onChange={() => alternarDia(dia)} label={DIAS_SEMANA[dia]} />
+              </div>
+            ))}
+          </div>
+          {e("diasOperativos") && <div className="mt-2"><ValidationMessage tipo="error">{e("diasOperativos")}</ValidationMessage></div>}
+        </section>
+
+        <section>
           <h3 className="text-sm font-semibold text-ink-900">Límites y tolerancias</h3>
           <p className="mt-0.5 text-xs text-ink-500">
             El importe máximo dispara una alerta de saldo. Con una diferencia dentro de la tolerancia la caja se abre o cierra sin supervisor.
@@ -201,6 +238,20 @@ function FormularioCaja({ inicial, onClose }: { inicial: Caja | null; onClose: (
                 <MoneyInput id={`caja-fal-${m}`} label={`Tolerancia de faltante · ${NOMBRE_MONEDA[m]}`} value={c.toleranciaFaltante[m]} onChange={(v) => setImporte("toleranciaFaltante", m, v)} />
               </div>
             ))}
+          </div>
+          <div className="mt-5">
+            <h4 className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-500">
+              Mínimo operativo
+              <Propuesto />
+            </h4>
+            <p className="mt-0.5 text-xs text-ink-500">
+              Protege al tesoro de origen: al autorizar un movimiento no se lo deja por debajo de este piso, y el importe autorizado queda reservado hasta el envío.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+              {MONEDAS.filter((m) => monedas.includes(m)).map((m) => (
+                <MoneyInput key={m} id={`caja-min-${m}`} label={`Mínimo operativo · ${NOMBRE_MONEDA[m]}`} value={c.minimoOperativo[m]} onChange={(v) => setImporte("minimoOperativo", m, v)} />
+              ))}
+            </div>
           </div>
           {e("importes") && <div className="mt-2"><ValidationMessage tipo="error">{e("importes")}</ValidationMessage></div>}
         </section>
@@ -217,6 +268,16 @@ function FormularioCaja({ inicial, onClose }: { inicial: Caja | null; onClose: (
             ]}
           />
           <SelectField id="caja-arqueo" label="Frecuencia de arqueo ordinario" value={c.frecuenciaArqueo} onChange={(v) => set("frecuenciaArqueo", v as FrecuenciaArqueo)} options={FRECUENCIAS} hint="Alerta si no se cumple." />
+          <FormField
+            id="caja-margen"
+            label="Margen de alerta de caja sin cerrar (minutos)"
+            type="number"
+            inputMode="numeric"
+            value={String(c.margenAlertaMin)}
+            onChange={(v) => set("margenAlertaMin", v === "" ? 0 : Math.max(0, Math.round(Number(v)) || 0))}
+            error={e("margenAlertaMin")}
+            hint="Propuesto, pendiente de confirmar. Pasada la hora de fin más este margen, una caja abierta avisa al tesorero y al supervisor."
+          />
           <SelectField id="caja-cuenta" label="Cuenta contable asociada" required value={c.cuentaContable} onChange={(v) => set("cuentaContable", v)} options={cuentasOpciones} error={e("cuentaContable")} className="sm:col-span-2" />
         </div>
       </div>
@@ -236,6 +297,12 @@ const COLUMNAS = (sucursales: { id: string; nombre: string }[]): Columna<Caja>[]
       [...(c.tesoreroId ? [`${nombreUsuario(c.tesoreroId)} (tesorero)`] : []), ...c.cajeros.filter((x) => x.estado === "ACTIVO").map((x) => nombreUsuario(x.usuarioId))].join(", "),
   },
   { clave: "horario", label: "Horario", ancho: "w-28", valor: (c) => `${c.horarioDesde} a ${c.horarioHasta}` },
+  {
+    clave: "dias",
+    label: "Días",
+    ancho: "w-32",
+    valor: (c) => (c.diasOperativos ?? []).length === 7 ? "Todos" : ORDEN_DIAS.filter((d) => (c.diasOperativos ?? []).includes(d)).map((d) => DIAS_SEMANA[d].slice(0, 3)).join(" "),
+  },
 ];
 
 export function Cajas() {

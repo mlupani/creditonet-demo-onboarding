@@ -4,7 +4,11 @@ import assert from "node:assert/strict";
 import { CAJAS_INICIALES, DENOMINACIONES_INICIALES, SUCURSALES_INICIALES, USUARIOS_CAJA } from "./caja-datos";
 import {
   autorizarMovimiento,
+  bloqueoCaja,
   cargarArqueoRelevo,
+  cerrarSucursal,
+  habilitarFueraDeHorario,
+  reabrirSucursal,
   cargarBoletaDeposito,
   conciliarDeposito,
   crearMovimiento,
@@ -34,7 +38,7 @@ import {
   saldoCaja,
   totalRecuento,
 } from "./caja-reglas";
-import { cajaStores as S, fijarUsuarioActual, reiniciarCaja } from "./caja-store";
+import { cajaStores as S, fijarFechaDemo, fijarHoraDemo, fijarUsuarioActual, reiniciarCaja } from "./caja-store";
 
 const den = DENOMINACIONES_INICIALES;
 const contar = (moneda: "ARS" | "USD", importe: number) => recuentoSugerido(den, moneda, importe);
@@ -49,7 +53,11 @@ function abrir(cajaId: string, usuario: string, monedas: ("ARS" | "USD")[] = ["A
   assert.ok(r.ok, r.ok ? "" : r.error);
 }
 
-beforeEach(() => reiniciarCaja());
+// La fecha operativa es fija (un miércoles laborable) para que los tests no dependan del día en que corren.
+beforeEach(() => {
+  reiniciarCaja();
+  fijarFechaDemo("2026-11-18");
+});
 
 test("el recuento suma billetes y monedas por moneda y sugiere el importe exacto", () => {
   const detalle = contar("ARS", 123456);
@@ -291,6 +299,104 @@ test("cambio de turno: relevo con arqueo y aceptación del entrante", () => {
   como("luis-pereyra");
   const mal = recibirTurno(id, contar("ARS", 590000));
   assert.ok(mal.ok && mal.estado === "CON_INCIDENCIA");
+});
+
+test("feriados y días operativos: la caja no abre, salvo excepción del tesorero", () => {
+  como("ana-gomez");
+  fijarFechaDemo("2026-11-23"); // feriado trasladado
+  const feriado = registrarApertura("CAJ-003", { detalle: contar("ARS", 600000) });
+  assert.ok(!feriado.ok && /feriado/.test(feriado.error));
+  fijarFechaDemo("2026-11-21"); // sábado
+  const sabado = registrarApertura("CAJ-003", { detalle: contar("ARS", 600000) });
+  assert.ok(!sabado.ok && /sábado/.test(sabado.error));
+  como("ana-gomez");
+  assert.ok(!habilitarFueraDeHorario("CAJ-003", "ana-gomez", "17:00", "cierre de mes").ok, "sólo el tesorero habilita");
+  como("tomas-ruiz");
+  assert.ok(habilitarFueraDeHorario("CAJ-003", "ana-gomez", "17:00", "cierre de mes").ok);
+  como("ana-gomez");
+  assert.ok(registrarApertura("CAJ-003", { detalle: contar("ARS", 600000) }).ok);
+});
+
+test("fuera del horario no se envía ni se recibe, salvo excepción", () => {
+  abrir("CAJ-002", "tomas-ruiz", ["ARS", "USD"]);
+  como("marta-diaz");
+  autorizarMovimiento("MT-0002", true, "");
+  como("tomas-ruiz");
+  fijarHoraDemo("19:00");
+  const tarde = enviarMovimiento("MT-0002", contar("ARS", 400000), true);
+  assert.ok(!tarde.ok && /horario/.test(tarde.error));
+  assert.ok(habilitarFueraDeHorario("CAJ-002", "tomas-ruiz", "20:00", "entrega urgente").ok);
+  assert.ok(enviarMovimiento("MT-0002", contar("ARS", 400000), true).ok);
+});
+
+test("mínimo operativo y reserva: al autorizar se reserva y no se puede comprometer más", () => {
+  // Tesoro de Bariloche: saldo $ 8.000.000 y mínimo $ 500.000 => 7.500.000 comprometibles.
+  como("tomas-ruiz");
+  const pedir = (importe: number) =>
+    crearMovimiento({
+      tipoId: "TMT-005",
+      origenId: "CAJ-002",
+      destino: { tipo: "CAJA", cajaId: "CAJ-001" },
+      moneda: "ARS",
+      importe,
+      motivo: "Remesa",
+      transportista: { tipo: "EMPLEADO", nombre: "A", documento: "1" },
+      precinto: "",
+      observaciones: "",
+    });
+  const a = pedir(7000000);
+  const b = pedir(1000000);
+  assert.ok(a.ok && b.ok);
+  como("marta-diaz");
+  assert.ok(autorizarMovimiento(a.ok ? a.movimientoId : "", true, "").ok);
+  const sobrepasa = autorizarMovimiento(b.ok ? b.movimientoId : "", true, "");
+  assert.ok(!sobrepasa.ok && /mínimo/.test(sobrepasa.error), "reservó 7.000.000: sólo quedan 500.000 sobre el mínimo");
+  como("tomas-ruiz");
+  assert.ok(!pedir(1100000).ok, "la reserva descuenta del saldo disponible para pedir");
+});
+
+test("cierre de sucursal: exige cajas cerradas, bloquea la fecha y se reabre con un supervisor", () => {
+  abrir("CAJ-003", "ana-gomez");
+  como("tomas-ruiz");
+  const abierta = cerrarSucursal("SUC-002");
+  assert.ok(!abierta.ok && /sigue abierta/.test(abierta.error));
+  como("ana-gomez");
+  assert.ok(registrarCierre("CAJ-003", { detalle: contar("ARS", 600000) }).ok);
+  como("ana-gomez");
+  assert.ok(!cerrarSucursal("SUC-002").ok, "sólo el tesorero de la sucursal");
+  como("tomas-ruiz");
+  const cierre = cerrarSucursal("SUC-002");
+  assert.ok(cierre.ok);
+  assert.ok(!cerrarSucursal("SUC-002").ok, "ya cerró");
+  assert.match(bloqueoCaja("CAJ-002") ?? "", /cerró la fecha/);
+  assert.ok(!reabrirSucursal(cierre.ok ? cierre.cierreId : "", "x").ok, "el tesorero no puede reabrir lo que cerró");
+  como("marta-diaz");
+  assert.ok(!reabrirSucursal(cierre.ok ? cierre.cierreId : "", " ").ok, "falta el motivo");
+  assert.ok(reabrirSucursal(cierre.ok ? cierre.cierreId : "", "faltó una rendición").ok);
+  assert.equal(bloqueoCaja("CAJ-002"), undefined);
+});
+
+test("cierre de sucursal: no con movimientos en tránsito", () => {
+  abrir("CAJ-002", "tomas-ruiz", ["ARS", "USD"]);
+  como("marta-diaz");
+  autorizarMovimiento("MT-0002", true, "");
+  como("tomas-ruiz");
+  enviarMovimiento("MT-0002", contar("ARS", 400000), true);
+  assert.ok(registrarCierre("CAJ-002", { detalle: Object.assign({}, contar("ARS", saldo("CAJ-002")), contar("USD", saldo("CAJ-002", "USD"))) }).ok);
+  const r = cerrarSucursal("SUC-002");
+  assert.ok(!r.ok && /en tránsito/.test(r.error));
+});
+
+test("arqueo de un tesoro con sus cajas de cajero en el mismo corte", () => {
+  como("raul-molina"); // supervisor: no es responsable de ninguna caja
+  assert.ok(!iniciarArqueo("CAJ-003", "ORDINARIO", ["CAJ-004"]).ok, "sólo un tesoro incluye cajas");
+  const r = iniciarArqueo("CAJ-002", "ORDINARIO", ["CAJ-003"]);
+  assert.ok(r.ok && r.arqueoIds.length === 2);
+  const [a, b] = S.arqueos.get();
+  assert.equal(a.corte, b.corte);
+  assert.equal(a.grupoId, b.grupoId);
+  assert.ok(a.grupoId);
+  assert.ok(!iniciarArqueo("CAJ-002", "ORDINARIO").ok, "el tesoro ya está en arqueo");
 });
 
 test("ABM: reglas de sucursales y cajas", () => {

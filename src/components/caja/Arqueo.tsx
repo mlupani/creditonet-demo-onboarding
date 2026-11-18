@@ -28,6 +28,7 @@ function ActaArqueo({ arqueo, caja, onClose }: { arqueo: Arqueo; caja: Caja; onC
           ["Caja", `${caja.nombre} (${caja.id})`],
           ["Controlador", nombreUsuario(arqueo.controladorId)],
           ["Ventana de control", `${arqueo.corte} a ${arqueo.fin ?? "—"}`],
+          ...(arqueo.grupoId ? ([["Corte compartido", `Grupo ${arqueo.grupoId}`]] as [string, string][]) : []),
           ["Resultado", conforme ? "Conforme" : "Con diferencia"],
           ...(arqueo.ajusteAprobado
             ? ([["Ajuste autorizado", `${nombreUsuario(arqueo.ajusteAprobado.supervisorId)} · ${arqueo.ajusteAprobado.fechaHora}`]] as [string, string][])
@@ -54,6 +55,7 @@ function ArqueoEnCurso({ arqueo, caja, controla }: { arqueo: Arqueo; caja: Caja;
         </p>
         <StatusBadge tone="info">{TIPO_LABEL[arqueo.tipo]}</StatusBadge>
         <StatusBadge tone="warning">En curso</StatusBadge>
+        {arqueo.grupoId && <StatusBadge tone="neutral">Corte compartido</StatusBadge>}
       </div>
       <p className="mt-1 text-sm text-ink-600">
         Corte: {arqueo.corte} · Controlador: {nombreUsuario(arqueo.controladorId)}. Los movimientos están congelados y las operaciones nuevas suspendidas hasta finalizar.
@@ -103,6 +105,39 @@ function ArqueoEnCurso({ arqueo, caja, controla }: { arqueo: Arqueo; caja: Caja;
   );
 }
 
+// Arqueos en curso del mismo corte: una pestaña por caja, cada una con su recuento y su cierre.
+function GrupoEnCurso({ arqueos, cajas, usuarioId }: { arqueos: Arqueo[]; cajas: Caja[]; usuarioId: string }) {
+  const [elegido, setElegido] = useState(arqueos[0].id);
+  const activo = arqueos.find((a) => a.id === elegido) ?? arqueos[0];
+  const caja = cajas.find((c) => c.id === activo.cajaId);
+  return (
+    <div>
+      <p className="mb-2 text-sm text-ink-600">
+        Corte único {arqueos[0].corte} · grupo {arqueos[0].grupoId} · {arqueos.length} cajas
+      </p>
+      <div role="tablist" aria-label="Cajas del arqueo" className="mb-3 flex flex-wrap gap-1 rounded-lg bg-ink-100 p-0.5">
+        {arqueos.map((a) => {
+          const c = cajas.find((x) => x.id === a.cajaId);
+          return (
+            <button
+              key={a.id}
+              type="button"
+              role="tab"
+              aria-selected={a.id === activo.id}
+              onClick={() => setElegido(a.id)}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${a.id === activo.id ? "bg-white text-brand-700 shadow-xs" : "text-ink-500 hover:text-ink-800"}`}
+            >
+              {c?.nombre ?? a.cajaId}
+              <span className="ml-1.5 text-[10px] font-medium text-ink-400">{a.conteos.length > 0 ? `${a.conteos.length} conteo${a.conteos.length > 1 ? "s" : ""}` : "sin contar"}</span>
+            </button>
+          );
+        })}
+      </div>
+      {caja && <ArqueoEnCurso key={activo.id} arqueo={activo} caja={caja} controla={activo.controladorId === usuarioId} />}
+    </div>
+  );
+}
+
 export function PantallaArqueo() {
   const { cajas, arqueos, usuario } = useCajaDatos();
   const motivos = useMotivosDiferencia().filter((m) => m.estado === "ACTIVO");
@@ -111,6 +146,7 @@ export function PantallaArqueo() {
   const [cajaElegida, setCajaElegida] = useState("");
   const cajaId = candidatas.some((c) => c.id === cajaElegida) ? cajaElegida : (candidatas[0]?.id ?? "");
   const [tipo, setTipo] = useState<TipoArqueo>("SORPRESIVO");
+  const [incluidas, setIncluidas] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [acta, setActa] = useState<string | null>(null);
   const [ajuste, setAjuste] = useState<Arqueo | null>(null);
@@ -119,11 +155,28 @@ export function PantallaArqueo() {
   const [fTipo, setFTipo] = useState("");
   const [fResultado, setFResultado] = useState("");
 
+  const cajaElegidaObj = candidatas.find((c) => c.id === cajaId);
+  const incluibles =
+    cajaElegidaObj?.tipo === "TESORO_SUCURSAL"
+      ? cajas.filter((c) => c.tipo === "CAJA_CAJERO" && c.estado === "ACTIVO" && c.sucursalId === cajaElegidaObj.sucursalId)
+      : [];
+  const incluidasValidas = incluidas.filter((id) => incluibles.some((c) => c.id === id));
+  const alternarIncluida = (id: string) => setIncluidas((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]));
+
+  // Los arqueos de un mismo corte se muestran juntos.
   const enCurso = arqueos.filter((a) => a.estado === "EN_CURSO");
+  const gruposEnCurso: Arqueo[][] = [];
+  for (const a of enCurso) {
+    const g = a.grupoId ? gruposEnCurso.find((x) => x[0].grupoId === a.grupoId) : undefined;
+    if (g) g.push(a);
+    else gruposEnCurso.push([a]);
+  }
+  const finDeGrupo = (a: Arqueo) =>
+    a.grupoId ? arqueos.filter((x) => x.grupoId === a.grupoId).reduce((m, x) => ((x.fin ?? "") > m ? (x.fin ?? "") : m), "") : (a.fin ?? "");
   const historial = arqueos
     .filter((a) => a.estado === "FINALIZADO")
     .filter((a) => (!fCaja || a.cajaId === fCaja) && (!fTipo || a.tipo === fTipo) && (!fResultado || a.resultado === fResultado))
-    .sort((a, b) => (b.fin ?? "").localeCompare(a.fin ?? ""));
+    .sort((a, b) => finDeGrupo(b).localeCompare(finDeGrupo(a)) || (a.grupoId ?? "").localeCompare(b.grupoId ?? "") || a.id.localeCompare(b.id));
   const vencidas = cajas.filter((c) => c.estado === "ACTIVO" && arqueoVencido(c, arqueos, hoy()));
   const cajaDe = (id: string) => cajas.find((c) => c.id === id);
   const actaArqueo = arqueos.find((a) => a.id === acta);
@@ -160,10 +213,31 @@ export function PantallaArqueo() {
                   <option value="ORDINARIO">Ordinario</option>
                 </select>
               </label>
-              <Button onClick={() => setError(aError(iniciarArqueo(cajaId, tipo)))} disabled={!cajaId}>
+              <Button
+                onClick={() => {
+                  const r = iniciarArqueo(cajaId, tipo, incluidasValidas);
+                  setError(aError(r));
+                  if (r.ok) setIncluidas([]);
+                }}
+                disabled={!cajaId}
+              >
                 Iniciar arqueo (corte)
               </Button>
             </div>
+          )}
+          {puede && incluibles.length > 0 && (
+            <fieldset className="mt-4">
+              <legend className="text-sm font-semibold text-ink-900">Incluir en el mismo corte</legend>
+              <p className="text-xs text-ink-500">Cajas de cajero de la sucursal: se arquean con el mismo corte y cada una tiene su recuento y su acta.</p>
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5">
+                {incluibles.map((c) => (
+                  <label key={c.id} className="flex items-center gap-2 text-sm text-ink-700">
+                    <input type="checkbox" checked={incluidasValidas.includes(c.id)} onChange={() => alternarIncluida(c.id)} className="h-4 w-4" />
+                    {c.nombre}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           )}
           <ErrorBanner error={error} />
         </div>
@@ -173,9 +247,10 @@ export function PantallaArqueo() {
         <Card className="mb-6">
           <CardHeader title="Arqueos en curso" />
           <div className="space-y-4 p-5">
-            {enCurso.map((a) => {
-              const c = cajaDe(a.cajaId);
-              return c ? <ArqueoEnCurso key={a.id} arqueo={a} caja={c} controla={a.controladorId === usuario.id} /> : null;
+            {gruposEnCurso.map((g) => {
+              if (g.length > 1) return <GrupoEnCurso key={g[0].grupoId} arqueos={g} cajas={cajas} usuarioId={usuario.id} />;
+              const c = cajaDe(g[0].cajaId);
+              return c ? <ArqueoEnCurso key={g[0].id} arqueo={g[0]} caja={c} controla={g[0].controladorId === usuario.id} /> : null;
             })}
           </div>
         </Card>
@@ -221,8 +296,11 @@ export function PantallaArqueo() {
               </thead>
               <tbody className="divide-y divide-ink-100">
                 {historial.map((a) => (
-                  <tr key={a.id}>
-                    <td className="px-4 py-3 font-mono text-xs font-bold text-brand-700">{a.id}</td>
+                  <tr key={a.id} className={a.grupoId ? "bg-brand-50/30" : undefined}>
+                    <td className={`px-4 py-3 font-mono text-xs font-bold text-brand-700 ${a.grupoId ? "border-l-4 border-brand-300" : ""}`}>
+                      {a.id}
+                      {a.grupoId && <span className="block text-[10px] font-medium text-ink-400">Corte compartido · {a.grupoId}</span>}
+                    </td>
                     <td className="px-4 py-3">{cajaDe(a.cajaId)?.nombre}</td>
                     <td className="px-4 py-3">{TIPO_LABEL[a.tipo]}</td>
                     <td className="px-4 py-3">{nombreUsuario(a.controladorId)}</td>

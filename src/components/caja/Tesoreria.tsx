@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { esResponsable, esSupervisor, puedeAprobar } from "@/lib/caja-reglas";
+import { disponibleParaAutorizar, esResponsable, esSupervisor, puedeAprobar, reservado, saldoCaja } from "@/lib/caja-reglas";
 import { autorizarMovimiento, nombreCaja } from "@/lib/caja-operaciones";
 import { nombreUsuario, useCajaDatos } from "@/lib/caja-store";
 import { formatNumber } from "@/lib/format";
-import type { Caja, MovimientoTesoreria, PedidoRefuerzo, UsuarioCaja } from "@/lib/caja-tipos";
+import { monedasDe, type Caja, type MovimientoTesoreria, type PedidoRefuerzo, type UsuarioCaja } from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -53,7 +53,7 @@ type Modal =
   | { tipo: "enviar" | "recibir" | "incidencia" | "boleta" | "detalle" | "autorizar" | "rechazar"; mov: MovimientoTesoreria };
 
 export function PantallaTesoreria() {
-  const { cajas, movimientos, pedidos, usuario } = useCajaDatos();
+  const { cajas, movimientos, pedidos, usuario, libro } = useCajaDatos();
   const supervisa = esSupervisor(usuario);
   const visibles: Caja[] = supervisa ? cajas.filter((c) => c.estado === "ACTIVO") : cajasPropias(cajas, usuario);
   const [elegida, setElegida] = useState<string | null>(null);
@@ -63,6 +63,7 @@ export function PantallaTesoreria() {
   const [modal, setModal] = useState<Modal | null>(null);
 
   const todo = supervisa && !cajaId;
+  const cajaActual = cajas.find((c) => c.id === cajaId);
   const toca = (m: MovimientoTesoreria) =>
     todo || m.origenId === cajaId || (m.destino.tipo === "CAJA" && m.destino.cajaId === cajaId);
   const delOrigen = (m: MovimientoTesoreria) => todo || m.origenId === cajaId;
@@ -174,6 +175,40 @@ export function PantallaTesoreria() {
         </div>
       </div>
 
+      {cajaActual && (
+        <Card className="mt-4 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Fondos de {cajaActual.nombre}</p>
+          <div className="mt-2 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+            {monedasDe(cajaActual.moneda).map((m) => {
+              const saldo = saldoCaja(libro, cajaActual.id, m);
+              const reserva = reservado(movimientos, cajaActual.id, m);
+              const minimo = cajaActual.minimoOperativo?.[m] ?? 0;
+              const disponible = disponibleParaAutorizar(libro, movimientos, cajaActual, m);
+              return (
+                <dl key={m} className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+                  <div>
+                    <dt className="text-xs text-ink-500">Saldo</dt>
+                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, saldo)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-500">Reservado</dt>
+                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, reserva)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-500">Mínimo operativo</dt>
+                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, minimo)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-500">Disponible</dt>
+                    <dd className={`font-semibold tabular-nums ${disponible <= 0 ? "text-danger-700" : "text-success-700"}`}>{dinero(m, Math.max(0, disponible))}</dd>
+                  </div>
+                </dl>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       <div role="tablist" className="mt-5 flex flex-wrap gap-1.5">
         {SECCIONES.map((s) => (
           <button
@@ -265,7 +300,9 @@ export function PantallaTesoreria() {
                     <td className="px-3 py-3 text-right tabular-nums">{dinero(m.moneda, m.importe)}</td>
                     <td className="px-3 py-3">
                       <StatusBadge tone={TONO[m.estado]}>{estadoTexto(m)}</StatusBadge>
-                      {m.estado === "AUTORIZADO" && <span className="mt-0.5 block text-xs text-ink-500">Listo para enviar</span>}
+                      {m.estado === "AUTORIZADO" && (
+                        <span className="mt-0.5 block text-xs text-ink-500">Listo para enviar · Reservado: {dinero(m.moneda, m.importe)}</span>
+                      )}
                     </td>
                     <td className="px-3 py-3">{acciones(m, usuario)}</td>
                   </tr>

@@ -15,7 +15,7 @@ import {
   resolverPedidoRefuerzo,
   type NuevoMovimiento,
 } from "@/lib/caja-operaciones";
-import { totalRecuento } from "@/lib/caja-reglas";
+import { disponibleParaAutorizar, totalRecuento } from "@/lib/caja-reglas";
 import { nombreUsuario, useCajaDatos } from "@/lib/caja-store";
 import {
   ESTADOS_MOVIMIENTO,
@@ -54,7 +54,7 @@ export const estadoTexto = (m: MovimientoTesoreria) =>
   m.estado === "ACEPTADO" && m.destino.tipo === "BANCO" ? "Depositado" : (ESTADOS_MOVIMIENTO.find((e) => e.id === m.estado)?.label ?? m.estado);
 
 export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: string; onClose: () => void }) {
-  const { cajas, tipos, usuario } = useCajaDatos();
+  const { cajas, tipos, usuario, libro, movimientos } = useCajaDatos();
   const propias = cajasPropias(cajas, usuario);
   const tiposActivos = tipos.filter((t) => t.estado === "ACTIVO" && !t.descripcion.startsWith("Pedido"));
   const [tipoId, setTipoId] = useState(tiposActivos[0]?.id ?? "");
@@ -132,7 +132,18 @@ export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: st
             <SelectField id="mt-destino" label="Destino" required value={destinoElegido} onChange={setDestinoId} options={destinosCaja.map((c) => ({ value: c.id, label: `${c.nombre} · ${TIPO_CAJA_LABEL[c.tipo]}` }))} placeholder="Sin destinos para este tipo" />
           )}
           <SelectField id="mt-moneda" label="Moneda" required value={monedaElegida} onChange={(v) => setMoneda(v as Moneda)} options={monedas.map((m) => ({ value: m, label: m === "ARS" ? "Pesos" : "Dólares" }))} />
-          <MoneyInput id="mt-importe" label="Importe" required value={importe} onChange={setImporte} />
+          <MoneyInput
+            id="mt-importe"
+            label="Importe"
+            required
+            value={importe}
+            onChange={setImporte}
+            hint={
+              origen
+                ? `Disponible en ${origen.nombre}: ${dinero(monedaElegida, Math.max(0, disponibleParaAutorizar(libro, movimientos, origen, monedaElegida)))} (saldo menos lo reservado y el mínimo operativo).`
+                : undefined
+            }
+          />
           <FormField id="mt-motivo" label="Motivo" required value={motivo} onChange={setMotivo} className="sm:col-span-2" />
           <SelectField id="mt-transp" label="Responsable del traslado" value={tipoTransp} onChange={(v) => setTipoTransp(v as "EMPLEADO" | "EMPRESA")} options={[{ value: "EMPLEADO", label: "Empleado" }, { value: "EMPRESA", label: "Empresa transportadora" }]} />
           <FormField id="mt-nombre" label="Nombre" value={nombre} onChange={setNombre} />

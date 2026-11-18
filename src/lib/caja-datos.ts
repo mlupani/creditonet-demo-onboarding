@@ -6,6 +6,7 @@ import type {
   CuentaBancaria,
   CuentaContable,
   Denominacion,
+  Feriado,
   MotivoDiferencia,
   MovimientoCaja,
   MovimientoTesoreria,
@@ -71,6 +72,12 @@ export const CUENTAS_BANCARIAS_INICIALES: CuentaBancaria[] = [
   cuentaBancaria(1, "Banco Nación", "CUENTA_CORRIENTE", "0110-4412-90", "0110441230044129000019", "ARS", "1.1.03.01"),
   cuentaBancaria(2, "Banco Galicia", "CUENTA_CORRIENTE", "0070-8821-15", "0070882130008821150014", "ARS", "1.1.03.02"),
   cuentaBancaria(3, "Banco Galicia", "CAJA_AHORRO", "0070-8821-77", "0070882140008821770016", "USD", "1.1.03.03"),
+];
+
+export const FERIADOS_INICIALES: Feriado[] = [
+  { id: "FER-001", fecha: "2026-11-23", descripcion: "Día de la Soberanía Nacional (trasladado)", estado: "ACTIVO" },
+  { id: "FER-002", fecha: "2026-12-08", descripcion: "Inmaculada Concepción de María", estado: "ACTIVO" },
+  { id: "FER-003", fecha: "2026-12-25", descripcion: "Navidad", estado: "ACTIVO" },
 ];
 
 export const SUCURSALES_INICIALES: Sucursal[] = [
@@ -144,6 +151,9 @@ export const CAJAS_INICIALES: Caja[] = [
     toleranciaFaltante: { ARS: 1000, USD: 5 },
     relevo: "POR_TESORO",
     frecuenciaArqueo: "MENSUAL",
+    diasOperativos: [1, 2, 3, 4, 5],
+    minimoOperativo: { ARS: 5000000, USD: 10000 },
+    margenAlertaMin: 30,
     cuentaContable: "1.1.01.01",
     estado: "ACTIVO",
     fechaAlta: "2026-11-01",
@@ -164,6 +174,9 @@ export const CAJAS_INICIALES: Caja[] = [
     toleranciaFaltante: { ARS: 1000, USD: 5 },
     relevo: "POR_TESORO",
     frecuenciaArqueo: "MENSUAL",
+    diasOperativos: [1, 2, 3, 4, 5],
+    minimoOperativo: { ARS: 500000, USD: 500 },
+    margenAlertaMin: 30,
     cuentaContable: "1.1.01.02",
     estado: "ACTIVO",
     fechaAlta: "2026-11-01",
@@ -187,6 +200,9 @@ export const CAJAS_INICIALES: Caja[] = [
     toleranciaFaltante: { ARS: 500, USD: 0 },
     relevo: "DIRECTO",
     frecuenciaArqueo: "SEMANAL",
+    diasOperativos: [1, 2, 3, 4, 5],
+    minimoOperativo: { ARS: 0, USD: 0 },
+    margenAlertaMin: 30,
     cuentaContable: "1.1.01.03",
     estado: "ACTIVO",
     fechaAlta: "2026-11-01",
@@ -207,6 +223,9 @@ export const CAJAS_INICIALES: Caja[] = [
     toleranciaFaltante: { ARS: 200, USD: 0 },
     relevo: "POR_TESORO",
     frecuenciaArqueo: "MENSUAL",
+    diasOperativos: [1, 2, 3, 4, 5],
+    minimoOperativo: { ARS: 0, USD: 0 },
+    margenAlertaMin: 30,
     cuentaContable: "1.1.01.04",
     estado: "ACTIVO",
     fechaAlta: "2026-11-01",

@@ -6,6 +6,7 @@ import {
   CAJAS_INICIALES,
   CUENTAS_BANCARIAS_INICIALES,
   DENOMINACIONES_INICIALES,
+  FERIADOS_INICIALES,
   HORA_DEMO_INICIAL,
   LIBRO_INICIAL,
   MOTIVOS_DIFERENCIA_INICIALES,
@@ -16,14 +17,16 @@ import {
   USUARIOS_CAJA,
   USUARIO_CAJA_INICIAL,
 } from "./caja-datos";
-import { fechaHoraIso, fechaIso } from "./caja-reglas";
+import { fechaIso } from "./caja-reglas";
 import type {
   Arqueo,
   Caja,
   CambioTurno,
+  CierreSucursal,
   CuentaBancaria,
   Denominacion,
   ExcepcionHorario,
+  Feriado,
   Jornada,
   MotivoDiferencia,
   MovimientoCaja,
@@ -35,18 +38,29 @@ import type {
   UsuarioCaja,
 } from "./caja-tipos";
 
-function crear<T extends { id: string }>(nombre: string, inicial: T[]) {
+function crear<T extends { id: string }>(nombre: string, inicial: T[], migrar?: (registro: T) => T) {
   return crearStoreAbm<T>({
     clave: `creditonet.caja.${nombre}.v1`,
     inicial,
     aplicar: () => {},
     valido: (r) => typeof r?.id === "string",
+    migrar,
   });
 }
 
+// Cajas guardadas antes de los días operativos, el mínimo operativo y el margen de alerta.
+const migrarCaja = (c: Caja): Caja => ({
+  ...c,
+  diasOperativos: c.diasOperativos ?? [1, 2, 3, 4, 5],
+  minimoOperativo: c.minimoOperativo ?? { ARS: 0, USD: 0 },
+  margenAlertaMin: c.margenAlertaMin ?? 30,
+});
+
 export const cajaStores = {
   sucursales: crear<Sucursal>("sucursales", SUCURSALES_INICIALES),
-  cajas: crear<Caja>("cajas", CAJAS_INICIALES),
+  cajas: crear<Caja>("cajas", CAJAS_INICIALES, migrarCaja),
+  feriados: crear<Feriado>("feriados", FERIADOS_INICIALES),
+  cierresSucursal: crear<CierreSucursal>("cierres-sucursal", []),
   denominaciones: crear<Denominacion>("denominaciones", DENOMINACIONES_INICIALES),
   cuentasBancarias: crear<CuentaBancaria>("cuentas-bancarias", CUENTAS_BANCARIAS_INICIALES),
   motivos: crear<MotivoDiferencia>("motivos", MOTIVOS_DIFERENCIA_INICIALES),
@@ -61,18 +75,22 @@ export const cajaStores = {
   auditoria: crear<RegistroAuditoria>("auditoria", []),
 };
 
-// Contexto de la demo: qué usuario opera el módulo y qué hora operativa simula (así apertura y cierre
-// se pueden probar a cualquier hora real).
+// Contexto de la demo: qué usuario opera el módulo y qué fecha y hora operativas simula (así apertura,
+// cierre, feriados y alertas se pueden probar cualquier día y a cualquier hora real). Una fecha vacía
+// significa la fecha real.
 interface ContextoCaja {
   id: "ctx";
   usuarioId: string;
   hora: string;
+  fecha: string;
 }
-const CONTEXTO_INICIAL: ContextoCaja[] = [{ id: "ctx", usuarioId: USUARIO_CAJA_INICIAL, hora: HORA_DEMO_INICIAL }];
-const contextoStore = crear<ContextoCaja>("contexto", CONTEXTO_INICIAL);
+const CONTEXTO_INICIAL: ContextoCaja[] = [{ id: "ctx", usuarioId: USUARIO_CAJA_INICIAL, hora: HORA_DEMO_INICIAL, fecha: "" }];
+const contextoStore = crear<ContextoCaja>("contexto", CONTEXTO_INICIAL, (c) => ({ ...c, fecha: c.fecha ?? "" }));
 
 export const useSucursales = cajaStores.sucursales.useLista;
 export const useCajas = cajaStores.cajas.useLista;
+export const useFeriados = cajaStores.feriados.useLista;
+export const useCierresSucursal = cajaStores.cierresSucursal.useLista;
 export const useDenominaciones = cajaStores.denominaciones.useLista;
 export const useCuentasBancarias = cajaStores.cuentasBancarias.useLista;
 export const useMotivosDiferencia = cajaStores.motivos.useLista;
@@ -93,9 +111,9 @@ export const nombreUsuario = (id: string) => usuarioPorId(id)?.nombre ?? id;
 
 export const usuarioActual = (): UsuarioCaja => usuarioPorId(contexto().usuarioId) ?? USUARIOS_CAJA[0];
 export const horaActual = () => contexto().hora;
-// La fecha es la real (cada día tiene su jornada); la hora es la simulada.
-export const hoy = () => fechaIso(new Date());
-export const ahoraTexto = () => fechaHoraIso(new Date(), horaActual());
+// Fecha y hora operativas: las simuladas de la demo y, si no se fijó fecha, la real del día.
+export const hoy = () => contexto().fecha || fechaIso(new Date());
+export const ahoraTexto = () => `${hoy()} ${horaActual()}`;
 
 export function useUsuarioActual(): UsuarioCaja {
   const lista = contextoStore.useLista();
@@ -103,6 +121,13 @@ export function useUsuarioActual(): UsuarioCaja {
 }
 export function useHoraDemo(): string {
   return contextoStore.useLista()[0]?.hora ?? HORA_DEMO_INICIAL;
+}
+export function useFechaDemo(): string {
+  return contextoStore.useLista()[0]?.fecha || fechaIso(new Date());
+}
+// Una fecha vacía vuelve a la fecha real.
+export function fijarFechaDemo(fecha: string) {
+  if (fecha === "" || /^\d{4}-\d{2}-\d{2}$/.test(fecha)) contextoStore.commit([{ ...contexto(), fecha }]);
 }
 export function fijarUsuarioActual(usuarioId: string) {
   contextoStore.commit([{ ...contexto(), usuarioId }]);
@@ -169,6 +194,8 @@ export function reiniciarCaja() {
   contextoStore.commit(CONTEXTO_INICIAL);
   cajaStores.sucursales.commit(SUCURSALES_INICIALES);
   cajaStores.cajas.commit(CAJAS_INICIALES);
+  cajaStores.feriados.commit(FERIADOS_INICIALES);
+  cajaStores.cierresSucursal.commit([]);
   cajaStores.denominaciones.commit(DENOMINACIONES_INICIALES);
   cajaStores.cuentasBancarias.commit(CUENTAS_BANCARIAS_INICIALES);
   cajaStores.motivos.commit(MOTIVOS_DIFERENCIA_INICIALES);
@@ -188,6 +215,8 @@ export function useCajaDatos() {
   return {
     sucursales: useSucursales(),
     cajas: useCajas(),
+    feriados: useFeriados(),
+    cierresSucursal: useCierresSucursal(),
     denominaciones: useDenominaciones(),
     motivos: useMotivosDiferencia(),
     tipos: useTiposMovimiento(),
@@ -200,5 +229,6 @@ export function useCajaDatos() {
     excepciones: useExcepciones(),
     usuario: useUsuarioActual(),
     hora: useHoraDemo(),
+    fecha: useFechaDemo(),
   };
 }
