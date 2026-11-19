@@ -40,6 +40,7 @@ export type DatosComprobante = Pick<
   Comprobante,
   | "tipoId"
   | "fechaComprobante"
+  | "fechaVencimiento"
   | "prefijo"
   | "numero"
   | "noGravado"
@@ -93,6 +94,12 @@ export function erroresComprobante(datos: DatosComprobante, ctx: ContextoComprob
 
   if (!fechaValida(datos.fechaComprobante)) e.fechaComprobante = "Ingresá una fecha válida.";
   else if (datos.fechaComprobante > (ctx.hoy ?? fechaIso(new Date()))) e.fechaComprobante = "La fecha no puede ser futura.";
+
+  if (datos.fechaVencimiento) {
+    if (!fechaValida(datos.fechaVencimiento)) e.fechaVencimiento = "Ingresá una fecha de vencimiento válida.";
+    else if (fechaValida(datos.fechaComprobante) && datos.fechaVencimiento < datos.fechaComprobante)
+      e.fechaVencimiento = "El vencimiento no puede ser anterior a la fecha del comprobante.";
+  }
 
   if (!/^\d{1,5}$/.test(datos.prefijo.trim())) e.prefijo = "El prefijo (punto de venta) tiene hasta 5 dígitos.";
   if (!/^\d{1,8}$/.test(datos.numero.trim())) e.numero = "El número tiene hasta 8 dígitos.";
@@ -160,6 +167,7 @@ export interface FilaCuentaCorriente {
   comprobanteId: string;
   fechaCarga: string; // en los pagos, la fecha de pago
   fechaComprobante: string; // vacía en los pagos
+  vencimiento: string; // vacío en los pagos
   tipoDescripcion: string; // en los pagos, "Pago"
   numero: string; // en los pagos, la orden de pago
   importe: number; // con signo: positivo suma deuda, negativo la descuenta
@@ -188,6 +196,7 @@ export function cuentaCorriente(
       comprobanteId: c.id,
       fechaCarga: c.fechaCarga,
       fechaComprobante: c.fechaComprobante,
+      vencimiento: vencimientoDe(c),
       tipoDescripcion: tipo?.descripcion ?? c.tipoId,
       numero: `${c.prefijo}-${c.numero}`,
       importe: efecto(c) * c.total,
@@ -204,6 +213,7 @@ export function cuentaCorriente(
       comprobanteId: p.comprobanteId,
       fechaCarga: p.fecha,
       fechaComprobante: "",
+      vencimiento: "",
       tipoDescripcion: "Pago",
       numero: p.ordenPago,
       importe: -p.importe,
@@ -236,6 +246,62 @@ export const saldoProveedor = (
   pagos: PagoProveedor[],
   tipos: TipoComprobante[]
 ): number => cuentaCorriente(proveedorId, comprobantes, pagos, tipos).saldoActual;
+
+// ---------- Vencimientos y antigüedad de deuda ----------
+
+// Sin fecha de vencimiento el comprobante vence a la vista: el día de su fecha.
+export const vencimientoDe = (c: Pick<Comprobante, "fechaVencimiento" | "fechaComprobante">): string =>
+  c.fechaVencimiento || c.fechaComprobante;
+
+const aDias = (fecha: string) => {
+  const [a, m, d] = fecha.split("-").map(Number);
+  return Math.round(Date.UTC(a, m - 1, d) / 86400000);
+};
+
+// Días de atraso a la fecha de corte: positivo si ya venció, 0 o negativo si todavía no.
+export const diasDeAtraso = (vencimiento: string, fechaCorte: string): number => aDias(fechaCorte) - aDias(vencimiento);
+
+export type TramoDeuda = "NO_VENCIDO" | "D1_30" | "D31_60" | "D61_90" | "MAS_90";
+export const TRAMOS_DEUDA: { id: TramoDeuda; label: string }[] = [
+  { id: "NO_VENCIDO", label: "No vencido" },
+  { id: "D1_30", label: "1–30" },
+  { id: "D31_60", label: "31–60" },
+  { id: "D61_90", label: "61–90" },
+  { id: "MAS_90", label: "Más de 90" },
+];
+
+export const tramoDeAtraso = (dias: number): TramoDeuda =>
+  dias <= 0 ? "NO_VENCIDO" : dias <= 30 ? "D1_30" : dias <= 60 ? "D31_60" : dias <= 90 ? "D61_90" : "MAS_90";
+
+export type DeudaPorTramo = Record<TramoDeuda, number> & { total: number };
+const deudaVacia = (): DeudaPorTramo => ({ NO_VENCIDO: 0, D1_30: 0, D31_60: 0, D61_90: 0, MAS_90: 0, total: 0 });
+
+// Deuda con cada proveedor por antigüedad: sólo comprobantes que impactan en la cuenta corriente, de
+// efecto suma y con saldo pendiente. Los tramos cuentan los días vencidos a la fecha de corte.
+export function antiguedadDeuda(
+  comprobantes: Comprobante[],
+  pagos: PagoProveedor[],
+  tipos: TipoComprobante[],
+  fechaCorte: string,
+  proveedorId?: string
+): { porProveedor: ({ proveedorId: string } & DeudaPorTramo)[]; total: DeudaPorTramo } {
+  const porProveedor = new Map<string, DeudaPorTramo>();
+  const total = deudaVacia();
+  for (const c of comprobantes) {
+    if (!IMPACTAN.includes(c.estado) || (proveedorId && c.proveedorId !== proveedorId)) continue;
+    if (tipos.find((t) => t.id === c.tipoId)?.efecto === "RESTA") continue;
+    const saldo = saldoComprobante(c, pagos);
+    if (!(saldo > 0)) continue;
+    const tramo = tramoDeAtraso(diasDeAtraso(vencimientoDe(c), fechaCorte));
+    const fila = porProveedor.get(c.proveedorId) ?? deudaVacia();
+    for (const destino of [fila, total]) {
+      destino[tramo] = redondear(destino[tramo] + saldo);
+      destino.total = redondear(destino.total + saldo);
+    }
+    porProveedor.set(c.proveedorId, fila);
+  }
+  return { porProveedor: [...porProveedor].map(([id, f]) => ({ proveedorId: id, ...f })), total };
+}
 
 // ---------- Permisos ----------
 

@@ -426,6 +426,40 @@ Tests (npm test):
 - Conciliaciones: importacion de extractos y consulta (detalle pendiente).
 - Carga masiva: se sube CSV (no hay lector de xlsx); hay un archivo de ejemplo.
 - Lectura de QR, vinculacion de telefono y validacion ante ARCA: simulados.
-- Los pagos a proveedores no escriben en el libro de caja ni en saldos
-  bancarios; solo validan saldo de caja si el medio es efectivo.
+- (Ver seccion 11: los pagos a proveedores ya impactan en caja y bancos.)
 - Tasa de acuerdos sin tipo (TNA/TEM) ni renovacion: son sugerencias.
+
+
+==========================================================================
+11. AMPLIACION POSTERIOR A LA v2
+==========================================================================
+
+11.1 Pagos a proveedores integrados con caja y bancos
+- Pago desde una caja: asienta un egreso en el libro ("Pago a proveedor ... OP").
+  El efectivo exige usuario de la caja, caja abierta, sin bloqueo, en horario y
+  saldo suficiente. Transferencia y cheque figuran en el libro sin mover el
+  efectivo (regla 1.5 del documento).
+- Pago desde una cuenta bancaria: descuenta del saldo bancario (Posicion,
+  Conciliaciones e Historico). No se bloquea por saldo insuficiente (la cuenta
+  puede operar en descubierto); la pantalla avisa si queda negativo. Las
+  cuentas de ejemplo tienen un saldo inicial.
+- Pago con cheque desde el banco: emite un cheque propio de una chequera de esa
+  cuenta (proximo numero libre del rango) y el pago guarda la referencia.
+
+11.2 Vencimiento de comprobantes y antiguedad de deuda
+- Campo "Fecha de vencimiento" (opcional; vacio = vence a la vista) en la carga
+  manual y como ultima columna de la plantilla masiva.
+- Posicion de proveedores: deuda pendiente por tramos (No vencido, 1-30, 31-60,
+  61-90, mas de 90 dias de atraso), con vencidos resaltados y exportacion.
+- Cuenta corriente, Consultas y Ordenes de pago muestran vencimiento y dias de
+  atraso. Las notas de credito no entran en los tramos.
+
+11.3 Cheques y valores en custodia (/caja/cheques, menu Bancos)
+- Cheques de terceros en custodia de una caja: recibir, depositar, rechazar,
+  entregar. Cheques propios emitidos desde chequeras: emitir, cobrar, anular,
+  con la numeracion usada y disponible por chequera. Auditoria y exportacion.
+- Apertura y cierre: seccion "Valores en custodia" no bloqueante; se confirma la
+  cantidad contada, separada del efectivo (la diferencia exige observacion y
+  queda en la jornada y el acta).
+- Simplificacion: depositar un cheque cambia su estado, sin generar movimiento
+  de tesoreria ni asiento en el libro.

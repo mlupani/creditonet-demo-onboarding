@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { conciliarDeposito, bancoTexto, nombreCaja, saldosBancarios } from "@/lib/caja-operaciones";
 import { useCuentasBancarias, useMovimientosTesoreria, useUsuarioActual } from "@/lib/caja-store";
+import { usePagosProveedor } from "@/lib/proveedores-store";
 import { SIMBOLO, TIPO_CUENTA_LABEL, type MovimientoTesoreria } from "@/lib/caja-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -70,6 +71,7 @@ export function PantallaBancos() {
   const cuentas = useCuentasBancarias();
   const movimientos = useMovimientosTesoreria();
   const usuario = useUsuarioActual();
+  usePagosProveedor(); // los pagos a proveedores bajan el saldo de la cuenta
   const [filtro, setFiltro] = useState<Filtro>("PENDIENTES");
   const [aConciliar, setAConciliar] = useState<MovimientoTesoreria | null>(null);
 
@@ -120,8 +122,12 @@ export function PantallaBancos() {
                   {TIPO_CUENTA_LABEL[c.tipo]} {c.numero} · {c.moneda}
                   {c.estado === "SUSPENDIDO" && " · suspendida"}
                 </p>
-                <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400">Acreditado y conciliado</p>
-                <p className="text-xl font-bold tabular-nums text-ink-900">{dinero(c.moneda, s?.conciliado ?? 0)}</p>
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400">Saldo de la cuenta</p>
+                <p className={`text-xl font-bold tabular-nums ${(s?.saldo ?? 0) < 0 ? "text-danger-700" : "text-ink-900"}`}>{dinero(c.moneda, s?.saldo ?? 0)}</p>
+                <p className="mt-1 text-xs text-ink-500">
+                  Inicial {dinero(c.moneda, s?.saldoInicial ?? 0)} + conciliado {dinero(c.moneda, s?.conciliado ?? 0)} − pagos a proveedores{" "}
+                  {dinero(c.moneda, s?.pagado ?? 0)}
+                </p>
                 <p className="mt-2 text-xs text-ink-500">
                   En tránsito o sin conciliar:{" "}
                   <span className="font-semibold tabular-nums text-ink-700">

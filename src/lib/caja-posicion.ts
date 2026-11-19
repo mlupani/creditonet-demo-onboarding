@@ -20,6 +20,7 @@ import {
   type Sucursal,
   type TipoCaja,
 } from "./caja-tipos";
+import { MEDIO_PAGO_LABEL, type PagoProveedor } from "./proveedores-tipos";
 
 export interface DatosPosicion {
   cajas: Caja[];
@@ -241,9 +242,9 @@ export const alertasPara = (alertas: Alerta[], roles: RolCaja[]) =>
 // Reporte de la evolución de saldos por caja y por cuenta bancaria. Una "serie" es una caja en una
 // moneda o una cuenta bancaria. Supuestos:
 //  - Caja: saldo = ingresos − egresos del libro, sólo CONFIRMADO y en EFECTIVO (igual que `saldoCaja`).
-//  - Banco: saldo = depósitos conciliados (igual que `saldosBancarios`: "acreditado y conciliado"),
-//    fechados el día de la acreditación. Lo que está en tránsito o sin conciliar no es saldo. El
-//    modelo no registra egresos bancarios, así que el banco sólo tiene ingresos.
+//  - Banco: saldo = saldo inicial (fechado el día de alta de la cuenta) + depósitos conciliados (fechados
+//    el día de la acreditación) − pagos a proveedores con origen en la cuenta (fechados el día del pago),
+//    igual que `saldosBancarios`. Lo que está en tránsito o sin conciliar no es saldo.
 
 export type Periodicidad = "DIARIA" | "MENSUAL";
 
@@ -270,6 +271,8 @@ export interface DatosHistorico {
   cuentas: CuentaBancaria[];
   libro: MovimientoCaja[];
   movimientos: MovimientoTesoreria[];
+  // Pagos a proveedores: los de origen BANCO son los egresos de las cuentas.
+  pagos?: PagoProveedor[];
 }
 
 export function seriesDe(datos: DatosHistorico, cajaIds: string[], cuentaIds: string[], moneda: Moneda | ""): Serie[] {
@@ -297,16 +300,31 @@ export function seriesDe(datos: DatosHistorico, cajaIds: string[], cuentaIds: st
       id: cuenta.id,
       nombre: `${cuenta.banco} ${cuenta.numero}`,
       moneda: cuenta.moneda,
-      movimientos: datos.movimientos
-        .filter((x) => x.destino.tipo === "BANCO" && x.destino.cuentaId === cuenta.id && x.envio && x.conciliacion)
-        .map((x) => ({
-          fecha: x.conciliacion!.fechaAcreditacion,
-          hora: "",
-          descripcion: `Depósito ${x.id} acreditado`,
-          comprobante: x.conciliacion!.referencia || x.boletaDeposito || x.id,
-          ingreso: x.importe,
-          egreso: 0,
-        })),
+      movimientos: [
+        ...((cuenta.saldoInicial ?? 0) !== 0
+          ? [{ fecha: cuenta.fechaAlta, hora: "", descripcion: "Saldo inicial", comprobante: cuenta.id, ingreso: cuenta.saldoInicial ?? 0, egreso: 0 }]
+          : []),
+        ...datos.movimientos
+          .filter((x) => x.destino.tipo === "BANCO" && x.destino.cuentaId === cuenta.id && x.envio && x.conciliacion)
+          .map((x) => ({
+            fecha: x.conciliacion!.fechaAcreditacion,
+            hora: "",
+            descripcion: `Depósito ${x.id} acreditado`,
+            comprobante: x.conciliacion!.referencia || x.boletaDeposito || x.id,
+            ingreso: x.importe,
+            egreso: 0,
+          })),
+        ...(datos.pagos ?? [])
+          .filter((p) => p.origenTipo === "BANCO" && p.origenId === cuenta.id)
+          .map((p) => ({
+            fecha: p.fecha,
+            hora: "",
+            descripcion: `Pago a proveedor ${p.ordenPago} · ${MEDIO_PAGO_LABEL[p.medio]}`,
+            comprobante: p.id,
+            ingreso: 0,
+            egreso: p.importe,
+          })),
+      ],
     });
   }
   return series;

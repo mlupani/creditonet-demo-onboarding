@@ -34,6 +34,7 @@ import {
   siguienteId,
   usuarioActual,
 } from "./caja-store";
+import { provStores } from "./proveedores-store";
 import {
   TIPO_CUENTA_LABEL,
   esTesoro,
@@ -46,6 +47,7 @@ import {
   type DestinoMovimiento,
   type DetalleRecuento,
   type Jornada,
+  type MedioMovimiento,
   type Moneda,
   type MovimientoCaja,
   type MovimientoTesoreria,
@@ -75,6 +77,7 @@ interface Asiento {
   diferencia?: boolean;
   incidencia?: boolean;
   nota?: string;
+  medio?: MedioMovimiento; // por defecto, efectivo
 }
 
 // Agrega una fila al libro. Los asientos no se editan ni se borran.
@@ -93,7 +96,7 @@ function asentar(a: Asiento): MovimientoCaja {
     moneda: a.moneda,
     ingreso: a.ingreso ?? 0,
     egreso: a.egreso ?? 0,
-    medio: "EFECTIVO",
+    medio: a.medio ?? "EFECTIVO",
     responsableId: usuarioActual().id,
     estado: "CONFIRMADO",
     refId: a.refId,
@@ -700,20 +703,66 @@ export function conciliarDeposito(id: string, importe: number, fechaAcreditacion
 
 export interface SaldoBancario {
   cuentaId: string;
+  saldoInicial: number; // con el que la cuenta entra al módulo
   conciliado: number; // acreditaciones conciliadas
+  pagado: number; // pagos a proveedores con origen en la cuenta (egresos bancarios)
+  saldo: number; // saldo inicial + conciliado − pagado
   enTransito: number; // enviado al banco y todavía sin conciliar
 }
 
-// Posición de cada cuenta bancaria a partir de los depósitos: lo conciliado y lo que viaja.
+// Posición de cada cuenta bancaria: saldo inicial, depósitos conciliados menos pagos a proveedores, y lo
+// que todavía viaja. El saldo puede quedar negativo (la cuenta puede operar en descubierto o con acuerdo).
 export function saldosBancarios(): SaldoBancario[] {
+  const pagos = provStores.pagos.get();
   return S.cuentasBancarias.get().map((c) => {
     const deps = S.movimientos.get().filter((m) => m.destino.tipo === "BANCO" && m.destino.cuentaId === c.id && m.envio);
+    const conciliado = deps.filter((m) => m.conciliacion).reduce((s, m) => s + m.importe, 0);
+    const pagado = pagos.filter((p) => p.origenTipo === "BANCO" && p.origenId === c.id).reduce((s, p) => s + p.importe, 0);
+    const saldoInicial = c.saldoInicial ?? 0;
     return {
       cuentaId: c.id,
-      conciliado: deps.filter((m) => m.conciliacion).reduce((s, m) => s + m.importe, 0),
+      saldoInicial,
+      conciliado,
+      pagado,
+      saldo: saldoInicial + conciliado - pagado,
       enTransito: deps.filter((m) => !m.conciliacion).reduce((s, m) => s + m.importe, 0),
     };
   });
+}
+
+// Pago a proveedor desde una caja. El efectivo sale del libro y exige lo mismo que cualquier operación de
+// caja (responsable, apertura activa, sin bloqueos, dentro del horario y con saldo). Una transferencia o
+// un cheque figuran en el libro sin mover el efectivo.
+export function pagarDesdeCaja(p: {
+  cajaId: string;
+  medio: MedioMovimiento;
+  importe: number;
+  descripcion: string;
+  comprobante: string;
+  refId?: string;
+}): Res<{ asientoId: string }> {
+  const caja = cajaPorId(p.cajaId);
+  if (!caja || caja.estado !== "ACTIVO") return error("Elegí una caja activa.");
+  if (!monedasDe(caja.moneda).includes("ARS")) return error("La caja no opera en pesos.");
+  if (p.medio === "EFECTIVO") {
+    const u = usuarioActual();
+    if (!puedeOperarCaja(u) || !esResponsable(caja, u.id)) return error("Sólo un usuario asignado a la caja puede pagar en efectivo desde ella.");
+    if (!abierta(caja.id)) return error("La caja no está abierta: sin apertura no se puede operar.");
+    const bloqueo = bloqueoCaja(caja.id) ?? errorFueraDeHorario(caja);
+    if (bloqueo) return error(bloqueo);
+    if (p.importe > saldoCaja(S.libro.get(), caja.id, "ARS")) return error("La caja no tiene saldo suficiente en pesos.");
+  }
+  const mov = asentar({
+    cajaId: caja.id,
+    tipo: "Pago a proveedor",
+    descripcion: p.descripcion,
+    comprobante: p.comprobante,
+    moneda: "ARS",
+    egreso: p.importe,
+    refId: p.refId,
+    medio: p.medio,
+  });
+  return { ok: true, asientoId: mov.id };
 }
 
 // ---------- Pedidos de refuerzo ----------

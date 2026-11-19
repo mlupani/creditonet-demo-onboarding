@@ -87,6 +87,7 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
 
   const [tipoId, setTipoId] = useState(inicial?.tipoId ?? proveedor.tipoComprobanteId);
   const [fecha, setFecha] = useState(inicial?.fechaComprobante ?? "");
+  const [vencimiento, setVencimiento] = useState(inicial?.fechaVencimiento ?? "");
   const [prefijo, setPrefijo] = useState(inicial?.prefijo ?? "");
   const [numero, setNumero] = useState(inicial?.numero ?? "");
   const [noGravado, setNoGravado] = useState(textoNumero(inicial?.noGravado ?? 0));
@@ -115,6 +116,7 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
   const datos = (): DatosComprobante => ({
     tipoId,
     fechaComprobante: fecha,
+    fechaVencimiento: vencimiento || undefined,
     prefijo,
     numero,
     noGravado: aNumero(noGravado),
@@ -227,6 +229,15 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
           value={fecha}
           onChange={setFecha}
           error={e("fechaComprobante")}
+        />
+        <FormField
+          id={`${prefijoId}-vencimiento`}
+          label="Fecha de vencimiento"
+          type="date"
+          value={vencimiento}
+          onChange={setVencimiento}
+          error={e("fechaVencimiento")}
+          hint="Opcional. Sin fecha, vence a la vista."
         />
         <FormField
           id={`${prefijoId}-prefijo`}

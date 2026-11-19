@@ -166,6 +166,7 @@ export const MENU: readonly MenuEntrada[] = [
         children: [
           caja("Alta de acuerdos", "/caja/acuerdos"),
           caja("Alta de chequeras", "/caja/chequeras"),
+          caja("Cheques y valores", "/caja/cheques"),
           caja("Conciliaciones", "/caja/bancos"),
         ],
       },

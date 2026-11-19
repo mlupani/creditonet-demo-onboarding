@@ -91,6 +91,8 @@ export interface Comprobante {
   proveedorId: string;
   tipoId: string;
   fechaComprobante: string; // fecha real de emisión
+  // Opcional: si falta, el comprobante vence a la vista (el día de su fecha).
+  fechaVencimiento?: string;
   prefijo: string; // punto de venta
   numero: string;
   noGravado: number;
@@ -132,6 +134,8 @@ export interface PagoProveedor {
   importe: number;
   usuarioId: string;
   asiento: string; // número de asiento contable simulado
+  asientoLibroId?: string; // fila del libro de caja (sólo con origen CAJA)
+  chequeId?: string; // cheque propio emitido (medio CHEQUE con origen BANCO)
 }
 
 // Lote de carga masiva por Excel: queda registrado quién lo subió, cuándo y qué se aceptó.

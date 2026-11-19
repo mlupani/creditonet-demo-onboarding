@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { bancoTexto, nombreCaja } from "@/lib/caja-operaciones";
-import { cuentaCorriente, formatearCuit, saldoComprobante, pagadoDe } from "@/lib/proveedores-reglas";
+import { hoy } from "@/lib/caja-store";
+import { cuentaCorriente, diasDeAtraso, formatearCuit, saldoComprobante, pagadoDe } from "@/lib/proveedores-reglas";
 import { useComprobantes, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
 import {
   ESTADO_COMPROBANTE_LABEL,
@@ -124,16 +125,21 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
     return true;
   });
   const pagoDe = (id: string) => pagos.find((p) => p.id === id);
+  // Días de atraso a la fecha operativa: sólo para facturas (suman deuda) con saldo pendiente.
+  const atrasoDe = (f: (typeof cc.filas)[number]) =>
+    f.tipoFila === "COMPROBANTE" && f.importe > 0 && f.saldoPendiente > 0 ? diasDeAtraso(f.vencimiento, hoy()) : undefined;
 
   const exportar = () =>
     descargarXlsx(`cuenta-corriente-${proveedorId}.xlsx`, "Cuenta corriente", [
       ["Proveedor", proveedor?.razonSocial ?? proveedorId, "Saldo inicial", String(cc.saldoInicial), "Saldo actual", String(cc.saldoActual)],
-      ["Fecha de carga o pago", "Fecha del comprobante", "Tipo", "Número u orden de pago", "Importe", "Pagos aplicados", "Saldo pendiente", "Saldo acumulado", "Estado"],
+      ["Fecha de carga o pago", "Fecha del comprobante", "Vencimiento", "Días de atraso", "Tipo", "Número u orden de pago", "Importe", "Pagos aplicados", "Saldo pendiente", "Saldo acumulado", "Estado"],
       ...filas.map((f) => {
         const c = comprobantes.find((x) => x.id === f.comprobanteId);
         return [
           f.fechaCarga,
           f.fechaComprobante,
+          f.vencimiento,
+          String(atrasoDe(f) ?? ""),
           f.tipoDescripcion,
           f.numero,
           String(f.importe),
@@ -196,11 +202,12 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
           <p className="px-5 py-8 text-center text-sm text-ink-400">No hay movimientos para mostrar.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[60rem] text-left text-sm">
+            <table className="w-full min-w-[66rem] text-left text-sm">
               <thead>
                 <tr className={ENCABEZADO}>
                   <Th>Carga / pago</Th>
                   <Th>Comprobante</Th>
+                  <Th>Vencimiento</Th>
                   <Th>Tipo</Th>
                   <Th>Número / OP</Th>
                   <Th derecha>Importe</Th>
@@ -218,6 +225,12 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
                     <tr key={f.clave} className={f.tipoFila === "PAGO" ? "bg-ink-25/60" : undefined}>
                       <td className="whitespace-nowrap px-3 py-3 text-ink-700">{f.fechaCarga}</td>
                       <td className="whitespace-nowrap px-3 py-3 text-ink-700">{f.fechaComprobante || "—"}</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-ink-700">
+                        {f.vencimiento || "—"}
+                        {atrasoDe(f) !== undefined && (atrasoDe(f) as number) > 0 && (
+                          <span className="block text-xs font-semibold text-danger-700">Vencido hace {atrasoDe(f)} d</span>
+                        )}
+                      </td>
                       <td className="px-3 py-3 text-ink-700">
                         {f.tipoDescripcion}
                         {pago && (

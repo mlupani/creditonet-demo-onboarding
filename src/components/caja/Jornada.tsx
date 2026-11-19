@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { aMinutos, esSupervisor, jornadaVigente } from "@/lib/caja-reglas";
 import { pendientesDeCaja, registrarApertura, registrarCierre, resolverApertura, resolverCierre, nombreCaja, type Res } from "@/lib/caja-operaciones";
-import { hoy, nombreUsuario, useCajaDatos } from "@/lib/caja-store";
-import { ESTADO_JORNADA_LABEL, monedasDe, type Caja, type Jornada, type MovimientoCaja } from "@/lib/caja-tipos";
+import { hoy, nombreUsuario, useCajaDatos, useCheques } from "@/lib/caja-store";
+import { ESTADO_JORNADA_LABEL, monedasDe, type Caja, type ConteoValores, type Jornada, type MovimientoCaja } from "@/lib/caja-tipos";
+import { registrarConteoValores } from "@/lib/cheques-operaciones";
+import { enCustodia, totalPorMoneda } from "@/lib/cheques-reglas";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActaDatos, ActaFirmas, ActaModal, ActaRecuento } from "./Acta";
 import { FlujoRecuento } from "./RecuentoForm";
-import { NotaModal, PaginaCaja, SelectorCaja, cajasPropias, dinero } from "./comunes";
+import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, cajasPropias, dinero } from "./comunes";
 
 const MARGEN_ALERTA_MIN = 30;
 export const aError = (r: Res): string | null => (r.ok ? null : r.error);
@@ -23,8 +25,83 @@ const TONO_ESTADO: Record<Jornada["estado"], "success" | "warning" | "neutral"> 
   CERRADA: "neutral",
 };
 
+const textoConteo = (c: ConteoValores) =>
+  `${c.declarados} contados de ${c.esperados} en custodia${c.conforme ? " (conforme)" : ` · diferencia: ${c.observacion ?? ""}`}`;
+
+// Cheques y valores en custodia: se cuentan aparte del efectivo y no cambian su diferencia ni bloquean
+// la apertura o el cierre. Si lo contado no coincide con el sistema queda la observación en la jornada.
+function ValoresEnCustodia({ caja, jornada, etapa }: { caja: Caja; jornada: Jornada | undefined; etapa: "apertura" | "cierre" }) {
+  const cheques = useCheques();
+  const lista = enCustodia(caja.id, cheques);
+  const totales = totalPorMoneda(lista);
+  const conteo = etapa === "apertura" ? jornada?.valoresApertura : jornada?.valoresCierre;
+  const [declarados, setDeclarados] = useState("");
+  const [observacion, setObservacion] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const puedeContar = jornada && (etapa === "apertura" || jornada.estado === "ABIERTA" || jornada.estado === "PEND_CIERRE" || jornada.estado === "CERRADA");
+  if (lista.length === 0 && !conteo) return null;
+  const monedas = monedasDe(caja.moneda).filter((m) => totales[m] > 0);
+  const coincide = declarados !== "" && Number(declarados) === lista.length;
+  const registrar = () => {
+    if (!jornada) return;
+    const r = registrarConteoValores(jornada.id, etapa === "apertura" ? "APERTURA" : "CIERRE", Number(declarados), observacion);
+    setError(r.ok ? null : r.error);
+  };
+  return (
+    <div className="mt-5 rounded-xl border border-ink-200 p-4">
+      <h3 className="text-sm font-semibold text-ink-900">Valores en custodia</h3>
+      <p className="mt-0.5 text-xs text-ink-500">Se cuentan por separado del efectivo; no cambian su diferencia ni bloquean el {etapa}.</p>
+      <p className="mt-2 text-sm text-ink-700">
+        {lista.length} {lista.length === 1 ? "cheque" : "cheques"}
+        {monedas.length > 0 && ` · ${monedas.map((m) => dinero(m, totales[m])).join(" y ")}`}
+      </p>
+      {lista.length > 0 && (
+        <ul className="mt-1 space-y-0.5 text-xs text-ink-500">
+          {lista.map((c) => (
+            <li key={c.id}>
+              {c.id} · {c.banco} {c.numero} · {c.parte} · {dinero(c.moneda, c.importe)} · vence {c.fechaPago}
+            </li>
+          ))}
+        </ul>
+      )}
+      {conteo ? (
+        <Banner tone={conteo.conforme ? "success" : "warning"} title={conteo.conforme ? "Conteo conforme" : "Conteo con diferencia"} className="mt-3">
+          {textoConteo(conteo)} · {nombreUsuario(conteo.usuarioId)} ({conteo.fechaHora})
+        </Banner>
+      ) : puedeContar ? (
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Cheques contados</span>
+            <input
+              type="number"
+              min={0}
+              value={declarados}
+              onChange={(e) => setDeclarados(e.target.value)}
+              aria-label="Cheques contados"
+              className={`${CLASE_INPUT} w-32`}
+            />
+          </label>
+          {declarados !== "" && !coincide && (
+            <label className="block min-w-64 flex-1">
+              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Observación de la diferencia</span>
+              <input value={observacion} onChange={(e) => setObservacion(e.target.value)} aria-label="Observación de la diferencia" className={CLASE_INPUT} />
+            </label>
+          )}
+          <Button size="sm" variant="outline" onClick={registrar} disabled={declarados === ""}>
+            {coincide ? "Confirmar conteo" : "Registrar conteo"}
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-ink-500">El conteo se confirma una vez registrada la {etapa}.</p>
+      )}
+      <ErrorBanner error={error} />
+    </div>
+  );
+}
+
 function ActaJornada({ jornada, caja, etapa, onClose }: { jornada: Jornada; caja: Caja; etapa: "apertura" | "cierre"; onClose: () => void }) {
   const recuento = etapa === "apertura" ? jornada.apertura : jornada.cierre;
+  const valores = etapa === "apertura" ? jornada.valoresApertura : jornada.valoresCierre;
   if (!recuento) return null;
   return (
     <ActaModal open onClose={onClose} titulo={`Acta de ${etapa} de caja`}>
@@ -35,6 +112,7 @@ function ActaJornada({ jornada, caja, etapa, onClose }: { jornada: Jornada; caja
           ["Fecha", jornada.fecha],
           ["Jornada", jornada.id],
           ["Responsable", nombreUsuario(recuento.usuarioId)],
+          ...(valores ? [["Valores en custodia", textoConteo(valores)] as [string, string]] : []),
         ]}
       />
       <ActaRecuento caja={caja} titulo={etapa === "apertura" ? "Recuento de apertura" : "Recuento de cierre"} recuento={recuento} />
@@ -211,6 +289,8 @@ export function PantallaJornada({ modo }: { modo: "apertura" | "cierre" }) {
                   {jornada.estado === "CERRADA" && `La caja se cerró hoy (${nombreCaja(jornada.cajaId)}): el cierre es definitivo y se bloquearon los movimientos de la fecha.`}
                 </Banner>
               ) : null}
+
+              <ValoresEnCustodia caja={caja} jornada={jornada} etapa={modo} />
             </>
           )}
         </div>

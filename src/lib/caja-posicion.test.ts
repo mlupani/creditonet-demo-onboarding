@@ -21,6 +21,7 @@ import {
   type Serie,
 } from "./caja-posicion";
 import type { Arqueo, Jornada, MovimientoCaja, Recuento } from "./caja-tipos";
+import { PAGOS_INICIALES } from "./proveedores-datos";
 
 const recuento: Recuento = {
   usuarioId: "ana-gomez",
@@ -223,12 +224,24 @@ test("las series de caja usan sólo efectivo confirmado y las de banco sólo dep
     { ...ajuste("CAJ-003", "ana-gomez", 0, 10, 1), medio: "TARJETA" as const },
     { ...ajuste("CAJ-003", "ana-gomez", 0, 20, 2), estado: "ANULADO" as const },
   ];
-  const series = seriesDe({ cajas: CAJAS_INICIALES, cuentas: CUENTAS_BANCARIAS_INICIALES, libro, movimientos: [dep, sinConciliar] }, ["CAJ-003"], [cuenta.id], "");
+  const pagoBanco = { ...PAGOS_INICIALES[0], id: "PAG-X", origenTipo: "BANCO" as const, origenId: cuenta.id, importe: 300, fecha: "2026-11-13" };
+  const pagoCaja = { ...PAGOS_INICIALES[0], id: "PAG-Y", origenTipo: "CAJA" as const, origenId: "CAJ-003", importe: 50 };
+  const series = seriesDe(
+    { cajas: CAJAS_INICIALES, cuentas: CUENTAS_BANCARIAS_INICIALES, libro, movimientos: [dep, sinConciliar], pagos: [pagoBanco, pagoCaja] },
+    ["CAJ-003"],
+    [cuenta.id],
+    ""
+  );
   const caja = series.find((x) => x.tipo === "CAJA")!;
   assert.equal(saldosAFecha([caja], "2099-01-01")[0].saldo, 600000, "no cuenta ni tarjeta ni anulados");
   const banco = series.find((x) => x.tipo === "BANCO")!;
-  assert.equal(banco.movimientos.length, 1);
-  assert.equal(banco.movimientos[0].fecha, "2026-11-11", "se fecha el día de la acreditación");
+  assert.deepEqual(
+    banco.movimientos.map((m) => [m.descripcion.split(" ")[0], m.fecha, m.ingreso, m.egreso]),
+    [["Saldo", cuenta.fechaAlta, cuenta.saldoInicial, 0], ["Depósito", "2026-11-11", 900, 0], ["Pago", "2026-11-13", 0, 300]],
+    "saldo inicial, depósito conciliado fechado en la acreditación y pago a proveedor (sólo con origen en la cuenta)"
+  );
+  assert.equal(saldosAFecha([banco], "2026-11-12")[0].saldo, (cuenta.saldoInicial ?? 0) + 900);
+  assert.equal(saldosAFecha([banco], "2026-11-13")[0].saldo, (cuenta.saldoInicial ?? 0) + 900 - 300);
   assert.equal(seriesDe({ cajas: CAJAS_INICIALES, cuentas: CUENTAS_BANCARIAS_INICIALES, libro, movimientos: [] }, ["CAJ-003", "CAJ-002"], [], "USD").length, 1, "el filtro de moneda aplica");
 });
 

@@ -2,8 +2,8 @@
 // los stores y devuelve { ok } o un error en español para mostrar en pantalla. Actúa el usuario
 // seleccionado en el módulo (usuarioActual) en la fecha y hora simuladas de la demo.
 
-import type { Res } from "./caja-operaciones";
-import { saldoCaja } from "./caja-reglas";
+import { pagarDesdeCaja, type Res } from "./caja-operaciones";
+import { emitirChequePropio } from "./cheques-operaciones";
 import { ahoraTexto, auditar, cajaStores, hoy, siguienteId, usuarioActual } from "./caja-store";
 import {
   erroresComprobante,
@@ -162,15 +162,18 @@ export function anularComprobante(id: string, motivo: string): Res<{ comprobante
 
 // ---------- Pagos ----------
 
-// Registra un pago (total o parcial) de un comprobante Para liquidar o con Pago parcial. Cuando el medio
-// es efectivo desde una caja sólo se valida que tenga saldo en el libro: el pago NO escribe en el libro
-// de caja (queda fuera del alcance de la demo).
+// Registra un pago (total o parcial) de un comprobante Para liquidar o con Pago parcial.
+// - Desde una caja: asienta un egreso en su libro. El efectivo exige caja abierta, sin bloqueos, dentro del
+//   horario y con saldo; una transferencia o un cheque figuran en el libro sin mover el efectivo.
+// - Desde una cuenta bancaria: es un egreso bancario (baja el saldo de la cuenta, que puede quedar en
+//   descubierto). Con medio cheque se emite un cheque propio, con chequera opcional.
 export function registrarPago(p: {
   comprobanteId: string;
   importe: number;
   medio: MedioPago;
   origenTipo: "CAJA" | "BANCO";
   origenId: string;
+  chequeraId?: string;
 }): Res<{ pago: PagoProveedor }> {
   const c = comprobantePorId(p.comprobanteId);
   if (!c) return error("No se encontró el comprobante.");
@@ -184,20 +187,47 @@ export function registrarPago(p: {
   if (!(p.importe > 0)) return error("Ingresá el importe del pago.");
   if (p.importe > saldo + 0.001) return error("El importe supera el saldo pendiente del comprobante.");
 
+  if (p.medio === "EFECTIVO" && p.origenTipo !== "CAJA") return error("El efectivo sale de una caja.");
+
+  const proveedor = P.proveedores.get().find((x) => x.id === c.proveedorId);
+  const id = siguienteId("PAG", pagos.map((x) => x.id), 4);
+  const ordenPago = c.ordenPago ?? "";
+  const numeroComp = `${c.prefijo}-${c.numero}`;
+  let asientoLibroId: string | undefined;
+  let chequeId: string | undefined;
+
   if (p.origenTipo === "CAJA") {
-    const caja = cajaStores.cajas.get().find((x) => x.id === p.origenId);
-    if (!caja || caja.estado !== "ACTIVO") return error("Elegí una caja activa.");
-    if (p.medio === "EFECTIVO" && saldoCaja(cajaStores.libro.get(), caja.id, "ARS") < p.importe) {
-      return error("La caja no tiene saldo suficiente en pesos.");
-    }
+    const r = pagarDesdeCaja({
+      cajaId: p.origenId,
+      medio: p.medio,
+      importe: p.importe,
+      descripcion: `Pago a proveedor ${proveedor?.razonSocial ?? c.proveedorId} · ${ordenPago}`,
+      comprobante: numeroComp,
+      refId: id,
+    });
+    if (!r.ok) return r;
+    asientoLibroId = r.asientoId;
   } else {
     const cuenta = cajaStores.cuentasBancarias.get().find((x) => x.id === p.origenId);
     if (!cuenta || cuenta.estado !== "ACTIVO") return error("Elegí una cuenta bancaria activa.");
+    if (cuenta.moneda !== "ARS") return error("Los pagos a proveedores se hacen en pesos: elegí una cuenta en pesos.");
+    if (p.medio === "CHEQUE") {
+      const r = emitirChequePropio({
+        cuentaId: cuenta.id,
+        importe: p.importe,
+        beneficiario: proveedor?.razonSocial ?? c.proveedorId,
+        fechaPago: hoy(),
+        referencia: `${ordenPago} · ${numeroComp}`,
+        chequeraId: p.chequeraId || undefined,
+      });
+      if (!r.ok) return r;
+      chequeId = r.cheque.id;
+    }
   }
 
   const pago: PagoProveedor = {
-    id: siguienteId("PAG", pagos.map((x) => x.id), 4),
-    ordenPago: c.ordenPago ?? "",
+    id,
+    ordenPago,
     comprobanteId: c.id,
     proveedorId: c.proveedorId,
     fecha: hoy(),
@@ -207,6 +237,8 @@ export function registrarPago(p: {
     importe: p.importe,
     usuarioId: usuarioActual().id,
     asiento: siguienteId("AS", pagos.map((x) => x.asiento), 4),
+    asientoLibroId,
+    chequeId,
   };
   P.pagos.commit([...pagos, pago]);
   const resta = saldoComprobante(c, [...pagos, pago]);
@@ -241,6 +273,7 @@ export const COLUMNAS_PLANTILLA: string[] = [
   "Percepción municipal 2",
   "Total",
   "Observaciones",
+  "Fecha de vencimiento", // opcional: vacía, vence a la vista
 ];
 
 export const generarPlantilla = (): string[][] => [COLUMNAS_PLANTILLA];
@@ -298,12 +331,16 @@ export function validarFilasLote(proveedorId: string, filas: string[][]): { acep
     const fecha = fechaDeFila(celdas[2]);
     if (!fechaValida(fecha)) return rechazar("Fecha inválida.");
 
+    const vencimiento = celdas[22].trim() === "" ? undefined : fechaDeFila(celdas[22]);
+    if (vencimiento !== undefined && !fechaValida(vencimiento)) return rechazar("Fecha de vencimiento inválida.");
+
     const n = celdas.slice(5, 21).map((x) => numero(x));
     if (n.some((x) => Number.isNaN(x))) return rechazar("Hay importes que no son numéricos.");
     const [noGravado, exento, subtotalGravado, b105, i105, b21, i21, b27, i27, percIva, ib1, ib2, ib3, mu1, mu2, total] = n;
     const datos: DatosComprobante = {
       tipoId: tipo.id,
       fechaComprobante: fecha,
+      fechaVencimiento: vencimiento,
       prefijo: celdas[3].trim().padStart(4, "0"),
       numero: celdas[4].trim().padStart(8, "0"),
       noGravado,

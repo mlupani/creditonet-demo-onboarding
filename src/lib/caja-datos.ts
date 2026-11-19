@@ -4,6 +4,7 @@
 import type {
   AcuerdoBancario,
   Caja,
+  Cheque,
   Chequera,
   TipoChequera,
   CuentaBancaria,
@@ -86,6 +87,7 @@ export const CUENTAS_BANCARIAS_INICIALES: CuentaBancaria[] = [
     oficialMail: "jferreyra@bna.example.com",
     mailSucursal: "plazademayo@bna.example.com",
     fechaApertura: "2024-03-12",
+    saldoInicial: 8000000,
   },
   {
     ...cuentaBancaria(2, "Banco Galicia", "CUENTA_CORRIENTE", "0070-8821-15", "0070882130008821150014", "ARS", "1.1.03.02"),
@@ -97,6 +99,7 @@ export const CUENTAS_BANCARIAS_INICIALES: CuentaBancaria[] = [
     oficialMail: "msosa@galicia.example.com",
     mailSucursal: "microcentro@galicia.example.com",
     fechaApertura: "2024-06-03",
+    saldoInicial: 3000000,
   },
   {
     ...cuentaBancaria(3, "Banco Galicia", "CAJA_AHORRO", "0070-8821-77", "0070882140008821770016", "USD", "1.1.03.03"),
@@ -108,6 +111,7 @@ export const CUENTAS_BANCARIAS_INICIALES: CuentaBancaria[] = [
     oficialMail: "msosa@galicia.example.com",
     mailSucursal: "microcentro@galicia.example.com",
     fechaApertura: "2025-01-20",
+    saldoInicial: 20000,
   },
 ];
 
@@ -126,6 +130,52 @@ export const TIPOS_CHEQUERA_INICIALES: TipoChequera[] = [
 export const CHEQUERAS_INICIALES: Chequera[] = [
   { id: "CHQ-001", tipoId: "TCH-001", cuentaId: "CB-001", fecha: "2026-10-05", desde: "10001", hasta: "10050", ...alta },
   { id: "CHQ-002", tipoId: "TCH-002", cuentaId: "CB-002", fecha: "2026-10-20", desde: "", hasta: "", ...alta },
+];
+
+const trazaAlta = (fechaHora: string, usuario: string, estado: Cheque["estado"], detalle: string): Cheque["traza"] => [
+  { estado, usuario, fechaHora, detalle },
+];
+
+// Cheques de terceros en custodia (uno vence en la semana) y propios emitidos de CHQ-001 y CHQ-002.
+export const CHEQUES_INICIALES: Cheque[] = [
+  {
+    id: "CHE-0001", origen: "TERCERO", forma: "FISICO", banco: "Banco Santander", numero: "00458120", importe: 185000, moneda: "ARS",
+    parte: "Distribuidora Norte SA", fechaEmision: "2026-11-10", fechaPago: "2026-11-23", cajaId: "CAJ-001",
+    estado: "EN_CUSTODIA", traza: trazaAlta("2026-11-10 10:30", "Carlos Ibarra", "EN_CUSTODIA", "Recibido en custodia"),
+    fechaAlta: "2026-11-10", usuarioAlta: "Carlos Ibarra",
+  },
+  {
+    id: "CHE-0002", origen: "TERCERO", forma: "ECHEQ", banco: "Banco Macro", numero: "E-7741002", importe: 420000, moneda: "ARS",
+    parte: "Servicios del Sur SRL", fechaEmision: "2026-11-12", fechaPago: "2026-12-12", cajaId: "CAJ-001",
+    estado: "EN_CUSTODIA", traza: trazaAlta("2026-11-12 11:05", "Carlos Ibarra", "EN_CUSTODIA", "Recibido en custodia"),
+    fechaAlta: "2026-11-12", usuarioAlta: "Carlos Ibarra",
+  },
+  {
+    id: "CHE-0003", origen: "TERCERO", forma: "FISICO", banco: "Banco Provincia", numero: "00921733", importe: 96500, moneda: "ARS",
+    parte: "Comercial Patagonia", fechaEmision: "2026-11-13", fechaPago: "2026-12-05", cajaId: "CAJ-002",
+    estado: "EN_CUSTODIA", traza: trazaAlta("2026-11-13 15:20", "Tomás Ruiz", "EN_CUSTODIA", "Recibido en custodia"),
+    fechaAlta: "2026-11-13", usuarioAlta: "Tomás Ruiz",
+  },
+  {
+    id: "CHE-0004", origen: "TERCERO", forma: "FISICO", banco: "Banco Itaú", numero: "00112908", importe: 2500, moneda: "USD",
+    parte: "Andes Import SA", fechaEmision: "2026-11-09", fechaPago: "2026-12-20", cajaId: "CAJ-001",
+    estado: "EN_CUSTODIA", traza: trazaAlta("2026-11-09 12:00", "Carlos Ibarra", "EN_CUSTODIA", "Recibido en custodia"),
+    fechaAlta: "2026-11-09", usuarioAlta: "Carlos Ibarra",
+  },
+  {
+    id: "CHE-0005", origen: "PROPIO", forma: "FISICO", banco: "Banco Nación", numero: "10001", importe: 310000, moneda: "ARS",
+    parte: "Papelera Central SA", fechaEmision: "2026-10-28", fechaPago: "2026-11-27", cuentaId: "CB-001", chequeraId: "CHQ-001",
+    referencia: "Factura 0001-00004412", estado: "EMITIDO",
+    traza: trazaAlta("2026-10-28 16:00", "Marina Costa", "EMITIDO", "Emitido desde chequera CHQ-001"),
+    fechaAlta: "2026-10-28", usuarioAlta: "Marina Costa",
+  },
+  {
+    id: "CHE-0006", origen: "PROPIO", forma: "ECHEQ", banco: "Banco Galicia", numero: "E-0001", importe: 150000, moneda: "ARS",
+    parte: "Limpieza Total SRL", fechaEmision: "2026-11-02", fechaPago: "2026-12-02", cuentaId: "CB-002", chequeraId: "CHQ-002",
+    referencia: "Factura 0003-00001289", estado: "EMITIDO",
+    traza: trazaAlta("2026-11-02 09:40", "Marina Costa", "EMITIDO", "Emitido desde chequera CHQ-002"),
+    fechaAlta: "2026-11-02", usuarioAlta: "Marina Costa",
+  },
 ];
 
 export const FERIADOS_INICIALES: Feriado[] = [

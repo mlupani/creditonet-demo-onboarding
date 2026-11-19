@@ -4,6 +4,7 @@ import Link from "next/link";
 import { saldosBancarios } from "@/lib/caja-operaciones";
 import { saldosCaja } from "@/lib/caja-reglas";
 import { useCajaDatos, useCuentasBancarias } from "@/lib/caja-store";
+import { usePagosProveedor } from "@/lib/proveedores-store";
 import { MONEDAS, NOMBRE_MONEDA, TIPO_CAJA_LABEL, TIPO_CUENTA_LABEL, monedasDe } from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -14,6 +15,7 @@ import { PaginaCaja, descargarXlsx, dinero } from "./comunes";
 export function PantallaPosicion() {
   const d = useCajaDatos();
   const cuentas = useCuentasBancarias();
+  usePagosProveedor(); // los pagos a proveedores desde el banco bajan el saldo: se vuelve a calcular al cambiar
   const bancarios = saldosBancarios();
 
   const cajas = d.cajas
@@ -29,7 +31,7 @@ export function PantallaPosicion() {
   const totalCajas = { ARS: 0, USD: 0 };
   for (const f of cajas) for (const m of monedasDe(f.caja.moneda)) totalCajas[m] += f.saldos[m];
   const totalBancos = { ARS: 0, USD: 0 };
-  for (const f of filasBanco) totalBancos[f.cuenta.moneda] += f.saldo?.conciliado ?? 0;
+  for (const f of filasBanco) totalBancos[f.cuenta.moneda] += f.saldo?.saldo ?? 0;
 
   const exportar = () =>
     descargarXlsx("posicion-de-saldos.xlsx", "Posición de saldos", [
@@ -42,7 +44,7 @@ export function PantallaPosicion() {
         `${f.cuenta.banco} ${f.cuenta.numero}`,
         TIPO_CUENTA_LABEL[f.cuenta.tipo],
         f.cuenta.moneda,
-        String(f.saldo?.conciliado ?? 0),
+        String(f.saldo?.saldo ?? 0),
         String(f.saldo?.enTransito ?? 0),
       ]),
       ...MONEDAS.map((m) => ["Total", "Cajas y bancos", "", m, String(totalCajas[m] + totalBancos[m]), ""]),
@@ -127,7 +129,7 @@ export function PantallaPosicion() {
                 <th className="px-3 py-2.5">Cuenta</th>
                 <th className="px-3 py-2.5">Tipo</th>
                 <th className="px-3 py-2.5">Moneda</th>
-                <th className="px-3 py-2.5 text-right">Acreditado y conciliado</th>
+                <th className="px-3 py-2.5 text-right">Saldo (inicial + conciliado − pagos)</th>
                 <th className="px-3 py-2.5 text-right">En tránsito o sin conciliar</th>
               </tr>
             </thead>
@@ -140,7 +142,7 @@ export function PantallaPosicion() {
                   </td>
                   <td className="px-3 py-3 text-ink-700">{TIPO_CUENTA_LABEL[f.cuenta.tipo]}</td>
                   <td className="px-3 py-3 text-ink-700">{NOMBRE_MONEDA[f.cuenta.moneda]}</td>
-                  <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{dinero(f.cuenta.moneda, f.saldo?.conciliado ?? 0)}</td>
+                  <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{dinero(f.cuenta.moneda, f.saldo?.saldo ?? 0)}</td>
                   <td className="px-3 py-3 text-right tabular-nums text-ink-700">{dinero(f.cuenta.moneda, f.saldo?.enTransito ?? 0)}</td>
                 </tr>
               ))}

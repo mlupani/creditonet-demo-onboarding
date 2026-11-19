@@ -183,6 +183,8 @@ export interface CuentaBancaria {
   oficialMail?: string;
   mailSucursal?: string;
   fechaApertura?: string;
+  // Saldo con el que la cuenta entra al módulo (antes de los depósitos conciliados y de los pagos).
+  saldoInicial?: number;
   estado: EstadoAbm;
   fechaAlta: string;
   usuarioAlta: string;
@@ -273,6 +275,63 @@ export interface Jornada {
   cierre?: Recuento;
   turnoUsuarioId: string; // cajero con el turno en curso
   rechazos: { etapa: "APERTURA" | "CIERRE"; aprobacion: Aprobacion }[];
+  // Conteo de cheques y valores en custodia, aparte del efectivo (no cambia su diferencia).
+  valoresApertura?: ConteoValores;
+  valoresCierre?: ConteoValores;
+}
+
+// Conteo de valores en custodia declarado al abrir o cerrar la caja.
+export interface ConteoValores {
+  usuarioId: string;
+  fechaHora: string;
+  esperados: number; // cheques en custodia según el sistema
+  declarados: number;
+  conforme: boolean;
+  observacion?: string; // sólo si no coincide
+}
+
+// Cheques y valores (v2: 1.1/1.2 "se cuentan por separado del efectivo", 2.2 chequeras).
+export type OrigenCheque = "TERCERO" | "PROPIO";
+export type FormaCheque = "FISICO" | "ECHEQ";
+export type EstadoCheque = "EN_CUSTODIA" | "DEPOSITADO" | "RECHAZADO" | "ENTREGADO" | "EMITIDO" | "COBRADO" | "ANULADO";
+export const ESTADO_CHEQUE_LABEL: Record<EstadoCheque, string> = {
+  EN_CUSTODIA: "En custodia",
+  DEPOSITADO: "Depositado",
+  RECHAZADO: "Rechazado",
+  ENTREGADO: "Entregado",
+  EMITIDO: "Emitido",
+  COBRADO: "Cobrado",
+  ANULADO: "Anulado",
+};
+export const FORMA_CHEQUE_LABEL: Record<FormaCheque, string> = { FISICO: "Físico", ECHEQ: "E-cheq" };
+
+export interface TrazaCheque {
+  estado: EstadoCheque;
+  usuario: string;
+  fechaHora: string;
+  detalle: string;
+}
+
+export interface Cheque {
+  id: string; // CHE-0001
+  origen: OrigenCheque;
+  forma: FormaCheque;
+  banco: string;
+  numero: string;
+  importe: number;
+  moneda: Moneda;
+  // Terceros: quien lo libró. Propios: el beneficiario.
+  parte: string;
+  fechaEmision: string;
+  fechaPago: string; // vencimiento
+  cajaId?: string; // custodia (sólo terceros)
+  cuentaId?: string; // propios: cuenta librada; terceros depositados: cuenta destino
+  chequeraId?: string; // propios
+  referencia?: string;
+  estado: EstadoCheque;
+  traza: TrazaCheque[];
+  fechaAlta: string;
+  usuarioAlta: string;
 }
 
 export type TipoArqueo = "ORDINARIO" | "SORPRESIVO";

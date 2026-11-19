@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { formatearCuit, saldoComprobante } from "@/lib/proveedores-reglas";
+import { hoy } from "@/lib/caja-store";
+import { diasDeAtraso, formatearCuit, saldoComprobante, vencimientoDe } from "@/lib/proveedores-reglas";
 import { useComprobantes, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
 import { MEDIO_PAGO_LABEL, type Comprobante } from "@/lib/proveedores-tipos";
 import { Banner } from "@/components/ui/Banner";
@@ -234,7 +235,8 @@ function ConsultaProveedor() {
 
   const pendientes = comprobantes
     .filter((c) => c.proveedorId === proveedorId && (c.estado === "PARA_LIQUIDAR" || c.estado === "PAGO_PARCIAL"))
-    .filter((c) => tipos.find((t) => t.id === c.tipoId)?.efecto !== "RESTA");
+    .filter((c) => tipos.find((t) => t.id === c.tipoId)?.efecto !== "RESTA")
+    .sort((a, b) => vencimientoDe(a).localeCompare(vencimientoDe(b)));
 
   return (
     <div className="space-y-4">
@@ -261,6 +263,7 @@ function ConsultaProveedor() {
                       <tr className={ENCABEZADO}>
                         <Th>Comprobante</Th>
                         <Th>Fecha</Th>
+                        <Th>Vencimiento</Th>
                         <Th>Orden de pago</Th>
                         <Th derecha>Total</Th>
                         <Th derecha>Saldo pendiente</Th>
@@ -275,6 +278,12 @@ function ConsultaProveedor() {
                             <span className="block font-mono text-xs text-ink-400">{numeroComprobante(c)}</span>
                           </td>
                           <td className="px-3 py-3 text-ink-700">{c.fechaComprobante}</td>
+                          <td className="whitespace-nowrap px-3 py-3 text-ink-700">
+                            {vencimientoDe(c)}
+                            {diasDeAtraso(vencimientoDe(c), hoy()) > 0 && (
+                              <span className="block text-xs font-semibold text-danger-700">Vencido hace {diasDeAtraso(vencimientoDe(c), hoy())} d</span>
+                            )}
+                          </td>
                           <td className="px-3 py-3 font-mono text-xs text-ink-700">{c.ordenPago}</td>
                           <td className="px-3 py-3 text-right tabular-nums text-ink-900">{pesos(c.total)}</td>
                           <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{pesos(saldoComprobante(c, pagos))}</td>
