@@ -3,11 +3,23 @@ import assert from "node:assert/strict";
 
 import {
   CAJAS_INICIALES,
+  CUENTAS_BANCARIAS_INICIALES,
   LIBRO_INICIAL,
   MOVIMIENTOS_TESORERIA_INICIALES,
   SUCURSALES_INICIALES,
 } from "./caja-datos";
-import { alertasPara, calcularAlertas, diferenciasDeCaja, resumenPosicion, tablero, type DatosPosicion } from "./caja-posicion";
+import {
+  alertasPara,
+  calcularAlertas,
+  diferenciasDeCaja,
+  historicoSaldos,
+  resumenPosicion,
+  saldosAFecha,
+  seriesDe,
+  tablero,
+  type DatosPosicion,
+  type Serie,
+} from "./caja-posicion";
 import type { Arqueo, Jornada, MovimientoCaja, Recuento } from "./caja-tipos";
 
 const recuento: Recuento = {
@@ -150,6 +162,74 @@ test("alerta de caja sin cerrar: pasado el horario más el margen, o de un día 
   const margen = CAJAS_INICIALES.map((c) => (c.id === "CAJ-003" ? { ...c, margenAlertaMin: 90 } : c));
   const conMargen = calcularAlertas(datos({ cajas: margen, jornadas: abierta, hora: "19:00", arqueos: arqueosAlDia })).filter((a) => a.tipo === "CAJA_SIN_CERRAR");
   assert.equal(conMargen.length, 0, "el margen es configurable por caja");
+});
+
+const serieCaja = (clave: string, moneda: "ARS" | "USD", movs: [string, number, number][]): Serie => ({
+  clave,
+  tipo: "CAJA",
+  id: clave,
+  nombre: clave,
+  moneda,
+  movimientos: movs.map(([fecha, ingreso, egreso]) => ({ fecha, hora: "10:00", descripcion: "x", comprobante: "c", ingreso, egreso })),
+});
+
+test("histórico diario: saldo inicial, ingresos, egresos y final por período", () => {
+  const s = serieCaja("A", "ARS", [["2026-10-30", 1000, 0], ["2026-11-02", 500, 200], ["2026-11-02", 0, 100], ["2026-11-05", 50, 0]]);
+  const { bloques, consolidado } = historicoSaldos([s], { desde: "2026-11-01", hasta: "2026-11-30", periodicidad: "DIARIA" });
+  assert.deepEqual(bloques[0].filas.map((f) => f.periodo), ["2026-11-02", "2026-11-05"]);
+  assert.deepEqual(bloques[0].filas[0], { periodo: "2026-11-02", inicial: 1000, ingresos: 500, egresos: 300, final: 1200 });
+  assert.equal(bloques[0].filas[1].inicial, 1200, "el inicial encadena con el final anterior");
+  assert.equal(bloques[0].filas[1].final, 1250);
+  assert.equal(consolidado.length, 0, "con una sola serie no hay consolidado");
+});
+
+test("histórico mensual recorta al rango y consolida varias series por moneda", () => {
+  const a = serieCaja("A", "ARS", [["2026-10-20", 100, 0], ["2026-11-10", 50, 0], ["2026-11-20", 0, 30]]);
+  const b = serieCaja("B", "ARS", [["2026-11-25", 10, 0]]);
+  const usd = serieCaja("C", "USD", [["2026-11-03", 5, 0]]);
+  const { bloques, consolidado } = historicoSaldos([a, b, usd], { desde: "2026-11-15", hasta: "2026-11-30", periodicidad: "MENSUAL" });
+  assert.deepEqual(bloques[0].filas, [{ periodo: "2026-11", inicial: 150, ingresos: 0, egresos: 30, final: 120 }], "arranca el 15: el ingreso del 10 ya está en el inicial");
+  assert.equal(bloques[1].filas[0].final, 10, "una serie sin movimientos previos también tiene fila");
+  assert.equal(consolidado.length, 1, "sólo pesos tiene más de una serie");
+  assert.deepEqual(consolidado[0], { periodo: "2026-11", moneda: "ARS", series: 2, inicial: 150, ingresos: 10, egresos: 30, final: 130 });
+});
+
+test("sin movimientos en el rango, hay una fila al cierre con saldo inicial igual al final", () => {
+  const s = serieCaja("A", "ARS", [["2026-09-01", 700, 0]]);
+  const { bloques } = historicoSaldos([s], { desde: "2026-11-01", hasta: "2026-11-30", periodicidad: "MENSUAL" });
+  assert.deepEqual(bloques[0].filas, [{ periodo: "2026-11", inicial: 700, ingresos: 0, egresos: 0, final: 700 }]);
+});
+
+test("saldo a una fecha: la foto de todas las series al cierre del día", () => {
+  const a = serieCaja("A", "ARS", [["2026-11-01", 100, 0], ["2026-11-10", 0, 40], ["2026-11-20", 500, 0]]);
+  const b = serieCaja("B", "USD", [["2026-11-10", 9, 0]]);
+  const foto = saldosAFecha([a, b], "2026-11-10");
+  assert.deepEqual(foto.map((x) => x.saldo), [60, 9]);
+});
+
+test("las series de caja usan sólo efectivo confirmado y las de banco sólo depósitos conciliados", () => {
+  const cuenta = CUENTAS_BANCARIAS_INICIALES[0];
+  const dep = {
+    ...MOVIMIENTOS_TESORERIA_INICIALES[0],
+    id: "MT-D",
+    destino: { tipo: "BANCO" as const, cuentaId: cuenta.id },
+    importe: 900,
+    envio: { usuarioId: "a", fechaHora: "2026-11-10 10:00", detalle: {}, importe: 900, conformidad: true },
+    conciliacion: { usuarioId: "a", fechaHora: "2026-11-12 09:00", fechaAcreditacion: "2026-11-11", importe: 900, referencia: "REF-1" },
+  };
+  const sinConciliar = { ...dep, id: "MT-E", conciliacion: undefined };
+  const libro = [
+    ...LIBRO_INICIAL,
+    { ...ajuste("CAJ-003", "ana-gomez", 0, 10, 1), medio: "TARJETA" as const },
+    { ...ajuste("CAJ-003", "ana-gomez", 0, 20, 2), estado: "ANULADO" as const },
+  ];
+  const series = seriesDe({ cajas: CAJAS_INICIALES, cuentas: CUENTAS_BANCARIAS_INICIALES, libro, movimientos: [dep, sinConciliar] }, ["CAJ-003"], [cuenta.id], "");
+  const caja = series.find((x) => x.tipo === "CAJA")!;
+  assert.equal(saldosAFecha([caja], "2099-01-01")[0].saldo, 600000, "no cuenta ni tarjeta ni anulados");
+  const banco = series.find((x) => x.tipo === "BANCO")!;
+  assert.equal(banco.movimientos.length, 1);
+  assert.equal(banco.movimientos[0].fecha, "2026-11-11", "se fecha el día de la acreditación");
+  assert.equal(seriesDe({ cajas: CAJAS_INICIALES, cuentas: CUENTAS_BANCARIAS_INICIALES, libro, movimientos: [] }, ["CAJ-003", "CAJ-002"], [], "USD").length, 1, "el filtro de moneda aplica");
 });
 
 test("alerta de arqueo vencido: sólo cajas activas con frecuencia", () => {

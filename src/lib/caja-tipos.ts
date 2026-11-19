@@ -174,6 +174,15 @@ export interface CuentaBancaria {
   cbu: string;
   moneda: Moneda;
   cuentaContable: string;
+  // Datos del ABM de Bancos (v2): la sucursal del banco, el oficial de cuenta y la apertura.
+  alias?: string;
+  sucursalBanco?: string;
+  direccionBanco?: string;
+  oficialNombre?: string;
+  oficialTelefono?: string;
+  oficialMail?: string;
+  mailSucursal?: string;
+  fechaApertura?: string;
   estado: EstadoAbm;
   fechaAlta: string;
   usuarioAlta: string;
@@ -182,6 +191,41 @@ export const TIPO_CUENTA_LABEL: Record<CuentaBancaria["tipo"], string> = {
   CUENTA_CORRIENTE: "Cuenta corriente",
   CAJA_AHORRO: "Caja de ahorro",
 };
+
+// Alta de acuerdos bancarios (v2, 2.1): línea otorgada a una cuenta, con tasa y vencimiento.
+export interface AcuerdoBancario {
+  id: string;
+  cuentaId: string;
+  fecha: string;
+  importe: number;
+  tasa: number; // porcentaje
+  vencimiento: string;
+  estado: EstadoAbm;
+  fechaAlta: string;
+  usuarioAlta: string;
+}
+
+// ABM de Tipos de chequera (v2, 7.9): física o e-cheq.
+export interface TipoChequera {
+  id: string;
+  descripcion: string;
+  estado: EstadoAbm;
+  fechaAlta: string;
+  usuarioAlta: string;
+}
+
+// Alta de chequeras (v2, 2.2). Para e-cheq el rango de numeración es opcional (punto abierto 8).
+export interface Chequera {
+  id: string;
+  tipoId: string;
+  cuentaId: string;
+  fecha: string;
+  desde: string;
+  hasta: string;
+  estado: EstadoAbm;
+  fechaAlta: string;
+  usuarioAlta: string;
+}
 
 // Cantidad de billetes y monedas por id de denominación.
 export type DetalleRecuento = Record<string, number>;

@@ -3,7 +3,10 @@
 
 import { crearStoreAbm } from "./store-abm";
 import {
+  ACUERDOS_INICIALES,
   CAJAS_INICIALES,
+  CHEQUERAS_INICIALES,
+  TIPOS_CHEQUERA_INICIALES,
   CUENTAS_BANCARIAS_INICIALES,
   DENOMINACIONES_INICIALES,
   FERIADOS_INICIALES,
@@ -19,9 +22,12 @@ import {
 } from "./caja-datos";
 import { fechaIso } from "./caja-reglas";
 import type {
+  AcuerdoBancario,
   Arqueo,
   Caja,
   CambioTurno,
+  Chequera,
+  TipoChequera,
   CierreSucursal,
   CuentaBancaria,
   Denominacion,
@@ -63,6 +69,9 @@ export const cajaStores = {
   cierresSucursal: crear<CierreSucursal>("cierres-sucursal", []),
   denominaciones: crear<Denominacion>("denominaciones", DENOMINACIONES_INICIALES),
   cuentasBancarias: crear<CuentaBancaria>("cuentas-bancarias", CUENTAS_BANCARIAS_INICIALES),
+  acuerdos: crear<AcuerdoBancario>("acuerdos", ACUERDOS_INICIALES),
+  tiposChequera: crear<TipoChequera>("tipos-chequera", TIPOS_CHEQUERA_INICIALES),
+  chequeras: crear<Chequera>("chequeras", CHEQUERAS_INICIALES),
   motivos: crear<MotivoDiferencia>("motivos", MOTIVOS_DIFERENCIA_INICIALES),
   tipos: crear<TipoMovimientoTesoreria>("tipos", TIPOS_MOVIMIENTO_INICIALES),
   libro: crear<MovimientoCaja>("libro", LIBRO_INICIAL),
@@ -93,7 +102,10 @@ export const useFeriados = cajaStores.feriados.useLista;
 export const useCierresSucursal = cajaStores.cierresSucursal.useLista;
 export const useDenominaciones = cajaStores.denominaciones.useLista;
 export const useCuentasBancarias = cajaStores.cuentasBancarias.useLista;
-export const useMotivosDiferencia = cajaStores.motivos.useLista;
+export const useAcuerdos = cajaStores.acuerdos.useLista;
+export const useTiposChequera = cajaStores.tiposChequera.useLista;
+export const useChequeras = cajaStores.chequeras.useLista;
+export const useMotivosDiferencia =cajaStores.motivos.useLista;
 export const useTiposMovimiento = cajaStores.tipos.useLista;
 export const useLibro = cajaStores.libro.useLista;
 export const useJornadas = cajaStores.jornadas.useLista;
@@ -198,6 +210,9 @@ export function reiniciarCaja() {
   cajaStores.cierresSucursal.commit([]);
   cajaStores.denominaciones.commit(DENOMINACIONES_INICIALES);
   cajaStores.cuentasBancarias.commit(CUENTAS_BANCARIAS_INICIALES);
+  cajaStores.acuerdos.commit(ACUERDOS_INICIALES);
+  cajaStores.tiposChequera.commit(TIPOS_CHEQUERA_INICIALES);
+  cajaStores.chequeras.commit(CHEQUERAS_INICIALES);
   cajaStores.motivos.commit(MOTIVOS_DIFERENCIA_INICIALES);
   cajaStores.tipos.commit(TIPOS_MOVIMIENTO_INICIALES);
   cajaStores.libro.commit(LIBRO_INICIAL);

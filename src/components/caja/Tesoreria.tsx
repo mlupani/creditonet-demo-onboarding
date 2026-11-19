@@ -149,7 +149,7 @@ export function PantallaTesoreria() {
 
   const th = "px-3 py-2.5 text-left";
   return (
-    <PaginaCaja titulo="Movimientos de tesorería" descripcion="Bandeja única para todo traslado de fondos entre tesoros, cajas y bancos: remesas, refuerzos, retiros, depósitos y pases entre cajeros.">
+    <PaginaCaja titulo="Movimientos de tesorería" seccion="Bandeja de autorizaciones" descripcion="Bandeja única para todo traslado de fondos entre tesoros, cajas y bancos: remesas, refuerzos, retiros, depósitos y pases entre cajeros.">
       <div className="flex flex-wrap items-end gap-3">
         <SelectorCaja cajas={visibles} valor={cajaId} onChange={setElegida} todas={supervisa ? "Todas las cajas" : undefined} />
         <Button onClick={() => setModal({ tipo: "nuevo" })}>

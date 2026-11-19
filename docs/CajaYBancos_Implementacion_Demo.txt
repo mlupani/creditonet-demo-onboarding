@@ -347,3 +347,85 @@ Tests (npm test):
   horario, minimo y reserva, cierre de sucursal, ABM).
 - src/lib/caja-posicion.test.ts: tablero y alertas.
 - src/lib/navegacion.test.ts: arbol del menu por rol.
+
+
+==========================================================================
+10. ACTUALIZACION v2 (CajaYBancos_v2_2026-11-18.pdf)
+==========================================================================
+
+10.1 Que cambio respecto de la v1 (Avance 01) y como se refleja en la demo
+
+- Estructura reducida a 6 funciones: se eliminan la Bandeja de liquidacion de
+  creditos y la Bandeja de pago a proveedores. Salieron del menu.
+  Menu actual: Caja, Bancos, Bandeja de autorizaciones, Posicion de caja y
+  bancos, Cash flow (proximamente) y Proveedores.
+- Caja: Movimientos de tesoreria sale del menu de Caja y queda reservado para
+  la Bandeja de autorizaciones. En la demo la pantalla se conserva completa,
+  ubicada dentro de "Bandeja de autorizaciones" (/caja/tesoreria), porque el
+  documento deja su ubicacion final a definir (punto abierto 2).
+  El resto de Caja (apertura, cierre, arqueo, cambio de turno, libro) no cambio.
+- Bancos (nuevo): Alta de acuerdos, Alta de chequeras y Conciliaciones.
+- Posicion de caja y bancos: ahora son tres pantallas (Posicion de saldos,
+  Tablero de tesoros e Historico de saldos, este ultimo nuevo).
+- Proveedores (nuevo): Carga de comprobantes, Ordenes de pago, Posicion de
+  proveedores y Consultas.
+- Parametros: nuevos ABM de Bancos y Tipos de chequera; nueva seccion
+  Proveedores con ABM de Proveedores, Tipos de comprobante y Estados de
+  comprobantes.
+
+10.2 Bancos
+- ABM de Bancos (Parametros > Caja y Bancos > Bancos): reemplaza al ABM de
+  "Cuentas bancarias" con los campos de la v2 (sucursal del banco y direccion,
+  oficial de cuenta con telefono y mail, mail de la sucursal, tipo de cuenta,
+  numero/CBU, fecha de apertura) y los propuestos (alias, moneda, cuenta
+  contable). No se puede suspender ni eliminar un banco con depositos sin
+  conciliar, acuerdos activos o chequeras activas.
+- ABM de Tipos de chequera: Fisica y E-cheq.
+- Alta de acuerdos (/caja/acuerdos): cuenta, fecha, importe, tasa y
+  vencimiento; marca los acuerdos vencidos o por vencer en 30 dias.
+- Alta de chequeras (/caja/chequeras): tipo, banco, cuenta del banco, fecha y
+  rango desde/hasta (obligatorio en fisica, opcional en e-cheq; sin
+  superposicion en la misma cuenta).
+- Conciliaciones (/caja/bancos): se mantiene la conciliacion de depositos.
+  La importacion de extractos y la consulta de conciliaciones tienen el
+  detalle pendiente en el documento y no se implementaron (hay un aviso en
+  pantalla).
+
+10.3 Posicion de caja y bancos
+- Posicion de saldos (/caja/posicion), Tablero de tesoros (/caja/tablero) y
+  Historico de saldos (/caja/historico).
+- Historico: filtros por cajas, cuentas, rango de fechas, moneda y
+  periodicidad diaria o mensual; un bloque por caja o cuenta y consolidado;
+  detalle de movimientos desde cada fila (en un modal, no en el Libro);
+  foto de saldos a una fecha (desde = hasta); exportacion a Excel y PDF.
+- Supuesto: el saldo bancario es lo acreditado y conciliado, fechado el dia de
+  acreditacion; el modelo no tiene egresos bancarios.
+
+10.4 Proveedores
+- ABM de Proveedores (con boton "Datos ARCA" simulado, CUIT valido y unico),
+  Tipos de comprobante (con efecto suma/resta en la cuenta corriente) y
+  Estados de comprobantes (referencia, con los propuestos marcados).
+- Carga de comprobantes (/proveedores/carga): manual (proveedor por CUIT, datos
+  del comprobante con IVA 10,5/21/27, percepciones, respaldo simulado) y masiva
+  por CSV con plantilla, validacion fila por fila, confirmacion de aceptadas,
+  descarga de rechazadas y registro del lote.
+- Circuito: Preaprobado -> (autorizador distinto de quien cargo, rol Supervisor
+  o Tesorero) Para liquidar con numero de orden de pago, o Rechazado con motivo
+  (vuelve al operador, que corrige o anula). Control de duplicados por CUIT,
+  tipo, prefijo y numero.
+- Ordenes de pago (/proveedores/ordenes): pago total o parcial desde una caja o
+  cuenta bancaria; el estado pasa a Pago parcial o Pagado. Esta pantalla esta
+  marcada "a revisar", como en el documento.
+- Posicion de proveedores (/proveedores/posicion) y Consultas
+  (/proveedores/consultas): saldo y cuenta corriente por proveedor (se arma
+  sola; solo impactan los comprobantes autorizados o posteriores) y consulta de
+  ordenes de pago con reimprimir/reenviar simulados y exportacion a Excel.
+
+10.5 No implementado o simplificado en la v2
+- Bandeja de autorizaciones y Cash flow: pendientes en el documento.
+- Conciliaciones: importacion de extractos y consulta (detalle pendiente).
+- Carga masiva: se sube CSV (no hay lector de xlsx); hay un archivo de ejemplo.
+- Lectura de QR, vinculacion de telefono y validacion ante ARCA: simulados.
+- Los pagos a proveedores no escriben en el libro de caja ni en saldos
+  bancarios; solo validan saldo de caja si el medio es efectivo.
+- Tasa de acuerdos sin tipo (TNA/TEM) ni renovacion: son sugerencias.

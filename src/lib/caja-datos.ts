@@ -2,7 +2,10 @@
 // asientos "Saldo inicial", así que el recuento de apertura se puede contar contra el esperado.
 
 import type {
+  AcuerdoBancario,
   Caja,
+  Chequera,
+  TipoChequera,
   CuentaBancaria,
   CuentaContable,
   Denominacion,
@@ -45,6 +48,10 @@ export const CUENTAS_CONTABLES: CuentaContable[] = [
   { codigo: "5.9.01.01", nombre: "Faltantes de caja" },
   { codigo: "5.9.01.02", nombre: "Pérdida por billetes falsos" },
   { codigo: "5.9.01.03", nombre: "Diferencias a regularizar" },
+  { codigo: "2.1.01.01", nombre: "Facturas a pagar" },
+  { codigo: "5.2.01.01", nombre: "Gastos de oficina" },
+  { codigo: "5.2.01.02", nombre: "Servicios y mantenimiento" },
+  { codigo: "5.2.01.03", nombre: "Honorarios profesionales" },
 ];
 
 const cuentaBancaria = (
@@ -69,9 +76,56 @@ const cuentaBancaria = (
 });
 
 export const CUENTAS_BANCARIAS_INICIALES: CuentaBancaria[] = [
-  cuentaBancaria(1, "Banco Nación", "CUENTA_CORRIENTE", "0110-4412-90", "0110441230044129000019", "ARS", "1.1.03.01"),
-  cuentaBancaria(2, "Banco Galicia", "CUENTA_CORRIENTE", "0070-8821-15", "0070882130008821150014", "ARS", "1.1.03.02"),
-  cuentaBancaria(3, "Banco Galicia", "CAJA_AHORRO", "0070-8821-77", "0070882140008821770016", "USD", "1.1.03.03"),
+  {
+    ...cuentaBancaria(1, "Banco Nación", "CUENTA_CORRIENTE", "0110-4412-90", "0110441230044129000019", "ARS", "1.1.03.01"),
+    alias: "CREDITONET.NACION",
+    sucursalBanco: "Sucursal Plaza de Mayo",
+    direccionBanco: "Bartolomé Mitre 326, CABA",
+    oficialNombre: "Julieta Ferreyra",
+    oficialTelefono: "11 4347-6000",
+    oficialMail: "jferreyra@bna.example.com",
+    mailSucursal: "plazademayo@bna.example.com",
+    fechaApertura: "2024-03-12",
+  },
+  {
+    ...cuentaBancaria(2, "Banco Galicia", "CUENTA_CORRIENTE", "0070-8821-15", "0070882130008821150014", "ARS", "1.1.03.02"),
+    alias: "CREDITONET.GALICIA",
+    sucursalBanco: "Sucursal Microcentro",
+    direccionBanco: "Tte. Gral. Perón 407, CABA",
+    oficialNombre: "Martín Sosa",
+    oficialTelefono: "11 6329-0000",
+    oficialMail: "msosa@galicia.example.com",
+    mailSucursal: "microcentro@galicia.example.com",
+    fechaApertura: "2024-06-03",
+  },
+  {
+    ...cuentaBancaria(3, "Banco Galicia", "CAJA_AHORRO", "0070-8821-77", "0070882140008821770016", "USD", "1.1.03.03"),
+    alias: "CREDITONET.GALICIA.USD",
+    sucursalBanco: "Sucursal Microcentro",
+    direccionBanco: "Tte. Gral. Perón 407, CABA",
+    oficialNombre: "Martín Sosa",
+    oficialTelefono: "11 6329-0000",
+    oficialMail: "msosa@galicia.example.com",
+    mailSucursal: "microcentro@galicia.example.com",
+    fechaApertura: "2025-01-20",
+  },
+];
+
+const alta = { estado: "ACTIVO", fechaAlta: "2026-11-01", usuarioAlta: "Marina Costa" } as const;
+
+export const ACUERDOS_INICIALES: AcuerdoBancario[] = [
+  { id: "ACU-001", cuentaId: "CB-001", fecha: "2026-09-15", importe: 25000000, tasa: 62.5, vencimiento: "2027-03-15", ...alta },
+  { id: "ACU-002", cuentaId: "CB-002", fecha: "2026-10-01", importe: 12000000, tasa: 58, vencimiento: "2026-12-30", ...alta },
+];
+
+export const TIPOS_CHEQUERA_INICIALES: TipoChequera[] = [
+  { id: "TCH-001", descripcion: "Física", ...alta },
+  { id: "TCH-002", descripcion: "E-cheq", ...alta },
+];
+
+export const CHEQUERAS_INICIALES: Chequera[] = [
+  { id: "CHQ-001", tipoId: "TCH-001", cuentaId: "CB-001", fecha: "2026-10-05", desde: "10001", hasta: "10050", ...alta },
+  { id: "CHQ-002", tipoId: "TCH-002", cuentaId: "CB-002", fecha: "2026-10-20", desde: "", hasta: "", ...alta },
 ];
 
 export const FERIADOS_INICIALES: Feriado[] = [

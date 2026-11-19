@@ -16,6 +16,10 @@ import { Feriados } from "@/components/caja/abm/Feriados";
 import { MotivosDiferencia } from "@/components/caja/abm/MotivosDiferencia";
 import { TiposMovimiento } from "@/components/caja/abm/TiposMovimiento";
 import { EstadosMovimiento } from "@/components/caja/abm/EstadosMovimiento";
+import { TiposChequera } from "@/components/caja/abm/TiposChequera";
+import { Proveedores } from "@/components/caja/abm/Proveedores";
+import { TiposComprobante } from "@/components/caja/abm/TiposComprobante";
+import { EstadosComprobante } from "@/components/caja/abm/EstadosComprobante";
 import {
   IconAlertTriangle,
   IconBuilding,
@@ -38,11 +42,15 @@ const SOLAPAS = [
   { id: "sucursales", label: "Sucursales", icon: IconBuilding, Componente: Sucursales },
   { id: "cajas", label: "Cajas", icon: IconLock, Componente: Cajas },
   { id: "denominaciones", label: "Denominaciones", icon: IconTable, Componente: Denominaciones },
-  { id: "cuentas-bancarias", label: "Cuentas bancarias", icon: IconLandmark, Componente: CuentasBancarias },
+  { id: "cuentas-bancarias", label: "Bancos", icon: IconLandmark, Componente: CuentasBancarias },
+  { id: "tipos-chequera", label: "Tipos de chequera", icon: IconFileText, Componente: TiposChequera },
   { id: "feriados", label: "Feriados", icon: IconCalendar, Componente: Feriados },
   { id: "motivos-diferencia", label: "Motivos de diferencia de caja", icon: IconAlertTriangle, Componente: MotivosDiferencia },
   { id: "tipos-movimiento", label: "Tipos de movimiento de tesorería", icon: IconSend, Componente: TiposMovimiento },
   { id: "estados-movimiento", label: "Estados de movimientos de tesorería", icon: IconRows, Componente: EstadosMovimiento },
+  { id: "proveedores", label: "Proveedores", icon: IconBuilding, Componente: Proveedores },
+  { id: "tipos-comprobante", label: "Tipos de comprobante", icon: IconFileText, Componente: TiposComprobante },
+  { id: "estados-comprobante", label: "Estados de comprobantes", icon: IconRows, Componente: EstadosComprobante },
 ] as const;
 
 // Módulo Parámetros: cada parámetro editable es una sección, con el mismo menú lateral que los

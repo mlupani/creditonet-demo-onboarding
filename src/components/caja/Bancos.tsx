@@ -4,6 +4,7 @@ import { useState } from "react";
 import { conciliarDeposito, bancoTexto, nombreCaja, saldosBancarios } from "@/lib/caja-operaciones";
 import { useCuentasBancarias, useMovimientosTesoreria, useUsuarioActual } from "@/lib/caja-store";
 import { SIMBOLO, TIPO_CUENTA_LABEL, type MovimientoTesoreria } from "@/lib/caja-tipos";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
@@ -100,9 +101,13 @@ export function PantallaBancos() {
   return (
     <PaginaCaja
       seccion="Bancos"
-      titulo="Bancos"
+      titulo="Conciliaciones"
       descripcion="Posición de las cuentas bancarias y conciliación de las acreditaciones de los depósitos que salen de la tesorería."
     >
+      <Banner tone="info" title="Detalle pendiente en la especificación" className="mb-4">
+        La importación de extractos bancarios (2.3.1) y la consulta de conciliaciones (2.3.2) están pendientes de definición. Por ahora se
+        concilian a mano las acreditaciones de los depósitos en banco, y el listado de abajo permite consultar las ya conciliadas.
+      </Banner>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cuentas
           .filter((c) => c.estado !== "ELIMINADO")

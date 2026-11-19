@@ -46,6 +46,7 @@ const PERMISOS: { ruta: string; roles: Rol[] }[] = [
   { ruta: "/mora", roles: ["analista"] },
   { ruta: "/parametros", roles: ["analista", "caja"] },
   { ruta: "/caja", roles: ["caja"] },
+  { ruta: "/proveedores", roles: ["caja"] },
   { ruta: "/motor-riesgo", roles: ["analista"] },
   { ruta: "/notificaciones", roles: ["analista"] },
   { ruta: "/graph", roles: ["venta", "analista", "chequeo"] },
