@@ -1,6 +1,7 @@
 import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 
+import { actaDe, firmarActa } from "./actas";
 import { destinatariosDe, emitirAlerta, revisarAlertas } from "./alertas";
 import { CAJAS_INICIALES, DENOMINACIONES_INICIALES, SUCURSALES_INICIALES, USUARIOS_CAJA } from "./caja-datos";
 import { registrarApertura, resolverApertura } from "./caja-operaciones";
@@ -80,7 +81,15 @@ test("una aprobación con llave guarda la firma en la jornada", () => {
   });
   assert.ok(r.ok);
   const jornadaId = r.ok ? r.jornadaId : "";
+  // Con llave, el supervisor no autoriza hasta que el responsable de los fondos firma el acta de diferencia.
+  const acta = actaDe("JORNADA_APERTURA", jornadaId);
+  assert.ok(acta && acta.tipo === "DIFERENCIA");
   fijarUsuarioActual("marta-diaz");
+  const antes = firmaDe("marta-diaz", { cargadoPor: "ana-gomez", referencia: jornadaId });
+  assert.ok(antes.ok);
+  assert.ok(!resolverApertura(jornadaId, true, "ok", antes.ok ? antes.firma.id : undefined).ok, "falta la firma del responsable");
+  const f1 = firmaDe("ana-gomez", { referencia: acta?.id });
+  assert.ok(f1.ok && firmarActa(acta!.id, { paso: 1, firma: f1.firma, conforme: true }).ok);
   const f = firmaDe("marta-diaz", { cargadoPor: "ana-gomez", referencia: jornadaId });
   assert.ok(f.ok);
   assert.ok(resolverApertura(jornadaId, true, "ok", f.ok ? f.firma.id : undefined).ok);

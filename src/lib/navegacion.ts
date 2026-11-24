@@ -160,6 +160,7 @@ export const MENU: readonly MenuEntrada[] = [
           caja("Arqueo de caja", "/caja/arqueo"),
           caja("Cambio de turno", "/caja/turno"),
           caja("Libro de movimientos de caja", "/caja/libro"),
+          caja("Actas de caja", "/caja/actas"),
           caja("Cierre de sucursal", "/caja/cierre-sucursal"),
         ],
       },

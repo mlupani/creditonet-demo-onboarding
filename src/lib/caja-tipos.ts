@@ -108,16 +108,70 @@ export interface Feriado {
   estado: EstadoAbm;
 }
 
-// Cierre diario de sucursal: el tesorero confirma que todas sus cajas cerraron y se bloquea la fecha
-// operativa. La reapertura requiere autorización de un supervisor.
+// Cierre diario de sucursal (v4, 1.6). Estados: En controles → En ventana de ajuste → Cerrada OK o
+// Cerrada con pendientes (la fecha queda bloqueada); si pasa la hora límite sin iniciarse queda "No
+// cerrada" (se deriva de la hora, no se guarda); una reapertura autorizada la deja Reabierta y el
+// nuevo cierre es otro registro que referencia al anterior.
+export type EstadoCierreDiario = "EN_CONTROLES" | "EN_VENTANA" | "CERRADA_OK" | "CERRADA_CON_PENDIENTES" | "REABIERTA";
+export const ESTADO_CIERRE_DIARIO_LABEL: Record<EstadoCierreDiario | "NO_CERRADA" | "ABIERTA", string> = {
+  ABIERTA: "Abierta",
+  EN_CONTROLES: "En controles",
+  EN_VENTANA: "En ventana de ajuste",
+  CERRADA_OK: "Cerrada OK",
+  CERRADA_CON_PENDIENTES: "Cerrada con pendientes",
+  NO_CERRADA: "No cerrada",
+  REABIERTA: "Reabierta",
+};
+
+// Pendiente que el tesorero justifica al cerrar (remesas en tránsito, movimientos pendientes, firma remota).
+export interface PendienteJustificado {
+  control: string;
+  detalle: string;
+  justificacion: string;
+}
+
+// Reapertura de un cierre diario: quién la pidió y por qué, quién la autorizó con su llave y cuándo.
+export interface ReaperturaCierre {
+  solicitadaPor: string;
+  motivo: string;
+  fechaHoraSolicitud: string;
+  autorizadaPor?: string;
+  firmaId?: string;
+  fechaHoraAutorizacion?: string;
+}
+
 export interface CierreSucursal {
   id: string;
   sucursalId: string;
   fecha: string;
-  usuarioId: string;
+  usuarioId: string; // tesorero que inicia y confirma el cierre
+  fechaHora: string; // inicio del cierre diario
+  estado: EstadoCierreDiario;
+  // Fin de la ventana de ajuste ("YYYY-MM-DD HH:MM"). Vacío en un cierre posterior a una reapertura.
+  ventanaHasta?: string;
+  pendientes?: PendienteJustificado[];
+  actaId?: string;
+  cerradaEn?: string; // fechaHora del cierre definitivo (firma del acta)
+  // Cierre abierto por una reapertura autorizada del cierre `reabreDeId`.
+  reabreDeId?: string;
+  reapertura?: ReaperturaCierre;
+}
+
+// Ajuste cargado por el tesorero dentro de la ventana de ajuste (o de una reapertura) y autorizado por un
+// supervisor con su llave. Nunca edita un movimiento confirmado: asienta un movimiento de ajuste propio (R7).
+export interface AjusteCierre {
+  id: string; // AJC-0001
+  cierreId: string;
+  cajaId: string;
+  moneda: Moneda;
+  importe: number; // con signo: positivo ingresa a la caja, negativo egresa
+  motivoId: string;
+  nota: string;
+  cargadoPor: string;
   fechaHora: string;
-  estado: "CERRADA" | "REABIERTA";
-  reapertura?: Aprobacion;
+  estado: "PENDIENTE" | "AUTORIZADO" | "RECHAZADO";
+  autorizacion?: Aprobacion;
+  libroId?: string; // movimiento de ajuste generado al autorizar
 }
 
 export const monedasDe = (m: MonedaCaja): Moneda[] => (m === "AMBAS" ? MONEDAS : [m]);
@@ -260,6 +314,96 @@ export interface Aprobacion {
   firmaId?: string;
 }
 
+// ---------- Actas de conformidad (v4): dos usuarios, cada uno con su llave ----------
+
+export type TipoActa =
+  | "APERTURA"
+  | "CIERRE_ENTREGA"
+  | "DIFERENCIA"
+  | "ARQUEO"
+  | "RELEVO"
+  | "REEMPLAZO"
+  | "REMESA_ENTREGA"
+  | "REMESA_RECEPCION"
+  | "CIERRE_DIARIO";
+export const TIPO_ACTA_LABEL: Record<TipoActa, string> = {
+  APERTURA: "Apertura",
+  CIERRE_ENTREGA: "Cierre: entrega y recepción del efectivo",
+  DIFERENCIA: "Diferencia de caja",
+  ARQUEO: "Arqueo sin diferencia",
+  RELEVO: "Cambio de turno o pase entre cajeros",
+  REEMPLAZO: "Reemplazo por emergencia",
+  REMESA_ENTREGA: "Entrega de remesa al portador",
+  REMESA_RECEPCION: "Recepción de remesa o refuerzo",
+  CIERRE_DIARIO: "Cierre diario de sucursal",
+};
+
+export type EstadoActa = "BORRADOR" | "PEND_FIRMA_1" | "PEND_FIRMA_2" | "FIRMADA" | "RECHAZADA" | "ESCALADA" | "RESUELTA";
+export const ESTADO_ACTA_LABEL: Record<EstadoActa, string> = {
+  BORRADOR: "Borrador",
+  PEND_FIRMA_1: "Pendiente de firma 1",
+  PEND_FIRMA_2: "Pendiente de firma 2",
+  FIRMADA: "Firmada",
+  RECHAZADA: "Rechazada",
+  ESCALADA: "Escalada a un superior",
+  RESUELTA: "Resuelta por un superior",
+};
+
+export interface FirmaActa {
+  firmaId: string;
+  usuarioId: string;
+  rol: RolCaja;
+  conforme: boolean;
+  observaciones?: string;
+  modalidad: "PRESENCIAL" | "REMOTA";
+  equipo: string;
+  fechaHora: string;
+  // El supervisor firmó en nombre del cajero saliente que no pudo contar ni firmar (reemplazo).
+  enNombreDe?: string;
+}
+
+// Foto del momento de la caja: lo que decía el sistema, lo que se contó y quién respondió. Es
+// serializable y no se actualiza después de crear el acta (ver `crearActa`).
+export interface ContenidoActa {
+  moneda?: Moneda[];
+  detalle?: DetalleRecuento;
+  contado?: PorMoneda;
+  esperado?: PorMoneda;
+  diferencia?: PorMoneda; // contado − esperado
+  responsableFondosId?: string;
+  detectoId?: string;
+  motivoId?: string;
+  motivoTexto?: string;
+  observaciones?: string;
+  descripcion?: string;
+  [clave: string]: unknown;
+}
+
+export interface ActaConformidad {
+  id: string; // ACT-000001
+  tipo: TipoActa;
+  sucursalId: string;
+  cajaId?: string;
+  eventoTipo: string; // JORNADA_APERTURA, JORNADA_CIERRE, ARQUEO, RELEVO, MOVIMIENTO…
+  eventoId: string;
+  fechaHora: string;
+  estado: EstadoActa;
+  contenido: ContenidoActa;
+  // Usuarios previstos para cada firma (opcionales: pueden quedar abiertos hasta firmar).
+  firmante1Id?: string;
+  firmante2Id?: string;
+  firma1?: FirmaActa;
+  firma2?: FirmaActa;
+  negativa?: { supervisorId: string; firmaId: string; observacion: string; fechaHora: string };
+  resolucion?: { usuarioId: string; firmaId: string; decision: "AUTORIZAR" | "NUEVA_VERIFICACION"; observaciones: string; fechaHora: string };
+  rechazo?: { usuarioId: string; fechaHora: string; motivo: string };
+  referenciaActaId?: string; // acta nueva que corrige o repite a otra
+  remota?: boolean; // la segunda firma fue (o será) remota, sin verificación física
+  // IDs de los movimientos de ajuste que generó la autorización (sólo actas de diferencia).
+  ajusteIds?: string[];
+  creadaPor: string;
+}
+
 export interface Recuento {
   usuarioId: string;
   fechaHora: string;
@@ -292,7 +436,36 @@ export interface Jornada {
   // Conteo de cheques y valores en custodia, aparte del efectivo (no cambia su diferencia).
   valoresApertura?: ConteoValores;
   valoresCierre?: ConteoValores;
+  // Entrega y recepción del efectivo al cerrar (v4, 1.2): hasta que el tesorero firma la recepción la caja
+  // está "Cerrada en sistema"; con la recepción pasa a "Efectivo en custodia".
+  custodia?: CustodiaCierre;
+  // Reaperturas autorizadas de la caja cerrada (con llave); la caja vuelve a Abierta.
+  reaperturas?: ReaperturaCaja[];
 }
+
+export interface CustodiaCierre {
+  actaId: string;
+  entregaUsuarioId: string; // cajero que entrega
+  recibeUsuarioId: string; // tesorero o supervisor que recibe y asume la custodia
+  fechaHora: string;
+  // La recepción fue una firma remota de Casa Central: sin verificación física del efectivo.
+  remota: boolean;
+  firmaEntregaId: string;
+  firmaRecepcionId: string;
+}
+
+export interface ReaperturaCaja {
+  solicitadaPor: string;
+  motivo: string;
+  autorizadaPor: string;
+  firmaId: string;
+  fechaHora: string;
+}
+
+export const ESTADO_CUSTODIA_LABEL = {
+  SISTEMA: "Cerrada en sistema",
+  CUSTODIA: "Efectivo en custodia",
+} as const;
 
 // Conteo de valores en custodia declarado al abrir o cerrar la caja.
 export interface ConteoValores {
@@ -385,12 +558,16 @@ export interface Arqueo {
   cajaId: string;
   tipo: TipoArqueo;
   controladorId: string;
+  // Casa Central (Director o Tesorero central) lo ordenó de forma remota desde el Tablero de tesoros.
+  ordenadoPor?: string;
   corte: string; // fecha y hora del corte (YYYY-MM-DD HH:MM)
   fin?: string;
   estado: "EN_CURSO" | "FINALIZADO";
   conteos: Recuento[]; // el segundo conteo es opcional
   resultado?: "CONFORME" | "CON_DIFERENCIA";
   ajusteAprobado?: Aprobacion & { motivoId: string; movimientoId: string };
+  // El supervisor no autorizó el ajuste: la diferencia se vuelve a verificar con un arqueo nuevo.
+  ajusteRechazado?: Aprobacion;
 }
 
 export type EstadoCambioTurno =
@@ -408,6 +585,11 @@ export interface CambioTurno {
   corte: string;
   estado: EstadoCambioTurno;
   arqueo?: Recuento; // arqueo de relevo ciego del saliente
+  // Cambio de turno (por defecto) o reemplazo por emergencia (motivo obligatorio, lo puede iniciar el
+  // Supervisor; si el saliente no puede contar ni firmar, el Supervisor lo hace en su nombre).
+  variante?: "TURNO" | "REEMPLAZO";
+  motivo?: string;
+  iniciadoPor?: string;
   recepcion?: { usuarioId: string; fechaHora: string; detalle: DetalleRecuento; contado: PorMoneda };
   resolucion?: Aprobacion;
   fin?: string;

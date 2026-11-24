@@ -25,6 +25,7 @@ import {
 import { fechaIso } from "./caja-reglas";
 import type {
   AcuerdoBancario,
+  ActaConformidad,
   Arqueo,
   Caja,
   CambioTurno,
@@ -32,6 +33,7 @@ import type {
   Chequera,
   TipoChequera,
   CierreSucursal,
+  AjusteCierre,
   CuentaBancaria,
   Denominacion,
   ExcepcionHorario,
@@ -66,11 +68,22 @@ const migrarCaja = (c: Caja): Caja => ({
   margenAlertaMin: c.margenAlertaMin ?? 30,
 });
 
+// Cierres guardados antes de la v4: "CERRADA" pasa a Cerrada OK y la reapertura de un supervisor se conserva.
+const migrarCierreSucursal = (c: CierreSucursal): CierreSucursal => {
+  const viejo = c as unknown as { estado: string; reapertura?: { supervisorId?: string; fechaHora?: string; nota?: string; solicitadaPor?: string } };
+  if (viejo.estado === "CERRADA") return { ...c, estado: "CERRADA_OK" };
+  const r = viejo.reapertura;
+  if (r && r.supervisorId && !r.solicitadaPor)
+    return { ...c, reapertura: { solicitadaPor: c.usuarioId, motivo: r.nota ?? "", fechaHoraSolicitud: r.fechaHora ?? "", autorizadaPor: r.supervisorId, fechaHoraAutorizacion: r.fechaHora } };
+  return c;
+};
+
 export const cajaStores = {
   sucursales: crear<Sucursal>("sucursales", SUCURSALES_INICIALES),
   cajas: crear<Caja>("cajas", CAJAS_INICIALES, migrarCaja),
   feriados: crear<Feriado>("feriados", FERIADOS_INICIALES),
-  cierresSucursal: crear<CierreSucursal>("cierres-sucursal", []),
+  cierresSucursal: crear<CierreSucursal>("cierres-sucursal", [], migrarCierreSucursal),
+  ajustesCierre: crear<AjusteCierre>("ajustes-cierre", []),
   denominaciones: crear<Denominacion>("denominaciones", DENOMINACIONES_INICIALES),
   cuentasBancarias: crear<CuentaBancaria>("cuentas-bancarias", CUENTAS_BANCARIAS_INICIALES),
   acuerdos: crear<AcuerdoBancario>("acuerdos", ACUERDOS_INICIALES),
@@ -88,6 +101,7 @@ export const cajaStores = {
   pedidos: crear<PedidoRefuerzo>("pedidos", PEDIDOS_REFUERZO_INICIALES),
   excepciones: crear<ExcepcionHorario>("excepciones", []),
   auditoria: crear<RegistroAuditoria>("auditoria", []),
+  actas: crear<ActaConformidad>("actas", []),
 };
 
 // Contexto de la demo: qué usuario opera el módulo y qué fecha y hora operativas simula (así apertura,
@@ -106,6 +120,7 @@ export const useSucursales = cajaStores.sucursales.useLista;
 export const useCajas = cajaStores.cajas.useLista;
 export const useFeriados = cajaStores.feriados.useLista;
 export const useCierresSucursal = cajaStores.cierresSucursal.useLista;
+export const useAjustesCierre = cajaStores.ajustesCierre.useLista;
 export const useDenominaciones = cajaStores.denominaciones.useLista;
 export const useCuentasBancarias = cajaStores.cuentasBancarias.useLista;
 export const useAcuerdos = cajaStores.acuerdos.useLista;
@@ -123,6 +138,7 @@ export const useMovimientosTesoreria = cajaStores.movimientos.useLista;
 export const usePedidosRefuerzo = cajaStores.pedidos.useLista;
 export const useExcepciones = cajaStores.excepciones.useLista;
 export const useAuditoria = cajaStores.auditoria.useLista;
+export const useActas = cajaStores.actas.useLista;
 
 const contexto = () => contextoStore.get()[0] ?? CONTEXTO_INICIAL[0];
 
@@ -216,6 +232,7 @@ export function reiniciarCaja() {
   cajaStores.cajas.commit(CAJAS_INICIALES);
   cajaStores.feriados.commit(FERIADOS_INICIALES);
   cajaStores.cierresSucursal.commit([]);
+  cajaStores.ajustesCierre.commit([]);
   cajaStores.denominaciones.commit(DENOMINACIONES_INICIALES);
   cajaStores.cuentasBancarias.commit(CUENTAS_BANCARIAS_INICIALES);
   cajaStores.acuerdos.commit(ACUERDOS_INICIALES);
@@ -233,6 +250,7 @@ export function reiniciarCaja() {
   cajaStores.pedidos.commit(PEDIDOS_REFUERZO_INICIALES);
   cajaStores.excepciones.commit([]);
   cajaStores.auditoria.commit([]);
+  cajaStores.actas.commit([]);
 }
 
 // Un único hook para las pantallas operativas, que necesitan casi todo el estado a la vez.

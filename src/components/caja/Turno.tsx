@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { esSupervisor, jornadaVigente, puedeAprobar } from "@/lib/caja-reglas";
+import { esSupervisor, jornadaVigente, puedeAprobar, veTodo } from "@/lib/caja-reglas";
 import {
   cancelarCambioTurno,
   cargarArqueoRelevo,
@@ -10,13 +10,15 @@ import {
   resolverRelevo,
   solicitarCambioTurno,
 } from "@/lib/caja-operaciones";
-import { hoy, nombreUsuario, useCajaDatos } from "@/lib/caja-store";
+import { actaDe as actaDeEvento } from "@/lib/actas";
+import { hoy, nombreUsuario, useActas, useCajaDatos } from "@/lib/caja-store";
 import { monedasDe, type CambioTurno, type Caja, type DetalleRecuento, type Jornada, type UsuarioCaja } from "@/lib/caja-tipos";
 import { saldosCaja } from "@/lib/caja-reglas";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ActaPanel } from "./ActaPanel";
 import { aError } from "./Jornada";
 import { FlujoRecuento, RecuentoForm } from "./RecuentoForm";
 import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, datosDiferencia, dinero, dineroConSigno } from "./comunes";
@@ -67,7 +69,12 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [accion, setAccion] = useState<"aprobar" | "rechazar" | "incidencia" | null>(null);
+  const actas = useActas();
+  const tieneActa = !!actaDeEvento("RELEVO", cambio.id, actas);
   const saliente = usuario.id === cambio.salienteId;
+  const reemplazo = cambio.variante === "REEMPLAZO";
+  // En un reemplazo por emergencia el Supervisor que lo inició puede contar en nombre del saliente.
+  const cargaArqueo = saliente || (reemplazo && usuario.id === cambio.iniciadoPor);
   const entrante = usuario.id === cambio.entranteId;
   const monedas = monedasDe(caja.moneda);
 
@@ -77,6 +84,11 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
       <p className="text-sm text-ink-600">
         Saliente: <strong>{nombreUsuario(cambio.salienteId)}</strong> · Entrante: <strong>{nombreUsuario(cambio.entranteId)}</strong> · Corte: {cambio.corte}. La caja está bloqueada hasta completar el relevo.
       </p>
+      {reemplazo && (
+        <Banner tone="warning" title="Reemplazo por emergencia">
+          Motivo: {cambio.motivo}. Lo inició {nombreUsuario(cambio.iniciadoPor ?? cambio.salienteId)}. Si el saliente no puede contar ni firmar, lo hace el Supervisor en su nombre y queda marcado en el acta.
+        </Banner>
+      )}
 
       {cambio.arqueo && (
         <div className="rounded-lg border border-ink-200 p-3 text-sm">
@@ -93,7 +105,7 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
       )}
 
       {cambio.estado === "SOLICITADO" &&
-        (saliente ? (
+        (cargaArqueo ? (
           <div>
             <p className="mb-3 text-sm text-ink-600">Arqueo de relevo ciego por moneda y denominación, contra el saldo esperado del turno.</p>
             <FlujoRecuento key={`${cambio.id}-${cambio.resolucion?.fechaHora ?? ""}`} caja={caja} confirmar="Registrar arqueo de relevo" onConfirmar={(d, a) => aError(cargarArqueoRelevo(cambio.id, { detalle: d, ajustes: a }))} />
@@ -108,19 +120,38 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
         </Banner>
       )}
 
-      {cambio.estado === "PEND_AUTORIZACION" &&
-        (esSupervisor(usuario) && puedeAprobar(usuario, cambio.salienteId) ? (
-          <div className="flex gap-2">
-            <Button variant="success" onClick={() => setAccion("aprobar")}>
-              Aprobar diferencia
-            </Button>
-            <Button variant="outline" onClick={() => setAccion("rechazar")}>
-              Rechazar
-            </Button>
-          </div>
-        ) : (
-          <Banner tone="warning">Hay una diferencia mayor a la tolerancia: la tiene que aprobar un supervisor distinto del cajero saliente.</Banner>
-        ))}
+      {cambio.estado === "PEND_AUTORIZACION" && (
+        <>
+          <Banner tone="warning">
+            Hay una diferencia mayor a la tolerancia: se atribuye al cajero saliente. Firma primero el responsable de los fondos y después la autoriza un supervisor distinto del saliente
+            {reemplazo ? " y de quien cargó el arqueo" : ""}.
+          </Banner>
+          {tieneActa ? (
+            <ActaPanel
+              eventoTipo="RELEVO"
+              eventoId={cambio.id}
+              diferencia={cambio.arqueo?.diferencia}
+              firmaEnNombre={reemplazo}
+              autorizarLabel="Autorizar el ajuste"
+              rechazarLabel="Rechazar y repetir el arqueo"
+              onAutorizar={(nota, firmaId) => aError(resolverRelevo(cambio.id, true, nota, firmaId))}
+              onRechazar={(nota, firmaId) => aError(resolverRelevo(cambio.id, false, nota, firmaId))}
+            />
+          ) : (
+            esSupervisor(usuario) &&
+            puedeAprobar(usuario, cambio.salienteId) && (
+              <div className="flex gap-2">
+                <Button variant="success" onClick={() => setAccion("aprobar")}>
+                  Aprobar diferencia
+                </Button>
+                <Button variant="outline" onClick={() => setAccion("rechazar")}>
+                  Rechazar
+                </Button>
+              </div>
+            )
+          )}
+        </>
+      )}
 
       {cambio.estado === "PEND_RECEPCION" &&
         (entrante ? (
@@ -158,7 +189,7 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
         </Banner>
       )}
 
-      {saliente && (
+      {(saliente || usuario.id === cambio.iniciadoPor) && (
         <Button variant="ghost" onClick={() => setError(aError(cancelarCambioTurno(cambio.id)))}>
           Cancelar el relevo
         </Button>
@@ -197,12 +228,22 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
 }
 
 function NuevoRelevo({ caja, jornada, usuario }: { caja: Caja; jornada: Jornada; usuario: UsuarioCaja }) {
-  const posibles = caja.cajeros.filter((c) => c.estado === "ACTIVO" && c.usuarioId !== usuario.id);
+  const posibles = caja.cajeros.filter((c) => c.estado === "ACTIVO" && c.usuarioId !== jornada.turnoUsuarioId);
   const [entrante, setEntrante] = useState("");
+  const [reemplazo, setReemplazo] = useState(false);
+  const [motivo, setMotivo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const elegido = posibles.some((p) => p.usuarioId === entrante) ? entrante : (posibles[0]?.usuarioId ?? "");
-  if (jornada.turnoUsuarioId !== usuario.id)
-    return <Banner tone="info">El turno en curso es de {nombreUsuario(jornada.turnoUsuarioId)}: sólo ese cajero puede pedir el relevo.</Banner>;
+  const esSaliente = jornada.turnoUsuarioId === usuario.id;
+  const supervisor = esSupervisor(usuario) && usuario.sucursalId === caja.sucursalId;
+  // El Supervisor de la sucursal sólo inicia reemplazos por emergencia.
+  const emergencia = reemplazo || (!esSaliente && supervisor);
+  if (!esSaliente && !supervisor)
+    return (
+      <Banner tone="info">
+        El turno en curso es de {nombreUsuario(jornada.turnoUsuarioId)}: sólo ese cajero puede pedir el relevo (o el Supervisor de la sucursal, en un reemplazo por emergencia).
+      </Banner>
+    );
   if (posibles.length === 0) return <Banner tone="warning">La caja no tiene otro cajero asignado para recibir el turno.</Banner>;
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -216,7 +257,21 @@ function NuevoRelevo({ caja, jornada, usuario }: { caja: Caja; jornada: Jornada;
           ))}
         </select>
       </label>
-      <Button onClick={() => setError(aError(solicitarCambioTurno(caja.id, elegido)))}>Solicitar cambio de turno</Button>
+      {esSaliente && (
+        <label className="flex items-center gap-2 pb-2 text-sm text-ink-700">
+          <input type="checkbox" checked={reemplazo} onChange={(e) => setReemplazo(e.target.checked)} className="h-4 w-4" />
+          Reemplazo por emergencia
+        </label>
+      )}
+      {emergencia && (
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Motivo del reemplazo</span>
+          <input value={motivo} onChange={(e) => setMotivo(e.target.value)} aria-label="Motivo del reemplazo" placeholder="Ej.: el cajero se sintió mal" className={`${CLASE_INPUT} w-72`} />
+        </label>
+      )}
+      <Button onClick={() => setError(aError(solicitarCambioTurno(caja.id, elegido, { variante: emergencia ? "REEMPLAZO" : "TURNO", motivo })))}>
+        {emergencia ? "Solicitar reemplazo" : "Solicitar cambio de turno"}
+      </Button>
       <ErrorBanner error={error} />
     </div>
   );
@@ -225,7 +280,7 @@ function NuevoRelevo({ caja, jornada, usuario }: { caja: Caja; jornada: Jornada;
 export function PantallaTurno() {
   const { cajas, jornadas, cambiosTurno, usuario } = useCajaDatos();
   const abiertas = cajas.filter((c) => c.estado === "ACTIVO" && (jornadaVigente(jornadas, c.id) || cambiosTurno.some((t) => t.cajaId === c.id && t.estado !== "COMPLETADO")));
-  const visibles = esSupervisor(usuario) ? abiertas : abiertas.filter((c) => c.tesoreroId === usuario.id || c.cajeros.some((x) => x.usuarioId === usuario.id));
+  const visibles = esSupervisor(usuario) || veTodo(usuario) ? abiertas : abiertas.filter((c) => c.tesoreroId === usuario.id || c.cajeros.some((x) => x.usuarioId === usuario.id));
   const [elegida, setElegida] = useState("");
   const cajaId = visibles.some((c) => c.id === elegida) ? elegida : (visibles[0]?.id ?? "");
   const caja = visibles.find((c) => c.id === cajaId);
@@ -261,7 +316,9 @@ export function PantallaTurno() {
             {historial.map((t) => (
               <li key={t.id} className="px-5 py-3 text-sm text-ink-700">
                 <span className="font-mono text-xs font-bold text-brand-700">{t.id}</span> · {nombreUsuario(t.salienteId)} → {nombreUsuario(t.entranteId)} · corte {t.corte}, fin {t.fin}
+                {t.variante === "REEMPLAZO" && ` · reemplazo por emergencia (${t.motivo})`}
                 {t.resolucion && ` · aprobado por ${nombreUsuario(t.resolucion.supervisorId)}`}
+                <ActaPanel eventoTipo="RELEVO_CONFORMIDAD" eventoId={t.id} firmaEnNombre={t.variante === "REEMPLAZO"} />
               </li>
             ))}
           </ul>

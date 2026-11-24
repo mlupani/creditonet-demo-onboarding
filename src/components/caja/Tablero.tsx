@@ -11,14 +11,87 @@ import {
   type DatosPosicion,
   type DiferenciaCaja,
 } from "@/lib/caja-posicion";
+import { USUARIOS_CAJA } from "@/lib/caja-datos";
+import { esResponsable, estadoCierreDiario, estadoCustodia, puedeArquear, veTodo } from "@/lib/caja-reglas";
 import { useCajaDatos } from "@/lib/caja-store";
-import { MONEDAS, TIPO_CAJA_LABEL, type Moneda, type PorMoneda } from "@/lib/caja-tipos";
+import { ESTADO_CIERRE_DIARIO_LABEL, ESTADO_CUSTODIA_LABEL, MONEDAS, TIPO_CAJA_LABEL, esTesoro, type Moneda, type PorMoneda } from "@/lib/caja-tipos";
+import { ordenarArqueoSorpresivo } from "@/lib/cierre-diario";
+import { plazosControl, usePlazos } from "@/lib/control-store";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { SelectField } from "@/components/ui/SelectField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { IconChevronDown } from "@/components/icons";
 import { ExcepcionesHorario } from "./ExcepcionesHorario";
-import { PaginaCaja, descargarXlsx, dinero, nombreRoles, quien } from "./comunes";
+import { ErrorBanner, PaginaCaja, descargarXlsx, dinero, nombreRoles, quien } from "./comunes";
+
+const TONO_CIERRE = {
+  ABIERTA: "neutral",
+  EN_CONTROLES: "info",
+  EN_VENTANA: "info",
+  CERRADA_OK: "success",
+  CERRADA_CON_PENDIENTES: "warning",
+  NO_CERRADA: "danger",
+  REABIERTA: "warning",
+} as const;
+
+// Casa Central ordena un arqueo sorpresivo de una caja y designa al controlador (sin aviso previo al cajero).
+function OrdenarArqueo({ onClose }: { onClose: () => void }) {
+  const { cajas, usuario } = useCajaDatos();
+  const activas = cajas.filter((c) => c.estado === "ACTIVO");
+  const [cajaId, setCajaId] = useState("");
+  const [controladorId, setControladorId] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [hecho, setHecho] = useState<string | null>(null);
+  const caja = activas.find((c) => c.id === (cajaId || activas[0]?.id));
+  const controladores = USUARIOS_CAJA.filter((u) => puedeArquear(u) && !veTodo(u) && !(caja && esResponsable(caja, u.id)));
+  const controlador = controladores.find((u) => u.id === (controladorId || controladores[0]?.id));
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Ordenar arqueo sorpresivo"
+      maxWidth="max-w-lg"
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={onClose}>
+            {hecho ? "Cerrar" : "Cancelar"}
+          </Button>
+          {!hecho && (
+            <Button
+              onClick={() => {
+                if (!caja || !controlador) return setError("Elegí la caja y el controlador.");
+                const r = ordenarArqueoSorpresivo(caja.id, controlador.id);
+                if (r.ok) setHecho(`Arqueo ${r.arqueoId} ordenado: ${caja.nombre} queda congelada y controla ${controlador.nombre}.`);
+                else setError(r.error);
+              }}
+            >
+              Ordenar el arqueo
+            </Button>
+          )}
+        </div>
+      }
+    >
+      <p className="mb-3 text-sm text-ink-600">
+        {usuario.nombre} ordena el corte de forma remota. La caja se congela y el controlador hace el recuento ciego desde Arqueo de caja; el cajero no recibe aviso previo.
+      </p>
+      <div className="space-y-3">
+        <SelectField id="oa-caja" label="Caja" value={caja?.id ?? ""} onChange={setCajaId} options={activas.map((c) => ({ value: c.id, label: c.nombre }))} />
+        <SelectField
+          id="oa-controlador"
+          label="Controlador"
+          value={controlador?.id ?? ""}
+          onChange={setControladorId}
+          hint="Un Supervisor o Tesorero con permiso Realizar arqueo que no sea responsable de la caja."
+          options={controladores.map((u) => ({ value: u.id, label: u.nombre }))}
+        />
+      </div>
+      {hecho && <p className="mt-3 rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-700">{hecho}</p>}
+      <ErrorBanner error={error} />
+    </Modal>
+  );
+}
 
 const PUNTO = { success: "bg-success-600", warning: "bg-warning-500", danger: "bg-danger-600" } as const;
 
@@ -59,6 +132,20 @@ export function PantallaTablero() {
   const d = useCajaDatos();
   const [verTodas, setVerTodas] = useState(false);
   const [abiertas, setAbiertas] = useState<Record<string, boolean>>({});
+  const [ordenando, setOrdenando] = useState(false);
+  usePlazos();
+  const limite = plazosControl().horaLimiteCierreDiario;
+  // Cierre diario de la sucursal (sólo en las filas de tesoro) y estado del efectivo de cada caja al cerrar.
+  const cierreDe = (cajaId: string) => {
+    const caja = d.cajas.find((c) => c.id === cajaId);
+    if (!caja || !esTesoro(caja.tipo)) return undefined;
+    return { sucursalId: caja.sucursalId, ...estadoCierreDiario(d.cierresSucursal, caja.sucursalId, d.fecha, d.hora, limite) };
+  };
+  const efectivoDe = (cajaId: string) => {
+    const j = d.jornadas.filter((x) => x.cajaId === cajaId && x.fecha === d.fecha).at(-1);
+    const e = j && estadoCustodia(j);
+    return e ? ESTADO_CUSTODIA_LABEL[e] : undefined;
+  };
 
   const datos: DatosPosicion = {
     cajas: d.cajas,
@@ -80,19 +167,25 @@ export function PantallaTablero() {
 
   const exportar = () =>
     descargarXlsx("tablero-de-tesoros.xlsx", "Tablero de tesoros", [
-      ["Caja", "Sucursal", "Tipo", "Estado", "Responsable del turno", "Saldo en pesos", "Saldo en dólares", "Diferencias a favor", "Diferencias en contra"],
-      ...filas.map((f) => [
-        f.nombre,
-        f.sucursal,
-        TIPO_CAJA_LABEL[f.tipo],
-        ESTADO_TABLERO[f.estado].label,
-        quien(f.responsableId),
-        f.monedas.includes("ARS") ? String(f.saldos.ARS) : "",
-        f.monedas.includes("USD") ? String(f.saldos.USD) : "",
-        porMoneda(f.diferencias.favor, f.monedas),
-        porMoneda(f.diferencias.contra, f.monedas),
-      ]),
-      ["Total efectivo", "", "", "", "", String(resumen.efectivoTotal.ARS), String(resumen.efectivoTotal.USD), "", ""],
+      ["Caja", "Sucursal", "Tipo", "Estado", "Responsable del turno", "Saldo en pesos", "Saldo en dólares", "Diferencias a favor", "Diferencias en contra", "Efectivo al cierre", "Cierre diario", "Responsable del cierre"],
+      ...filas.map((f) => {
+        const cd = cierreDe(f.cajaId);
+        return [
+          f.nombre,
+          f.sucursal,
+          TIPO_CAJA_LABEL[f.tipo],
+          ESTADO_TABLERO[f.estado].label,
+          quien(f.responsableId),
+          f.monedas.includes("ARS") ? String(f.saldos.ARS) : "",
+          f.monedas.includes("USD") ? String(f.saldos.USD) : "",
+          porMoneda(f.diferencias.favor, f.monedas),
+          porMoneda(f.diferencias.contra, f.monedas),
+          efectivoDe(f.cajaId) ?? "",
+          cd ? ESTADO_CIERRE_DIARIO_LABEL[cd.estado] : "",
+          cd?.cierre ? quien(cd.cierre.usuarioId) : "",
+        ];
+      }),
+      ["Total efectivo", "", "", "", "", String(resumen.efectivoTotal.ARS), String(resumen.efectivoTotal.USD), "", "", "", "", ""],
     ]);
 
   const p = resumen.pendientes;
@@ -156,7 +249,12 @@ export function PantallaTablero() {
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-bold uppercase tracking-widest text-ink-700">Tablero de tesoros</h2>
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-wrap gap-2">
+          {veTodo(d.usuario) && (
+            <Button variant="outline" onClick={() => setOrdenando(true)}>
+              Ordenar arqueo sorpresivo
+            </Button>
+          )}
           <Button variant="outline" onClick={exportar}>
             Exportar a Excel
           </Button>
@@ -164,7 +262,7 @@ export function PantallaTablero() {
       </div>
       <Card className="mt-3 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[60rem] text-left text-sm">
+          <table className="w-full min-w-[78rem] text-left text-sm">
             <thead>
               <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
                 <th className="px-3 py-2.5">Caja</th>
@@ -175,6 +273,8 @@ export function PantallaTablero() {
                 <th className="px-3 py-2.5 text-right">Saldo en pesos</th>
                 <th className="px-3 py-2.5 text-right">Saldo en dólares</th>
                 <th className="px-3 py-2.5">A favor / en contra</th>
+                <th className="px-3 py-2.5">Efectivo al cierre</th>
+                <th className="px-3 py-2.5">Cierre diario</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100">
@@ -220,10 +320,29 @@ export function PantallaTablero() {
                       <td className="px-3 py-3">
                         <Diferencias d={f.diferencias} monedas={f.monedas} />
                       </td>
+                      <td className="px-3 py-3">
+                        {efectivoDe(f.cajaId) ? (
+                          <StatusBadge tone={efectivoDe(f.cajaId) === ESTADO_CUSTODIA_LABEL.CUSTODIA ? "success" : "warning"}>{efectivoDe(f.cajaId)}</StatusBadge>
+                        ) : (
+                          <span className="text-ink-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        {(() => {
+                          const cd = cierreDe(f.cajaId);
+                          if (!cd) return <span className="text-ink-400">—</span>;
+                          return (
+                            <>
+                              <StatusBadge tone={TONO_CIERRE[cd.estado]}>{ESTADO_CIERRE_DIARIO_LABEL[cd.estado]}</StatusBadge>
+                              {cd.cierre && <span className="mt-1 block text-xs text-ink-500">Responsable: {quien(cd.cierre.usuarioId)}</span>}
+                            </>
+                          );
+                        })()}
+                      </td>
                     </tr>
                     {abierta && puedeExpandir && (
                       <tr className="bg-ink-25">
-                        <td colSpan={8} className="px-3 py-3">
+                        <td colSpan={10} className="px-3 py-3">
                           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-400">Diferencias por turno</p>
                           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             {f.porTurno.map((t) => (
@@ -247,7 +366,9 @@ export function PantallaTablero() {
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums">{dinero("ARS", resumen.efectivoTotal.ARS)}</td>
                 <td className="px-3 py-3 text-right tabular-nums">{dinero("USD", resumen.efectivoTotal.USD)}</td>
-                <td className="px-3 py-3 text-xs font-normal text-ink-500">Suma simple de los saldos de arriba</td>
+                <td className="px-3 py-3 text-xs font-normal text-ink-500" colSpan={3}>
+                  Suma simple de los saldos de arriba
+                </td>
               </tr>
             </tfoot>
           </table>
@@ -257,6 +378,7 @@ export function PantallaTablero() {
       <div className="mt-8">
         <ExcepcionesHorario />
       </div>
+      {ordenando && <OrdenarArqueo onClose={() => setOrdenando(false)} />}
     </PaginaCaja>
   );
 }

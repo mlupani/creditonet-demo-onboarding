@@ -4,7 +4,18 @@ import { useRef, type ReactNode } from "react";
 import { useDenominaciones, nombreUsuario } from "@/lib/caja-store";
 import { formatNumber } from "@/lib/format";
 import { denominacionesDe } from "@/lib/caja-reglas";
-import { NOMBRE_MONEDA, monedasDe, type Caja, type Recuento } from "@/lib/caja-tipos";
+import {
+  ESTADO_ACTA_LABEL,
+  NOMBRE_MONEDA,
+  ROL_CAJA_LABEL,
+  TIPO_ACTA_LABEL,
+  monedasDe,
+  type ActaConformidad,
+  type Caja,
+  type FirmaActa,
+  type Moneda,
+  type Recuento,
+} from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { IconPrinter } from "@/components/icons";
@@ -134,6 +145,115 @@ export function ActaRecuento({ caja, titulo, recuento }: { caja: Caja; titulo: s
         );
       })}
     </div>
+  );
+}
+
+const textoFirma = (f: FirmaActa | undefined, pendiente: string) =>
+  f
+    ? `${nombreUsuario(f.usuarioId)} (${ROL_CAJA_LABEL[f.rol]}) · ${f.conforme ? "Conforme" : "No conforme"} · ${f.fechaHora} · equipo ${f.equipo} · ${f.modalidad === "REMOTA" ? "firma remota" : "presencial"}${f.enNombreDe ? ` · en nombre de ${nombreUsuario(f.enNombreDe)}` : ""}`
+    : pendiente;
+
+// Acta de conformidad (v4) lista para imprimir o guardar como PDF: contenido del momento, las dos firmas
+// con su llave (usuario, rol, fecha, hora, equipo y modalidad) y las leyendas de negativa o firma remota.
+export function ActaConformidadModal({ acta, onClose }: { acta: ActaConformidad; onClose: () => void }) {
+  const denominaciones = useDenominaciones();
+  const c = acta.contenido;
+  const monedas = (c.moneda ?? ["ARS"]) as Moneda[];
+  const titulo = `${TIPO_ACTA_LABEL[acta.tipo]} · ${acta.id}`;
+  return (
+    <ActaModal open onClose={onClose} titulo={titulo}>
+      <h1 className="text-lg font-bold">Acta de conformidad N° {acta.id}</h1>
+      <p className="text-ink-600">{TIPO_ACTA_LABEL[acta.tipo]}</p>
+      <ActaDatos
+        filas={[
+          ["Estado", ESTADO_ACTA_LABEL[acta.estado]],
+          ["Sucursal / caja", `${acta.sucursalId}${acta.cajaId ? ` · ${acta.cajaId}` : ""}`],
+          ["Fecha y hora", acta.fechaHora],
+          ["Evento de origen", `${acta.eventoTipo.replace(/_/g, " ").toLowerCase()} ${acta.eventoId}`],
+          ...(acta.referenciaActaId ? ([["Corrige o repite el acta", acta.referenciaActaId]] as [string, string][]) : []),
+          ...(c.responsableFondosId ? ([["Responsable de los fondos", nombreUsuario(c.responsableFondosId)]] as [string, string][]) : []),
+          ...(c.detectoId ? ([["Detectó", nombreUsuario(c.detectoId)]] as [string, string][]) : []),
+          ...(c.motivoTexto ? ([["Motivo", c.motivoTexto]] as [string, string][]) : []),
+          ...(c.observaciones || c.descripcion ? ([["Circunstancias", [c.descripcion, c.observaciones].filter(Boolean).join(" · ")]] as [string, string][]) : []),
+        ]}
+      />
+      {c.contado && c.esperado && c.diferencia && (
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-ink-50 text-left">
+              <th className="border border-ink-200 px-2 py-1">Moneda</th>
+              <th className="n border border-ink-200 px-2 py-1 text-right">Contado</th>
+              <th className="n border border-ink-200 px-2 py-1 text-right">Esperado</th>
+              <th className="n border border-ink-200 px-2 py-1 text-right">Diferencia (faltante = deudora)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {monedas.map((m) => (
+              <tr key={m}>
+                <td className="border border-ink-200 px-2 py-1">{NOMBRE_MONEDA[m]}</td>
+                <td className="n border border-ink-200 px-2 py-1 text-right">{dinero(m, c.contado![m])}</td>
+                <td className="n border border-ink-200 px-2 py-1 text-right">{dinero(m, c.esperado![m])}</td>
+                <td className="n border border-ink-200 px-2 py-1 text-right">{dineroConSigno(m, c.diferencia![m])}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {c.detalle &&
+        monedas.map((m) => {
+          const dens = denominacionesDe(denominaciones, m).filter((d) => (c.detalle?.[d.id] ?? 0) > 0);
+          if (dens.length === 0) return null;
+          return (
+            <div key={m}>
+              <h3 className="mt-3 text-xs font-bold uppercase tracking-wider text-ink-500">Detalle en {NOMBRE_MONEDA[m].toLowerCase()}</h3>
+              <table className="mt-1 w-full border-collapse text-sm">
+                <tbody>
+                  {dens.map((d) => (
+                    <tr key={d.id}>
+                      <td className="border border-ink-200 px-2 py-1">{d.tipo === "BILLETE" ? "Billete" : "Moneda"} de {formatNumber(d.valor)}</td>
+                      <td className="n border border-ink-200 px-2 py-1 text-right">{c.detalle?.[d.id]}</td>
+                      <td className="n border border-ink-200 px-2 py-1 text-right">{dinero(m, (c.detalle?.[d.id] ?? 0) * d.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      <h2 className="mt-4 text-sm font-bold text-ink-900">Firmas con llave de autorización</h2>
+      <ActaDatos
+        filas={[
+          ["Firma 1", textoFirma(acta.firma1, "Pendiente")],
+          ...(acta.firma1?.observaciones ? ([["Observaciones firma 1", acta.firma1.observaciones]] as [string, string][]) : []),
+          ["Firma 2", textoFirma(acta.firma2, acta.estado === "ESCALADA" ? "No corresponde: acta escalada" : "Pendiente")],
+          ...(acta.firma2?.observaciones ? ([["Observaciones firma 2", acta.firma2.observaciones]] as [string, string][]) : []),
+        ]}
+      />
+      {acta.negativa && (
+        <p className="mt-2 font-semibold">
+          Negativa a firmar del responsable. Registró {nombreUsuario(acta.negativa.supervisorId)} el {acta.negativa.fechaHora}: {acta.negativa.observacion}
+        </p>
+      )}
+      {acta.resolucion && (
+        <p className="mt-2">
+          Resolución del superior: {nombreUsuario(acta.resolucion.usuarioId)} · {acta.resolucion.decision === "AUTORIZAR" ? "autorizó el ajuste" : "pidió nueva verificación"} ·{" "}
+          {acta.resolucion.fechaHora} · {acta.resolucion.observaciones}
+        </p>
+      )}
+      {acta.rechazo && (
+        <p className="mt-2 font-semibold">
+          Acta rechazada por {nombreUsuario(acta.rechazo.usuarioId)} el {acta.rechazo.fechaHora}: {acta.rechazo.motivo}
+        </p>
+      )}
+      {(acta.remota || acta.firma2?.modalidad === "REMOTA") && <p className="mt-2 font-semibold">Autorización remota — sin verificación física.</p>}
+      {acta.ajusteIds && acta.ajusteIds.length > 0 && <p className="mt-2">Movimientos de ajuste generados: {acta.ajusteIds.join(", ")}.</p>}
+      <ActaFirmas
+        firmas={[
+          `Firma 1: ${acta.firma1 ? nombreUsuario(acta.firma1.usuarioId) : "pendiente"}`,
+          `Firma 2: ${acta.firma2 ? nombreUsuario(acta.firma2.usuarioId) : "pendiente"}`,
+        ]}
+      />
+    </ActaModal>
   );
 }
 

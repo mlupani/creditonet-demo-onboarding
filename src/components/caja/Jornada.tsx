@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { aMinutos, esSupervisor, jornadaVigente } from "@/lib/caja-reglas";
 import { pendientesDeCaja, registrarApertura, registrarCierre, resolverApertura, resolverCierre, nombreCaja, type Res } from "@/lib/caja-operaciones";
-import { hoy, nombreUsuario, useCajaDatos, useCheques } from "@/lib/caja-store";
+import { actaDe as actaDeEvento } from "@/lib/actas";
+import { hoy, nombreUsuario, useActas, useCajaDatos, useCheques } from "@/lib/caja-store";
 import { ESTADO_JORNADA_LABEL, monedasDe, type Caja, type ConteoValores, type Jornada, type MovimientoCaja } from "@/lib/caja-tipos";
 import { registrarConteoValores } from "@/lib/cheques-operaciones";
 import { enCustodia, totalPorMoneda } from "@/lib/cheques-reglas";
@@ -12,6 +13,8 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActaDatos, ActaFirmas, ActaModal, ActaRecuento } from "./Acta";
+import { ActaPanel } from "./ActaPanel";
+import { EntregaCierre } from "./EntregaCierre";
 import { FlujoRecuento } from "./RecuentoForm";
 import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, cajasPropias, datosDiferencia, dinero } from "./comunes";
 
@@ -126,6 +129,10 @@ function Pendiente({ jornada, etapa }: { jornada: Jornada; etapa: "apertura" | "
   const caja = cajas.find((c) => c.id === jornada.cajaId);
   const recuento = etapa === "apertura" ? jornada.apertura : jornada.cierre;
   const [accion, setAccion] = useState<"aprobar" | "rechazar" | null>(null);
+  const actas = useActas();
+  const eventoTipo = etapa === "apertura" ? "JORNADA_APERTURA" : "JORNADA_CIERRE";
+  const eventoId = etapa === "apertura" ? jornada.id : `${jornada.id}-C`;
+  const tieneActa = !!actaDeEvento(eventoTipo, eventoId, actas);
   if (!caja || !recuento) return null;
   const resolver = etapa === "apertura" ? resolverApertura : resolverCierre;
   return (
@@ -144,14 +151,25 @@ function Pendiente({ jornada, etapa }: { jornada: Jornada; etapa: "apertura" | "
           );
         })}
       </ul>
-      <div className="mt-3 flex gap-2">
-        <Button size="sm" variant="success" onClick={() => setAccion("aprobar")}>
-          Aprobar
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setAccion("rechazar")}>
-          Rechazar
-        </Button>
-      </div>
+      {tieneActa ? (
+        <ActaPanel
+          eventoTipo={eventoTipo}
+          eventoId={eventoId}
+          diferencia={recuento.diferencia}
+          autorizarLabel={etapa === "apertura" ? "Autorizar y abrir la caja" : "Autorizar el ajuste y cerrar"}
+          onAutorizar={(nota, firmaId) => aError(resolver(jornada.id, true, nota, firmaId))}
+          onRechazar={(nota, firmaId) => aError(resolver(jornada.id, false, nota, firmaId))}
+        />
+      ) : (
+        <div className="mt-3 flex gap-2">
+          <Button size="sm" variant="success" onClick={() => setAccion("aprobar")}>
+            Aprobar
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setAccion("rechazar")}>
+            Rechazar
+          </Button>
+        </div>
+      )}
       <NotaModal
         open={accion !== null}
         titulo={accion === "aprobar" ? "Aprobar la diferencia" : "Rechazar y repetir el recuento"}
@@ -217,6 +235,8 @@ export function PantallaJornada({ modo }: { modo: "apertura" | "cierre" }) {
   const vigente = jornadaVigente(jornadas, cajaId);
   const jornada = vigente ?? jornadaHoy;
   const supervisa = esSupervisor(usuario);
+  // Un acta escalada por una negativa a firmar la resuelve el Tesorero central o el Director.
+  const verPendientes = supervisa || usuario.roles.includes("TESORERO_CENTRAL") || usuario.roles.includes("DIRECTOR");
   const pendientes = jornadas.filter((j) => j.estado === (modo === "apertura" ? "PEND_APERTURA" : "PEND_CIERRE"));
   const sinCerrar = caja && vigente?.estado === "ABIERTA" && aMinutos(hora) > aMinutos(caja.horarioHasta) + MARGEN_ALERTA_MIN;
 
@@ -232,7 +252,7 @@ export function PantallaJornada({ modo }: { modo: "apertura" | "cierre" }) {
           : "Cierre definitivo del día con recuento ciego. El saldo esperado es la apertura más los ingresos y menos los egresos del día."
       }
     >
-      {supervisa && pendientes.length > 0 && (
+      {verPendientes && pendientes.length > 0 && (
         <Card className="mb-6">
           <CardHeader title={esApertura ? "Aperturas pendientes de autorización" : "Cierres pendientes de autorización"} description="Quien aprueba no puede ser quien cargó el recuento." />
           <div className="space-y-3 p-5">
@@ -294,12 +314,20 @@ export function PantallaJornada({ modo }: { modo: "apertura" | "cierre" }) {
                   {jornada.estado === "CERRADA" && `La caja se cerró hoy (${nombreCaja(jornada.cajaId)}): el cierre es definitivo y se bloquearon los movimientos de la fecha.`}
                 </Banner>
               ) : null}
+              {jornada && (jornada.estado === "PEND_APERTURA" || jornada.estado === "PEND_CIERRE") && (
+                <ActaPanel
+                  eventoTipo={jornada.estado === "PEND_APERTURA" ? "JORNADA_APERTURA" : "JORNADA_CIERRE"}
+                  eventoId={jornada.estado === "PEND_APERTURA" ? jornada.id : `${jornada.id}-C`}
+                  diferencia={(jornada.estado === "PEND_APERTURA" ? jornada.apertura : jornada.cierre)?.diferencia}
+                />
+              )}
 
               <ValoresEnCustodia caja={caja} jornada={jornada} etapa={modo} />
             </>
           )}
         </div>
       </Card>
+      {!esApertura && <EntregaCierre cajaId={cajaId} />}
       {acta && jornada && caja && <ActaJornada jornada={jornada} caja={caja} etapa={acta} onClose={() => setActaDe(null)} />}
     </PaginaCaja>
   );

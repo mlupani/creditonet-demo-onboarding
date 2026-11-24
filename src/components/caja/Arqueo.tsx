@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { arqueoVencido, esResponsable, esSupervisor, puedeAprobar, puedeArquear } from "@/lib/caja-reglas";
-import { ajustarDiferenciaArqueo, finalizarArqueo, iniciarArqueo, registrarConteoArqueo } from "@/lib/caja-operaciones";
+import { arqueoVencido, esResponsable, puedeArquear } from "@/lib/caja-reglas";
+import { ajustarDiferenciaArqueo, finalizarArqueo, iniciarArqueo, rechazarAjusteArqueo, registrarConteoArqueo } from "@/lib/caja-operaciones";
 import { hoy, nombreUsuario, useCajaDatos, useMotivosDiferencia } from "@/lib/caja-store";
 import { monedasDe, type Arqueo, type Caja, type TipoArqueo } from "@/lib/caja-tipos";
 import { Banner } from "@/components/ui/Banner";
@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActaDatos, ActaFirmas, ActaModal, ActaRecuento } from "./Acta";
+import { ActaPanel } from "./ActaPanel";
 import { aError } from "./Jornada";
 import { FlujoRecuento } from "./RecuentoForm";
-import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, datosDiferencia, dinero, dineroConSigno } from "./comunes";
+import { CLASE_INPUT, ErrorBanner, PaginaCaja, dinero, dineroConSigno } from "./comunes";
 
 const TIPO_LABEL: Record<TipoArqueo, string> = { ORDINARIO: "Ordinario", SORPRESIVO: "Sorpresivo" };
 
@@ -149,7 +150,8 @@ export function PantallaArqueo() {
   const [incluidas, setIncluidas] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [acta, setActa] = useState<string | null>(null);
-  const [ajuste, setAjuste] = useState<Arqueo | null>(null);
+  const [ajusteId, setAjuste] = useState<string | null>(null);
+  const ajuste = arqueos.find((x) => x.id === ajusteId) ?? null;
   const [motivoId, setMotivoId] = useState("");
   const [fCaja, setFCaja] = useState("");
   const [fTipo, setFTipo] = useState("");
@@ -306,8 +308,8 @@ export function PantallaArqueo() {
                     <td className="px-4 py-3">{nombreUsuario(a.controladorId)}</td>
                     <td className="px-4 py-3 tabular-nums">{a.fin}</td>
                     <td className="px-4 py-3">
-                      <StatusBadge tone={a.resultado === "CONFORME" ? "success" : a.ajusteAprobado ? "info" : "warning"}>
-                        {a.resultado === "CONFORME" ? "Conforme" : a.ajusteAprobado ? "Diferencia ajustada" : "Con diferencia"}
+                      <StatusBadge tone={a.resultado === "CONFORME" ? "success" : a.ajusteAprobado ? "info" : a.ajusteRechazado ? "danger" : "warning"}>
+                        {a.resultado === "CONFORME" ? "Conforme" : a.ajusteAprobado ? "Diferencia ajustada" : a.ajusteRechazado ? "Ajuste rechazado" : "Con diferencia"}
                       </StatusBadge>
                     </td>
                     <td className="px-4 py-3">
@@ -315,9 +317,9 @@ export function PantallaArqueo() {
                         <Button size="sm" variant="outline" onClick={() => setActa(a.id)}>
                           Ver acta
                         </Button>
-                        {a.resultado === "CON_DIFERENCIA" && !a.ajusteAprobado && (esSupervisor(usuario) ? puedeAprobar(usuario, a.controladorId) : false) && (
-                          <Button size="sm" variant="ghost" onClick={() => setAjuste(a)}>
-                            Autorizar ajuste
+                        {a.resultado === "CON_DIFERENCIA" && (
+                          <Button size="sm" variant="ghost" onClick={() => setAjuste(ajusteId === a.id ? null : a.id)}>
+                            Acta de diferencia
                           </Button>
                         )}
                       </div>
@@ -331,34 +333,44 @@ export function PantallaArqueo() {
       </Card>
 
       {actaArqueo && cajaDe(actaArqueo.cajaId) && <ActaArqueo arqueo={actaArqueo} caja={cajaDe(actaArqueo.cajaId)!} onClose={() => setActa(null)} />}
-      <NotaModal
-        open={ajuste !== null}
-        titulo="Autorizar ajuste por diferencia de arqueo"
-        descripcion="Genera un movimiento de ajuste en el libro de la caja con la cuenta contable del motivo. La caja tiene que estar abierta."
-        etiquetaNota="Nota (opcional)"
-        confirmar="Autorizar ajuste"
-        llave={
-          ajuste
-            ? {
-                operacion: "Autorización de ajuste por diferencia de arqueo",
-                referencia: ajuste.id,
-                cargadoPor: ajuste.controladorId,
-                ...datosDiferencia(ajuste.conteos[ajuste.conteos.length - 1]?.diferencia ?? { ARS: 0, USD: 0 }),
-              }
-            : undefined
-        }
-        onClose={() => setAjuste(null)}
-        onConfirmar={(nota, firmaId) => (ajuste ? aError(ajustarDiferenciaArqueo(ajuste.id, motivoId, nota, firmaId)) : null)}
-      >
-        <select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} aria-label="Motivo de la diferencia" className={CLASE_INPUT}>
-          <option value="">Elegí un motivo…</option>
-          {motivos.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.descripcion}
-            </option>
-          ))}
-        </select>
-      </NotaModal>
+      {ajuste && (
+        <Card className="mt-6">
+          <CardHeader
+            title={`Acta de diferencia del arqueo ${ajuste.id}`}
+            description="El responsable de la caja firma conforme o disconforme; después un supervisor distinto del controlador autoriza el ajuste o lo rechaza. La diferencia no desaparece: el ajuste es un movimiento propio."
+          />
+          <div className="p-5">
+            {!ajuste.ajusteAprobado && !ajuste.ajusteRechazado && (
+              <label className="mb-3 block max-w-md">
+                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Motivo de la diferencia (para autorizar el ajuste)</span>
+                <select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} aria-label="Motivo de la diferencia" className={CLASE_INPUT}>
+                  <option value="">Elegí un motivo…</option>
+                  {motivos.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.descripcion}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {ajuste.ajusteAprobado && <Banner tone="success">Ajuste autorizado por {nombreUsuario(ajuste.ajusteAprobado.supervisorId)} · {ajuste.ajusteAprobado.fechaHora}.</Banner>}
+            {ajuste.ajusteRechazado && (
+              <Banner tone="warning" title="Ajuste rechazado">
+                {nombreUsuario(ajuste.ajusteRechazado.supervisorId)}: {ajuste.ajusteRechazado.nota}. Hay que repetir la verificación con un arqueo nuevo.
+              </Banner>
+            )}
+            <ActaPanel
+              eventoTipo="ARQUEO"
+              eventoId={ajuste.id}
+              diferencia={ajuste.conteos[ajuste.conteos.length - 1]?.diferencia}
+              autorizarLabel="Autorizar el ajuste"
+              rechazarLabel="Rechazar el ajuste"
+              onAutorizar={(nota, firmaId) => aError(ajustarDiferenciaArqueo(ajuste.id, motivoId, nota, firmaId))}
+              onRechazar={(nota, firmaId) => aError(rechazarAjusteArqueo(ajuste.id, nota, firmaId))}
+            />
+          </div>
+        </Card>
+      )}
     </PaginaCaja>
   );
 }

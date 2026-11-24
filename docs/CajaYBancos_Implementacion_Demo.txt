@@ -526,3 +526,56 @@ Tests (npm test):
   de proveedores.
 - Simplificaciones: la llave es simulada; las alertas no envian mail; el pago
   parcial de OP queda marcado como punto abierto de la especificacion.
+
+
+==========================================================================
+13. ACTAS DE CONFORMIDAD Y CIERRE DIARIO (v4)
+==========================================================================
+
+13.1 Actas (/caja/actas)
+- Entidad inalterable con ID ACT-000001 (nunca se edita ni se borra; una
+  correccion es un acta nueva que referencia a la anterior). Estados: Borrador,
+  Pendiente de firma 1/2, Firmada, Rechazada, Escalada, Resuelta.
+- Acta de diferencia (apertura, cierre, relevo/reemplazo y arqueo): responsable
+  de los fondos (lo determina el sistema por turno y custodia), quien detecto,
+  importe con signo por moneda, motivo y circunstancias. Firma 1: el responsable,
+  conforme o disconforme (observaciones obligatorias). Si se niega, el supervisor
+  registra la negativa y el acta se escala al Tesorero central o al Director,
+  que resuelve con su llave. Firma 2: el Supervisor autoriza el ajuste
+  (movimiento de ajuste en el libro, nunca edita el recuento) o rechaza (nuevo
+  recuento, acta Rechazada). Positivas y negativas con el mismo rigor.
+- Actas sin diferencia: apertura, arqueo y relevo (el reemplazo por emergencia
+  exige motivo y lo puede iniciar el Supervisor).
+- Segunda firma remota de Casa Central para sucursales con un solo empleado
+  ("Autorizacion remota - sin verificacion fisica").
+- Historial por caja con filtros, detalle de firmas, PDF y Excel, segun el
+  ambito del usuario.
+
+13.2 Entrega y recepcion del cierre de caja
+- Al cerrar queda "Cerrada en sistema"; pasa a "Efectivo en custodia" cuando el
+  cajero y el tesorero o supervisor firman el acta de entrega y recepcion, cada
+  uno con su llave. Reapertura de una caja cerrada solo con autorizacion y
+  registro (Tesorero central o Director, con plazo en dias habiles).
+
+13.3 Cierre diario de sucursal
+- Controles automaticos (cajas cerradas y en custodia, sin diferencias sin
+  resolver, remesas y pendientes justificables, etc.); medios electronicos
+  figura como no aplicable en la demo.
+- Estados: En controles, En ventana de ajuste, Cerrada OK, Cerrada con
+  pendientes, No cerrada (hora limite) y Reabierta.
+- Ventana de ajustes: el tesorero carga ajustes y el supervisor los autoriza
+  con llave y matriz (movimientos propios, sin editar). Acta de cierre diario
+  con doble firma. Reapertura con Tesorero central o Director dentro del plazo;
+  despues, solo el Director.
+
+13.4 Tablero de tesoros
+- Columnas "Efectivo al cierre" y "Cierre diario" (con responsable) y boton
+  "Ordenar arqueo sorpresivo" para Director y Tesorero central, que designa un
+  controlador (Supervisor o Tesorero que no sea responsable de la caja).
+
+13.5 Simplificaciones
+- La exigencia de firmar la aplica la pantalla (las operaciones verifican la
+  llave solo si reciben la firma). El acta PDF de la jornada no muestra aun las
+  firmas v4 (se ven en /caja/actas). La reapertura de una caja no restringe la
+  operacion a ajustes. Ordenar un arqueo sorpresivo no emite alerta propia (el
+  anexo no tiene ese evento).

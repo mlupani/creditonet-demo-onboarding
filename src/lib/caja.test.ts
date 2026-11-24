@@ -6,9 +6,7 @@ import {
   autorizarMovimiento,
   bloqueoCaja,
   cargarArqueoRelevo,
-  cerrarSucursal,
   habilitarFueraDeHorario,
-  reabrirSucursal,
   cargarBoletaDeposito,
   conciliarDeposito,
   crearMovimiento,
@@ -39,6 +37,31 @@ import {
   totalRecuento,
 } from "./caja-reglas";
 import { cajaStores as S, fijarFechaDemo, fijarHoraDemo, fijarUsuarioActual, reiniciarCaja } from "./caja-store";
+import {
+  abrirVentanaDeAjuste,
+  autorizarReaperturaCierre,
+  confirmarCierreDiario,
+  iniciarCierreDiario,
+  recibirEntregaCierre,
+  solicitarReaperturaCierre,
+} from "./cierre-diario";
+import { CLAVE_DEMO } from "./control-datos";
+import { codigoTemporal, firmar } from "./llave";
+
+// Firma con llave (usuario, clave y código temporal de la demo) y devuelve el ID de la firma.
+function firmaDe(usuarioId: string, referencia: string, remota = false): string {
+  const r = firmar({ usuarioId, clave: CLAVE_DEMO, codigo: codigoTemporal(usuarioId), operacion: "Prueba", referencia, remota });
+  assert.ok(r.ok, r.ok ? "" : r.error);
+  return r.ok ? r.firma.id : "";
+}
+
+// El cajero entrega el efectivo de la caja cerrada y un supervisor o tesorero de la sucursal lo recibe.
+function entregarCierre(cajaId: string, recibe: string) {
+  const j = S.jornadas.get().find((x) => x.cajaId === cajaId && x.estado === "CERRADA");
+  assert.ok(j?.cierre);
+  const r = recibirEntregaCierre(j.id, firmaDe(j.cierre.usuarioId, j.id), firmaDe(recibe, j.id));
+  assert.ok(r.ok, r.ok ? "" : r.error);
+}
 
 const den = DENOMINACIONES_INICIALES;
 const contar = (moneda: "ARS" | "USD", importe: number) => recuentoSugerido(den, moneda, importe);
@@ -362,36 +385,54 @@ test("mínimo operativo y reserva: al autorizar se reserva y no se puede comprom
   assert.ok(!pedir(1100000).ok, "la reserva descuenta del saldo disponible para pedir");
 });
 
-test("cierre de sucursal: exige cajas cerradas, bloquea la fecha y se reabre con un supervisor", () => {
+test("cierre de sucursal: exige cajas cerradas y con el efectivo recibido, bloquea la fecha y se reabre con Casa Central", () => {
   abrir("CAJ-003", "ana-gomez");
+  como("marta-diaz");
+  assert.ok(autorizarMovimiento("MT-0002", false, "ya no hace falta").ok, "el pedido de ejemplo queda resuelto: sin pendientes");
+  como("ana-gomez");
+  assert.ok(!iniciarCierreDiario("SUC-002").ok, "sólo el tesorero de la sucursal");
   como("tomas-ruiz");
-  const abierta = cerrarSucursal("SUC-002");
+  const inicio = iniciarCierreDiario("SUC-002");
+  assert.ok(inicio.ok);
+  const cierreId = inicio.ok ? inicio.cierreId : "";
+  assert.ok(!iniciarCierreDiario("SUC-002").ok, "el cierre ya está en marcha");
+  const abierta = abrirVentanaDeAjuste(cierreId);
   assert.ok(!abierta.ok && /sigue abierta/.test(abierta.error));
   como("ana-gomez");
   assert.ok(registrarCierre("CAJ-003", { detalle: contar("ARS", 600000) }).ok);
-  como("ana-gomez");
-  assert.ok(!cerrarSucursal("SUC-002").ok, "sólo el tesorero de la sucursal");
   como("tomas-ruiz");
-  const cierre = cerrarSucursal("SUC-002");
-  assert.ok(cierre.ok);
-  assert.ok(!cerrarSucursal("SUC-002").ok, "ya cerró");
+  const sinRecibir = abrirVentanaDeAjuste(cierreId);
+  assert.ok(!sinRecibir.ok && /todavía no fue recibido/.test(sinRecibir.error), "cerrada en sistema no es efectivo en custodia");
+  entregarCierre("CAJ-003", "marta-diaz");
+  assert.ok(abrirVentanaDeAjuste(cierreId).ok);
+  const ok = confirmarCierreDiario(cierreId, { firma1Id: firmaDe("tomas-ruiz", cierreId), firma2Id: firmaDe("marta-diaz", cierreId) });
+  assert.ok(ok.ok && ok.estado === "CERRADA_OK");
+  assert.ok(!iniciarCierreDiario("SUC-002").ok, "ya cerró");
   assert.match(bloqueoCaja("CAJ-002") ?? "", /cerró la fecha/);
-  assert.ok(!reabrirSucursal(cierre.ok ? cierre.cierreId : "", "x").ok, "el tesorero no puede reabrir lo que cerró");
-  como("marta-diaz");
-  assert.ok(!reabrirSucursal(cierre.ok ? cierre.cierreId : "", " ").ok, "falta el motivo");
-  assert.ok(reabrirSucursal(cierre.ok ? cierre.cierreId : "", "faltó una rendición").ok);
+  assert.ok(!solicitarReaperturaCierre(cierreId, " ").ok, "falta el motivo");
+  assert.ok(solicitarReaperturaCierre(cierreId, "faltó una rendición").ok);
+  assert.ok(!autorizarReaperturaCierre(cierreId, firmaDe("marta-diaz", cierreId)).ok, "un supervisor no tiene facultades para reabrir");
+  assert.ok(autorizarReaperturaCierre(cierreId, firmaDe("ricardo-pena", cierreId)).ok);
   assert.equal(bloqueoCaja("CAJ-002"), undefined);
 });
 
-test("cierre de sucursal: no con movimientos en tránsito", () => {
+test("cierre de sucursal: los movimientos en tránsito se justifican y la fecha queda cerrada con pendientes", () => {
   abrir("CAJ-002", "tomas-ruiz", ["ARS", "USD"]);
   como("marta-diaz");
   autorizarMovimiento("MT-0002", true, "");
   como("tomas-ruiz");
   enviarMovimiento("MT-0002", contar("ARS", 400000), true);
   assert.ok(registrarCierre("CAJ-002", { detalle: Object.assign({}, contar("ARS", saldo("CAJ-002")), contar("USD", saldo("CAJ-002", "USD"))) }).ok);
-  const r = cerrarSucursal("SUC-002");
-  assert.ok(!r.ok && /en tránsito/.test(r.error));
+  entregarCierre("CAJ-002", "marta-diaz");
+  const inicio = iniciarCierreDiario("SUC-002");
+  assert.ok(inicio.ok);
+  const cierreId = inicio.ok ? inicio.cierreId : "";
+  assert.ok(abrirVentanaDeAjuste(cierreId).ok, "un tránsito no impide abrir la ventana");
+  const firmas = { firma1Id: firmaDe("tomas-ruiz", cierreId), firma2Id: firmaDe("marta-diaz", cierreId) };
+  const sin = confirmarCierreDiario(cierreId, firmas);
+  assert.ok(!sin.ok && /en tránsito/.test(sin.error), "hay que justificar el tránsito");
+  const conPendientes = confirmarCierreDiario(cierreId, { ...firmas, justificaciones: { REMESAS: "La remesa llega mañana" } });
+  assert.ok(conPendientes.ok && conPendientes.estado === "CERRADA_CON_PENDIENTES");
 });
 
 test("arqueo de un tesoro con sus cajas de cajero en el mismo corte", () => {

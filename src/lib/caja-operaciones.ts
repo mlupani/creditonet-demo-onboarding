@@ -8,7 +8,6 @@ import {
   diferenciaRecuento,
   disponibleParaAutorizar,
   enHorario,
-  enTransito,
   motivoNoOperativo,
   esResponsable,
   esSupervisor,
@@ -37,11 +36,14 @@ import {
 import { provStores } from "./proveedores-store";
 import { alcanzaElEstimado, posicionBanco, posicionCaja } from "./saldos-reglas";
 import { emitirAlerta } from "./alertas";
+import { actaDe, crearActa, firmarActa, vincularAjustes } from "./actas";
+import { firmaPorId } from "./llave";
 import { puedeAutorizarPorMatriz } from "./matriz";
 import {
   TIPO_CUENTA_LABEL,
   esTesoro,
   monedasDe,
+  type ActaConformidad,
   type AjusteDiferencia,
   type Aprobacion,
   type Arqueo,
@@ -113,11 +115,11 @@ function asentar(a: Asiento): MovimientoCaja {
 }
 
 // Una diferencia aprobada genera un movimiento de ajuste propio; nunca modifica el recuento.
-function asentarAjuste(cajaId: string, moneda: Moneda, diferencia: number, comprobante: string, motivoId?: string, nota?: string) {
-  if (diferencia === 0) return;
+export function asentarAjuste(cajaId: string, moneda: Moneda, diferencia: number, comprobante: string, motivoId?: string, nota?: string): MovimientoCaja | undefined {
+  if (diferencia === 0) return undefined;
   const motivo = S.motivos.get().find((m) => m.id === motivoId);
   const cuenta = motivo ? (diferencia > 0 ? motivo.cuentaSobrante : motivo.cuentaFaltante) : "";
-  asentar({
+  return asentar({
     cajaId,
     tipo: diferencia > 0 ? "Ajuste por sobrante" : "Ajuste por faltante",
     descripcion: motivo ? `${motivo.descripcion}${cuenta ? ` · cuenta ${cuenta}` : ""}` : "Diferencia dentro de la tolerancia",
@@ -136,7 +138,7 @@ function asentarAjuste(cajaId: string, moneda: Moneda, diferencia: number, compr
 export function bloqueoCaja(cajaId: string): string | undefined {
   const sucursalId = cajaPorId(cajaId)?.sucursalId;
   if (sucursalId && cierreVigente(S.cierresSucursal.get(), sucursalId, hoy()))
-    return "La sucursal cerró la fecha operativa: no se puede operar hasta que un supervisor autorice la reapertura.";
+    return "La sucursal cerró la fecha operativa: no se puede operar hasta que Casa Central autorice la reapertura.";
   if (S.arqueos.get().some((a) => a.cajaId === cajaId && a.estado === "EN_CURSO"))
     return "La caja está en arqueo: las operaciones están suspendidas hasta que termine.";
   if (S.cambiosTurno.get().some((c) => c.cajaId === cajaId && c.estado !== "COMPLETADO"))
@@ -216,6 +218,134 @@ function alertaNoConforme(caja: Caja, evento: string, referencia: string, nota: 
   emitirAlerta("ACTA_NO_CONFORME", `${evento} de ${caja.nombre} rechazada por ${usuarioActual().nombre}: ${nota}`, referencia, { sucursalId: caja.sucursalId });
 }
 
+// ---------- Actas de conformidad y de diferencia (v4) ----------
+
+const motivoTexto = (r: Recuento) =>
+  r.ajustes.map((a) => S.motivos.get().find((m) => m.id === a.motivoId)?.descripcion ?? a.motivoId).join(" · ");
+
+// Responsable de los fondos de una caja: el cajero con el turno en curso o, si no hay jornada, quien la custodia.
+const responsableDeCaja = (caja: Caja) =>
+  jornadaVigente(S.jornadas.get(), caja.id)?.turnoUsuarioId || caja.tesoreroId || caja.cajeros[0]?.usuarioId || "";
+
+// Si el acta anterior del mismo evento quedó rechazada, la nueva la referencia (R1: nada se edita).
+const referenciaA = (eventoTipo: string, eventoId: string): string | undefined => {
+  const previa = actaDe(eventoTipo, eventoId);
+  return previa?.estado === "RECHAZADA" ? previa.id : undefined;
+};
+
+// Acta de diferencia: el responsable de los fondos firma primero (conforme o disconforme) y después el
+// supervisor autoriza el ajuste o lo rechaza. Toda diferencia, sobrante o faltante, tiene el mismo rigor.
+function abrirActaDiferencia(
+  caja: Caja,
+  eventoTipo: string,
+  eventoId: string,
+  recuento: Recuento,
+  e: { responsableId: string; detectoId: string; descripcion: string; referenciaActaId?: string }
+): ActaConformidad | undefined {
+  const r = crearActa({
+    tipo: "DIFERENCIA",
+    sucursalId: caja.sucursalId,
+    cajaId: caja.id,
+    eventoTipo,
+    eventoId,
+    firmante1Id: e.responsableId,
+    referenciaActaId: e.referenciaActaId ?? referenciaA(eventoTipo, eventoId),
+    contenido: {
+      moneda: monedasDe(caja.moneda),
+      detalle: recuento.detalle,
+      contado: recuento.contado,
+      esperado: recuento.esperado,
+      diferencia: recuento.diferencia,
+      responsableFondosId: e.responsableId,
+      detectoId: e.detectoId,
+      motivoId: recuento.ajustes[0]?.motivoId,
+      motivoTexto: motivoTexto(recuento),
+      observaciones: recuento.ajustes.map((a) => a.nota).filter(Boolean).join(" · "),
+      descripcion: e.descripcion,
+    },
+  });
+  return r.ok ? r.acta : undefined;
+}
+
+// Acta de conformidad sin diferencia: dos usuarios distintos dan su conformidad; no traba la operación.
+function abrirActaConformidad(
+  caja: Caja,
+  tipo: "APERTURA" | "ARQUEO" | "RELEVO" | "REEMPLAZO",
+  eventoTipo: string,
+  eventoId: string,
+  recuento: Recuento,
+  firmante1Id: string,
+  firmante2Id: string | undefined,
+  descripcion: string
+) {
+  crearActa({
+    tipo,
+    sucursalId: caja.sucursalId,
+    cajaId: caja.id,
+    eventoTipo,
+    eventoId,
+    firmante1Id,
+    firmante2Id,
+    contenido: {
+      moneda: monedasDe(caja.moneda),
+      detalle: recuento.detalle,
+      contado: recuento.contado,
+      esperado: recuento.esperado,
+      diferencia: recuento.diferencia,
+      responsableFondosId: firmante1Id,
+      detectoId: recuento.usuarioId,
+      descripcion,
+    },
+  });
+}
+
+// Importe de la diferencia más grande (en su moneda): es el que mide la matriz de autorizaciones.
+function importeDeDiferencia(d: Record<Moneda, number>): { importe: number; moneda: Moneda } {
+  const m = (["ARS", "USD"] as Moneda[]).reduce((a, b) => (Math.abs(d[b]) > Math.abs(d[a]) ? b : a));
+  return { importe: Math.abs(d[m]), moneda: m };
+}
+
+// La resolución de una diferencia con llave pasa por el acta: sin la firma del responsable (o la
+// negativa resuelta por un superior) no se autoriza el ajuste. Sin `firmaId` (uso interno y pruebas)
+// no se toca el acta, igual que la llave, que la exige la pantalla y no la función.
+interface ResolucionActa {
+  error?: string;
+  acta?: ActaConformidad;
+  porEscalamiento?: boolean;
+  registrada?: boolean;
+}
+function resolverConActa(
+  eventoTipo: string,
+  eventoId: string,
+  aprobar: boolean,
+  nota: string,
+  firmaId: string | undefined,
+  diferencia: Record<Moneda, number>
+): ResolucionActa {
+  const acta = actaDe(eventoTipo, eventoId);
+  if (!acta || acta.tipo !== "DIFERENCIA") return {};
+  if (!firmaId) return { acta };
+  if (acta.estado === "PEND_FIRMA_1")
+    return { error: "Falta la firma del responsable de los fondos (conforme o disconforme), o que un supervisor registre su negativa a firmar." };
+  if (acta.estado === "ESCALADA") return { error: "El acta está escalada por una negativa a firmar: la resuelve el Tesorero central o el Director." };
+  if (acta.estado === "RESUELTA") {
+    if (!aprobar) return { acta };
+    if (acta.resolucion?.decision === "AUTORIZAR") return { acta, porEscalamiento: true };
+    return { error: "El superior pidió una nueva verificación: rechazá el ajuste y repetí el recuento." };
+  }
+  if (acta.estado !== "PEND_FIRMA_2") return { acta };
+  const firma = firmaPorId(firmaId);
+  if (!firma) return { error: "No se encontró la firma con llave." };
+  if (aprobar) {
+    const { importe, moneda } = importeDeDiferencia(diferencia);
+    const motivo = puedeAutorizarPorMatriz(usuarioActual(), "AJUSTE_DIFERENCIA", importe, moneda);
+    if (motivo) return { error: motivo };
+  }
+  const r = firmarActa(acta.id, { paso: 2, firma, conforme: aprobar, observaciones: nota });
+  if (!r.ok) return { error: r.error };
+  return { acta: r.acta, registrada: true };
+}
+
 // ---------- Apertura y cierre ----------
 
 function errorPuedeOperar(caja: Caja): string | undefined {
@@ -253,8 +383,21 @@ export function registrarApertura(cajaId: string, entrada: EntradaRecuento): Res
     rechazos: [],
   };
   S.jornadas.commit([...jornadas, jornada]);
-  if (!r.necesitaSupervisor) asentarDiferencias(caja, r.recuento, jornada.id);
-  else alertaDiferencia(caja, "la apertura", jornada.id, r.recuento);
+  if (!r.necesitaSupervisor) {
+    asentarDiferencias(caja, r.recuento, jornada.id);
+    // Sin diferencia (o dentro de la tolerancia): acta de apertura del cajero y de un Tesorero o Supervisor.
+    abrirActaConformidad(caja, "APERTURA", "JORNADA_APERTURA", jornada.id, r.recuento, u.id, undefined, "Apertura de caja");
+  } else {
+    alertaDiferencia(caja, "la apertura", jornada.id, r.recuento);
+    // El que abre es el responsable de los fondos y también quien detectó la diferencia al contar.
+    const previa = S.actas.get().filter((a) => a.cajaId === caja.id && a.eventoTipo === "JORNADA_APERTURA" && a.tipo === "DIFERENCIA" && a.estado === "RECHAZADA").at(-1);
+    abrirActaDiferencia(caja, "JORNADA_APERTURA", jornada.id, r.recuento, {
+      responsableId: u.id,
+      detectoId: u.id,
+      descripcion: "Diferencia detectada en la apertura",
+      referenciaActaId: previa?.id,
+    });
+  }
   return { ok: true, jornadaId: jornada.id, estado: jornada.estado };
 }
 
@@ -263,20 +406,27 @@ export function resolverApertura(jornadaId: string, aprobar: boolean, nota: stri
   const jornada = S.jornadas.get().find((j) => j.id === jornadaId);
   const caja = jornada && cajaPorId(jornada.cajaId);
   if (!jornada || !caja || jornada.estado !== "PEND_APERTURA") return error("La apertura ya no está pendiente.");
-  if (!puedeAprobar(usuarioActual(), jornada.apertura.usuarioId))
+  const previa = actaDe("JORNADA_APERTURA", jornada.id);
+  // Un acta escalada la resolvió un superior con su llave: ese superior puede autorizar o rechazar.
+  const escalada = previa?.estado === "RESUELTA";
+  if (!escalada && !puedeAprobar(usuarioActual(), jornada.apertura.usuarioId))
     return error("Sólo un supervisor distinto de quien cargó el recuento puede resolverla.");
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
+  const acta = resolverConActa("JORNADA_APERTURA", jornada.id, aprobar, nota, firmaId, jornada.apertura.diferencia);
+  if (acta.error) return error(acta.error);
   const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota, firmaId);
   if (!aprobar) {
     // Se rechaza: se repite el recuento. La jornada se descarta y queda el registro del rechazo.
     S.jornadas.commit(S.jornadas.get().filter((j) => j.id !== jornada.id));
     auditar("Apertura de caja", jornada.id, "ESTADO", `Pendiente de autorización (${caja.nombre})`, `Rechazada por ${nombreUsuario(ap.supervisorId)}: ${nota}`);
-    alertaNoConforme(caja, "La apertura", jornada.id, nota);
+    if (!acta.registrada) alertaNoConforme(caja, "La apertura", jornada.id, nota);
     return { ok: true };
   }
   const apertura = { ...jornada.apertura, aprobacion: ap };
   S.jornadas.commit(S.jornadas.get().map((j) => (j.id === jornada.id ? { ...j, estado: "ABIERTA" as const, apertura } : j)));
+  const antes = S.libro.get().length;
   asentarDiferencias(caja, apertura, jornada.id);
+  if (acta.acta) vincularAjustes(acta.acta.id, S.libro.get().slice(antes).map((m) => m.id));
   return { ok: true };
 }
 
@@ -292,7 +442,15 @@ export function registrarCierre(cajaId: string, entrada: EntradaRecuento): Res<{
   const estado = r.necesitaSupervisor ? "PEND_CIERRE" : "CERRADA";
   S.jornadas.commit(S.jornadas.get().map((j) => (j.id === jornada.id ? { ...j, estado, cierre: r.recuento } : j)));
   if (!r.necesitaSupervisor) asentarDiferencias(caja, r.recuento, `${jornada.id}-C`);
-  else alertaDiferencia(caja, "el cierre", `${jornada.id}-C`, r.recuento);
+  else {
+    alertaDiferencia(caja, "el cierre", `${jornada.id}-C`, r.recuento);
+    // Responsable de los fondos: el cajero con la custodia al cerrar (quien cierra la caja).
+    abrirActaDiferencia(caja, "JORNADA_CIERRE", `${jornada.id}-C`, r.recuento, {
+      responsableId: jornada.turnoUsuarioId || r.recuento.usuarioId,
+      detectoId: r.recuento.usuarioId,
+      descripcion: "Diferencia detectada en el cierre",
+    });
+  }
   return { ok: true, estado };
 }
 
@@ -300,9 +458,14 @@ export function resolverCierre(jornadaId: string, aprobar: boolean, nota: string
   const jornada = S.jornadas.get().find((j) => j.id === jornadaId);
   const caja = jornada && cajaPorId(jornada.cajaId);
   if (!jornada?.cierre || !caja || jornada.estado !== "PEND_CIERRE") return error("El cierre ya no está pendiente.");
-  if (!puedeAprobar(usuarioActual(), jornada.cierre.usuarioId))
+  const previa = actaDe("JORNADA_CIERRE", `${jornada.id}-C`);
+  // Un acta escalada la resolvió un superior con su llave: ese superior puede autorizar o rechazar.
+  const escalada = previa?.estado === "RESUELTA";
+  if (!escalada && !puedeAprobar(usuarioActual(), jornada.cierre.usuarioId))
     return error("Sólo un supervisor distinto de quien cargó el recuento puede resolverlo.");
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
+  const acta = resolverConActa("JORNADA_CIERRE", `${jornada.id}-C`, aprobar, nota, firmaId, jornada.cierre.diferencia);
+  if (acta.error) return error(acta.error);
   const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota, firmaId);
   if (!aprobar) {
     // El cierre rechazado vuelve a Abierta: se repite el recuento.
@@ -311,12 +474,14 @@ export function resolverCierre(jornadaId: string, aprobar: boolean, nota: string
         j.id === jornada.id ? { ...j, estado: "ABIERTA" as const, cierre: undefined, rechazos: [...j.rechazos, { etapa: "CIERRE" as const, aprobacion: ap }] } : j
       )
     );
-    alertaNoConforme(caja, "El cierre", `${jornada.id}-C`, nota);
+    if (!acta.registrada) alertaNoConforme(caja, "El cierre", `${jornada.id}-C`, nota);
     return { ok: true };
   }
   const cierre = { ...jornada.cierre, aprobacion: ap };
   S.jornadas.commit(S.jornadas.get().map((j) => (j.id === jornada.id ? { ...j, estado: "CERRADA" as const, cierre } : j)));
+  const antes = S.libro.get().length;
   asentarDiferencias(caja, cierre, `${jornada.id}-C`);
+  if (acta.acta) vincularAjustes(acta.acta.id, S.libro.get().slice(antes).map((m) => m.id));
   return { ok: true };
 }
 
@@ -399,6 +564,20 @@ export function finalizarArqueo(arqueoId: string): Res {
       );
     else if (monedasFueraDeTolerancia(caja, ultimo.diferencia).length > 0) alertaDiferencia(caja, "el arqueo", arqueo.id, ultimo);
   }
+  // Acta del arqueo. Sin diferencia es de conformidad (controlador y cajero); con diferencia es de
+  // diferencia: el responsable de la caja arqueada firma primero y el supervisor autoriza el ajuste.
+  const responsableId = esResponsable(caja, ultimo.usuarioId) ? ultimo.usuarioId : responsableDeCaja(caja);
+  const tipoTexto = arqueo.tipo === "SORPRESIVO" ? "sorpresivo" : "ordinario";
+  if (conforme) abrirActaConformidad(caja, "ARQUEO", "ARQUEO", arqueo.id, ultimo, arqueo.controladorId, responsableId || undefined, `Arqueo ${tipoTexto} sin diferencia`);
+  else {
+    const rechazada = S.actas.get().filter((a) => a.cajaId === caja.id && a.eventoTipo === "ARQUEO" && a.tipo === "DIFERENCIA" && a.estado === "RECHAZADA").at(-1);
+    abrirActaDiferencia(caja, "ARQUEO", arqueo.id, ultimo, {
+      responsableId,
+      detectoId: arqueo.controladorId,
+      descripcion: `Diferencia detectada en un arqueo ${tipoTexto}`,
+      referenciaActaId: rechazada?.id,
+    });
+  }
   return { ok: true };
 }
 
@@ -406,30 +585,66 @@ export function finalizarArqueo(arqueoId: string): Res {
 export function ajustarDiferenciaArqueo(arqueoId: string, motivoId: string, nota: string, firmaId?: string): Res {
   const arqueo = S.arqueos.get().find((a) => a.id === arqueoId);
   const caja = arqueo && cajaPorId(arqueo.cajaId);
-  if (!arqueo || !caja || arqueo.estado !== "FINALIZADO" || arqueo.resultado !== "CON_DIFERENCIA" || arqueo.ajusteAprobado)
+  if (!arqueo || !caja || arqueo.estado !== "FINALIZADO" || arqueo.resultado !== "CON_DIFERENCIA" || arqueo.ajusteAprobado || arqueo.ajusteRechazado)
     return error("El arqueo no tiene una diferencia pendiente de regularizar.");
-  if (!puedeAprobar(usuarioActual(), arqueo.controladorId)) return error("Sólo un supervisor distinto del controlador puede autorizar el ajuste.");
+  const previa = actaDe("ARQUEO", arqueo.id);
+  // Un acta escalada la resolvió un superior con su llave: ese superior puede autorizar o rechazar.
+  const escalada = previa?.estado === "RESUELTA";
+  if (!escalada && !puedeAprobar(usuarioActual(), arqueo.controladorId)) return error("Sólo un supervisor distinto del controlador puede autorizar el ajuste.");
   if (!motivoId) return error("Elegí el motivo de la diferencia.");
   const jornada = jornadaVigente(S.jornadas.get(), caja.id);
   if (!jornada || jornada.estado !== "ABIERTA") return error("La caja tiene que estar abierta para registrar el ajuste.");
   const ultimo = arqueo.conteos[arqueo.conteos.length - 1];
+  const acta = resolverConActa("ARQUEO", arqueo.id, true, nota, firmaId, ultimo.diferencia);
+  if (acta.error) return error(acta.error);
+  const antes = S.libro.get().length;
   for (const m of monedasDe(caja.moneda)) asentarAjuste(caja.id, m, ultimo.diferencia[m], arqueo.id, motivoId, nota);
+  const nuevos = S.libro.get().slice(antes).map((m) => m.id);
   const movimientoId = S.libro.get()[S.libro.get().length - 1].id;
+  if (acta.acta) vincularAjustes(acta.acta.id, nuevos);
   const ap = aprobacion("APROBADA", nota, firmaId);
   S.arqueos.commit(S.arqueos.get().map((a) => (a.id === arqueoId ? { ...a, ajusteAprobado: { ...ap, motivoId, movimientoId } } : a)));
   return { ok: true };
 }
 
+// El supervisor no autoriza el ajuste: el acta queda Rechazada y la diferencia se vuelve a verificar con
+// un arqueo nuevo (el acta rechazada no se edita; el arqueo nuevo genera un acta que la referencia).
+export function rechazarAjusteArqueo(arqueoId: string, nota: string, firmaId?: string): Res {
+  const arqueo = S.arqueos.get().find((a) => a.id === arqueoId);
+  const caja = arqueo && cajaPorId(arqueo.cajaId);
+  if (!arqueo || !caja || arqueo.estado !== "FINALIZADO" || arqueo.resultado !== "CON_DIFERENCIA" || arqueo.ajusteAprobado || arqueo.ajusteRechazado)
+    return error("El arqueo no tiene una diferencia pendiente de regularizar.");
+  if (!puedeAprobar(usuarioActual(), arqueo.controladorId)) return error("Sólo un supervisor distinto del controlador puede resolverlo.");
+  if (!nota.trim()) return error("Indicá el motivo del rechazo.");
+  const ultimo = arqueo.conteos[arqueo.conteos.length - 1];
+  const acta = resolverConActa("ARQUEO", arqueo.id, false, nota, firmaId, ultimo.diferencia);
+  if (acta.error) return error(acta.error);
+  if (!acta.registrada) alertaNoConforme(caja, "El ajuste del arqueo", arqueo.id, nota);
+  S.arqueos.commit(S.arqueos.get().map((a) => (a.id === arqueoId ? { ...a, ajusteRechazado: aprobacion("RECHAZADA", nota, firmaId) } : a)));
+  return { ok: true };
+}
+
 // ---------- Cambio de turno (relevo con arqueo) ----------
 
-export function solicitarCambioTurno(cajaId: string, entranteId: string): Res<{ cambioId: string }> {
+// Cambio de turno (variante por defecto) o reemplazo por emergencia: mismos pasos, pero con motivo
+// obligatorio y, además del saliente, lo puede iniciar el Supervisor de la sucursal.
+export function solicitarCambioTurno(
+  cajaId: string,
+  entranteId: string,
+  opciones: { variante?: "TURNO" | "REEMPLAZO"; motivo?: string } = {}
+): Res<{ cambioId: string }> {
   const caja = cajaPorId(cajaId);
   const jornada = caja && jornadaVigente(S.jornadas.get(), caja.id);
   const u = usuarioActual();
+  const variante = opciones.variante ?? "TURNO";
   if (!caja) return error("Elegí la caja.");
   if (!jornada || jornada.estado !== "ABIERTA") return error("La caja tiene que estar abierta para cambiar de turno.");
-  if (jornada.turnoUsuarioId !== u.id) return error("Sólo el cajero con el turno en curso puede pedir el relevo.");
-  if (entranteId === u.id) return error("El cajero entrante tiene que ser otro usuario.");
+  if (variante === "REEMPLAZO") {
+    if (!opciones.motivo?.trim()) return error("El reemplazo por emergencia necesita el motivo.");
+    if (u.id !== jornada.turnoUsuarioId && !(esSupervisor(u) && u.sucursalId === caja.sucursalId))
+      return error("El reemplazo lo inicia el cajero saliente o el Supervisor de la sucursal.");
+  } else if (jornada.turnoUsuarioId !== u.id) return error("Sólo el cajero con el turno en curso puede pedir el relevo.");
+  if (entranteId === jornada.turnoUsuarioId) return error("El cajero entrante tiene que ser otro usuario.");
   if (!caja.cajeros.some((c) => c.usuarioId === entranteId && c.estado === "ACTIVO"))
     return error("El entrante tiene que estar asignado a la caja en Parámetros.");
   const bloqueo = bloqueoCaja(caja.id);
@@ -439,10 +654,13 @@ export function solicitarCambioTurno(cajaId: string, entranteId: string): Res<{ 
     id: siguienteId("CT", cambios.map((c) => c.id), 4),
     cajaId,
     jornadaId: jornada.id,
-    salienteId: u.id,
+    salienteId: jornada.turnoUsuarioId,
     entranteId,
     corte: ahoraTexto(),
     estado: "SOLICITADO",
+    variante,
+    motivo: opciones.motivo?.trim() || undefined,
+    iniciadoPor: u.id,
   };
   S.cambiosTurno.commit([...cambios, cambio]);
   return { ok: true, cambioId: cambio.id };
@@ -455,7 +673,9 @@ export function cargarArqueoRelevo(cambioId: string, entrada: EntradaRecuento): 
   const cambio = S.cambiosTurno.get().find((c) => c.id === cambioId);
   const caja = cambio && cajaPorId(cambio.cajaId);
   if (!cambio || !caja || cambio.estado !== "SOLICITADO") return error("El relevo no está esperando el arqueo.");
-  if (usuarioActual().id !== cambio.salienteId) return error("El arqueo de relevo lo carga el cajero saliente.");
+  // En un reemplazo, si el saliente no puede contar ni firmar lo hace el Supervisor que lo inició.
+  const enNombre = cambio.variante === "REEMPLAZO" && cambio.iniciadoPor === usuarioActual().id && usuarioActual().id !== cambio.salienteId;
+  if (usuarioActual().id !== cambio.salienteId && !enNombre) return error("El arqueo de relevo lo carga el cajero saliente.");
   const r = armarRecuento(caja, entrada);
   if (!r.ok) return r;
   if (!r.necesitaSupervisor) {
@@ -465,6 +685,12 @@ export function cargarArqueoRelevo(cambioId: string, entrada: EntradaRecuento): 
   }
   actualizarCambio(cambioId, { arqueo: r.recuento, estado: "PEND_AUTORIZACION" });
   alertaDiferencia(caja, "el relevo", cambio.id, r.recuento);
+  // La diferencia es del saliente (el relevo lo ve así: el entrante recibe la caja resuelta).
+  abrirActaDiferencia(caja, "RELEVO", cambio.id, r.recuento, {
+    responsableId: cambio.salienteId,
+    detectoId: r.recuento.usuarioId,
+    descripcion: cambio.variante === "REEMPLAZO" ? `Diferencia detectada en un reemplazo por emergencia: ${cambio.motivo ?? ""}`.trim() : "Diferencia detectada en el cambio de turno",
+  });
   return { ok: true, estado: "PEND_AUTORIZACION" };
 }
 
@@ -473,15 +699,23 @@ export function resolverRelevo(cambioId: string, aprobar: boolean, nota: string,
   const cambio = S.cambiosTurno.get().find((c) => c.id === cambioId);
   const caja = cambio && cajaPorId(cambio.cajaId);
   if (!cambio?.arqueo || !caja || cambio.estado !== "PEND_AUTORIZACION") return error("El relevo no está pendiente de autorización.");
-  if (!puedeAprobar(usuarioActual(), cambio.salienteId)) return error("Sólo un supervisor distinto del cajero saliente puede resolverlo.");
+  const previa = actaDe("RELEVO", cambio.id);
+  // Un acta escalada la resolvió un superior con su llave: ese superior puede autorizar o rechazar.
+  const escalada = previa?.estado === "RESUELTA";
+  if (!escalada && (!puedeAprobar(usuarioActual(), cambio.salienteId) || usuarioActual().id === cambio.arqueo.usuarioId))
+    return error("Sólo un supervisor distinto del cajero saliente (y de quien cargó el arqueo) puede resolverlo.");
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
+  const acta = resolverConActa("RELEVO", cambio.id, aprobar, nota, firmaId, cambio.arqueo.diferencia);
+  if (acta.error) return error(acta.error);
   const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota, firmaId);
   if (!aprobar) {
     actualizarCambio(cambioId, { estado: "SOLICITADO", arqueo: undefined, resolucion: ap });
-    alertaNoConforme(caja, "El arqueo de relevo", cambio.id, nota);
+    if (!acta.registrada) alertaNoConforme(caja, "El arqueo de relevo", cambio.id, nota);
     return { ok: true };
   }
+  const antes = S.libro.get().length;
   asentarDiferencias(caja, { ...cambio.arqueo, aprobacion: ap }, cambio.id);
+  if (acta.acta) vincularAjustes(acta.acta.id, S.libro.get().slice(antes).map((m) => m.id));
   actualizarCambio(cambioId, { estado: "PEND_RECEPCION", arqueo: { ...cambio.arqueo, aprobacion: ap }, resolucion: ap });
   return { ok: true };
 }
@@ -509,6 +743,18 @@ export function recibirTurno(cambioId: string, detalle: DetalleRecuento): Res<{ 
   }
   S.jornadas.commit(S.jornadas.get().map((j) => (j.id === cambio.jornadaId ? { ...j, turnoUsuarioId: cambio.entranteId } : j)));
   actualizarCambio(cambioId, { recepcion, estado: "COMPLETADO", fin: ahoraTexto() });
+  // Acta de relevo (o de reemplazo) firmada por el saliente y el entrante; no traba el nuevo turno.
+  if (cambio.arqueo)
+    abrirActaConformidad(
+      caja,
+      cambio.variante === "REEMPLAZO" ? "REEMPLAZO" : "RELEVO",
+      "RELEVO_CONFORMIDAD",
+      cambio.id,
+      cambio.arqueo,
+      cambio.salienteId,
+      cambio.entranteId,
+      cambio.variante === "REEMPLAZO" ? `Reemplazo por emergencia: ${cambio.motivo ?? ""}`.trim() : "Cambio de turno"
+    );
   return { ok: true, estado: "COMPLETADO" };
 }
 
@@ -526,7 +772,8 @@ export function resolverIncidenciaRelevo(cambioId: string, nota: string): Res {
 export function cancelarCambioTurno(cambioId: string): Res {
   const cambio = S.cambiosTurno.get().find((c) => c.id === cambioId);
   if (!cambio || cambio.estado === "COMPLETADO") return error("El relevo ya terminó.");
-  if (usuarioActual().id !== cambio.salienteId) return error("Sólo el cajero saliente puede cancelar el relevo.");
+  if (usuarioActual().id !== cambio.salienteId && usuarioActual().id !== cambio.iniciadoPor)
+    return error("Sólo el cajero saliente (o el supervisor que inició el reemplazo) puede cancelar el relevo.");
   S.cambiosTurno.commit(S.cambiosTurno.get().filter((c) => c.id !== cambioId));
   auditar("Cambio de turno", cambio.id, "ESTADO", cambio.estado, "Cancelado por el cajero saliente");
   return { ok: true };
@@ -1041,40 +1288,8 @@ export function resolverPedidoRefuerzo(id: string, aprobar: boolean, importeApro
 
 // ---------- Cierre diario de sucursal ----------
 
-// El tesorero confirma que todas las cajas de la sucursal cerraron y que no quedan tránsitos ni
-// incidencias abiertas; entonces se bloquea la fecha operativa.
-export function cerrarSucursal(sucursalId: string): Res<{ cierreId: string }> {
-  const sucursal = S.sucursales.get().find((s) => s.id === sucursalId);
-  const u = usuarioActual();
-  if (!sucursal) return error("Elegí la sucursal.");
-  const cajas = S.cajas.get().filter((c) => c.sucursalId === sucursalId && c.estado === "ACTIVO");
-  if (!cajas.some((c) => esTesoro(c.tipo) && c.tesoreroId === u.id)) return error("Sólo el tesorero de la sucursal puede cerrar la fecha operativa.");
-  if (cierreVigente(S.cierresSucursal.get(), sucursalId, hoy())) return error("La sucursal ya cerró la fecha operativa.");
-  const problemas: string[] = [];
-  for (const c of cajas) {
-    const j = jornadaVigente(S.jornadas.get(), c.id);
-    if (j) problemas.push(`${c.nombre} ${j.estado === "ABIERTA" ? "sigue abierta" : "tiene una apertura o un cierre pendiente de autorización"}.`);
-    const bloqueo = bloqueoCaja(c.id);
-    if (bloqueo) problemas.push(`${c.nombre}: ${bloqueo}`);
-    for (const m of pendientesDeCaja(c.id).filter(enTransito))
-      problemas.push(`${m.id} está ${m.estado === "EN_TRANSITO" ? "en tránsito" : "con incidencia"} (${c.nombre}).`);
-  }
-  if (problemas.length > 0) return error([...new Set(problemas)].join(" "));
-  const cierres = S.cierresSucursal.get();
-  const cierre = { id: siguienteId("CS", cierres.map((c) => c.id), 4), sucursalId, fecha: hoy(), usuarioId: u.id, fechaHora: ahoraTexto(), estado: "CERRADA" as const };
-  S.cierresSucursal.commit([...cierres, cierre]);
-  return { ok: true, cierreId: cierre.id };
-}
-
-// La reapertura de una fecha cerrada sólo la autoriza un supervisor, con su motivo.
-export function reabrirSucursal(cierreId: string, nota: string): Res {
-  const cierre = S.cierresSucursal.get().find((c) => c.id === cierreId);
-  if (!cierre || cierre.estado !== "CERRADA") return error("La fecha ya está abierta.");
-  if (!puedeAprobar(usuarioActual(), cierre.usuarioId)) return error("Sólo un supervisor distinto de quien cerró la fecha puede autorizar la reapertura.");
-  if (!nota.trim()) return error("Indicá el motivo de la reapertura.");
-  S.cierresSucursal.commit(S.cierresSucursal.get().map((c) => (c.id === cierreId ? { ...c, estado: "REABIERTA" as const, reapertura: aprobacion("APROBADA", nota) } : c)));
-  return { ok: true };
-}
+// El cierre diario (controles, ventana de ajuste, acta con doble firma y reapertura) vive en
+// cierre-diario.ts; acá sólo queda el bloqueo de la fecha cerrada (ver `bloqueoCaja`).
 
 // ---------- Horario ----------
 
