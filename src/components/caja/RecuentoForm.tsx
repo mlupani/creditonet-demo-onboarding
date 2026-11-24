@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { diferenciaRecuento, denominacionesDe, monedasFueraDeTolerancia, recuentoSugerido, saldosCaja, totalRecuento } from "@/lib/caja-reglas";
 import { useDenominaciones, useLibro, useMotivosDiferencia } from "@/lib/caja-store";
-import { NOMBRE_MONEDA, monedasDe, type AjusteDiferencia, type Caja, type DetalleRecuento, type Moneda } from "@/lib/caja-tipos";
+import { NOMBRE_MONEDA, SIMBOLO, monedasDe, type AjusteDiferencia, type Caja, type DetalleRecuento, type Moneda } from "@/lib/caja-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Campo, Cifra, INPUT_COMPACTO, PanelVentana } from "./compacto";
@@ -67,11 +67,13 @@ export function RecuentoForm({
                   <label
                     key={d.id}
                     title={`${tipo} de ${formatNumber(d.valor)}${n > 0 ? ` · subtotal ${dinero(m, n * d.valor)}` : ""}`}
-                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 transition ${n > 0 ? "border-brand-300 bg-brand-50" : "border-ink-200 bg-white"}`}
+                    className={`flex flex-col gap-1 rounded-md border px-2 py-1.5 transition ${n > 0 ? "border-brand-300 bg-brand-50" : "border-ink-200 bg-white"}`}
                   >
-                    <span className="min-w-0 flex-1 leading-tight">
-                      <span className="block truncate text-[11px] font-bold tabular-nums text-ink-800">{formatNumber(d.valor)}</span>
-                      <span className="block text-[9px] font-semibold uppercase tracking-wide text-ink-400">{tipo}</span>
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="whitespace-nowrap text-xs font-bold tabular-nums text-ink-900">
+                        {SIMBOLO[m]} {formatNumber(d.valor)}
+                      </span>
+                      <span className="whitespace-nowrap text-[10px] font-medium text-ink-500">{tipo}</span>
                     </span>
                     <input
                       type="number"
@@ -85,7 +87,7 @@ export function RecuentoForm({
                         const v = Math.max(0, Math.floor(Number(e.target.value) || 0));
                         onChange({ ...detalle, [d.id]: v });
                       }}
-                      className={`${INPUT_COMPACTO} h-7 w-14 shrink-0 bg-white text-right tabular-nums`}
+                      className={`${INPUT_COMPACTO} h-7 bg-white text-right tabular-nums`}
                     />
                   </label>
                 );
