@@ -1,16 +1,22 @@
 "use client";
 
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useCallback, useState, type ComponentProps, type ReactNode } from "react";
 import { useApplication } from "@/lib/application-context";
 import { auditar, cambios, useAuditoria } from "@/lib/caja-store";
 import { crearXlsx } from "@/lib/xlsx";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { Banner } from "@/components/ui/Banner";
+import { mostrarToast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { IconChevronDown, IconPlus, IconSearch } from "@/components/icons";
+import { IconChevronDown, IconClock, IconEye, IconPauseCircle } from "@/components/icons";
+import { CrudToolbar } from "@/components/crud/CrudToolbar";
+import { DataState } from "@/components/crud/DataState";
+import { DeleteConfirmationModal } from "@/components/crud/DeleteConfirmationModal";
+import type { ExportFormat } from "@/components/crud/ExportModal";
+import { FormModal } from "@/components/crud/FormModal";
+import { Table, useTablaPaginada, type TableColumn } from "@/components/crud/Table";
 
 type Tono = ComponentProps<typeof StatusBadge>["tone"];
 
@@ -98,7 +104,8 @@ export function descargarXlsx(nombreArchivo: string, hoja: string, filas: string
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Modal de alta o modificación: Grabar / Cancelar.
+// Diálogo de alta o modificación con el diseño estándar de los ABM (`FormModal`): "Agregar" para un
+// alta y "Guardar" para una modificación. El modo sale del título ("Modificar …" = edición).
 export function ModalFormulario({
   titulo,
   onClose,
@@ -113,22 +120,15 @@ export function ModalFormulario({
   children: ReactNode;
 }) {
   return (
-    <Modal
-      open
-      onClose={onClose}
+    <FormModal
+      mode={/^modificar/i.test(titulo) ? "edit" : "create"}
       title={titulo}
+      onCancel={onClose}
+      onSubmit={onGrabar}
       maxWidth={maxWidth}
-      footer={
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={onGrabar}>Grabar</Button>
-        </div>
-      }
     >
       {children}
-    </Modal>
+    </FormModal>
   );
 }
 
@@ -203,8 +203,77 @@ interface Props<T extends Base> {
   formulario: (p: { inicial: T | null; onClose: () => void }) => ReactNode;
 }
 
-const buscable = (r: Base, nombre: string) => sinAcentos(`${r.id} ${nombre}`);
+const buscable = (r: Base, nombre: string) => `${r.id} ${nombre}`;
 
+const csv = (filas: string[][]) =>
+  filas.map((f) => f.map((v) => `"${v.replace(/"/g, '""')}"`).join(";")).join("\r\n");
+
+function descargarTexto(nombreArchivo: string, contenido: string, tipo: string) {
+  const blob = new Blob(["﻿", contenido], { type: tipo });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombreArchivo;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Detalle de solo lectura de un registro ("Ver").
+function Detalle<T extends Base>({
+  titulo,
+  columnas,
+  registro,
+  estado,
+  onClose,
+}: {
+  titulo: string;
+  columnas: Columna<T>[];
+  registro: T;
+  estado: EstadoDef | undefined;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={titulo}
+      maxWidth="max-w-lg"
+      variant="alert"
+      footer={
+        <Button variant="soft" size="lg" className="w-full" onClick={onClose}>
+          Cerrar
+        </Button>
+      }
+    >
+      <div className="flex flex-col items-center text-center">
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+          <IconEye width={30} height={30} />
+        </span>
+        <h3 className="mt-4 text-lg font-bold text-ink-900">{titulo}</h3>
+      </div>
+      <dl className="mt-5 divide-y divide-ink-100 rounded-xl border border-ink-200 bg-ink-25 text-sm">
+        {columnas.map((c) => (
+          <div key={c.clave} className="flex items-start justify-between gap-4 px-4 py-2.5">
+            <dt className="text-ink-500">{c.label}</dt>
+            <dd className="break-words text-right font-medium text-ink-900">{c.render ? c.render(registro) : c.valor(registro)}</dd>
+          </div>
+        ))}
+        <div className="flex items-start justify-between gap-4 px-4 py-2.5">
+          <dt className="text-ink-500">Estado</dt>
+          <dd>
+            <StatusBadge tone={estado?.tone ?? "neutral"}>{estado?.label ?? registro.estado}</StatusBadge>
+          </dd>
+        </div>
+      </dl>
+    </Modal>
+  );
+}
+
+// ABM estándar de Caja y Bancos, con la misma estructura que los parámetros del front real: barra de
+// herramientas (búsqueda con "Buscar"/"Limpiar", "Agregar" y "Exportar"), tabla paginada con la
+// columna Estado y acciones por registro solo con ícono (Ver, Editar, Historial, Suspender o
+// Reactivar y Eliminar), diálogos de alerta para alta/edición y confirmación, y estados vacío y
+// sin resultados. Los eliminados quedan ocultos salvo que se filtre por ese estado.
 export function AbmCaja<T extends Base>({
   entidad,
   archivo,
@@ -221,37 +290,21 @@ export function AbmCaja<T extends Base>({
   formulario,
 }: Props<T>) {
   const { hidratado } = useApplication();
-  const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState("");
-  const [orden, setOrden] = useState<{ clave: string; asc: boolean }>({ clave: "id", asc: true });
-  const [abiertos, setAbiertos] = useState<Record<string, boolean>>(
-    Object.fromEntries(estados.map((e) => [e.valor, e.abierto]))
-  );
   const [edicion, setEdicion] = useState<{ registro: T | null } | null>(null);
   const [historial, setHistorial] = useState<T | null>(null);
+  const [detalle, setDetalle] = useState<T | null>(null);
   const [pendiente, setPendiente] = useState<{ registro: T; accion: Accion } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const todas: Columna<T>[] = [{ clave: "id", label: "ID", ancho: "w-24", valor: (r) => r.id }, ...columnas];
-  const q = sinAcentos(busqueda.trim());
-  const filtrando = q !== "";
+  const todas: Columna<T>[] = [{ clave: "id", label: "ID", valor: (r) => r.id }, ...columnas];
+  const estadoDe = (r: T) => estados.find((e) => e.valor === r.estado);
 
-  const grupos = estados
-    .filter((e) => !filtro || filtro === e.valor)
-    .map((estado) => {
-      const col = todas.find((c) => c.clave === orden.clave) ?? todas[0];
-      const filas = registros
-        .filter((r) => r.estado === estado.valor && (!q || buscable(r, nombreDe(r)).includes(q)))
-        .sort((a, b) => {
-          const x = col.valor(a);
-          const y = col.valor(b);
-          const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "es");
-          return orden.asc ? c : -c;
-        });
-      const total = registros.filter((r) => r.estado === estado.valor).length;
-      const abierto = abiertos[estado.valor] || filtro === estado.valor || (filtrando && filas.length > 0);
-      return { estado, filas, total, abierto };
-    });
+  const visibles = registros
+    .filter((r) => (filtro ? r.estado === filtro : r.estado !== "ELIMINADO"))
+    .sort((a, b) => a.id.localeCompare(b.id, "es", { numeric: true }));
+  const textoDe = useCallback((r: T) => buscable(r, nombreDe(r)), [nombreDe]);
+  const tabla = useTablaPaginada(visibles, textoDe);
 
   const aplicar = (r: T, a: Accion) => {
     cambiarEstado(store, entidad, r, a.estado);
@@ -267,181 +320,157 @@ export function AbmCaja<T extends Base>({
     else aplicar(r, a);
   };
 
-  const exportar = () => {
+  const exportar = (formato: ExportFormat) => {
+    if (formato === "pdf") {
+      mostrarToast("La exportación a PDF todavía no está disponible.");
+      return;
+    }
     const encabezado = [...todas.map((c) => c.label), "Estado"];
-    const filas = registros.map((r) => [
-      ...todas.map((c) => String(c.valor(r))),
-      estados.find((e) => e.valor === r.estado)?.label ?? r.estado,
-    ]);
-    descargarXlsx(`${archivo}.xlsx`, plural, [encabezado, ...filas]);
+    const filas = registros.map((r) => [...todas.map((c) => String(c.valor(r))), estadoDe(r)?.label ?? r.estado]);
+    if (formato === "excel") descargarXlsx(`${archivo}.xlsx`, plural, [encabezado, ...filas]);
+    else descargarTexto(`${archivo}.csv`, csv([encabezado, ...filas]), "text/csv;charset=utf-8");
   };
 
-  const campoInput =
-    "h-10 rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-700 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
+  const columnasTabla: TableColumn<T>[] = [
+    ...todas.map((c) => ({
+      id: c.clave,
+      header: c.label,
+      className: c.clave === "id" ? "font-mono text-xs font-bold text-brand-700" : "text-ink-700",
+      cell: (r: T) => (c.render ? c.render(r) : c.valor(r)),
+    })),
+    {
+      id: "estado",
+      header: "Estado",
+      cell: (r) => <StatusBadge tone={estadoDe(r)?.tone ?? "neutral"}>{estadoDe(r)?.label ?? r.estado}</StatusBadge>,
+    },
+  ];
+
+  // Cada acción de cambio de estado ocupa el hueco que le corresponde: las que llevan a Eliminado
+  // son "Eliminar"; las peligrosas, "Suspender" (o su nombre propio) y las demás, "Reactivar".
+  const accionesFila = (r: T) => {
+    const lista = acciones(r);
+    const eliminar = lista.find((a) => a.estado === "ELIMINADO");
+    const resto = lista.filter((a) => a !== eliminar);
+    const suspender = resto.find((a) => a.peligro);
+    const reactivar = resto.find((a) => !a.peligro);
+    return {
+      itemName: nombreDe(r),
+      onView: () => setDetalle(r),
+      onEdit: r.estado !== "ELIMINADO" ? () => setEdicion({ registro: r }) : undefined,
+      suspended: !suspender && Boolean(reactivar),
+      onSuspend: suspender ? () => pedir(r, suspender) : undefined,
+      suspendLabel: suspender?.label,
+      onReactivate: reactivar ? () => pedir(r, reactivar) : undefined,
+      reactivateLabel: reactivar?.label,
+      onDelete: eliminar ? () => pedir(r, eliminar) : undefined,
+      trailingActions: [
+        {
+          id: "historial",
+          label: "Historial",
+          icon: <IconClock width={14} height={14} />,
+          onClick: () => setHistorial(r),
+        },
+      ],
+    };
+  };
+
+  const hayEliminado = estados.some((e) => e.valor === "ELIMINADO");
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => setEdicion({ registro: null })}>
-          <IconPlus width={16} height={16} />
-          {nuevoLabel}
-        </Button>
-        <Button variant="outline" onClick={exportar}>
-          Exportar a Excel
-        </Button>
-        <div className="relative w-full sm:w-72">
-          <IconSearch
-            width={15}
-            height={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
-          />
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre o ID…"
-            aria-label={`Buscar ${plural}`}
-            className={`${campoInput} w-full pl-9 placeholder:text-ink-400`}
-          />
-        </div>
-        <select value={filtro} onChange={(e) => setFiltro(e.target.value)} aria-label="Filtrar por estado" className={campoInput}>
-          <option value="">Estado: todos</option>
-          {estados.map((e) => (
-            <option key={e.valor} value={e.valor}>
-              {e.label}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div className="space-y-5">
+      <CrudToolbar
+        searchLabel={`Buscar ${plural}`}
+        searchPlaceholder="Buscar por nombre o ID…"
+        {...tabla.toolbar}
+        onNew={() => setEdicion({ registro: null })}
+        newLabel={nuevoLabel}
+        onExport={exportar}
+      />
 
-      {error && (
-        <div className="mt-4">
-          <Banner tone="error" title="Acción no permitida">
-            {error}
-          </Banner>
+      {hayEliminado && (
+        <div className="flex items-center gap-2">
+          <label htmlFor="abm-estado" className="text-xs text-ink-600">
+            Estado
+          </label>
+          <div className="relative">
+            <select
+              id="abm-estado"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              className="h-8 cursor-pointer appearance-none rounded-lg border border-ink-300 bg-white pl-3 pr-8 text-sm text-ink-900 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            >
+              <option value="">Activos y suspendidos</option>
+              {estados.map((e) => (
+                <option key={e.valor} value={e.valor}>
+                  {e.grupo}
+                </option>
+              ))}
+            </select>
+            <IconChevronDown
+              width={16}
+              height={16}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400"
+            />
+          </div>
         </div>
       )}
 
-      <div className="mt-5 space-y-4">
-        {!hidratado ? (
-          <Card className="px-5 py-8 text-center text-sm text-ink-400">Cargando…</Card>
-        ) : (
-          grupos.map(({ estado, filas, total, abierto }) => (
-            <Card key={estado.valor} className="overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setAbiertos((a) => ({ ...a, [estado.valor]: !a[estado.valor] }))}
-                aria-expanded={abierto}
-                className="flex w-full items-center gap-2 px-5 py-3.5 text-left transition hover:bg-ink-25"
-              >
-                <IconChevronDown
-                  width={16}
-                  height={16}
-                  className={`text-ink-400 transition-transform ${abierto ? "" : "-rotate-90"}`}
-                />
-                <h3 className="text-xs font-bold uppercase tracking-widest text-ink-700">{estado.grupo}</h3>
-                <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">
-                  {filtrando || filtro ? `${filas.length} de ${total}` : total}
-                </span>
-              </button>
-              {abierto && (
-                <div className="overflow-x-auto border-t border-ink-100">
-                  {filas.length === 0 ? (
-                    <p className="px-5 py-6 text-center text-sm text-ink-400">
-                      {filtrando
-                        ? "Ningún registro coincide con la búsqueda."
-                        :`No hay ${plural} ${estado.grupo.toLowerCase()}.`}
-                    </p>
-                  ) : (
-                    <table className="w-full min-w-[52rem] text-left text-sm">
-                      <thead>
-                        <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                          {todas.map((c) => (
-                            <th
-                              key={c.clave}
-                              aria-sort={orden.clave === c.clave ? (orden.asc ? "ascending" : "descending") : "none"}
-                              className={`px-3 py-2.5 ${c.ancho ?? ""}`}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => setOrden((o) => ({ clave: c.clave, asc: o.clave === c.clave ? !o.asc : true }))}
-                                className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-ink-700"
-                              >
-                                {c.label}
-                                {orden.clave === c.clave && <span aria-hidden>{orden.asc ? "↑" : "↓"}</span>}
-                              </button>
-                            </th>
-                          ))}
-                          <th className="w-28 px-3 py-2.5">Estado</th>
-                          <th className="px-3 py-2.5" />
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-ink-100">
-                        {filas.map((r) => (
-                          <tr key={r.id} className="transition hover:bg-ink-25">
-                            {todas.map((c) => (
-                              <td
-                                key={c.clave}
-                                className={
-                                  c.clave === "id"
-                                    ? "px-3 py-3 font-mono text-xs font-bold text-brand-700"
-                                    : "px-3 py-3 text-ink-700"
-                                }
-                              >
-                                {c.render ? c.render(r) : c.valor(r)}
-                              </td>
-                            ))}
-                            <td className="px-3 py-3">
-                              <StatusBadge tone={estado.tone}>{estado.label}</StatusBadge>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="flex flex-wrap justify-end gap-1.5">
-                                {r.estado !== "ELIMINADO" && (
-                                  <Button size="sm" variant="outline" onClick={() => setEdicion({ registro: r })}>
-                                    Modificar
-                                  </Button>
-                                )}
-                                <Button size="sm" variant="ghost" onClick={() => setHistorial(r)}>
-                                  Historial
-                                </Button>
-                                {acciones(r).map((a) => (
-                                  <Button key={a.estado} size="sm" variant="ghost" onClick={() => pedir(r, a)}>
-                                    {a.label}
-                                  </Button>
-                                ))}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              )}
-            </Card>
-          ))
-        )}
-      </div>
+      {error && (
+        <Banner tone="error" title="Acción no permitida">
+          {error}
+        </Banner>
+      )}
+
+      {!hidratado ? (
+        <Card className="overflow-hidden">
+          <DataState kind="loading" />
+        </Card>
+      ) : (
+        <Table<T>
+          label={plural}
+          columns={columnasTabla}
+          rows={tabla.rows}
+          getRowKey={(r) => r.id}
+          page={tabla.page}
+          pageSize={tabla.pageSize}
+          total={tabla.total}
+          onPageChange={tabla.setPage}
+          onPageSizeChange={tabla.setPageSize}
+          rowActions={accionesFila}
+          minWidthClassName="min-w-[52rem]"
+          emptyState={
+            tabla.buscando ? (
+              <DataState kind="no-matches" />
+            ) : (
+              <DataState kind="empty" message={`Todavía no hay ${plural}.`} />
+            )
+          }
+        />
+      )}
 
       {edicion && formulario({ inicial: edicion.registro, onClose: () => setEdicion(null) })}
+      {detalle && (
+        <Detalle
+          titulo={`${singular.charAt(0).toUpperCase()}${singular.slice(1)} ${nombreDe(detalle)}`}
+          columnas={todas}
+          registro={detalle}
+          estado={estadoDe(detalle)}
+          onClose={() => setDetalle(null)}
+        />
+      )}
       {historial && (
         <Historial entidad={entidad} id={historial.id} nombre={nombreDe(historial)} onClose={() => setHistorial(null)} />
       )}
-      <ConfirmationModal
-        open={pendiente !== null}
+      <DeleteConfirmationModal
+        itemName={pendiente ? `${pendiente.registro.id} · ${nombreDe(pendiente.registro)}` : null}
         title={pendiente ? `${pendiente.accion.label} ${singular}` : ""}
-        descripcion={
+        question={
           pendiente?.accion.estado === "ELIMINADO"
             ? "Deja de estar disponible. Los movimientos y registros ya generados la conservan en el historial."
             : "Deja de estar disponible hasta que se la vuelva a activar."
         }
-        rows={[
-          { label: "ID", value: pendiente?.registro.id ?? "—" },
-          { label: "Nombre", value: pendiente ? nombreDe(pendiente.registro) : "—" },
-        ]}
-        confirmLabel={pendiente?.accion.label ?? ""}
-        cancelLabel="Volver"
-        tone="danger"
+        icon={pendiente?.accion.estado === "ELIMINADO" ? undefined : <IconPauseCircle width={30} height={30} />}
+        confirmLabel={pendiente?.accion.label ?? "Confirmar"}
         onConfirm={() => {
           if (pendiente) aplicar(pendiente.registro, pendiente.accion);
           setPendiente(null);

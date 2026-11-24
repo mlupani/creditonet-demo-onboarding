@@ -3,8 +3,8 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { IconLoader } from "@/components/icons";
 
-type Variant = "primary" | "success" | "danger" | "warning" | "outline" | "ghost" | "subtle";
-type Size = "sm" | "md" | "lg";
+type Variant = "primary" | "success" | "danger" | "warning" | "outline" | "ghost" | "subtle" | "soft";
+type Size = "sm" | "md" | "lg" | "icon-sm";
 
 const variantClasses: Record<Variant, string> = {
   primary:
@@ -17,6 +17,7 @@ const variantClasses: Record<Variant, string> = {
     "bg-warning-500 text-white shadow-sm hover:bg-warning-600 active:bg-warning-600 disabled:bg-ink-200 disabled:text-ink-400",
   outline:
     "border border-ink-300 bg-white text-ink-700 shadow-xs hover:bg-ink-50 hover:border-ink-400 disabled:text-ink-400 disabled:hover:bg-white",
+  soft: "bg-ink-100 text-ink-800 hover:bg-ink-200 disabled:text-ink-400",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-800 disabled:text-ink-300",
   subtle:
     "bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:bg-ink-100 disabled:text-ink-400",
@@ -26,6 +27,7 @@ const sizeClasses: Record<Size, string> = {
   sm: "h-8 px-3 text-xs gap-1.5 rounded-lg",
   md: "h-10 px-4 text-sm gap-2 rounded-lg",
   lg: "h-12 px-6 text-sm gap-2 rounded-xl",
+  "icon-sm": "h-8 w-8 shrink-0 rounded-lg",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

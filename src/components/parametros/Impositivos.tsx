@@ -4,6 +4,7 @@ import { useState } from "react";
 import { guardarIvaPct, useIvaPct } from "@/lib/impositivos";
 import { errorPorcentaje, parsearPorcentaje } from "@/lib/provincias-impuestos";
 import { mostrarToast } from "@/lib/toast";
+import { CrudSection } from "@/components/crud/SectionHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
@@ -22,7 +23,7 @@ function FormIva({ actual }: { actual: number }) {
   }
 
   return (
-    <Card className="mt-6 max-w-md p-5">
+    <Card className="max-w-md p-5">
       <FormField
         id="param-iva"
         label="IVA (%)"
@@ -32,8 +33,8 @@ function FormIva({ actual }: { actual: number }) {
         error={error}
         hint="Se aplica en los productos que tienen tildado “Calcula IVA”."
       />
-      <div className="mt-4 flex justify-end">
-        <Button onClick={guardar} disabled={!cambio}>
+      <div className="mt-4">
+        <Button size="lg" className="w-full" onClick={guardar} disabled={!cambio}>
           Guardar
         </Button>
       </div>
@@ -41,18 +42,13 @@ function FormIva({ actual }: { actual: number }) {
   );
 }
 
+// No es un listado: son alícuotas únicas, así que solo toma el encabezado estándar de los ABM.
 export function Impositivos() {
   const actual = useIvaPct();
   return (
-    <div>
-      <div className="animate-fade-in">
-        <p className="max-w-2xl text-sm text-ink-500">
-          Alícuotas generales que usan los productos. El IVA se suma a los cargos periódicos sin
-          IVA y se informa en la tabla de cuotas de la oferta.
-        </p>
-      </div>
+    <CrudSection description="Alícuotas generales que usan los productos. El IVA se suma a los cargos periódicos sin IVA y se informa en la tabla de cuotas de la oferta.">
       {/* La key reinicia el formulario cuando el valor guardado cambia (hidratación u otra pestaña). */}
       <FormIva key={actual} actual={actual} />
-    </div>
+    </CrudSection>
   );
 }

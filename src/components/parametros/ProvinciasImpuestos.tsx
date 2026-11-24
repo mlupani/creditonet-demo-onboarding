@@ -12,18 +12,37 @@ import {
   useProvinciasImpuestos,
   type ProvinciaImpuestos,
 } from "@/lib/provincias-impuestos";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { Button } from "@/components/ui/Button";
+import { mostrarToast } from "@/lib/toast";
+import { descargarXlsx } from "@/components/caja/abm/AbmCaja";
+import { CrudSection } from "@/components/crud/SectionHeader";
+import { DataState } from "@/components/crud/DataState";
+import { DeleteConfirmationModal } from "@/components/crud/DeleteConfirmationModal";
+import type { ExportFormat } from "@/components/crud/ExportModal";
+import { FormModal } from "@/components/crud/FormModal";
+import { Table, useTablaPaginada, type TableColumn } from "@/components/crud/Table";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
-import { Modal } from "@/components/ui/Modal";
 import { MultiSelectField } from "@/components/ui/MultiSelectField";
-import { IconPencil, IconPlus, IconTrash } from "@/components/icons";
 
 // `null` = modal cerrado; `{ registro: null }` = alta; `{ registro }` = edición.
 type Edicion = { registro: ProvinciaImpuestos | null } | null;
 
 const fmt = (n: number) => `${String(n).replace(".", ",")} %`;
+
+const textoDe = (p: ProvinciaImpuestos) => p.provincia;
+
+const csv = (filas: string[][]) =>
+  filas.map((f) => f.map((v) => `"${v.replace(/"/g, '""')}"`).join(";")).join("\r\n");
+
+function descargarCsv(nombreArchivo: string, contenido: string) {
+  const blob = new Blob(["﻿", contenido], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombreArchivo;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 function ProvinciaModal({ edicion, onClose }: { edicion: Edicion; onClose: () => void }) {
   const registro = edicion?.registro ?? null;
@@ -46,54 +65,50 @@ function ProvinciaModal({ edicion, onClose }: { edicion: Edicion; onClose: () =>
   }
 
   return (
-    <Modal
+    <FormModal
       open={edicion !== null}
-      onClose={onClose}
+      mode={registro ? "edit" : "create"}
       title={registro ? `Editar ${registro.provincia}` : "Cargar provincias"}
-      maxWidth="max-w-md"
-      footer={
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={guardar}>{registro ? "Guardar" : "Agregar"}</Button>
-        </div>
-      }
+      onSubmit={guardar}
+      onCancel={onClose}
     >
-      <div className="space-y-4">
-        {!registro && (
-          <MultiSelectField
-            id="provincias-impuestos-provincias"
-            label="Provincias"
-            required
-            values={provincias}
-            onChange={setProvincias}
-            options={disponibles}
-            placeholder="Seleccioná provincias…"
-            plural="provincias"
-            femenino
-            error={intentado ? errorProvincias : undefined}
-            hint={
-              disponibles.length === 0
-                ? "Ya están cargadas todas las provincias."
-                : "El sellado de abajo se aplica a todas las que elijas."
-            }
-          />
-        )}
-        <FormField
-          id="provincias-impuestos-sellado"
-          label="Sellado (%)"
+      {!registro && (
+        <MultiSelectField
+          id="provincias-impuestos-provincias"
+          label="Provincias"
           required
-          inputMode="text"
-          value={sellado}
-          onChange={setSellado}
-          placeholder="Ej.: 1,2"
-          error={intentado ? errorSellado : undefined}
+          values={provincias}
+          onChange={setProvincias}
+          options={disponibles}
+          placeholder="Seleccioná provincias…"
+          plural="provincias"
+          femenino
+          error={intentado ? errorProvincias : undefined}
+          hint={
+            disponibles.length === 0
+              ? "Ya están cargadas todas las provincias."
+              : "El sellado de abajo se aplica a todas las que elijas."
+          }
         />
-      </div>
-    </Modal>
+      )}
+      <FormField
+        id="provincias-impuestos-sellado"
+        label="Sellado (%)"
+        required
+        inputMode="text"
+        value={sellado}
+        onChange={setSellado}
+        placeholder="Ej.: 1,2"
+        error={intentado ? errorSellado : undefined}
+      />
+    </FormModal>
   );
 }
+
+const COLUMNAS: TableColumn<ProvinciaImpuestos>[] = [
+  { id: "provincia", header: "Provincia", className: "font-medium text-ink-900", cell: (p) => p.provincia },
+  { id: "sellado", header: "Sellado", align: "end", className: "text-ink-700", cell: (p) => fmt(p.sellado) },
+];
 
 export function ProvinciasImpuestos() {
   const { hidratado } = useApplication();
@@ -101,68 +116,57 @@ export function ProvinciasImpuestos() {
   const [edicion, setEdicion] = useState<Edicion>(null);
   const [baja, setBaja] = useState<ProvinciaImpuestos | null>(null);
   const completo = provinciasSinCargar().length === 0;
+  const tabla = useTablaPaginada(lista, textoDe);
+
+  const exportar = (formato: ExportFormat) => {
+    if (formato === "pdf") {
+      mostrarToast("La exportación a PDF todavía no está disponible.");
+      return;
+    }
+    const encabezado = ["Provincia", "Sellado"];
+    const filas = lista.map((p) => [p.provincia, fmt(p.sellado)]);
+    if (formato === "excel") descargarXlsx("provincias-sellado.xlsx", "Provincias", [encabezado, ...filas]);
+    else descargarCsv("provincias-sellado.csv", csv([encabezado, ...filas]));
+  };
 
   return (
-    <div>
-      <div className="animate-fade-in">
-        <p className="max-w-2xl text-sm text-ink-500">
-          Alícuota de sellado de cada provincia. Se cargan de a varias provincias con el
-          mismo valor y después se ajustan una por una. El IVA es nacional: está en Impositivos.
-        </p>
-      </div>
-
-      <div className="mt-6">
-        <Button
-          disabled={completo}
-          title={completo ? "Ya están cargadas todas las provincias." : undefined}
-          onClick={() => setEdicion({ registro: null })}
-        >
-          <IconPlus width={16} height={16} />
-          Cargar provincias
-        </Button>
-      </div>
-
-      <Card className="mt-5 overflow-hidden">
-        {!hidratado ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">Cargando…</p>
-        ) : lista.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">No hay provincias cargadas.</p>
-        ) : (
-          <ul className="divide-y divide-ink-100">
-            <li className="flex items-center gap-3 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
-              <span className="flex-1">Provincia</span>
-              <span className="w-20 text-right">Sellado</span>
-              <span className="w-[11.5rem]" />
-            </li>
-            {lista.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 px-5 py-3">
-                <span className="flex-1 text-sm font-medium text-ink-900">{p.provincia}</span>
-                <span className="w-20 text-right text-sm text-ink-700">{fmt(p.sellado)}</span>
-                <span className="flex w-[11.5rem] justify-end gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={`Editar ${p.provincia}`}
-                    onClick={() => setEdicion({ registro: p })}
-                  >
-                    <IconPencil width={14} height={14} />
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={`Dar de baja ${p.provincia}`}
-                    onClick={() => setBaja(p)}
-                  >
-                    <IconTrash width={14} height={14} />
-                    Baja
-                  </Button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+    <CrudSection
+      description="Alícuota de sellado de cada provincia. Se cargan de a varias provincias con el mismo valor y después se ajustan una por una. El IVA es nacional: está en Impositivos."
+      toolbar={{
+        searchLabel: "Buscar provincias",
+        searchPlaceholder: "Buscar por provincia…",
+        ...tabla.toolbar,
+        // Con todas cargadas el botón queda a la vista y avisa por qué no abre el alta.
+        onNew: completo ? () => mostrarToast("Ya están cargadas todas las provincias.") : () => setEdicion({ registro: null }),
+        newLabel: "Cargar provincias",
+        onExport: exportar,
+      }}
+    >
+      {!hidratado ? (
+        <Card className="overflow-hidden">
+          <DataState kind="loading" />
+        </Card>
+      ) : (
+        <Table<ProvinciaImpuestos>
+          label="Provincias"
+          columns={COLUMNAS}
+          rows={tabla.rows}
+          getRowKey={(p) => p.id}
+          page={tabla.page}
+          pageSize={tabla.pageSize}
+          total={tabla.total}
+          onPageChange={tabla.setPage}
+          onPageSizeChange={tabla.setPageSize}
+          rowActions={(p) => ({
+            itemName: p.provincia,
+            onEdit: () => setEdicion({ registro: p }),
+            onDelete: () => setBaja(p),
+          })}
+          emptyState={
+            tabla.buscando ? <DataState kind="no-matches" /> : <DataState kind="empty" message="No hay provincias cargadas." />
+          }
+        />
+      )}
 
       {/* key: el formulario arranca limpio cada vez que se abre. */}
       <ProvinciaModal
@@ -170,22 +174,17 @@ export function ProvinciasImpuestos() {
         edicion={edicion}
         onClose={() => setEdicion(null)}
       />
-      <ConfirmationModal
-        open={baja !== null}
+      <DeleteConfirmationModal
+        itemName={baja ? `${baja.provincia} · Sellado ${fmt(baja.sellado)}` : null}
         title="Dar de baja la provincia"
-        descripcion="Se quita su sellado. Podés volver a cargarla cuando quieras."
-        rows={[
-          { label: "Provincia", value: baja?.provincia ?? "" },
-          { label: "Sellado", value: baja ? fmt(baja.sellado) : "" },
-        ]}
+        question="Se quita su sellado. Podés volver a cargarla cuando quieras."
         confirmLabel="Dar de baja"
-        tone="danger"
-        onCancel={() => setBaja(null)}
         onConfirm={() => {
           if (baja) eliminarProvinciaImpuestos(baja.id);
           setBaja(null);
         }}
+        onCancel={() => setBaja(null)}
       />
-    </div>
+    </CrudSection>
   );
 }
