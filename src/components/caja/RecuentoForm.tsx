@@ -6,7 +6,7 @@ import { useDenominaciones, useLibro, useMotivosDiferencia } from "@/lib/caja-st
 import { NOMBRE_MONEDA, monedasDe, type AjusteDiferencia, type Caja, type DetalleRecuento, type Moneda } from "@/lib/caja-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Campo, Cifra, INPUT_COMPACTO, PanelVentana, Td, Th } from "./compacto";
+import { Campo, Cifra, INPUT_COMPACTO, PanelVentana } from "./compacto";
 import { dinero, dineroConSigno, ErrorBanner } from "./comunes";
 import { formatNumber } from "@/lib/format";
 
@@ -34,7 +34,12 @@ export function RecuentoForm({
         return (
           <PanelVentana
             key={m}
-            titulo={`Recuento en ${NOMBRE_MONEDA[m].toLowerCase()}`}
+            titulo={
+              <span>
+                Recuento en {NOMBRE_MONEDA[m].toLowerCase()} · total{" "}
+                <span className="font-bold tabular-nums text-ink-900">{dinero(m, total[m])}</span>
+              </span>
+            }
             accion={
               ayuda?.[m] !== undefined && !disabled ? (
                 <button
@@ -52,61 +57,39 @@ export function RecuentoForm({
               ) : undefined
             }
           >
-            <div className="-m-3 overflow-x-auto">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr>
-                    <Th>Denominación</Th>
-                    <Th derecha className="w-24">
-                      Cantidad
-                    </Th>
-                    <Th derecha className="w-32">
-                      Subtotal
-                    </Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dens.map((d) => {
-                    const n = detalle[d.id] ?? 0;
-                    return (
-                      <tr key={d.id}>
-                        <Td>
-                          {d.tipo === "BILLETE" ? "Billete" : "Moneda"} de {formatNumber(d.valor)}
-                        </Td>
-                        <Td className="px-2 py-1">
-                          <input
-                            type="number"
-                            min={0}
-                            inputMode="numeric"
-                            disabled={disabled}
-                            aria-label={`Cantidad de ${d.tipo === "BILLETE" ? "billetes" : "monedas"} de ${d.valor} ${m}`}
-                            value={n === 0 ? "" : n}
-                            placeholder="0"
-                            onChange={(e) => {
-                              const v = Math.max(0, Math.floor(Number(e.target.value) || 0));
-                              onChange({ ...detalle, [d.id]: v });
-                            }}
-                            className={`${INPUT_COMPACTO} h-7 text-right tabular-nums`}
-                          />
-                        </Td>
-                        <Td derecha className="text-ink-600">
-                          {dinero(m, n * d.valor)}
-                        </Td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-ink-25">
-                    <Td colSpan={2} className="font-bold text-ink-900">
-                      Total contado
-                    </Td>
-                    <Td derecha className="font-bold text-ink-900">
-                      {dinero(m, total[m])}
-                    </Td>
-                  </tr>
-                </tfoot>
-              </table>
+            {/* Una celda por denominación (valor y cantidad). El subtotal no se repite por fila: el
+                total de la moneda queda siempre a la vista en la barra de título. */}
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              {dens.map((d) => {
+                const n = detalle[d.id] ?? 0;
+                const tipo = d.tipo === "BILLETE" ? "Billete" : "Moneda";
+                return (
+                  <label
+                    key={d.id}
+                    title={`${tipo} de ${formatNumber(d.valor)}${n > 0 ? ` · subtotal ${dinero(m, n * d.valor)}` : ""}`}
+                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 transition ${n > 0 ? "border-brand-300 bg-brand-50" : "border-ink-200 bg-white"}`}
+                  >
+                    <span className="min-w-0 flex-1 leading-tight">
+                      <span className="block truncate text-[11px] font-bold tabular-nums text-ink-800">{formatNumber(d.valor)}</span>
+                      <span className="block text-[9px] font-semibold uppercase tracking-wide text-ink-400">{tipo}</span>
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      disabled={disabled}
+                      aria-label={`Cantidad de ${d.tipo === "BILLETE" ? "billetes" : "monedas"} de ${d.valor} ${m}`}
+                      value={n === 0 ? "" : n}
+                      placeholder="0"
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.floor(Number(e.target.value) || 0));
+                        onChange({ ...detalle, [d.id]: v });
+                      }}
+                      className={`${INPUT_COMPACTO} h-7 w-14 shrink-0 bg-white text-right tabular-nums`}
+                    />
+                  </label>
+                );
+              })}
             </div>
           </PanelVentana>
         );
