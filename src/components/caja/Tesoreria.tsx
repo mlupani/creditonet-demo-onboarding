@@ -7,8 +7,6 @@ import { nombreUsuario, useCajaDatos } from "@/lib/caja-store";
 import { formatNumber } from "@/lib/format";
 import { monedasDe, type Caja, type MovimientoTesoreria, type PedidoRefuerzo, type UsuarioCaja } from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { IconPlus, IconSearch } from "@/components/icons";
 import { aError } from "./Jornada";
 import {
@@ -25,6 +23,7 @@ import {
   destinoTexto,
   estadoTexto,
 } from "./TesoreriaModales";
+import { INPUT_COMPACTO, PanelVentana, Pill, TablaCompacta, Td, Th, type Fase } from "./compacto";
 import { NotaModal, PaginaCaja, SelectorCaja, cajasPropias, descargarXlsx, dinero, sinAcentos } from "./comunes";
 
 type Seccion = "realizados" | "recibidos" | "autorizar" | "transito" | "recibir" | "incidencia" | "finalizados";
@@ -39,14 +38,14 @@ const SECCIONES: { id: Seccion; label: string }[] = [
   { id: "finalizados", label: "Finalizados" },
 ];
 
-const TONO: Record<string, "success" | "warning" | "danger" | "info" | "neutral"> = {
-  SOLICITADO: "warning",
-  AUTORIZADO: "info",
-  RECHAZADO: "danger",
-  EN_TRANSITO: "info",
-  CON_INCIDENCIA: "danger",
-  ACEPTADO: "info",
-  FINALIZADO: "success",
+const FASE: Record<string, Fase> = {
+  SOLICITADO: "inicial",
+  AUTORIZADO: "espera",
+  RECHAZADO: "rechazo",
+  EN_TRANSITO: "proceso",
+  CON_INCIDENCIA: "espera",
+  ACEPTADO: "proceso",
+  FINALIZADO: "ok",
 };
 
 type Modal =
@@ -115,222 +114,220 @@ export function PanelRemesas({ cajaId: cajaInicial }: { cajaId?: string } = {}) 
     const origen = cajas.find((c) => c.id === m.origenId);
     const destino = m.destino.tipo === "CAJA" ? cajas.find((c) => c.id === (m.destino as { cajaId: string }).cajaId) : undefined;
     return (
-      <div className="flex flex-wrap justify-end gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         {m.estado === "SOLICITADO" && errorAutorizarMovimiento(m, u) === null && (
           <>
-            <Button size="sm" variant="success" onClick={() => setModal({ tipo: "autorizar", mov: m })}>
+            <Button size="xs" variant="success" onClick={() => setModal({ tipo: "autorizar", mov: m })}>
               Autorizar
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setModal({ tipo: "rechazar", mov: m })}>
+            <Button size="xs" variant="dangerOutline" onClick={() => setModal({ tipo: "rechazar", mov: m })}>
               Rechazar
             </Button>
           </>
         )}
         {m.estado === "AUTORIZADO" && origen && !m.origenBancoId && esResponsable(origen, u.id) && (
-          <Button size="sm" onClick={() => setModal({ tipo: "enviar", mov: m })}>
+          <Button size="xs" variant="successOutline" onClick={() => setModal({ tipo: "enviar", mov: m })}>
             Enviar
           </Button>
         )}
         {m.estado === "AUTORIZADO" && origen && m.origenBancoId && esResponsable(origen, u.id) && (
-          <Button size="sm" onClick={() => setModal({ tipo: "extraccion", mov: m })}>
+          <Button size="xs" variant="successOutline" onClick={() => setModal({ tipo: "extraccion", mov: m })}>
             Registrar extracción
           </Button>
         )}
         {m.estado === "ACEPTADO" && (esSupervisor(u) || (origen && esResponsable(origen, u.id)) || (destino && esResponsable(destino, u.id))) && (
-          <Button size="sm" variant="outline" onClick={() => setModal({ tipo: "documentar", mov: m })}>
+          <Button size="xs" variant="navyOutline" onClick={() => setModal({ tipo: "documentar", mov: m })}>
             Documentar
           </Button>
         )}
         {m.estado === "EN_TRANSITO" && destino && esResponsable(destino, u.id) && (
-          <Button size="sm" onClick={() => setModal({ tipo: "recibir", mov: m })}>
+          <Button size="xs" variant="successOutline" onClick={() => setModal({ tipo: "recibir", mov: m })}>
             Recibir
           </Button>
         )}
         {m.estado === "EN_TRANSITO" && m.destino.tipo === "BANCO" && origen && esResponsable(origen, u.id) && (
-          <Button size="sm" onClick={() => setModal({ tipo: "boleta", mov: m })}>
+          <Button size="xs" variant="successOutline" onClick={() => setModal({ tipo: "boleta", mov: m })}>
             Cargar boleta
           </Button>
         )}
         {m.estado === "CON_INCIDENCIA" && puedeAprobar(u, m.solicitanteId) && u.id !== m.recepcion?.usuarioId && (
-          <Button size="sm" onClick={() => setModal({ tipo: "incidencia", mov: m })}>
+          <Button size="xs" variant="successOutline" onClick={() => setModal({ tipo: "incidencia", mov: m })}>
             Resolver
           </Button>
         )}
-        <Button size="sm" variant="ghost" onClick={() => setModal({ tipo: "detalle", mov: m })}>
+        <Button size="xs" variant="navyOutline" onClick={() => setModal({ tipo: "detalle", mov: m })}>
           Detalle
         </Button>
       </div>
     );
   };
 
-  const th = "px-3 py-2.5 text-left";
   return (
     <div>
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-2">
         <SelectorCaja cajas={visibles} valor={cajaId} onChange={setElegida} todas={supervisa ? "Todas las cajas" : undefined} />
-        <Button onClick={() => setModal({ tipo: "nuevo" })}>
-          <IconPlus width={16} height={16} />
+        <Button size="sm" variant="success" onClick={() => setModal({ tipo: "nuevo" })}>
+          <IconPlus width={14} height={14} />
           Nuevo movimiento
         </Button>
-        <Button variant="outline" onClick={() => setModal({ tipo: "pedido" })}>
+        <Button size="sm" variant="brandOutline" onClick={() => setModal({ tipo: "pedido" })}>
           Nuevo pedido de refuerzo
         </Button>
-        <Button variant="outline" onClick={exportar}>
+        <Button size="sm" variant="navyOutline" onClick={exportar}>
           Exportar a Excel
         </Button>
         <div className="relative w-full sm:w-72">
-          <IconSearch width={15} height={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <IconSearch width={14} height={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400" />
           <input
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar por ID, fecha, origen, destino o importe…"
             aria-label="Buscar movimientos"
-            className="h-10 w-full rounded-lg border border-ink-300 bg-white pl-9 pr-3 text-sm shadow-xs outline-none transition placeholder:text-ink-400 hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            className={`${INPUT_COMPACTO} bg-white pl-8`}
           />
         </div>
       </div>
 
       {cajaActual && (
-        <Card className="mt-4 p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Fondos de {cajaActual.nombre}</p>
-          <div className="mt-2 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+        <PanelVentana titulo={`Fondos de ${cajaActual.nombre}`} className="mt-3">
+          <div className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
             {monedasDe(cajaActual.moneda).map((m) => {
               // Real, comprometido y estimado (R3): el estimado manda, y lo que viene en camino es sólo informativo.
               const p = posicionDeCaja(cajaActual.id, m);
               const minimo = cajaActual.minimoOperativo?.[m] ?? 0;
               return (
-                <dl key={m} className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-5">
+                <dl key={m} className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-5">
                   <div>
-                    <dt className="text-xs text-ink-500">Real</dt>
-                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, p.real)}</dd>
+                    <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-500">Real</dt>
+                    <dd className="text-xs font-bold tabular-nums text-ink-900">{dinero(m, p.real)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-ink-500">Comprometido</dt>
-                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, p.comprometido)}</dd>
+                    <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-500">Comprometido</dt>
+                    <dd className="text-xs font-bold tabular-nums text-ink-900">{dinero(m, p.comprometido)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-ink-500">Estimado</dt>
-                    <dd className={`font-semibold tabular-nums ${p.estimado <= minimo ? "text-danger-700" : "text-success-700"}`}>{dinero(m, p.estimado)}</dd>
+                    <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-500">Estimado</dt>
+                    <dd className={`text-xs font-bold tabular-nums ${p.estimado <= minimo ? "text-danger-700" : "text-success-700"}`}>{dinero(m, p.estimado)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-ink-500">A recibir</dt>
-                    <dd className="font-semibold tabular-nums text-ink-500">{dinero(m, p.aRecibir)}</dd>
+                    <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-500">A recibir</dt>
+                    <dd className="text-xs font-bold tabular-nums text-ink-500">{dinero(m, p.aRecibir)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-ink-500">Mínimo operativo</dt>
-                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, minimo)}</dd>
+                    <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-500">Mínimo operativo</dt>
+                    <dd className="text-xs font-bold tabular-nums text-ink-900">{dinero(m, minimo)}</dd>
                   </div>
                 </dl>
               );
             })}
           </div>
-        </Card>
+        </PanelVentana>
       )}
 
-      <div role="tablist" className="mt-5 flex flex-wrap gap-1.5">
+      <div role="tablist" className="mt-3 flex flex-wrap gap-1">
         {SECCIONES.map((s) => (
           <button
             key={s.id}
             role="tab"
             aria-selected={seccion === s.id}
             onClick={() => setSeccion(s.id)}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${seccion === s.id ? "bg-brand-50 text-brand-700" : "text-ink-600 hover:bg-ink-100"}`}
+            className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition ${seccion === s.id ? "border-navy-800 bg-navy-800 text-white" : "border-ink-300 bg-white text-ink-600 hover:bg-ink-100"}`}
           >
             {s.label}
-            <span className="rounded-full bg-white px-1.5 text-[11px] font-bold tabular-nums text-ink-500 ring-1 ring-ink-200">{contador(s.id)}</span>
+            <span className={`rounded-full px-1.5 text-[10px] font-bold tabular-nums ${seccion === s.id ? "bg-white/20 text-white" : "bg-ink-100 text-ink-600"}`}>{contador(s.id)}</span>
           </button>
         ))}
       </div>
 
-      <Card className="mt-3 overflow-hidden">
+      <div className="mt-2">
         {esPedidos ? (
           filasPedido.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-ink-400">No hay pedidos en esta sección.</p>
+            <PanelVentana titulo={SECCIONES.find((s) => s.id === seccion)?.label}>
+              <p className="py-3 text-center text-xs text-ink-400">No hay pedidos en esta sección.</p>
+            </PanelVentana>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[48rem] text-sm">
-                <thead>
-                  <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                    <th className={th}>ID</th>
-                    <th className={th}>Fecha</th>
-                    <th className={th}>Pide</th>
-                    <th className={th}>A</th>
-                    <th className={`${th} text-right`}>Importe</th>
-                    <th className={th}>Estado</th>
-                    <th className={th} />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-100">
-                  {filasPedido.map((p) => {
-                    const aCaja = cajas.find((c) => c.id === p.aCajaId);
-                    return (
-                      <tr key={p.id}>
-                        <td className="px-3 py-3 font-mono text-xs font-bold text-brand-700">{p.id}</td>
-                        <td className="px-3 py-3 tabular-nums">{p.fecha}</td>
-                        <td className="px-3 py-3">{nombreCaja(p.solicitanteCajaId)}</td>
-                        <td className="px-3 py-3">{nombreCaja(p.aCajaId)}</td>
-                        <td className="px-3 py-3 text-right tabular-nums">
-                          {dinero(p.moneda, p.importe)}
-                          {p.importeAprobado !== undefined && p.importeAprobado !== p.importe && <span className="block text-xs text-ink-500">aprobado {dinero(p.moneda, p.importeAprobado)}</span>}
-                        </td>
-                        <td className="px-3 py-3">
-                          <StatusBadge tone={p.estado === "APROBADO" ? "success" : p.estado === "RECHAZADO" ? "danger" : "warning"}>
-                            {p.estado === "APROBADO" ? (p.movimientoId ? `Aprobado · ${p.movimientoId}` : "Aprobado") : p.estado === "RECHAZADO" ? "Rechazado" : "Pendiente"}
-                          </StatusBadge>
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          {p.estado === "PENDIENTE" && aCaja && esResponsable(aCaja, usuario.id) && (
-                            <Button size="sm" onClick={() => setModal({ tipo: "pedido-resolver", pedido: p })}>
-                              Resolver
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )
-        ) : filasMov.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">No hay movimientos en esta sección.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[60rem] text-sm">
+            <TablaCompacta etiqueta="Pedidos de refuerzo" minWidth="min-w-[48rem]">
               <thead>
-                <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                  <th className={th}>ID</th>
-                  <th className={th}>Fecha</th>
-                  <th className={th}>Origen</th>
-                  <th className={th}>Destino</th>
-                  <th className={`${th} text-right`}>Importe</th>
-                  <th className={th}>Estado</th>
-                  <th className={th} />
+                <tr>
+                  <Th>ID</Th>
+                  <Th>Fecha</Th>
+                  <Th>Pide</Th>
+                  <Th>A</Th>
+                  <Th derecha>Importe</Th>
+                  <Th>Estado</Th>
+                  <Th />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ink-100">
-                {filasMov.map((m) => (
-                  <tr key={m.id}>
-                    <td className="px-3 py-3 font-mono text-xs font-bold text-brand-700">{m.id}</td>
-                    <td className="px-3 py-3 tabular-nums">{m.fechaSolicitud}</td>
-                    <td className="px-3 py-3">{origenTexto(m)}</td>
-                    <td className="px-3 py-3">{destinoTexto(m)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{dinero(m.moneda, m.importe)}</td>
-                    <td className="px-3 py-3">
-                      <StatusBadge tone={TONO[m.estado]}>{estadoTexto(m)}</StatusBadge>
-                      {m.estado === "AUTORIZADO" && (
-                        <span className="mt-0.5 block text-xs text-ink-500">Listo para enviar · Reservado: {dinero(m.moneda, m.importe)}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">{acciones(m, usuario)}</td>
-                  </tr>
-                ))}
+              <tbody>
+                {filasPedido.map((p) => {
+                  const aCaja = cajas.find((c) => c.id === p.aCajaId);
+                  return (
+                    <tr key={p.id}>
+                      <Td className="font-mono font-bold text-brand-700">{p.id}</Td>
+                      <Td className="tabular-nums">{p.fecha}</Td>
+                      <Td>{nombreCaja(p.solicitanteCajaId)}</Td>
+                      <Td>{nombreCaja(p.aCajaId)}</Td>
+                      <Td derecha>
+                        {dinero(p.moneda, p.importe)}
+                        {p.importeAprobado !== undefined && p.importeAprobado !== p.importe && <span className="block text-[11px] text-ink-500">aprobado {dinero(p.moneda, p.importeAprobado)}</span>}
+                      </Td>
+                      <Td>
+                        <Pill fase={p.estado === "APROBADO" ? "ok" : p.estado === "RECHAZADO" ? "rechazo" : "espera"}>
+                          {p.estado === "APROBADO" ? (p.movimientoId ? `Aprobado · ${p.movimientoId}` : "Aprobado") : p.estado === "RECHAZADO" ? "Rechazado" : "Pendiente"}
+                        </Pill>
+                      </Td>
+                      <Td derecha>
+                        {p.estado === "PENDIENTE" && aCaja && esResponsable(aCaja, usuario.id) && (
+                          <Button size="xs" variant="success" onClick={() => setModal({ tipo: "pedido-resolver", pedido: p })}>
+                            Resolver
+                          </Button>
+                        )}
+                      </Td>
+                    </tr>
+                  );
+                })}
               </tbody>
-            </table>
-          </div>
+            </TablaCompacta>
+          )
+        ) : filasMov.length === 0 ? (
+          <PanelVentana titulo={SECCIONES.find((s) => s.id === seccion)?.label}>
+            <p className="py-3 text-center text-xs text-ink-400">No hay movimientos en esta sección.</p>
+          </PanelVentana>
+        ) : (
+          <TablaCompacta etiqueta="Movimientos de tesorería" minWidth="min-w-[60rem]">
+            <thead>
+              <tr>
+                <Th>ID</Th>
+                <Th>Fecha</Th>
+                <Th>Origen</Th>
+                <Th>Destino</Th>
+                <Th derecha>Importe</Th>
+                <Th>Estado</Th>
+                <Th>Acciones según estado</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {filasMov.map((m) => (
+                <tr key={m.id}>
+                  <Td className="font-mono font-bold text-brand-700">{m.id}</Td>
+                  <Td className="tabular-nums">{m.fechaSolicitud}</Td>
+                  <Td>{origenTexto(m)}</Td>
+                  <Td>{destinoTexto(m)}</Td>
+                  <Td derecha>{dinero(m.moneda, m.importe)}</Td>
+                  <Td>
+                    <Pill fase={FASE[m.estado] ?? "inicial"}>{estadoTexto(m)}</Pill>
+                    {m.estado === "AUTORIZADO" && (
+                      <span className="mt-0.5 block text-[11px] text-ink-500">Listo para enviar · Reservado: {dinero(m.moneda, m.importe)}</span>
+                    )}
+                  </Td>
+                  <Td>{acciones(m, usuario)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </TablaCompacta>
         )}
-      </Card>
+      </div>
 
       {modal?.tipo === "nuevo" && <NuevoMovimientoModal cajaInicial={cajaId} onClose={() => setModal(null)} />}
       {modal?.tipo === "pedido" && <PedidoModal cajaId={cajaId} onClose={() => setModal(null)} />}

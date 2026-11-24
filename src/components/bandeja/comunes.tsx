@@ -29,9 +29,9 @@ export function Flecha({ abierto, onClick, etiqueta }: { abierto: boolean; onCli
       onClick={onClick}
       aria-expanded={abierto}
       aria-label={etiqueta}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-ink-500 transition hover:bg-ink-100"
+      className="flex h-5 w-5 items-center justify-center rounded text-ink-500 transition hover:bg-ink-100"
     >
-      <IconChevronDown width={16} height={16} className={`transition-transform ${abierto ? "rotate-180" : ""}`} />
+      <IconChevronDown width={14} height={14} className={`transition-transform ${abierto ? "rotate-180" : ""}`} />
     </button>
   );
 }
@@ -57,7 +57,7 @@ export function ImagenComprobanteModal({ comprobante, proveedor, onClose }: { co
       maxWidth="max-w-md"
       footer={
         <div className="flex justify-end">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="navyOutline" size="sm" onClick={onClose}>
             Cerrar
           </Button>
         </div>

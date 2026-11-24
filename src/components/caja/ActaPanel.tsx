@@ -23,90 +23,109 @@ import {
 import { firmaPorId } from "@/lib/llave";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Cifra, CampoLectura, PanelVentana, Pill, type Fase } from "./compacto";
 import { NotaModal, datosDiferencia, dineroConSigno } from "./comunes";
 
-const TONO: Record<EstadoActa, "success" | "warning" | "danger" | "info" | "neutral"> = {
-  BORRADOR: "neutral",
-  PEND_FIRMA_1: "warning",
-  PEND_FIRMA_2: "warning",
-  FIRMADA: "success",
-  RECHAZADA: "danger",
-  ESCALADA: "danger",
-  RESUELTA: "info",
+const FASE: Record<EstadoActa, Fase> = {
+  BORRADOR: "inicial",
+  PEND_FIRMA_1: "espera",
+  PEND_FIRMA_2: "espera",
+  FIRMADA: "ok",
+  RECHAZADA: "rechazo",
+  ESCALADA: "rechazo",
+  RESUELTA: "proceso",
 };
 
 export const EstadoActaBadge = ({ estado }: { estado: EstadoActa }) => (
-  <StatusBadge tone={TONO[estado]}>{ESTADO_ACTA_LABEL[estado]}</StatusBadge>
+  <Pill fase={FASE[estado]}>{ESTADO_ACTA_LABEL[estado]}</Pill>
 );
 
-function FilaFirma({ titulo, f }: { titulo: string; f: FirmaActa | undefined }) {
-  if (!f) return <li className="text-ink-400">{titulo}: pendiente</li>;
+// Recuadro punteado de una firma: quién firmó, con qué rol, cuándo, desde qué equipo y de qué modo.
+function RecuadroFirma({ titulo, f, vacio, children }: { titulo: string; f: FirmaActa | undefined; vacio?: string; children?: React.ReactNode }) {
   return (
-    <li className="text-ink-700">
-      <span className="font-semibold text-ink-900">{titulo}:</span> {nombreUsuario(f.usuarioId)} ({ROL_CAJA_LABEL[f.rol]}) ·{" "}
-      <span className={f.conforme ? "text-success-700" : "font-semibold text-danger-700"}>{f.conforme ? "Conforme" : "No conforme"}</span> ·{" "}
-      {f.fechaHora} · {f.equipo} · {f.modalidad === "REMOTA" ? "remota" : "presencial"}
-      {f.enNombreDe && <span className="font-semibold"> · en nombre de {nombreUsuario(f.enNombreDe)}</span>}
-      {f.observaciones && <span className="block text-ink-500">Observaciones: {f.observaciones}</span>}
-    </li>
+    <div className={`rounded-lg border border-dashed p-3 text-xs ${f ? (f.conforme ? "border-success-600 bg-success-50" : "border-danger-600 bg-danger-50") : "border-ink-300 bg-white"}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-ink-500">{titulo}</p>
+      {f ? (
+        <div className="mt-1 text-ink-700">
+          <p>
+            <span className="font-bold text-ink-900">{nombreUsuario(f.usuarioId)}</span> · llave ✔ ·{" "}
+            <span className={f.conforme ? "font-bold text-success-700" : "font-bold text-danger-700"}>{f.conforme ? "Conforme" : "No conforme"}</span>
+          </p>
+          <p className="text-ink-500">
+            {ROL_CAJA_LABEL[f.rol]} · {f.fechaHora} · {f.equipo} · {f.modalidad === "REMOTA" ? "remota" : "presencial"}
+            {f.enNombreDe && <span className="font-semibold"> · en nombre de {nombreUsuario(f.enNombreDe)}</span>}
+          </p>
+          {f.observaciones && <p className="mt-0.5 text-ink-500">Observaciones: {f.observaciones}</p>}
+        </div>
+      ) : (
+        <p className="mt-1 text-ink-400">{vacio ?? "Pendiente"}</p>
+      )}
+      {children && <div className="mt-2 space-y-1.5">{children}</div>}
+    </div>
   );
 }
 
-// Resumen del acta con sus firmas, la negativa, la resolución y la trazabilidad completa.
-export function ActaResumen({ acta }: { acta: ActaConformidad }) {
+// Resumen del acta con sus firmas, la negativa, la resolución y la trazabilidad completa. Las acciones
+// de cada firma (`accionesFirma1`, `accionesFirma2`) se dibujan dentro de su recuadro.
+export function ActaResumen({
+  acta,
+  accionesFirma1,
+  accionesFirma2,
+}: {
+  acta: ActaConformidad;
+  accionesFirma1?: React.ReactNode;
+  accionesFirma2?: React.ReactNode;
+}) {
   const c = acta.contenido;
   const dif = c.diferencia;
   const monedas = (c.moneda ?? ["ARS"]) as Moneda[];
+  const sinSigno = (m: Moneda, v: number) => dineroConSigno(m, v).replace(/^\+/, "");
   return (
-    <div className="space-y-2 text-sm">
+    <div className="space-y-3 text-xs">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-ink-900">
+        <span className="text-sm font-bold text-ink-900">
           {acta.id} · {TIPO_ACTA_LABEL[acta.tipo]}
         </span>
         <EstadoActaBadge estado={acta.estado} />
-        {acta.remota && <StatusBadge tone="warning">Autorización remota — sin verificación física</StatusBadge>}
+        {acta.remota && <Pill fase="espera">Autorización remota — sin verificación física</Pill>}
       </div>
-      <p className="text-ink-500">
-        {acta.fechaHora} · evento {acta.eventoId}
-        {acta.referenciaActaId && ` · corrige o repite el acta ${acta.referenciaActaId}`}
-      </p>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <CampoLectura label="Tipo">{TIPO_ACTA_LABEL[acta.tipo]}</CampoLectura>
+        <CampoLectura label="Fecha y hora">{acta.fechaHora}</CampoLectura>
+        <CampoLectura label="Evento de origen">{acta.eventoId}</CampoLectura>
+        {acta.referenciaActaId && <CampoLectura label="Corrige o repite el acta">{acta.referenciaActaId}</CampoLectura>}
+      </div>
       {c.descripcion && <p className="text-ink-700">{c.descripcion}</p>}
-      {dif && (
-        <ul className="space-y-0.5 text-ink-700">
-          {monedas.map((m) => (
-            <li key={m}>
-              {m}: esperado {c.esperado ? dineroConSigno(m, c.esperado[m]).replace(/^\+/, "") : "—"} · contado {c.contado ? dineroConSigno(m, c.contado[m]).replace(/^\+/, "") : "—"} · diferencia{" "}
-              <span className={dif[m] === 0 ? "" : "font-semibold"}>{dineroConSigno(m, dif[m])}</span>
-              {dif[m] !== 0 && ` (${dif[m] < 0 ? "faltante, deudora" : "sobrante, acreedora"})`}
-            </li>
-          ))}
-        </ul>
+      {dif &&
+        monedas.map((m) => (
+          <div key={m}>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-ink-500">Moneda: {m}</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Cifra label="Saldo esperado">{c.esperado ? sinSigno(m, c.esperado[m]) : "—"}</Cifra>
+              <Cifra label="Contado">{c.contado ? sinSigno(m, c.contado[m]) : "—"}</Cifra>
+              <Cifra label="Diferencia (faltante = deudora)" tono={dif[m] === 0 ? "neutro" : "malo"}>
+                {dineroConSigno(m, dif[m])}
+                {dif[m] !== 0 && <span className="ml-1.5 text-[11px] font-semibold">({dif[m] < 0 ? "faltante, deudora" : "sobrante, acreedora"})</span>}
+              </Cifra>
+            </div>
+          </div>
+        ))}
+      {(c.responsableFondosId || c.detectoId || c.motivoTexto) && (
+        <div className="grid gap-2 sm:grid-cols-3">
+          {c.responsableFondosId && <CampoLectura label="Responsable de los fondos">{nombreUsuario(c.responsableFondosId)}</CampoLectura>}
+          {c.detectoId && <CampoLectura label="Detectó la diferencia">{nombreUsuario(c.detectoId)}</CampoLectura>}
+          {c.motivoTexto && <CampoLectura label="Motivo">{c.motivoTexto}</CampoLectura>}
+        </div>
       )}
-      {(c.responsableFondosId || c.detectoId) && (
-        <p className="text-ink-700">
-          {c.responsableFondosId && (
-            <>
-              Responsable de los fondos: <span className="font-semibold">{nombreUsuario(c.responsableFondosId)}</span>
-            </>
-          )}
-          {c.detectoId && (
-            <>
-              {c.responsableFondosId && " · "}Detectó: <span className="font-semibold">{nombreUsuario(c.detectoId)}</span>
-            </>
-          )}
-        </p>
-      )}
-      {(c.motivoTexto || c.observaciones) && (
-        <p className="text-ink-700">
-          {c.motivoTexto && <>Motivo: {c.motivoTexto}. </>}
-          {c.observaciones && <>Circunstancias: {c.observaciones}</>}
-        </p>
-      )}
-      <ul className="space-y-1">
-        <FilaFirma titulo="Firma 1" f={acta.firma1} />
-        <FilaFirma titulo="Firma 2" f={acta.firma2} />
-      </ul>
+      {c.observaciones && <CampoLectura label="Observaciones · circunstancias">{c.observaciones}</CampoLectura>}
+      <div className="grid gap-2 md:grid-cols-2">
+        <RecuadroFirma titulo="Firma 1 — Responsable de los fondos" f={acta.firma1}>
+          {accionesFirma1}
+        </RecuadroFirma>
+        <RecuadroFirma titulo="Firma 2 — Supervisor (intervención)" f={acta.firma2} vacio={acta.estado === "ESCALADA" ? "No corresponde: acta escalada" : undefined}>
+          {accionesFirma2}
+        </RecuadroFirma>
+      </div>
       {acta.negativa && (
         <Banner tone="error" title="Negativa a firmar del responsable">
           Registró la negativa {nombreUsuario(acta.negativa.supervisorId)} el {acta.negativa.fechaHora}: {acta.negativa.observacion}
@@ -120,7 +139,7 @@ export function ActaResumen({ acta }: { acta: ActaConformidad }) {
         </p>
       )}
       {acta.rechazo && (
-        <p className="text-danger-700">
+        <p className="font-semibold text-danger-700">
           Rechazada por {nombreUsuario(acta.rechazo.usuarioId)} el {acta.rechazo.fechaHora}: {acta.rechazo.motivo}
         </p>
       )}
@@ -210,117 +229,117 @@ export function ActaPanel({ eventoTipo, eventoId, diferencia, onAutorizar, onRec
   const esDiferencia = acta.tipo === "DIFERENCIA";
   const remota = !!acta.remota;
 
-  return (
-    <div className="mt-3 rounded-xl border border-ink-200 bg-white p-4">
-      <ActaResumen acta={acta} />
-      {aviso && <p className="mt-2 text-xs text-ink-500">{aviso}</p>}
-
-      {acta.estado === "PEND_FIRMA_1" && (
-        <div className="mt-3 space-y-2">
-          {esFirmante1 ? (
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="success" onClick={() => setModal("firmar1")}>
-                Firmar conforme
-              </Button>
-              {esDiferencia && (
-                <Button size="sm" variant="outline" onClick={() => setModal("disconforme1")}>
-                  Firmar disconforme
-                </Button>
-              )}
-            </div>
-          ) : (
-            <p className="text-xs text-ink-500">
-              La primera firma le corresponde a {nombreUsuario(acta.firmante1Id ?? "")}: cambiá a ese usuario en “Actuar como”.
-            </p>
-          )}
-          {esDiferencia && sup && acta.firmante1Id !== usuario.id && (
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => setModal("negativa")}>
-                Registrar negativa a firmar
-              </Button>
-              {firmaEnNombre && (
-                <Button size="sm" variant="outline" onClick={() => setModal("enNombre1")}>
-                  Firmar en nombre del saliente
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {acta.estado === "PEND_FIRMA_2" && (
-        <div className="mt-3 space-y-2">
-          {remota && (
-            <Banner tone="warning" title="Autorización remota — sin verificación física">
-              Esta acta pide la segunda firma remota de Casa Central: firma un Supervisor de Casa Central con “Actuar como” (por ejemplo Raúl Molina). No equivale a la
-              recepción del efectivo.
-            </Banner>
-          )}
-          <div className="flex flex-wrap gap-2">
-            {esDiferencia ? (
-              !sup ? (
-                <p className="text-xs text-ink-500">El ajuste lo autoriza un Supervisor distinto de quien cargó el recuento, con su llave (cambiá en “Actuar como”).</p>
-              ) : onAutorizar && onRechazar ? (
-                <>
-                  <Button size="sm" variant="success" onClick={() => setModal("autorizar")}>
-                    {autorizarLabel}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setModal("rechazar")}>
-                    {rechazarLabel}
-                  </Button>
-                </>
-              ) : onAutorizar ? (
-                <Button size="sm" variant="success" onClick={() => setModal("autorizar")}>
-                  {autorizarLabel}
-                </Button>
-              ) : (
-                <p className="text-xs text-ink-500">El ajuste lo autoriza un supervisor desde la pantalla del evento.</p>
-              )
-            ) : (
-              <>
-                <Button size="sm" variant="success" onClick={() => setModal("conforme2")}>
-                  Firmar conforme
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setModal("noConforme2")}>
-                  Marcar No conforme
-                </Button>
-              </>
-            )}
-            {!remota && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  const r = solicitarFirmaRemota(acta.id);
-                  setAviso(r.ok ? "Se pidió la segunda firma remota de Casa Central y se avisó por mail." : r.error);
-                }}
-              >
-                Sucursal con una sola persona: pedir firma remota
+  // Acciones de la primera firma (responsable de los fondos), dentro de su recuadro.
+  const accionesFirma1 =
+    acta.estado === "PEND_FIRMA_1" ? (
+      <>
+        {esFirmante1 ? (
+          <div className="flex flex-wrap gap-1.5">
+            <Button size="xs" variant="success" onClick={() => setModal("firmar1")}>
+              Firmar conforme
+            </Button>
+            {esDiferencia && (
+              <Button size="xs" variant="dangerOutline" onClick={() => setModal("disconforme1")}>
+                Firmar disconforme
               </Button>
             )}
           </div>
-          {!remota && necesitaFirmaRemota(acta.sucursalId, acta.firma1?.usuarioId) && (
-            <p className="text-xs text-warning-700">No hay otro Supervisor o Tesorero habilitado en la sucursal: corresponde la firma remota de Casa Central.</p>
-          )}
-        </div>
-      )}
+        ) : (
+          <p className="text-ink-500">
+            La primera firma le corresponde a {nombreUsuario(acta.firmante1Id ?? "")}: cambiá a ese usuario en “Actuar como”.
+          </p>
+        )}
+        {esDiferencia && sup && acta.firmante1Id !== usuario.id && (
+          <div className="flex flex-wrap gap-1.5">
+            <Button size="xs" variant="navyOutline" onClick={() => setModal("negativa")}>
+              Registrar negativa a firmar
+            </Button>
+            {firmaEnNombre && (
+              <Button size="xs" variant="navyOutline" onClick={() => setModal("enNombre1")}>
+                Firmar en nombre del saliente
+              </Button>
+            )}
+          </div>
+        )}
+      </>
+    ) : undefined;
 
-      {acta.estado === "ESCALADA" && (
-        <div className="mt-3 space-y-2">
-          {superior ? (
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="success" onClick={() => setModal("resolverAutorizar")}>
-                Autorizar el ajuste
+  // Acciones de la segunda firma (supervisor) y de la resolución del acta escalada.
+  const accionesFirma2 =
+    acta.estado === "PEND_FIRMA_2" ? (
+      <>
+        {remota && (
+          <Banner tone="warning" title="Autorización remota — sin verificación física">
+            Esta acta pide la segunda firma remota de Casa Central: firma un Supervisor de Casa Central con “Actuar como” (por ejemplo Raúl Molina). No equivale a la
+            recepción del efectivo.
+          </Banner>
+        )}
+        <div className="flex flex-wrap gap-1.5">
+          {esDiferencia ? (
+            !sup ? (
+              <p className="text-ink-500">El ajuste lo autoriza un Supervisor distinto de quien cargó el recuento, con su llave (cambiá en “Actuar como”).</p>
+            ) : onAutorizar && onRechazar ? (
+              <>
+                <Button size="xs" variant="success" onClick={() => setModal("autorizar")}>
+                  {autorizarLabel}
+                </Button>
+                <Button size="xs" variant="dangerOutline" onClick={() => setModal("rechazar")}>
+                  {rechazarLabel}
+                </Button>
+              </>
+            ) : onAutorizar ? (
+              <Button size="xs" variant="success" onClick={() => setModal("autorizar")}>
+                {autorizarLabel}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setModal("resolverNueva")}>
-                Pedir nueva verificación
-              </Button>
-            </div>
+            ) : (
+              <p className="text-ink-500">El ajuste lo autoriza un supervisor desde la pantalla del evento.</p>
+            )
           ) : (
-            <p className="text-xs text-ink-500">El acta está escalada: la resuelve el Tesorero central o el Director con su llave (cambiá en “Actuar como”).</p>
+            <>
+              <Button size="xs" variant="success" onClick={() => setModal("conforme2")}>
+                Firmar conforme
+              </Button>
+              <Button size="xs" variant="dangerOutline" onClick={() => setModal("noConforme2")}>
+                Marcar No conforme
+              </Button>
+            </>
+          )}
+          {!remota && (
+            <Button
+              size="xs"
+              variant="navyOutline"
+              onClick={() => {
+                const r = solicitarFirmaRemota(acta.id);
+                setAviso(r.ok ? "Se pidió la segunda firma remota de Casa Central y se avisó por mail." : r.error);
+              }}
+            >
+              Sucursal con una sola persona: pedir firma remota
+            </Button>
           )}
         </div>
-      )}
+        {!remota && necesitaFirmaRemota(acta.sucursalId, acta.firma1?.usuarioId) && (
+          <p className="text-warning-700">No hay otro Supervisor o Tesorero habilitado en la sucursal: corresponde la firma remota de Casa Central.</p>
+        )}
+      </>
+    ) : acta.estado === "ESCALADA" ? (
+      superior ? (
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="xs" variant="success" onClick={() => setModal("resolverAutorizar")}>
+            Autorizar el ajuste
+          </Button>
+          <Button size="xs" variant="dangerOutline" onClick={() => setModal("resolverNueva")}>
+            Pedir nueva verificación
+          </Button>
+        </div>
+      ) : (
+        <p className="text-ink-500">El acta está escalada: la resuelve el Tesorero central o el Director con su llave (cambiá en “Actuar como”).</p>
+      )
+    ) : undefined;
+
+  return (
+    <PanelVentana titulo={`ACTA N° ${acta.id} · ${TIPO_ACTA_LABEL[acta.tipo]}`} className="mt-3">
+      <ActaResumen acta={acta} accionesFirma1={accionesFirma1} accionesFirma2={accionesFirma2} />
+      {aviso && <p className="mt-2 text-xs text-ink-500">{aviso}</p>}
 
       <NotaModal
         open={modal === "firmar1"}
@@ -438,6 +457,6 @@ export function ActaPanel({ eventoTipo, eventoId, diferencia, onAutorizar, onRec
         onClose={cierra}
         onConfirmar={(nota, firmaId) => resolver("NUEVA_VERIFICACION", nota, firmaId)}
       />
-    </div>
+    </PanelVentana>
   );
 }

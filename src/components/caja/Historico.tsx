@@ -16,10 +16,10 @@ import { auditar, useCajaDatos, useCheques, useCuentasBancarias } from "@/lib/ca
 import { NOMBRE_MONEDA, type Moneda } from "@/lib/caja-tipos";
 import { usePagosProveedor } from "@/lib/proveedores-store";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { imprimirDocumento } from "./Acta";
-import { CLASE_INPUT, PaginaCaja, descargarXlsx, dinero } from "./comunes";
+import { Campo, INPUT_COMPACTO, PanelVentana, TablaCompacta, Td, Th } from "./compacto";
+import { PaginaCaja, descargarXlsx, dinero } from "./comunes";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const etiquetaPeriodo = (p: string) => (p.length === 7 ? `${p.slice(5)}/${p.slice(0, 4)}` : p.split("-").reverse().join("/"));
@@ -39,13 +39,13 @@ function Selector({
   const todas = opciones.length > 0 && opciones.every((o) => elegidos.includes(o.id));
   return (
     <fieldset className="min-w-56 flex-1">
-      <legend className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-400">{titulo}</legend>
-      <label className="flex items-center gap-2 py-0.5 text-sm font-semibold text-ink-700">
+      <legend className="mb-1 text-[10px] font-bold uppercase tracking-wide text-ink-500">{titulo}</legend>
+      <label className="flex items-center gap-2 py-0.5 text-xs font-semibold text-ink-700">
         <input type="checkbox" checked={todas} onChange={(e) => onChange(e.target.checked ? opciones.map((o) => o.id) : [])} />
         Todas
       </label>
       {opciones.map((o) => (
-        <label key={o.id} className="flex items-center gap-2 py-0.5 text-sm text-ink-700">
+        <label key={o.id} className="flex items-center gap-2 py-0.5 text-xs text-ink-700">
           <input
             type="checkbox"
             checked={elegidos.includes(o.id)}
@@ -88,38 +88,36 @@ function TablaFilas({
   onDetalle?: (periodo: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[40rem] text-left text-sm">
-        <thead>
-          <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-            <th className="px-3 py-2.5">Fecha</th>
-            <th className="px-3 py-2.5 text-right">Saldo inicial</th>
-            <th className="px-3 py-2.5 text-right">Ingresos</th>
-            <th className="px-3 py-2.5 text-right">Egresos</th>
-            <th className="px-3 py-2.5 text-right">Saldo final</th>
-            {onDetalle && <th className="px-3 py-2.5" />}
+    <TablaCompacta etiqueta="Histórico de saldos" minWidth="min-w-[40rem]">
+      <thead>
+        <tr>
+          <Th>Fecha</Th>
+          <Th derecha>Saldo inicial</Th>
+          <Th derecha>Ingresos</Th>
+          <Th derecha>Egresos</Th>
+          <Th derecha>Saldo final</Th>
+          {onDetalle && <Th />}
+        </tr>
+      </thead>
+      <tbody>
+        {filas.map((f) => (
+          <tr key={f.periodo}>
+            <Td className="font-medium text-ink-900">{etiquetaPeriodo(f.periodo)}</Td>
+            <Td derecha>{dinero(moneda, f.inicial)}</Td>
+            <Td derecha className="text-success-700">{dinero(moneda, f.ingresos)}</Td>
+            <Td derecha className="text-danger-700">{dinero(moneda, f.egresos)}</Td>
+            <Td derecha className="font-semibold text-ink-900">{dinero(moneda, f.final)}</Td>
+            {onDetalle && (
+              <Td className="text-right">
+                <button type="button" onClick={() => onDetalle(f.periodo)} className="text-[11px] font-semibold text-brand-700 hover:underline">
+                  Ver movimientos
+                </button>
+              </Td>
+            )}
           </tr>
-        </thead>
-        <tbody className="divide-y divide-ink-100">
-          {filas.map((f) => (
-            <tr key={f.periodo}>
-              <td className="px-3 py-2.5 font-medium text-ink-900">{etiquetaPeriodo(f.periodo)}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-ink-700">{dinero(moneda, f.inicial)}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-success-700">{dinero(moneda, f.ingresos)}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-danger-700">{dinero(moneda, f.egresos)}</td>
-              <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink-900">{dinero(moneda, f.final)}</td>
-              {onDetalle && (
-                <td className="px-3 py-2.5 text-right">
-                  <button type="button" onClick={() => onDetalle(f.periodo)} className="text-sm font-semibold text-brand-700 hover:underline">
-                    Ver movimientos
-                  </button>
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </TablaCompacta>
   );
 }
 
@@ -190,7 +188,7 @@ export function PantallaHistorico() {
       titulo="Histórico de saldos"
       descripcion="Evolución de los saldos de cajas y cuentas bancarias (no de cada operación: eso está en el Libro de movimientos). Elegí un solo día para ver la foto de todos los saldos a esa fecha."
     >
-      <Card className="p-5">
+      <PanelVentana titulo="Filtros">
         <div className="flex flex-wrap gap-6">
           <Selector titulo="Cajas" opciones={cajasLista.map((c) => ({ id: c.id, label: c.nombre }))} elegidos={cajaIds} onChange={setCajaIds} />
           <Selector
@@ -200,109 +198,89 @@ export function PantallaHistorico() {
             onChange={setCuentaIds}
           />
         </div>
-        <div className="mt-4 flex flex-wrap items-end gap-4">
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Desde</span>
-            <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} aria-label="Desde" className={`${CLASE_INPUT} w-40`} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Hasta</span>
-            <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} aria-label="Hasta" className={`${CLASE_INPUT} w-40`} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Moneda</span>
-            <select value={moneda} onChange={(e) => setMoneda(e.target.value as Moneda | "")} aria-label="Moneda" className={`${CLASE_INPUT} w-36`}>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <Campo label="Desde">
+            <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} aria-label="Desde" className={`${INPUT_COMPACTO} w-36`} />
+          </Campo>
+          <Campo label="Hasta">
+            <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} aria-label="Hasta" className={`${INPUT_COMPACTO} w-36`} />
+          </Campo>
+          <Campo label="Moneda">
+            <select value={moneda} onChange={(e) => setMoneda(e.target.value as Moneda | "")} aria-label="Moneda" className={`${INPUT_COMPACTO} w-32`}>
               <option value="">Todas</option>
               <option value="ARS">{NOMBRE_MONEDA.ARS}</option>
               <option value="USD">{NOMBRE_MONEDA.USD}</option>
             </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Periodicidad</span>
-            <select value={periodicidad} onChange={(e) => setPeriodicidad(e.target.value as Periodicidad)} aria-label="Periodicidad" className={`${CLASE_INPUT} w-36`} disabled={unDia}>
+          </Campo>
+          <Campo label="Periodicidad">
+            <select value={periodicidad} onChange={(e) => setPeriodicidad(e.target.value as Periodicidad)} aria-label="Periodicidad" className={`${INPUT_COMPACTO} w-32`} disabled={unDia}>
               <option value="DIARIA">Diaria</option>
               <option value="MENSUAL">Mensual</option>
             </select>
-          </label>
-          <div className="ml-auto flex gap-2">
-            <Button variant="outline" onClick={exportarXlsx} disabled={rangoInvalido || series.length === 0}>
+          </Campo>
+          <div className="ml-auto flex gap-1.5">
+            <Button size="xs" variant="navyOutline" onClick={exportarXlsx} disabled={rangoInvalido || series.length === 0}>
               Exportar a Excel
             </Button>
-            <Button variant="outline" onClick={exportarPdf} disabled={rangoInvalido || series.length === 0}>
+            <Button size="xs" variant="navyOutline" onClick={exportarPdf} disabled={rangoInvalido || series.length === 0}>
               Exportar a PDF
             </Button>
           </div>
         </div>
-        {rangoInvalido && <p className="mt-3 text-sm text-danger-700">La fecha desde no puede ser posterior a la fecha hasta.</p>}
-      </Card>
+        {rangoInvalido && <p className="mt-2 text-xs font-semibold text-danger-700">La fecha desde no puede ser posterior a la fecha hasta.</p>}
+      </PanelVentana>
 
       {series.length === 0 && !rangoInvalido && (
-        <p className="mt-6 rounded-lg border border-dashed border-ink-200 px-4 py-6 text-center text-sm text-ink-400">
+        <p className="mt-4 rounded-md border border-dashed border-ink-200 px-4 py-4 text-center text-xs text-ink-400">
           Elegí al menos una caja o una cuenta bancaria.
         </p>
       )}
 
       {unDia && series.length > 0 && (
-        <Card className="mt-6 overflow-hidden">
-          <div className="border-b border-ink-100 px-4 py-3">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-ink-700">Saldos al {etiquetaPeriodo(desde)}</h2>
-            <p className="mt-0.5 text-xs text-ink-500">Foto al cierre de ese día, de todas las cajas y cuentas elegidas.</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead>
-                <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                  <th className="px-3 py-2.5">Tipo</th>
-                  <th className="px-3 py-2.5">Caja o cuenta</th>
-                  <th className="px-3 py-2.5">Moneda</th>
-                  <th className="px-3 py-2.5 text-right">Saldo</th>
+        <PanelVentana className="mt-4" titulo={`Saldos al ${etiquetaPeriodo(desde)} · foto al cierre de ese día, de todas las cajas y cuentas elegidas`}>
+          <TablaCompacta etiqueta="Saldos a una fecha" minWidth="min-w-[32rem]">
+            <thead>
+              <tr>
+                <Th>Tipo</Th>
+                <Th>Caja o cuenta</Th>
+                <Th>Moneda</Th>
+                <Th derecha>Saldo</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {foto.map((f) => (
+                <tr key={f.serie.clave}>
+                  <Td>{f.serie.tipo === "CAJA" ? "Caja" : "Banco"}</Td>
+                  <Td className="font-medium text-ink-900">{f.serie.nombre}</Td>
+                  <Td>{NOMBRE_MONEDA[f.serie.moneda]}</Td>
+                  <Td derecha className="font-semibold text-ink-900">{dinero(f.serie.moneda, f.saldo)}</Td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {foto.map((f) => (
-                  <tr key={f.serie.clave}>
-                    <td className="px-3 py-2.5 text-ink-700">{f.serie.tipo === "CAJA" ? "Caja" : "Banco"}</td>
-                    <td className="px-3 py-2.5 font-medium text-ink-900">{f.serie.nombre}</td>
-                    <td className="px-3 py-2.5 text-ink-700">{NOMBRE_MONEDA[f.serie.moneda]}</td>
-                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-ink-900">{dinero(f.serie.moneda, f.saldo)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                {MONEDA_LISTA.filter((m) => foto.some((f) => f.serie.moneda === m)).map((m) => (
-                  <tr key={m} className="border-t border-ink-200 bg-ink-25 font-semibold text-ink-900">
-                    <td className="px-3 py-2.5" colSpan={3}>
-                      Total en {NOMBRE_MONEDA[m].toLowerCase()}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{dinero(m, foto.filter((f) => f.serie.moneda === m).reduce((s, f) => s + f.saldo, 0))}</td>
-                  </tr>
-                ))}
-              </tfoot>
-            </table>
-          </div>
-        </Card>
+              ))}
+            </tbody>
+            <tfoot>
+              {MONEDA_LISTA.filter((m) => foto.some((f) => f.serie.moneda === m)).map((m) => (
+                <tr key={m} className="bg-ink-25 font-semibold text-ink-900">
+                  <Td colSpan={3}>Total en {NOMBRE_MONEDA[m].toLowerCase()}</Td>
+                  <Td derecha>{dinero(m, foto.filter((f) => f.serie.moneda === m).reduce((s, f) => s + f.saldo, 0))}</Td>
+                </tr>
+              ))}
+            </tfoot>
+          </TablaCompacta>
+        </PanelVentana>
       )}
 
       {bloques.map((b) => (
-        <Card key={b.serie.clave} className="mt-6 overflow-hidden">
-          <div className="border-b border-ink-100 px-4 py-3">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-ink-700">{nombreSerie(b.serie)}</h2>
-          </div>
+        <PanelVentana key={b.serie.clave} className="mt-4" titulo={nombreSerie(b.serie)}>
           <TablaFilas moneda={b.serie.moneda} filas={b.filas} onDetalle={(periodo) => setDetalle({ serie: b.serie, periodo })} />
-        </Card>
+        </PanelVentana>
       ))}
 
       {MONEDA_LISTA.filter((m) => consolidado.some((c) => c.moneda === m)).map((m) => {
         const filas = consolidado.filter((c) => c.moneda === m);
         return (
-          <Card key={m} className="mt-6 overflow-hidden border-brand-200">
-            <div className="border-b border-ink-100 bg-brand-50 px-4 py-3">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-brand-800">
-                Consolidado · {NOMBRE_MONEDA[m]} ({filas[0].series} cajas y cuentas)
-              </h2>
-            </div>
+          <PanelVentana key={m} className="mt-4 border-brand-200" titulo={`Consolidado · ${NOMBRE_MONEDA[m]} (${filas[0].series} cajas y cuentas)`}>
             <TablaFilas moneda={m} filas={filas} />
-          </Card>
+          </PanelVentana>
         );
       })}
 
@@ -311,38 +289,36 @@ export function PantallaHistorico() {
         onClose={() => setDetalle(null)}
         title={detalle ? `Movimientos · ${etiquetaPeriodo(detalle.periodo)}` : ""}
         maxWidth="max-w-3xl"
-        footer={<Button onClick={() => setDetalle(null)}>Cerrar</Button>}
+        footer={<Button size="sm" onClick={() => setDetalle(null)}>Cerrar</Button>}
       >
         {detalle && (
           <>
-            <p className="mb-3 text-sm text-ink-600">{nombreSerie(detalle.serie)}</p>
+            <p className="mb-2 text-xs text-ink-600">{nombreSerie(detalle.serie)}</p>
             {movimientosDetalle.length === 0 ? (
-              <p className="text-sm text-ink-400">No hubo movimientos en el período.</p>
+              <p className="text-xs text-ink-400">No hubo movimientos en el período.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[34rem] text-left text-sm">
-                  <thead>
-                    <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                      <th className="px-3 py-2">Fecha y hora</th>
-                      <th className="px-3 py-2">Descripción</th>
-                      <th className="px-3 py-2">Comprobante</th>
-                      <th className="px-3 py-2 text-right">Ingreso</th>
-                      <th className="px-3 py-2 text-right">Egreso</th>
+              <TablaCompacta etiqueta="Movimientos del período" minWidth="min-w-[34rem]">
+                <thead>
+                  <tr>
+                    <Th>Fecha y hora</Th>
+                    <Th>Descripción</Th>
+                    <Th>Comprobante</Th>
+                    <Th derecha>Ingreso</Th>
+                    <Th derecha>Egreso</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movimientosDetalle.map((m, i) => (
+                    <tr key={i}>
+                      <Td>{`${m.fecha} ${m.hora}`.trim()}</Td>
+                      <Td className="text-ink-900">{m.descripcion}</Td>
+                      <Td>{m.comprobante}</Td>
+                      <Td derecha className="text-success-700">{m.ingreso > 0 ? dinero(detalle.serie.moneda, m.ingreso) : ""}</Td>
+                      <Td derecha className="text-danger-700">{m.egreso > 0 ? dinero(detalle.serie.moneda, m.egreso) : ""}</Td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-ink-100">
-                    {movimientosDetalle.map((m, i) => (
-                      <tr key={i}>
-                        <td className="px-3 py-2 text-ink-700">{`${m.fecha} ${m.hora}`.trim()}</td>
-                        <td className="px-3 py-2 text-ink-900">{m.descripcion}</td>
-                        <td className="px-3 py-2 text-ink-700">{m.comprobante}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{m.ingreso > 0 ? dinero(detalle.serie.moneda, m.ingreso) : ""}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{m.egreso > 0 ? dinero(detalle.serie.moneda, m.egreso) : ""}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </TablaCompacta>
             )}
           </>
         )}

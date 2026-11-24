@@ -21,13 +21,12 @@ import { useComprobantes, useLotes, useProveedores, useTiposComprobante } from "
 import { ESTADOS_COMPROBANTE, type Comprobante, type EstadoComprobanteId } from "@/lib/proveedores-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Modal } from "@/components/ui/Modal";
-import { SelectField } from "@/components/ui/SelectField";
 import { ErrorBanner, NotaModal, PaginaCaja, descargarXlsx, quien } from "@/components/caja/comunes";
 import { LlaveModal } from "@/components/caja/LlaveModal";
-import { ENCABEZADO, EstadoComprobanteBadge, Pestanas, Th, nombreProveedor, numeroComprobante, pesos } from "./comunes";
+import { Campo, INPUT_COMPACTO, PanelVentana, Pill, TablaCompacta, Td, Th } from "@/components/caja/compacto";
+import { EstadoComprobanteBadge, Pestanas, nombreProveedor, numeroComprobante, pesos } from "./comunes";
 import { FormularioComprobante } from "./FormularioComprobante";
 
 type Pestana = "manual" | "masiva" | "lista";
@@ -52,10 +51,9 @@ function CargaManual({ onCargado }: { onCargado: () => void }) {
         : null;
 
   return (
-    <div className="space-y-6">
-      <Card className="p-5">
-        <h2 className="text-sm font-semibold text-ink-900">1. Proveedor</h2>
-        <div className="mt-3 grid items-end gap-4 sm:grid-cols-2">
+    <div className="space-y-4">
+      <PanelVentana titulo="1. Proveedor">
+        <div className="grid items-end gap-3 sm:grid-cols-2">
           <FormField
             id="carga-cuit"
             label="CUIT del proveedor"
@@ -69,27 +67,26 @@ function CargaManual({ onCargado }: { onCargado: () => void }) {
             placeholder="30-12345678-9"
             hint="Se busca por CUIT y aparece la razón social."
           />
-          <div className="pb-1 text-sm">
+          <div className="pb-1 text-xs">
             {proveedor && proveedor.estado === "ACTIVO" ? (
               <p className="text-ink-700">
-                <span className="font-semibold text-ink-900">{proveedor.razonSocial}</span>
-                <span className="block text-xs text-ink-500">
+                <span className="text-sm font-semibold text-ink-900">{proveedor.razonSocial}</span>
+                <span className="block text-[11px] text-ink-500">
                   {proveedor.id} · CUIT {formatearCuit(proveedor.cuit)}
                 </span>
               </p>
             ) : (
-              <p className="text-xs text-ink-400">{aviso ?? "Ingresá los 11 dígitos."}</p>
+              <p className="text-ink-500">{aviso ?? "Ingresá los 11 dígitos."}</p>
             )}
           </div>
         </div>
-      </Card>
+      </PanelVentana>
 
       {exito && <Banner tone="success" title="Comprobante cargado">{exito}</Banner>}
 
       {proveedor && proveedor.estado === "ACTIVO" && (
-        <Card className="p-5">
-          <h2 className="text-sm font-semibold text-ink-900">2. Datos del comprobante y 3. Respaldo</h2>
-          <div className="mt-4">
+        <PanelVentana titulo="2. Datos del comprobante y 3. Respaldo">
+          <div>
             <FormularioComprobante
               key={`${proveedor.id}-${version}`}
               proveedor={proveedor}
@@ -104,7 +101,7 @@ function CargaManual({ onCargado }: { onCargado: () => void }) {
               }}
             />
           </div>
-        </Card>
+        </PanelVentana>
       )}
     </div>
   );
@@ -212,27 +209,34 @@ function CargaMasiva({ onCargado }: { onCargado: () => void }) {
     ]);
 
   return (
-    <div className="space-y-6">
-      <Card className="p-5">
-        <ol className="list-decimal space-y-4 pl-5 text-sm text-ink-700">
+    <div className="space-y-4">
+      <PanelVentana titulo="Carga masiva por Excel">
+        <ol className="list-decimal space-y-3 pl-5 text-xs text-ink-700">
           <li>
             <div className="max-w-md">
-              <SelectField
-                id="masiva-proveedor"
-                label="Proveedor (ya dado de alta)"
-                value={proveedorId}
-                onChange={(v) => {
-                  setProveedorId(v);
-                  setResultado(null);
-                  setExito(null);
-                }}
-                options={activos.map((p) => ({ value: p.id, label: `${p.razonSocial} · ${formatearCuit(p.cuit)}` }))}
-              />
+              <Campo label="Proveedor (ya dado de alta)">
+                <select
+                  id="masiva-proveedor"
+                  aria-label="Proveedor (ya dado de alta)"
+                  value={proveedorId}
+                  onChange={(e) => {
+                    setProveedorId(e.target.value);
+                    setResultado(null);
+                    setExito(null);
+                  }}
+                  className={INPUT_COMPACTO}
+                >
+                  <option value="">Elegí el proveedor</option>
+                  {activos.map((p) => (
+                    <option key={p.id} value={p.id}>{`${p.razonSocial} · ${formatearCuit(p.cuit)}`}</option>
+                  ))}
+                </select>
+              </Campo>
             </div>
           </li>
           <li>
             Descargá la plantilla: una columna por cada campo de la carga manual.{" "}
-            <Button size="sm" variant="outline" onClick={() => descargarXlsx("plantilla-comprobantes.xlsx", "Comprobantes", generarPlantilla())}>
+            <Button size="xs" variant="navyOutline" onClick={() => descargarXlsx("plantilla-comprobantes.xlsx", "Comprobantes", generarPlantilla())}>
               Descargar plantilla
             </Button>
           </li>
@@ -250,12 +254,12 @@ function CargaMasiva({ onCargado }: { onCargado: () => void }) {
                 ev.target.value = "";
               }}
             />
-            <Button size="sm" disabled={!proveedor} onClick={() => entrada.current?.click()}>
+            <Button size="xs" variant="success" disabled={!proveedor} onClick={() => entrada.current?.click()}>
               Subir archivo
             </Button>{" "}
             <Button
-              size="sm"
-              variant="outline"
+              size="xs"
+              variant="navyOutline"
               disabled={!proveedor}
               onClick={() => proveedor && validar("comprobantes-ejemplo.csv", filasEjemplo(proveedor.cuit))}
             >
@@ -264,106 +268,107 @@ function CargaMasiva({ onCargado }: { onCargado: () => void }) {
           </li>
           <li>Revisá la vista previa fila por fila y confirmá: sólo se graban las filas aceptadas.</li>
         </ol>
-      </Card>
+      </PanelVentana>
 
       <ErrorBanner error={error} titulo="No se pudo leer el archivo" />
       {exito && <Banner tone="success" title="Carga confirmada">{exito}</Banner>}
 
       {resultado && (
-        <Card className="overflow-hidden">
-          <div className="flex flex-wrap items-center gap-3 border-b border-ink-100 px-4 py-3">
-            <p className="text-sm font-semibold text-ink-900">Vista previa · {archivo}</p>
-            <span className="text-xs text-success-700">{resultado.aceptadas.length} aceptadas</span>
-            <span className="text-xs text-danger-600">{resultado.rechazadas.length} rechazadas</span>
-            <div className="ml-auto flex gap-2">
-              {resultado.rechazadas.length > 0 && (
-                <Button size="sm" variant="outline" onClick={descargarRechazadas}>
-                  Descargar rechazadas
-                </Button>
-              )}
-              {resultado.aceptadas.length > 0 && (
-                <Button size="sm" onClick={confirmar}>
-                  Confirmar la carga
-                </Button>
-              )}
-            </div>
+        <PanelVentana
+          titulo={`Vista previa · ${archivo}`}
+          accion={
+            <span className="flex flex-wrap items-center gap-2">
+              <Pill fase="ok">{resultado.aceptadas.length} aceptadas</Pill>
+              <Pill fase="rechazo">{resultado.rechazadas.length} rechazadas</Pill>
+            </span>
+          }
+        >
+          <div className="mb-2 flex flex-wrap gap-2">
+            {resultado.aceptadas.length > 0 && (
+              <Button size="xs" variant="success" onClick={confirmar}>
+                Confirmar la carga
+              </Button>
+            )}
+            {resultado.rechazadas.length > 0 && (
+              <Button size="xs" variant="navyOutline" onClick={descargarRechazadas}>
+                Descargar rechazadas
+              </Button>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[44rem] text-left text-sm">
-              <thead>
-                <tr className={ENCABEZADO}>
-                  <Th>Fila</Th>
-                  <Th>Resultado</Th>
-                  <Th>Comprobante</Th>
-                  <Th derecha>Total</Th>
-                  <Th>Motivo</Th>
+          <TablaCompacta etiqueta="Vista previa de la carga" minWidth="min-w-[40rem]">
+            <thead>
+              <tr>
+                <Th>Fila</Th>
+                <Th>Resultado</Th>
+                <Th>Comprobante</Th>
+                <Th derecha>Total</Th>
+                <Th>Motivo</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {resultado.aceptadas.map((a) => (
+                <tr key={`a${a.fila}`}>
+                  <Td>{a.fila}</Td>
+                  <Td>
+                    <Pill fase="ok">Aceptada</Pill>
+                  </Td>
+                  <Td>
+                    {a.datos.fechaComprobante} · {a.datos.prefijo}-{a.datos.numero}
+                  </Td>
+                  <Td derecha>{pesos(a.datos.total)}</Td>
+                  <Td className="text-ink-400">—</Td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {resultado.aceptadas.map((a) => (
-                  <tr key={`a${a.fila}`}>
-                    <td className="px-3 py-2.5 text-ink-700">{a.fila}</td>
-                    <td className="px-3 py-2.5 font-semibold text-success-700">Aceptada</td>
-                    <td className="px-3 py-2.5 text-ink-700">
-                      {a.datos.fechaComprobante} · {a.datos.prefijo}-{a.datos.numero}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-ink-900">{pesos(a.datos.total)}</td>
-                    <td className="px-3 py-2.5 text-ink-400">—</td>
-                  </tr>
-                ))}
-                {resultado.rechazadas.map((r) => (
-                  <tr key={`r${r.fila}`} className="bg-danger-50/40">
-                    <td className="px-3 py-2.5 text-ink-700">{r.fila}</td>
-                    <td className="px-3 py-2.5 font-semibold text-danger-600">Rechazada</td>
-                    <td className="px-3 py-2.5 text-ink-700">
-                      {r.datos[2]} · {r.datos[3]}-{r.datos[4]}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-ink-700">{r.datos[20]}</td>
-                    <td className="px-3 py-2.5 text-danger-700">{r.motivo}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+              ))}
+              {resultado.rechazadas.map((r) => (
+                <tr key={`r${r.fila}`} className="bg-danger-50/40">
+                  <Td>{r.fila}</Td>
+                  <Td>
+                    <Pill fase="rechazo">Rechazada</Pill>
+                  </Td>
+                  <Td>
+                    {r.datos[2]} · {r.datos[3]}-{r.datos[4]}
+                  </Td>
+                  <Td derecha>{r.datos[20]}</Td>
+                  <Td className="text-danger-700">{r.motivo}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </TablaCompacta>
+        </PanelVentana>
       )}
 
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-ink-900">Lotes registrados</h2>
-        <Card className="overflow-hidden">
-          {lotes.length === 0 ? (
-            <p className="px-5 py-6 text-center text-sm text-ink-400">Todavía no se subió ningún lote.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[44rem] text-left text-sm">
-                <thead>
-                  <tr className={ENCABEZADO}>
-                    <Th>Lote</Th>
-                    <Th>Proveedor</Th>
-                    <Th>Archivo</Th>
-                    <Th>Subió</Th>
-                    <Th>Cuándo</Th>
-                    <Th derecha>Aceptadas</Th>
-                    <Th derecha>Rechazadas</Th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-100">
-                  {[...lotes].reverse().map((l) => (
-                    <tr key={l.id}>
-                      <td className="px-3 py-2.5 font-mono text-xs font-bold text-brand-700">{l.id}</td>
-                      <td className="px-3 py-2.5 text-ink-700">{nombreProveedor(proveedores, l.proveedorId)}</td>
-                      <td className="px-3 py-2.5 text-ink-700">{l.archivo}</td>
-                      <td className="px-3 py-2.5 text-ink-700">{quien(l.usuarioId)}</td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-ink-700">{l.fechaHora}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-ink-900">{l.aceptadas}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-ink-900">{l.rechazadas}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
+        <h2 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-ink-600">Lotes registrados</h2>
+        {lotes.length === 0 ? (
+          <p className="rounded-lg border border-ink-200 bg-white px-5 py-5 text-center text-xs text-ink-400">Todavía no se subió ningún lote.</p>
+        ) : (
+          <TablaCompacta etiqueta="Lotes registrados" minWidth="min-w-[40rem]">
+            <thead>
+              <tr>
+                <Th>Lote</Th>
+                <Th>Proveedor</Th>
+                <Th>Archivo</Th>
+                <Th>Subió</Th>
+                <Th>Cuándo</Th>
+                <Th derecha>Aceptadas</Th>
+                <Th derecha>Rechazadas</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...lotes].reverse().map((l) => (
+                <tr key={l.id}>
+                  <Td className="font-mono font-bold text-brand-700">{l.id}</Td>
+                  <Td>{nombreProveedor(proveedores, l.proveedorId)}</Td>
+                  <Td>{l.archivo}</Td>
+                  <Td>{quien(l.usuarioId)}</Td>
+                  <Td className="whitespace-nowrap">{l.fechaHora}</Td>
+                  <Td derecha>{l.aceptadas}</Td>
+                  <Td derecha>{l.rechazadas}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </TablaCompacta>
+        )}
       </div>
     </div>
   );
@@ -423,112 +428,126 @@ function ListaComprobantes() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField
-          id="lista-estado"
-          label="Estado"
-          value={estado}
-          onChange={(v) => setEstado(v as "" | EstadoComprobanteId)}
-          placeholder="Todos"
-          options={ESTADOS_COMPROBANTE.map((e) => ({ value: e.id, label: e.label }))}
-        />
-        <SelectField
-          id="lista-proveedor"
-          label="Proveedor"
-          value={proveedorId}
-          onChange={setProveedorId}
-          placeholder="Todos"
-          options={proveedores.filter((p) => p.estado !== "ELIMINADO").map((p) => ({ value: p.id, label: p.razonSocial }))}
-        />
+      <div className="grid gap-3 sm:grid-cols-2 lg:max-w-2xl">
+        <Campo label="Estado">
+          <select
+            id="lista-estado"
+            aria-label="Estado"
+            value={estado}
+            onChange={(e) => setEstado(e.target.value as "" | EstadoComprobanteId)}
+            className={INPUT_COMPACTO}
+          >
+            <option value="">Todos</option>
+            {ESTADOS_COMPROBANTE.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo label="Proveedor">
+          <select
+            id="lista-proveedor"
+            aria-label="Proveedor"
+            value={proveedorId}
+            onChange={(e) => setProveedorId(e.target.value)}
+            className={INPUT_COMPACTO}
+          >
+            <option value="">Todos</option>
+            {proveedores
+              .filter((p) => p.estado !== "ELIMINADO")
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.razonSocial}
+                </option>
+              ))}
+          </select>
+        </Campo>
       </div>
-      <p className="text-xs text-ink-500">
+      <p className="text-[11px] leading-snug text-ink-500">
         Autoriza un Supervisor o un Tesorero distinto de quien cargó el comprobante (cambiá el usuario en «Actuar como»). Al autorizar queda Para
         liquidar; el número de orden de pago se genera cuando el perfil financiero lo incluye en una orden (Órdenes de pago).
       </p>
       <ErrorBanner error={error} />
-      <Card className="overflow-hidden">
-        {filas.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">No hay comprobantes para mostrar.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[62rem] text-left text-sm">
-              <thead>
-                <tr className={ENCABEZADO}>
-                  <Th>ID</Th>
-                  <Th>Proveedor</Th>
-                  <Th>Comprobante</Th>
-                  <Th derecha>Total</Th>
-                  <Th>Cargó</Th>
-                  <Th>Estado</Th>
-                  <Th>OP</Th>
-                  <Th />
+      {filas.length === 0 ? (
+        <p className="rounded-lg border border-ink-200 bg-white px-5 py-6 text-center text-xs text-ink-400">No hay comprobantes para mostrar.</p>
+      ) : (
+        <TablaCompacta etiqueta="Comprobantes cargados" minWidth="min-w-[56rem]">
+          <thead>
+            <tr>
+              <Th>ID</Th>
+              <Th>Proveedor</Th>
+              <Th>Comprobante</Th>
+              <Th derecha>Total</Th>
+              <Th>Cargó</Th>
+              <Th>Estado</Th>
+              <Th>OP</Th>
+              <Th>Acciones</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((c) => {
+              const denegado = c.estado === "PREAPROBADO" ? puedeAutorizar(usuario, c) : null;
+              return (
+                <tr key={c.id}>
+                  <Td className="font-mono font-bold text-brand-700">{c.id}</Td>
+                  <Td>{nombreProveedor(proveedores, c.proveedorId)}</Td>
+                  <Td>
+                    {tipoTexto(c.tipoId)}
+                    <span className="block font-mono text-[11px] text-ink-500">
+                      {numeroComprobante(c)} · {c.fechaComprobante}
+                    </span>
+                  </Td>
+                  <Td derecha className="font-semibold">{pesos(c.total)}</Td>
+                  <Td>
+                    {quien(c.cargadoPor)}
+                    <span className="block text-[11px] text-ink-500">{c.fechaCarga}{c.loteId ? ` · ${c.loteId}` : ""}</span>
+                  </Td>
+                  <Td>
+                    <EstadoComprobanteBadge estado={c.estado} />
+                    {c.estado === "RECHAZADO" && c.rechazo?.motivo && (
+                      <span className="mt-1 block max-w-48 text-[11px] text-danger-700">{c.rechazo.motivo}</span>
+                    )}
+                    {c.estado === "ANULADO" && c.anulacion?.motivo && (
+                      <span className="mt-1 block max-w-48 text-[11px] text-ink-500">{c.anulacion.motivo}</span>
+                    )}
+                  </Td>
+                  <Td className="font-mono">{c.ordenPago ?? "—"}</Td>
+                  <Td>
+                    <div className="flex flex-wrap gap-1.5">
+                      {c.estado === "PREAPROBADO" && (
+                        <>
+                          <Button size="xs" variant="successOutline" disabled={!!denegado} title={denegado ?? undefined} onClick={() => autorizar(c)}>
+                            Autorizar
+                          </Button>
+                          <Button size="xs" variant="dangerOutline" disabled={!!denegado} title={denegado ?? undefined} onClick={() => setRechazando(c)}>
+                            Rechazar
+                          </Button>
+                        </>
+                      )}
+                      {c.estado === "RECHAZADO" && (
+                        <>
+                          <Button size="xs" variant="brandOutline" onClick={() => setCorrigiendo(c)}>
+                            Corregir
+                          </Button>
+                          <Button size="xs" variant="dangerOutline" onClick={() => setAnulando(c)}>
+                            Anular
+                          </Button>
+                        </>
+                      )}
+                      {c.estado === "PARA_LIQUIDAR" && (
+                        <Button size="xs" variant="dangerOutline" onClick={() => setAnulando(c)}>
+                          Anular
+                        </Button>
+                      )}
+                    </div>
+                  </Td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {filas.map((c) => {
-                  const denegado = c.estado === "PREAPROBADO" ? puedeAutorizar(usuario, c) : null;
-                  return (
-                    <tr key={c.id}>
-                      <td className="px-3 py-3 font-mono text-xs font-bold text-brand-700">{c.id}</td>
-                      <td className="px-3 py-3 text-ink-700">{nombreProveedor(proveedores, c.proveedorId)}</td>
-                      <td className="px-3 py-3 text-ink-700">
-                        {tipoTexto(c.tipoId)}
-                        <span className="block font-mono text-xs text-ink-400">
-                          {numeroComprobante(c)} · {c.fechaComprobante}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{pesos(c.total)}</td>
-                      <td className="px-3 py-3 text-ink-700">
-                        {quien(c.cargadoPor)}
-                        <span className="block text-xs text-ink-400">{c.fechaCarga}{c.loteId ? ` · ${c.loteId}` : ""}</span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <EstadoComprobanteBadge estado={c.estado} />
-                        {c.estado === "RECHAZADO" && c.rechazo?.motivo && (
-                          <span className="mt-1 block max-w-48 text-xs text-danger-700">{c.rechazo.motivo}</span>
-                        )}
-                        {c.estado === "ANULADO" && c.anulacion?.motivo && (
-                          <span className="mt-1 block max-w-48 text-xs text-ink-500">{c.anulacion.motivo}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 font-mono text-xs text-ink-700">{c.ordenPago ?? "—"}</td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                          {c.estado === "PREAPROBADO" && (
-                            <>
-                              <Button size="sm" disabled={!!denegado} title={denegado ?? undefined} onClick={() => autorizar(c)}>
-                                Autorizar
-                              </Button>
-                              <Button size="sm" variant="outline" disabled={!!denegado} title={denegado ?? undefined} onClick={() => setRechazando(c)}>
-                                Rechazar
-                              </Button>
-                            </>
-                          )}
-                          {c.estado === "RECHAZADO" && (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => setCorrigiendo(c)}>
-                                Corregir
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setAnulando(c)}>
-                                Anular
-                              </Button>
-                            </>
-                          )}
-                          {c.estado === "PARA_LIQUIDAR" && (
-                            <Button size="sm" variant="ghost" onClick={() => setAnulando(c)}>
-                              Anular
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+              );
+            })}
+          </tbody>
+        </TablaCompacta>
+      )}
 
       <NotaModal
         open={!!rechazando}

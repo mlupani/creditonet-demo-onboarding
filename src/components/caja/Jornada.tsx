@@ -10,22 +10,21 @@ import { registrarConteoValores } from "@/lib/cheques-operaciones";
 import { enCustodia, totalPorMoneda } from "@/lib/cheques-reglas";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActaDatos, ActaFirmas, ActaModal, ActaRecuento } from "./Acta";
 import { ActaPanel } from "./ActaPanel";
 import { EntregaCierre } from "./EntregaCierre";
 import { FlujoRecuento } from "./RecuentoForm";
-import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, cajasPropias, datosDiferencia, dinero } from "./comunes";
+import { Campo, INPUT_COMPACTO, PanelVentana, Pill, Td, TablaCompacta, type Fase } from "./compacto";
+import { ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, cajasPropias, datosDiferencia, dinero } from "./comunes";
 
 const MARGEN_ALERTA_MIN = 30;
 export const aError = (r: Res): string | null => (r.ok ? null : r.error);
 
-const TONO_ESTADO: Record<Jornada["estado"], "success" | "warning" | "neutral"> = {
-  ABIERTA: "success",
-  PEND_APERTURA: "warning",
-  PEND_CIERRE: "warning",
-  CERRADA: "neutral",
+const FASE_ESTADO: Record<Jornada["estado"], Fase> = {
+  ABIERTA: "ok",
+  PEND_APERTURA: "espera",
+  PEND_CIERRE: "espera",
+  CERRADA: "inicial",
 };
 
 const textoConteo = (c: ConteoValores) =>
@@ -51,15 +50,14 @@ function ValoresEnCustodia({ caja, jornada, etapa }: { caja: Caja; jornada: Jorn
     setError(r.ok ? null : r.error);
   };
   return (
-    <div className="mt-5 rounded-xl border border-ink-200 p-4">
-      <h3 className="text-sm font-semibold text-ink-900">Valores en custodia</h3>
-      <p className="mt-0.5 text-xs text-ink-500">Se cuentan por separado del efectivo; no cambian su diferencia ni bloquean el {etapa}.</p>
-      <p className="mt-2 text-sm text-ink-700">
+    <PanelVentana titulo="Valores en custodia" className="mt-4">
+      <p className="text-xs text-ink-500">Se cuentan por separado del efectivo; no cambian su diferencia ni bloquean el {etapa}.</p>
+      <p className="mt-2 text-xs font-semibold text-ink-800">
         {lista.length} {lista.length === 1 ? "cheque" : "cheques"}
         {monedas.length > 0 && ` · ${monedas.map((m) => dinero(m, totales[m])).join(" y ")}`}
       </p>
       {lista.length > 0 && (
-        <ul className="mt-1 space-y-0.5 text-xs text-ink-500">
+        <ul className="mt-1 space-y-0.5 text-[11px] text-ink-500">
           {lista.map((c) => (
             <li key={c.id}>
               {c.id} · {c.banco} {c.numero} · {c.parte} · {dinero(c.moneda, c.importe)} · vence {c.fechaPago}
@@ -73,24 +71,22 @@ function ValoresEnCustodia({ caja, jornada, etapa }: { caja: Caja; jornada: Jorn
         </Banner>
       ) : puedeContar ? (
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Cheques contados</span>
+          <Campo label="Cheques contados" className="w-32">
             <input
               type="number"
               min={0}
               value={declarados}
               onChange={(e) => setDeclarados(e.target.value)}
               aria-label="Cheques contados"
-              className={`${CLASE_INPUT} w-32`}
+              className={INPUT_COMPACTO}
             />
-          </label>
+          </Campo>
           {declarados !== "" && !coincide && (
-            <label className="block min-w-64 flex-1">
-              <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Observación de la diferencia</span>
-              <input value={observacion} onChange={(e) => setObservacion(e.target.value)} aria-label="Observación de la diferencia" className={CLASE_INPUT} />
-            </label>
+            <Campo label="Observación de la diferencia" className="min-w-64 flex-1">
+              <input value={observacion} onChange={(e) => setObservacion(e.target.value)} aria-label="Observación de la diferencia" className={INPUT_COMPACTO} />
+            </Campo>
           )}
-          <Button size="sm" variant="outline" onClick={registrar} disabled={declarados === ""}>
+          <Button size="xs" variant="navyOutline" onClick={registrar} disabled={declarados === ""}>
             {coincide ? "Confirmar conteo" : "Registrar conteo"}
           </Button>
         </div>
@@ -98,7 +94,7 @@ function ValoresEnCustodia({ caja, jornada, etapa }: { caja: Caja; jornada: Jorn
         <p className="mt-3 text-xs text-ink-500">El conteo se confirma una vez registrada la {etapa}.</p>
       )}
       <ErrorBanner error={error} />
-    </div>
+    </PanelVentana>
   );
 }
 
@@ -136,11 +132,11 @@ function Pendiente({ jornada, etapa }: { jornada: Jornada; etapa: "apertura" | "
   if (!caja || !recuento) return null;
   const resolver = etapa === "apertura" ? resolverApertura : resolverCierre;
   return (
-    <div className="rounded-xl border border-warning-200 bg-warning-50 p-4">
-      <p className="text-sm font-semibold text-ink-900">
+    <div className="rounded-lg border border-warning-200 bg-warning-50 p-3">
+      <p className="text-xs font-bold text-ink-900">
         {caja.nombre} · {etapa === "apertura" ? "Apertura" : "Cierre"} cargada por {nombreUsuario(recuento.usuarioId)} ({recuento.fechaHora})
       </p>
-      <ul className="mt-2 space-y-1 text-sm text-ink-700">
+      <ul className="mt-1.5 space-y-0.5 text-xs text-ink-700">
         {monedasDe(caja.moneda).map((m) => {
           const ajuste = recuento.ajustes.find((a) => a.moneda === m);
           return (
@@ -162,10 +158,10 @@ function Pendiente({ jornada, etapa }: { jornada: Jornada; etapa: "apertura" | "
         />
       ) : (
         <div className="mt-3 flex gap-2">
-          <Button size="sm" variant="success" onClick={() => setAccion("aprobar")}>
+          <Button size="xs" variant="success" onClick={() => setAccion("aprobar")}>
             Aprobar
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setAccion("rechazar")}>
+          <Button size="xs" variant="dangerOutline" onClick={() => setAccion("rechazar")}>
             Rechazar
           </Button>
         </div>
@@ -194,25 +190,24 @@ function ResumenDia({ caja, libro }: { caja: Caja; libro: MovimientoCaja[] }) {
   const delDia = libro.filter((m) => m.cajaId === caja.id && m.fecha === hoy());
   const pendientes = pendientesDeCaja(caja.id);
   return (
-    <div className="mb-5 space-y-3">
-      <div className="rounded-xl border border-ink-200 p-4">
-        <h3 className="text-sm font-semibold text-ink-900">Movimientos del día</h3>
+    <div className="mb-4 space-y-3">
+      <PanelVentana titulo="Movimientos del día">
         {delDia.length === 0 ? (
-          <p className="mt-1 text-sm text-ink-500">Todavía no hay movimientos hoy.</p>
+          <p className="text-xs text-ink-500">Todavía no hay movimientos hoy.</p>
         ) : (
-          <table className="mt-2 w-full text-sm">
-            <tbody className="divide-y divide-ink-100">
+          <TablaCompacta etiqueta="Movimientos del día" minWidth="min-w-0">
+            <tbody>
               {delDia.map((m) => (
                 <tr key={m.id}>
-                  <td className="py-1.5 pr-3 tabular-nums text-ink-500">{m.hora}</td>
-                  <td className="py-1.5 pr-3 text-ink-800">{m.tipo} · {m.descripcion}</td>
-                  <td className="py-1.5 text-right tabular-nums text-ink-900">{m.ingreso > 0 ? `+${dinero(m.moneda, m.ingreso)}` : `−${dinero(m.moneda, m.egreso)}`}</td>
+                  <Td className="tabular-nums text-ink-500">{m.hora}</Td>
+                  <Td>{m.tipo} · {m.descripcion}</Td>
+                  <Td derecha className="font-semibold text-ink-900">{m.ingreso > 0 ? `+${dinero(m.moneda, m.ingreso)}` : `−${dinero(m.moneda, m.egreso)}`}</Td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </TablaCompacta>
         )}
-      </div>
+      </PanelVentana>
       {pendientes.length > 0 && (
         <Banner tone="warning" title="Hay movimientos de tesorería sin cerrar">
           {pendientes.map((p) => `${p.id} (${p.estado.toLowerCase().replace("_", " ")})`).join(", ")}. Conviene resolverlos antes del cierre.
@@ -253,39 +248,40 @@ export function PantallaJornada({ modo }: { modo: "apertura" | "cierre" }) {
       }
     >
       {verPendientes && pendientes.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader title={esApertura ? "Aperturas pendientes de autorización" : "Cierres pendientes de autorización"} description="Quien aprueba no puede ser quien cargó el recuento." />
-          <div className="space-y-3 p-5">
+        <PanelVentana titulo={`${esApertura ? "Aperturas pendientes de autorización" : "Cierres pendientes de autorización"} · quien aprueba no puede ser quien cargó el recuento`} className="mb-4">
+          <div className="space-y-3">
             {pendientes.map((j) => (
               <Pendiente key={j.id} jornada={j} etapa={modo} />
             ))}
           </div>
-        </Card>
+        </PanelVentana>
       )}
 
-      <Card>
-        <CardHeader title={caja ? caja.nombre : "Elegí tu caja"} description={caja ? `Horario operativo ${caja.horarioDesde} a ${caja.horarioHasta}` : undefined} action={propias.length > 1 ? <SelectorCaja cajas={propias} valor={cajaId} onChange={setElegida} label="Mi caja" /> : undefined} />
-        <div className="p-5">
+      <PanelVentana
+        titulo={caja ? `${caja.nombre} · horario operativo ${caja.horarioDesde} a ${caja.horarioHasta}` : "Elegí tu caja"}
+        accion={propias.length > 1 ? <SelectorCaja cajas={propias} valor={cajaId} onChange={setElegida} label="Mi caja" /> : undefined}
+      >
+        <div>
           {!caja ? (
             <Banner tone="info">
               {usuario.nombre} no tiene cajas asignadas en Parámetros. Cambiá el usuario en «Actuar como»{supervisa ? ", o resolvé las autorizaciones pendientes de arriba" : ""}.
             </Banner>
           ) : (
             <>
-              <div className="mb-4 flex flex-wrap items-center gap-3">
-                <span className="text-sm text-ink-600">Estado de hoy:</span>
+              <div className="mb-3 flex flex-wrap items-center gap-2.5">
+                <span className="text-xs text-ink-600">Estado de hoy:</span>
                 {jornada ? (
-                  <StatusBadge tone={TONO_ESTADO[jornada.estado]}>{ESTADO_JORNADA_LABEL[jornada.estado]}</StatusBadge>
+                  <Pill fase={FASE_ESTADO[jornada.estado]}>{ESTADO_JORNADA_LABEL[jornada.estado]}</Pill>
                 ) : (
-                  <StatusBadge tone="neutral">Sin abrir</StatusBadge>
+                  <Pill fase="inicial">Sin abrir</Pill>
                 )}
                 {jornada && (
-                  <span className="text-sm text-ink-500">
+                  <span className="text-xs text-ink-500">
                     Turno en curso: {nombreUsuario(jornada.turnoUsuarioId)}
                   </span>
                 )}
                 {jornada && (esApertura || jornada.cierre) && (
-                  <Button size="sm" variant="outline" onClick={() => setActaDe({ cajaId, etapa: esApertura ? "apertura" : "cierre" })}>
+                  <Button size="xs" variant="navyOutline" onClick={() => setActaDe({ cajaId, etapa: esApertura ? "apertura" : "cierre" })}>
                     Ver acta de {modo}
                   </Button>
                 )}
@@ -326,7 +322,7 @@ export function PantallaJornada({ modo }: { modo: "apertura" | "cierre" }) {
             </>
           )}
         </div>
-      </Card>
+      </PanelVentana>
       {!esApertura && <EntregaCierre cajaId={cajaId} />}
       {acta && jornada && caja && <ActaJornada jornada={jornada} caja={caja} etapa={acta} onClose={() => setActaDe(null)} />}
     </PaginaCaja>

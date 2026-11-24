@@ -179,8 +179,8 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
     error?: string
   ) => (
     <div>
-      <p className="mb-1.5 text-sm font-medium text-ink-700">
-        {titulo} <span className="text-xs font-normal text-ink-400">(hasta {max})</span>
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-ink-500">
+        {titulo} <span className="font-normal normal-case text-ink-400">(hasta {max})</span>
       </p>
       <div className="space-y-2">
         {valores.map((v, i) => (
@@ -193,13 +193,13 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
               onChange={(x) => set(valores.map((y, k) => (k === i ? x : y)))}
               className="flex-1"
             />
-            <Button size="sm" variant="ghost" onClick={() => set(valores.filter((_, k) => k !== i))}>
+            <Button size="xs" variant="dangerOutline" onClick={() => set(valores.filter((_, k) => k !== i))}>
               Quitar
             </Button>
           </div>
         ))}
         {valores.length < max && (
-          <Button size="sm" variant="outline" onClick={() => set([...valores, ""])}>
+          <Button size="xs" variant="navyOutline" onClick={() => set([...valores, ""])}>
             Agregar
           </Button>
         )}
@@ -209,8 +209,8 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
   );
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SelectField
           id={`${prefijoId}-tipo`}
           label="Tipo de comprobante"
@@ -262,15 +262,15 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
       </div>
       {e("duplicado") && <Banner tone="error" title="Comprobante duplicado">{errores.duplicado}</Banner>}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <FormField id={`${prefijoId}-nograv`} label="No gravado" type="number" value={noGravado} onChange={setNoGravado} />
         <FormField id={`${prefijoId}-exento`} label="Exento" type="number" value={exento} onChange={setExento} />
         <FormField id={`${prefijoId}-subtotal`} label="Subtotal gravado" type="number" value={subtotal} onChange={setSubtotal} error={e("subtotalGravado")} />
       </div>
 
       <div>
-        <p className="mb-1.5 text-sm font-medium text-ink-700">Gravado e IVA por alícuota</p>
-        <div className="space-y-3">
+        <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-ink-500">Gravado e IVA por alícuota</p>
+        <div className="space-y-2">
           {ALICUOTAS_IVA.map((a) => (
             <div key={a} className="grid gap-3 sm:grid-cols-2">
               <FormField
@@ -293,14 +293,14 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-3">
         <FormField id={`${prefijoId}-perciva`} label="Percepción de IVA" type="number" value={percIva} onChange={setPercIva} />
         {listaVariable("Percepciones de IIBB", iibb, setIibb, 3, `${prefijoId}-iibb`, e("percepcionesIibb"))}
         {listaVariable("Percepciones municipales", muni, setMuni, 2, `${prefijoId}-muni`, e("percepcionesMunicipales"))}
       </div>
       {e("importes") && <p className="text-xs text-danger-600">{errores.importes}</p>}
 
-      <div className="grid items-end gap-4 sm:grid-cols-[1fr_auto]">
+      <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto]">
         <FormField
           id={`${prefijoId}-total`}
           label="Total del comprobante"
@@ -317,7 +317,7 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
               : `Los importes suman ${pesos(sugerido)}.`
           }
         />
-        <Button variant="outline" onClick={calcular}>
+        <Button size="sm" variant="navyOutline" onClick={calcular}>
           Calcular IVA y total
         </Button>
       </div>
@@ -325,7 +325,7 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
       <FormField id={`${prefijoId}-obs`} label="Observaciones" value={observaciones} onChange={setObservaciones} />
 
       <div>
-        <p className="mb-1.5 text-sm font-medium text-ink-700">Respaldo del comprobante</p>
+        <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-ink-500">Respaldo del comprobante</p>
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={archivo}
@@ -338,24 +338,24 @@ export function FormularioComprobante({ proveedor, inicial, onSubmit, textoBoton
               if (f) setRespaldo(f.name);
             }}
           />
-          <Button variant="outline" size="sm" onClick={() => archivo.current?.click()}>
+          <Button variant="navyOutline" size="xs" onClick={() => archivo.current?.click()}>
             Subir archivo
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setRespaldo("QR de factura electrónica (leído)")}>
+          <Button variant="navyOutline" size="xs" onClick={() => setRespaldo("QR de factura electrónica (leído)")}>
             Leer QR
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setTelefono(true)}>
+          <Button variant="navyOutline" size="xs" onClick={() => setTelefono(true)}>
             Vincular teléfono
           </Button>
           <span className="text-xs text-ink-500">
             {respaldo ? <>Respaldo: <span className="font-semibold text-ink-700">{respaldo}</span></> : "Opcional: también se puede adjuntar después."}
           </span>
         </div>
-        <p className="mt-1 text-xs text-ink-400">La lectura del QR y la vinculación del teléfono son simulaciones de demo.</p>
+        <p className="mt-1 text-[11px] text-ink-500">La lectura del QR y la vinculación del teléfono son simulaciones de demo.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={grabar}>{textoBoton}</Button>
+        <Button size="sm" variant="success" onClick={grabar}>{textoBoton}</Button>
         {proveedor && (
           <span className="text-xs text-ink-500">
             {proveedor.razonSocial} · CUIT {formatearCuit(proveedor.cuit)}

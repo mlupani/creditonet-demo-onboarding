@@ -8,10 +8,10 @@ import { useAlertasEnviadas } from "@/lib/control-store";
 import { EVENTOS_ALERTA, EVENTO_ALERTA_LABEL, type AlertaEnviada } from "@/lib/control-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { PanelVentana, TablaCompacta, Td, Th } from "./compacto";
 import { CLASE_INPUT, PaginaCaja, descargarXlsx, sinAcentos } from "./comunes";
 
-const ETIQUETA = "mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400";
+const ETIQUETA = "mb-1 block text-[10px] font-bold uppercase tracking-wide text-ink-500";
 const paraTexto = (a: AlertaEnviada) =>
   a.destinatarios.length > 0 ? a.destinatarios.map((d) => `${nombreUsuario(d.usuarioId)} (${ROL_CAJA_LABEL[d.rol]})`).join(", ") : "Sin destinatarios configurados";
 
@@ -44,26 +44,25 @@ function BandejaDeSalida() {
     ]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Banner tone="info" title="Los mails son simulados">
         Toda contingencia (diferencias sobre la tolerancia, actas No conformes, cajas o sucursales sin cerrar, arqueos vencidos, acuerdos por vencer…)
         dispara un mail a los roles configurados en Parámetros. Acá se ve la bandeja de salida.
       </Banner>
-      <Card>
-        <CardHeader
-          title="Filtros"
-          action={
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setNuevas(revisarAlertas())}>
-                Revisar ahora
-              </Button>
-              <Button size="sm" variant="outline" onClick={exportar}>
-                Exportar a Excel
-              </Button>
-            </div>
-          }
-        />
-        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+      <PanelVentana
+        titulo="Filtros"
+        accion={
+          <div className="flex gap-1.5">
+            <Button size="xs" variant="brandOutline" onClick={() => setNuevas(revisarAlertas())}>
+              Revisar ahora
+            </Button>
+            <Button size="xs" variant="navyOutline" onClick={exportar}>
+              Exportar a Excel
+            </Button>
+          </div>
+        }
+      >
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <label className="block">
             <span className={ETIQUETA}>Evento</span>
             <select value={evento} onChange={(e) => setEvento(e.target.value)} aria-label="Evento" className={CLASE_INPUT}>
@@ -89,45 +88,43 @@ function BandejaDeSalida() {
           </label>
         </div>
         {nuevas !== null && nuevas > 0 && (
-          <p className="border-t border-ink-100 px-5 py-3 text-sm text-ink-700">
+          <p className="mt-2 text-xs font-semibold text-ink-700">
             La revisión generó {nuevas} {nuevas === 1 ? "alerta nueva" : "alertas nuevas"}.
           </p>
         )}
-      </Card>
+      </PanelVentana>
 
-      <Card className="overflow-hidden">
+      <PanelVentana titulo={`Alertas enviadas · ${filas.length}`}>
         {filas.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">No hay alertas para mostrar.</p>
+          <p className="py-4 text-center text-xs text-ink-400">No hay alertas para mostrar.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[56rem] text-left text-sm">
-              <thead>
-                <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                  <th className="px-3 py-2.5">ID</th>
-                  <th className="px-3 py-2.5">Fecha y hora</th>
-                  <th className="px-3 py-2.5">Alerta</th>
-                  <th className="px-3 py-2.5">Para</th>
-                  <th className="px-3 py-2.5">Referencia</th>
+          <TablaCompacta etiqueta="Alertas enviadas" minWidth="min-w-[48rem]">
+            <thead>
+              <tr>
+                <Th>ID</Th>
+                <Th>Fecha y hora</Th>
+                <Th>Alerta</Th>
+                <Th>Para</Th>
+                <Th>Referencia</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((a) => (
+                <tr key={a.id}>
+                  <Td className="font-mono font-bold text-brand-700">{a.id}</Td>
+                  <Td className="whitespace-nowrap">{a.fechaHora}</Td>
+                  <Td>
+                    <p className="font-semibold text-ink-900">{EVENTO_ALERTA_LABEL[a.evento]}</p>
+                    <p className="mt-0.5 text-[11px] text-ink-500">{a.detalle}</p>
+                  </Td>
+                  <Td className="text-[11px]">{paraTexto(a)}</Td>
+                  <Td className="font-mono">{a.referencia ?? "—"}</Td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100 align-top">
-                {filas.map((a) => (
-                  <tr key={a.id}>
-                    <td className="px-3 py-3 font-mono text-xs font-bold text-brand-700">{a.id}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-ink-700">{a.fechaHora}</td>
-                    <td className="px-3 py-3">
-                      <p className="font-semibold text-ink-900">{EVENTO_ALERTA_LABEL[a.evento]}</p>
-                      <p className="mt-0.5 text-xs text-ink-500">{a.detalle}</p>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-ink-700">{paraTexto(a)}</td>
-                    <td className="px-3 py-3 font-mono text-xs text-ink-700">{a.referencia ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </TablaCompacta>
         )}
-      </Card>
+      </PanelVentana>
     </div>
   );
 }

@@ -9,8 +9,7 @@ import { recibirEntregaCierre, reabrirCaja } from "@/lib/cierre-diario";
 import type { Firma } from "@/lib/control-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { PanelVentana, Pill, TablaCompacta, Td, Th } from "./compacto";
 import { LlaveModal } from "./LlaveModal";
 import { NotaModal, dinero } from "./comunes";
 
@@ -42,77 +41,74 @@ export function EntregaCierre({ cajaId }: { cajaId: string }) {
   const resumen = (j: Jornada, c: Caja) => monedasDe(c.moneda).map((m) => dinero(m, j.cierre!.contado[m])).join(" y ");
 
   return (
-    <Card className="mt-6">
-      <CardHeader
-        title="Entrega y recepción del efectivo"
-        description="Cerrar la caja en el sistema no es entregar el efectivo: el cajero y el tesorero firman el acta de entrega y recepción, y recién ahí el tesorero asume la custodia."
-      />
-      <div className="p-5">
+    <PanelVentana titulo="Entrega y recepción del efectivo" className="mt-4">
+      <div>
+        <p className="mb-3 text-xs text-ink-500">
+          Cerrar la caja en el sistema no es entregar el efectivo: el cajero y el tesorero firman el acta de entrega y recepción, y recién ahí el tesorero asume la custodia.
+        </p>
         {aviso && (
-          <Banner tone="success" title={aviso} className="mb-4">
+          <Banner tone="success" title={aviso} className="mb-3">
             El efectivo quedó bajo la custodia del tesorero y la caja pasó a «{ESTADO_CUSTODIA_LABEL.CUSTODIA}».
           </Banner>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead>
-              <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                <th className="px-3 py-2.5">Caja</th>
-                <th className="px-3 py-2.5">Cerró</th>
-                <th className="px-3 py-2.5">Estado</th>
-                <th className="px-3 py-2.5 text-right">Acción</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-100">
-              {filas.map(({ jornada: j, caja: c }) => {
-                const estado = estadoCustodia(j);
-                const sucursalCerrada = !!cierreVigente(cierresSucursal, c.sucursalId, j.fecha);
-                return (
-                  <tr key={j.id} className={c.id === cajaId ? "bg-brand-50/40" : undefined}>
-                    <td className="px-3 py-3 font-semibold text-ink-900">
-                      {c.nombre}
-                      <span className="block text-xs font-normal text-ink-500">
-                        {j.fecha} · {resumen(j, c)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-ink-700">{nombreUsuario(j.cierre!.usuarioId)}</td>
-                    <td className="px-3 py-3">
-                      {estado === "CUSTODIA" && j.custodia ? (
-                        <>
-                          <StatusBadge tone="success">{ESTADO_CUSTODIA_LABEL.CUSTODIA}</StatusBadge>
-                          <span className="mt-1 block text-xs text-ink-500">
-                            Recibió {nombreUsuario(j.custodia.recibeUsuarioId)} · {j.custodia.fechaHora} · {j.custodia.actaId}
-                            {j.custodia.remota && " · autorización remota, sin verificación física"}
-                          </span>
-                        </>
-                      ) : (
-                        <StatusBadge tone="warning">{ESTADO_CUSTODIA_LABEL.SISTEMA}</StatusBadge>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <span className="inline-flex flex-wrap justify-end gap-2">
-                        {estado === "SISTEMA" && (
-                          <Button size="sm" onClick={() => setEntregando(j)}>
-                            Entregar y recibir
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={sucursalCerrada}
-                          title={sucursalCerrada ? "La sucursal cerró la fecha: primero hay que reabrir el cierre diario." : undefined}
-                          onClick={() => setReabriendo({ jornada: j, fase: "motivo", motivo: "" })}
-                        >
-                          Reabrir caja
+        <TablaCompacta etiqueta="Entrega y recepción del efectivo" minWidth="min-w-[40rem]">
+          <thead>
+            <tr>
+              <Th>Caja</Th>
+              <Th>Cerró</Th>
+              <Th>Estado</Th>
+              <Th derecha>Acción</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map(({ jornada: j, caja: c }) => {
+              const estado = estadoCustodia(j);
+              const sucursalCerrada = !!cierreVigente(cierresSucursal, c.sucursalId, j.fecha);
+              return (
+                <tr key={j.id} className={c.id === cajaId ? "bg-brand-50/40" : undefined}>
+                  <Td className="font-bold text-ink-900">
+                    {c.nombre}
+                    <span className="block text-[11px] font-normal text-ink-500">
+                      {j.fecha} · {resumen(j, c)}
+                    </span>
+                  </Td>
+                  <Td>{nombreUsuario(j.cierre!.usuarioId)}</Td>
+                  <Td>
+                    {estado === "CUSTODIA" && j.custodia ? (
+                      <>
+                        <Pill fase="ok">{ESTADO_CUSTODIA_LABEL.CUSTODIA}</Pill>
+                        <span className="mt-1 block text-[11px] text-ink-500">
+                          Recibió {nombreUsuario(j.custodia.recibeUsuarioId)} · {j.custodia.fechaHora} · {j.custodia.actaId}
+                          {j.custodia.remota && " · autorización remota, sin verificación física"}
+                        </span>
+                      </>
+                    ) : (
+                      <Pill fase="espera">{ESTADO_CUSTODIA_LABEL.SISTEMA}</Pill>
+                    )}
+                  </Td>
+                  <Td derecha>
+                    <span className="inline-flex flex-wrap justify-end gap-1.5">
+                      {estado === "SISTEMA" && (
+                        <Button size="xs" variant="success" onClick={() => setEntregando(j)}>
+                          Entregar y recibir
                         </Button>
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      )}
+                      <Button
+                        size="xs"
+                        variant="navyOutline"
+                        disabled={sucursalCerrada}
+                        title={sucursalCerrada ? "La sucursal cerró la fecha: primero hay que reabrir el cierre diario." : undefined}
+                        onClick={() => setReabriendo({ jornada: j, fase: "motivo", motivo: "" })}
+                      >
+                        Reabrir caja
+                      </Button>
+                    </span>
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </TablaCompacta>
       </div>
 
       <LlaveModal
@@ -186,6 +182,6 @@ export function EntregaCierre({ cajaId }: { cajaId: string }) {
         }}
         onClose={() => setReabriendo(null)}
       />
-    </Card>
+    </PanelVentana>
   );
 }

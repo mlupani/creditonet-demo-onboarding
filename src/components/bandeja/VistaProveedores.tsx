@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import { nombreUsuario, useUsuarioActual } from "@/lib/caja-store";
 import { puedeAutorizarPorMatriz } from "@/lib/matriz";
@@ -9,27 +10,26 @@ import { useComprobantes, useOrdenesPago, usePagosProveedor, useProveedores, use
 import { ESTADO_PAGO_LABEL, MEDIO_PAGO_LABEL, type Comprobante, type OrdenPago } from "@/lib/proveedores-tipos";
 import { ordenesDeBandeja, type FiltrosBandeja } from "@/lib/bandeja-reglas";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { IconFileText } from "@/components/icons";
 import { LlaveModal } from "@/components/caja/LlaveModal";
 import { NotaModal, descargarXlsx } from "@/components/caja/comunes";
-import { ENCABEZADO, EstadoOrdenBadge, Flecha, ImagenComprobanteModal, Th, cuitTexto, formatearCbu, nombreProveedor, numeroComprobante, origenTexto, pesos } from "./comunes";
-import { PagarModal } from "./PagarModal";
+import { Pill, TablaCompacta, Td, Th, type Fase } from "@/components/caja/compacto";
+import { Flecha, ImagenComprobanteModal, cuitTexto, formatearCbu, nombreProveedor, numeroComprobante, origenTexto, pesos } from "./comunes";
+import { EstadoOrdenBadge } from "./comunes";
+import { PagarModal, type ItemPago } from "./PagarModal";
 
-type Accion = { tipo: "autorizar" | "rechazar" | "pagar"; orden: OrdenPago; pendiente: number };
+type Accion =
+  | { tipo: "autorizar" | "rechazar"; orden: OrdenPago }
+  | { tipo: "pagar"; items: ItemPago[] };
 
-function Dato({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">{label}</p>
-      <p className="mt-0.5 text-sm text-ink-800">{children}</p>
-    </div>
-  );
-}
+// 2026-11-18 → 18/11
+const fechaCorta = (f: string) => (/^\d{4}-\d{2}-\d{2}$/.test(f) ? `${f.slice(8)}/${f.slice(5, 7)}` : f);
 
-// Órdenes de pago autorizadas por pagar y emitidas por autorizar. Cada fila se abre en cascada: facturas
-// incluidas, quién cargó, autorizó y armó, la imagen del comprobante y los pagos ya hechos.
+const FASE_PAGO = (estado: string): Fase =>
+  estado === "RECHAZADA" || estado === "RECHAZADO" || estado === "ANULADO" ? "rechazo" : "proceso";
+
+// Órdenes de pago emitidas por autorizar y autorizadas por pagar. Cada fila se abre en cascada: facturas
+// incluidas, quién cargó, autorizó y armó, la imagen del comprobante y los pagos ya hechos. Se paga de a
+// una (botón Pagar de la fila) o en lote, tildando varias órdenes del mismo proveedor.
 export function VistaProveedores({ filtros }: { filtros: FiltrosBandeja }) {
   const usuario = useUsuarioActual();
   const ordenes = useOrdenesPago();
@@ -38,6 +38,7 @@ export function VistaProveedores({ filtros }: { filtros: FiltrosBandeja }) {
   const comprobantes = useComprobantes();
   const tipos = useTiposComprobante();
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
+  const [tildadas, setTildadas] = useState<Set<string>>(new Set());
   const [accion, setAccion] = useState<Accion | null>(null);
   const [imagen, setImagen] = useState<Comprobante | null>(null);
 
@@ -48,10 +49,21 @@ export function VistaProveedores({ filtros }: { filtros: FiltrosBandeja }) {
       if (!n.delete(id)) n.add(id);
       return n;
     });
+  const tildar = (id: string) =>
+    setTildadas((s) => {
+      const n = new Set(s);
+      if (!n.delete(id)) n.add(id);
+      return n;
+    });
 
   const motivoNoAutoriza = (o: OrdenPago) =>
     puedeAutorizarOrden(usuario, o) ?? puedeAutorizarPorMatriz(usuario, "ORDEN_PAGO", o.total, "ARS");
   const motivoNoPaga = puedePagarOrden(usuario);
+
+  // Las órdenes tildadas que siguen siendo pagables (por si cambiaron desde que se tildaron).
+  const seleccion = filas.filter((f) => f.fase === "PAGAR" && tildadas.has(f.orden.id));
+  const proveedorTildado = seleccion[0]?.orden.proveedorId;
+  const totalSeleccion = seleccion.reduce((s, f) => s + f.pendiente, 0);
 
   const exportar = () =>
     descargarXlsx("bandeja-ordenes-pago.xlsx", "Órdenes de pago", [
@@ -70,187 +82,229 @@ export function VistaProveedores({ filtros }: { filtros: FiltrosBandeja }) {
     ]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="max-w-2xl text-sm text-ink-500">
-          Las órdenes salen del armado en Proveedores. Acá se autorizan con la llave (otro usuario distinto de quien la armó) y se pagan
-          eligiendo el medio. Una orden agrupa las facturas de un solo proveedor.
+        <p className="text-[11px] text-ink-500">
+          Las órdenes salen del armado en Proveedores. Una orden agrupa las facturas de un solo proveedor.
         </p>
-        <Button variant="outline" size="sm" onClick={exportar} disabled={filas.length === 0}>
+        <Button variant="navyOutline" size="xs" onClick={exportar} disabled={filas.length === 0}>
           Exportar a Excel
         </Button>
       </div>
 
-      <Card className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className={ENCABEZADO}>
-              <Th />
-              <Th>Orden</Th>
-              <Th>Proveedor</Th>
-              <Th derecha>Facturas</Th>
-              <Th derecha>Total</Th>
-              <Th derecha>Pendiente</Th>
-              <Th>Situación</Th>
-              <Th>Acciones</Th>
+      <TablaCompacta etiqueta="Órdenes de pago de la bandeja" minWidth="min-w-[58rem]">
+        <thead>
+          <tr>
+            <Th className="w-16">
+              <span className="sr-only">Selección</span>
+            </Th>
+            <Th>ID OP</Th>
+            <Th>Proveedor / CUIT</Th>
+            <Th>Fecha proceso</Th>
+            <Th>Fecha comprob.</Th>
+            <Th>N° comprobante</Th>
+            <Th derecha>Importe</Th>
+            <Th>Estado</Th>
+            <Th>
+              <span className="sr-only">Acciones</span>
+            </Th>
+          </tr>
+        </thead>
+        <tbody>
+          {filas.length === 0 && (
+            <tr>
+              <Td colSpan={9} className="py-6 text-center text-ink-400">
+                No hay órdenes de pago por autorizar ni por pagar con estos filtros.
+              </Td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-ink-100">
-            {filas.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-sm text-ink-400">
-                  No hay órdenes de pago por autorizar ni por pagar con estos filtros.
-                </td>
-              </tr>
-            )}
-            {filas.map(({ orden, proveedor, fase, pendiente }) => {
-              const abierta = abiertas.has(orden.id);
-              const pagosOrden = pagos.filter((p) => p.ordenPago === orden.id);
-              const noAutoriza = fase === "AUTORIZAR" ? motivoNoAutoriza(orden) : null;
-              return (
-                <Fragment key={orden.id}>
-                  <tr className={abierta ? "bg-brand-50/40" : "hover:bg-ink-25"}>
-                    <td className="w-10 px-2 py-3">
+          )}
+          {filas.map(({ orden, proveedor, fase, pendiente }) => {
+            const abierta = abiertas.has(orden.id);
+            const pagosOrden = pagos.filter((p) => p.ordenPago === orden.id);
+            const noAutoriza = fase === "AUTORIZAR" ? motivoNoAutoriza(orden) : null;
+            const items = orden.items.map((i) => ({ item: i, c: comprobantes.find((x) => x.id === i.comprobanteId) }));
+            const otroProveedor = !!proveedorTildado && proveedorTildado !== orden.proveedorId;
+            const tildable = fase === "PAGAR" && !otroProveedor;
+            return (
+              <Fragment key={orden.id}>
+                <tr className={abierta ? "bg-brand-50/40" : tildadas.has(orden.id) ? "bg-brand-50/30" : undefined}>
+                  <Td className="whitespace-nowrap">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={fase === "PAGAR" && tildadas.has(orden.id)}
+                        disabled={!tildable}
+                        onChange={() => tildar(orden.id)}
+                        aria-label={`Tildar ${orden.id} para pagar en lote`}
+                        title={
+                          fase === "AUTORIZAR"
+                            ? "Se puede tildar cuando la orden esté autorizada"
+                            : otroProveedor
+                              ? "Sólo se pueden tildar órdenes del mismo proveedor"
+                              : "Tildar para pagar en lote"
+                        }
+                        className="h-3.5 w-3.5 accent-brand-600 disabled:cursor-not-allowed"
+                      />
                       <Flecha abierto={abierta} onClick={() => alternar(orden.id)} etiqueta={`Ver el detalle de ${orden.id}`} />
-                    </td>
-                    <td className="px-3 py-3 font-semibold text-ink-900">{orden.id}</td>
-                    <td className="px-3 py-3">
-                      <p className="font-medium text-ink-800">{proveedor?.razonSocial ?? orden.proveedorId}</p>
-                      <p className="text-xs text-ink-400">CUIT {cuitTexto(proveedor)}</p>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">{orden.items.length}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{pesos(orden.total)}</td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{pesos(pendiente)}</td>
-                    <td className="px-3 py-3">
-                      {fase === "AUTORIZAR" ? <StatusBadge tone="warning">Por autorizar</StatusBadge> : <StatusBadge tone="success">Por pagar</StatusBadge>}
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {fase === "AUTORIZAR" ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="success"
-                              disabled={!!noAutoriza}
-                              title={noAutoriza ?? "Autorizar con tu llave"}
-                              onClick={() => setAccion({ tipo: "autorizar", orden, pendiente })}
-                            >
-                              Autorizar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={!!noAutoriza}
-                              title={noAutoriza ?? "Rechazar con motivo"}
-                              onClick={() => setAccion({ tipo: "rechazar", orden, pendiente })}
-                            >
-                              Rechazar
-                            </Button>
-                          </>
-                        ) : (
-                          <Button size="sm" disabled={!!motivoNoPaga} title={motivoNoPaga ?? "Elegí el medio y pagá"} onClick={() => setAccion({ tipo: "pagar", orden, pendiente })}>
-                            Pagar
+                    </div>
+                  </Td>
+                  <Td className="whitespace-nowrap font-semibold text-ink-900">{orden.id}</Td>
+                  <Td>
+                    <p className="font-medium text-ink-900">{proveedor?.razonSocial ?? orden.proveedorId}</p>
+                    <p className="text-[11px] text-ink-500">{cuitTexto(proveedor)}</p>
+                  </Td>
+                  <Td className="whitespace-nowrap">{fechaCorta(orden.fechaArmado)}</Td>
+                  <Td className="whitespace-nowrap">{items.map((x) => (x.c ? fechaCorta(x.c.fechaComprobante) : "—")).join(" · ")}</Td>
+                  <Td>{items.map((x) => (x.c ? numeroComprobante(x.c) : x.item.comprobanteId)).join(" · ")}</Td>
+                  <Td derecha className="font-semibold text-ink-900">
+                    {pesos(pendiente)}
+                  </Td>
+                  <Td>{fase === "AUTORIZAR" ? <Pill fase="proceso">Emitida</Pill> : <Pill fase="espera">Autorizada</Pill>}</Td>
+                  <Td>
+                    <div className="flex flex-wrap gap-1.5">
+                      {fase === "AUTORIZAR" ? (
+                        <>
+                          <Button
+                            size="xs"
+                            variant="successOutline"
+                            disabled={!!noAutoriza}
+                            title={noAutoriza ?? "Autorizar con tu llave"}
+                            onClick={() => setAccion({ tipo: "autorizar", orden })}
+                          >
+                            Autorizar
                           </Button>
-                        )}
-                      </div>
-                      {(noAutoriza || (fase === "PAGAR" && motivoNoPaga)) && (
-                        <p className="mt-1 max-w-56 text-[11px] leading-snug text-ink-400">{noAutoriza ?? motivoNoPaga}</p>
+                          <Button
+                            size="xs"
+                            variant="dangerOutline"
+                            disabled={!!noAutoriza}
+                            title={noAutoriza ?? "Rechazar con motivo"}
+                            onClick={() => setAccion({ tipo: "rechazar", orden })}
+                          >
+                            Rechazar
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="xs"
+                          variant="successOutline"
+                          disabled={!!motivoNoPaga}
+                          title={motivoNoPaga ?? "Elegí el medio y pagá"}
+                          onClick={() => setAccion({ tipo: "pagar", items: [{ orden, pendiente }] })}
+                        >
+                          Pagar
+                        </Button>
                       )}
-                    </td>
-                  </tr>
-                  {abierta && (
-                    <tr className="bg-ink-25">
-                      <td colSpan={8} className="px-4 pb-4 pt-2">
-                        <div className="grid gap-3 sm:grid-cols-4">
-                          <Dato label="Armó la orden">
-                            {nombreUsuario(orden.armadaPor)} · {orden.fechaArmado}
-                          </Dato>
-                          <Dato label="Autorizó la orden">
-                            {orden.autorizacion
-                              ? `${nombreUsuario(orden.autorizacion.usuarioId)} · ${orden.autorizacion.fechaHora}${orden.autorizacion.firmaId ? ` · llave ${orden.autorizacion.firmaId}` : ""}`
-                              : "Todavía sin autorizar"}
-                          </Dato>
-                          <Dato label="Estado de la orden">
-                            <EstadoOrdenBadge estado={orden.estado} />
-                          </Dato>
-                          <Dato label="Destino de la transferencia">
-                            {orden.cuentaDestino ? <span className="font-mono text-xs">{formatearCbu(orden.cuentaDestino)}</span> : "Sin CBU cargado"}
-                          </Dato>
-                        </div>
-
-                        <p className="mb-1 mt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-400">Facturas incluidas</p>
-                        <div className="overflow-x-auto rounded-lg border border-ink-200 bg-white">
-                          <table className="w-full text-left text-xs">
-                            <thead>
-                              <tr className={ENCABEZADO}>
-                                <Th>Comprobante</Th>
-                                <Th>Fecha</Th>
-                                <Th>Vence</Th>
-                                <Th>Cargó</Th>
-                                <Th>Autorizó</Th>
-                                <Th derecha>Crédito aplicado</Th>
-                                <Th derecha>A pagar</Th>
-                                <Th />
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-ink-100">
-                              {orden.items.map((item) => {
-                                const c = comprobantes.find((x) => x.id === item.comprobanteId);
-                                return (
-                                  <tr key={item.comprobanteId}>
-                                    <td className="px-3 py-2">
-                                      <span className="font-medium text-ink-800">{c ? `${tipos.find((t) => t.id === c.tipoId)?.descripcion ?? ""} ${numeroComprobante(c)}` : item.comprobanteId}</span>
-                                      <span className="ml-1 text-ink-400">{item.comprobanteId}</span>
-                                    </td>
-                                    <td className="px-3 py-2">{c?.fechaComprobante ?? "—"}</td>
-                                    <td className="px-3 py-2">{c ? vencimientoDe(c) : "—"}</td>
-                                    <td className="px-3 py-2">{c ? nombreUsuario(c.cargadoPor) : "—"}</td>
-                                    <td className="px-3 py-2">{c?.autorizacion ? nombreUsuario(c.autorizacion.usuarioId) : "—"}</td>
-                                    <td className="px-3 py-2 text-right tabular-nums">{item.credito ? pesos(item.credito) : "—"}</td>
-                                    <td className="px-3 py-2 text-right tabular-nums">{pesos(item.aPagar)}</td>
-                                    <td className="px-3 py-2 text-right">
-                                      {c && (
-                                        <button type="button" onClick={() => setImagen(c)} className="inline-flex items-center gap-1 text-brand-700 hover:underline">
-                                          <IconFileText width={14} height={14} />
-                                          Ver imagen
-                                        </button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        <p className="mb-1 mt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-400">Pagos de la orden</p>
-                        {pagosOrden.length === 0 ? (
-                          <p className="text-xs text-ink-400">Todavía no se pagó nada.</p>
-                        ) : (
-                          <ul className="space-y-1 text-xs">
-                            {pagosOrden.map((p) => (
-                              <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2">
-                                <span className="font-semibold text-ink-800">{p.id}</span>
-                                <span className="text-ink-600">
-                                  {MEDIO_PAGO_LABEL[p.medio]} · {origenTexto(p)}
-                                </span>
-                                <span className="tabular-nums text-ink-800">{pesos(p.importe)}</span>
-                                <StatusBadge tone={p.estado === "RECHAZADA" || p.estado === "RECHAZADO" || p.estado === "ANULADO" ? "danger" : "info"}>
-                                  {ESTADO_PAGO_LABEL[p.estado]}
-                                </StatusBadge>
-                              </li>
-                            ))}
-                          </ul>
+                    </div>
+                    {(noAutoriza || (fase === "PAGAR" && motivoNoPaga)) && (
+                      <p className="mt-1 max-w-44 text-[10.5px] leading-snug text-ink-500">{noAutoriza ?? motivoNoPaga}</p>
+                    )}
+                  </Td>
+                </tr>
+                {abierta && (
+                  <tr className="bg-ink-25">
+                    <Td colSpan={9} className="px-3 py-2">
+                      <p className="text-[11px] leading-relaxed text-ink-700">
+                        <span className="font-bold">▾ Detalle {orden.id}</span> · Cargó:{" "}
+                        {[...new Set(items.map((x) => (x.c ? nombreUsuario(x.c.cargadoPor) : "—")))].join(", ")} · Armó: {nombreUsuario(orden.armadaPor)}{" "}
+                        {orden.fechaArmado} · Autorizó:{" "}
+                        {orden.autorizacion
+                          ? `${nombreUsuario(orden.autorizacion.usuarioId)} ${orden.autorizacion.fechaHora}${orden.autorizacion.firmaId ? ` · llave ${orden.autorizacion.firmaId}` : ""}`
+                          : "todavía sin autorizar"}{" "}
+                        · Facturas:{" "}
+                        {items.map((x) => `${x.c ? numeroComprobante(x.c) : x.item.comprobanteId} (${pesos(x.item.aPagar)})`).join(", ")} · Cuenta destino:{" "}
+                        {orden.cuentaDestino ? <span className="font-mono">{formatearCbu(orden.cuentaDestino)}</span> : "sin CBU cargado"} ·{" "}
+                        <EstadoOrdenBadge estado={orden.estado} />
+                      </p>
+                      <p className="mt-1 text-[11px]">
+                        {items.map(
+                          (x) =>
+                            x.c && (
+                              <button key={x.c.id} type="button" onClick={() => setImagen(x.c!)} className="mr-3 text-brand-700 underline hover:text-brand-900">
+                                Ver imagen {numeroComprobante(x.c)}
+                              </button>
+                            )
                         )}
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </Card>
+                      </p>
+
+                      <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wide text-ink-500">Facturas incluidas</p>
+                      <TablaCompacta etiqueta={`Facturas de ${orden.id}`} minWidth="min-w-[40rem]">
+                        <thead>
+                          <tr>
+                            <Th>Comprobante</Th>
+                            <Th>Fecha</Th>
+                            <Th>Vence</Th>
+                            <Th>Cargó</Th>
+                            <Th>Autorizó</Th>
+                            <Th derecha>Crédito aplicado</Th>
+                            <Th derecha>A pagar</Th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map(({ item, c }) => (
+                            <tr key={item.comprobanteId}>
+                              <Td>
+                                <span className="font-medium">{c ? `${tipos.find((t) => t.id === c.tipoId)?.descripcion ?? ""} ${numeroComprobante(c)}` : item.comprobanteId}</span>
+                                <span className="ml-1 text-ink-400">{item.comprobanteId}</span>
+                              </Td>
+                              <Td>{c?.fechaComprobante ?? "—"}</Td>
+                              <Td>{c ? vencimientoDe(c) : "—"}</Td>
+                              <Td>{c ? nombreUsuario(c.cargadoPor) : "—"}</Td>
+                              <Td>{c?.autorizacion ? nombreUsuario(c.autorizacion.usuarioId) : "—"}</Td>
+                              <Td derecha>{item.credito ? pesos(item.credito) : "—"}</Td>
+                              <Td derecha>{pesos(item.aPagar)}</Td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </TablaCompacta>
+
+                      <p className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wide text-ink-500">Pagos de la orden</p>
+                      {pagosOrden.length === 0 ? (
+                        <p className="text-[11px] text-ink-400">Todavía no se pagó nada.</p>
+                      ) : (
+                        <ul className="space-y-1 text-[11px]">
+                          {pagosOrden.map((p) => (
+                            <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2.5 py-1.5">
+                              <span className="font-semibold text-ink-800">{p.id}</span>
+                              <span className="text-ink-600">
+                                {MEDIO_PAGO_LABEL[p.medio]} · {origenTexto(p)}
+                              </span>
+                              <span className="tabular-nums text-ink-800">{pesos(p.importe)}</span>
+                              <Pill fase={FASE_PAGO(p.estado)}>{ESTADO_PAGO_LABEL[p.estado]}</Pill>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </Td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </TablaCompacta>
+
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button
+          variant="success"
+          size="sm"
+          disabled={seleccion.length === 0 || !!motivoNoPaga}
+          title={motivoNoPaga ?? (seleccion.length === 0 ? "Tildá una o más órdenes del mismo proveedor" : "Elegí el medio y pagá")}
+          onClick={() => setAccion({ tipo: "pagar", items: seleccion.map((f) => ({ orden: f.orden, pendiente: f.pendiente })) })}
+        >
+          Pagar seleccionadas ({seleccion.length} · {pesos(totalSeleccion)})
+        </Button>
+        <Link
+          href="/proveedores/posicion"
+          className="inline-flex h-8 items-center rounded-lg border border-navy-800 bg-white px-3 text-xs font-semibold text-navy-800 hover:bg-ink-100"
+        >
+          Ver posición del proveedor
+        </Link>
+        {proveedorTildado && (
+          <span className="text-[11px] text-ink-500">
+            Tildadas sólo de {nombreProveedor(proveedores, proveedorTildado)}: el sistema no permite mezclar proveedores en un mismo pago.
+          </span>
+        )}
+      </div>
 
       {accion?.tipo === "autorizar" && (
         <LlaveModal
@@ -289,7 +343,15 @@ export function VistaProveedores({ filtros }: { filtros: FiltrosBandeja }) {
           }}
         />
       )}
-      {accion?.tipo === "pagar" && <PagarModal orden={accion.orden} pendiente={accion.pendiente} onClose={() => setAccion(null)} />}
+      {accion?.tipo === "pagar" && (
+        <PagarModal
+          items={accion.items}
+          onClose={(pagado) => {
+            setAccion(null);
+            if (pagado) setTildadas(new Set());
+          }}
+        />
+      )}
       {imagen && <ImagenComprobanteModal comprobante={imagen} proveedor={nombreProveedor(proveedores, imagen.proveedorId)} onClose={() => setImagen(null)} />}
     </div>
   );

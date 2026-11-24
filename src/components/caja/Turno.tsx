@@ -16,12 +16,11 @@ import { monedasDe, type CambioTurno, type Caja, type DetalleRecuento, type Jorn
 import { saldosCaja } from "@/lib/caja-reglas";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActaPanel } from "./ActaPanel";
 import { aError } from "./Jornada";
 import { FlujoRecuento, RecuentoForm } from "./RecuentoForm";
-import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, datosDiferencia, dinero, dineroConSigno } from "./comunes";
+import { Campo, INPUT_COMPACTO, PanelVentana, Pill } from "./compacto";
+import { ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, datosDiferencia, dinero, dineroConSigno } from "./comunes";
 
 const PASOS = ["Solicitud y corte", "Arqueo de relevo", "Autorización", "Recepción", "Completado"];
 
@@ -43,20 +42,13 @@ function Pasos({ cambio }: { cambio: CambioTurno }) {
   const actual = pasoActual(cambio);
   const sinAutorizacion = !cambio.resolucion && cambio.estado !== "PEND_AUTORIZACION";
   return (
-    <ol className="flex flex-wrap gap-2">
+    <ol className="flex flex-wrap gap-1.5">
       {PASOS.map((p, i) => (
-        <li
-          key={p}
-          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-            i < actual
-              ? "border-success-200 bg-success-50 text-success-700"
-              : i === actual
-                ? "border-brand-300 bg-brand-50 text-brand-700"
-                : "border-ink-200 text-ink-400"
-          } ${i === 2 && sinAutorizacion && i < actual ? "opacity-60" : ""}`}
-        >
-          {i + 1}. {p}
-          {i === 2 && sinAutorizacion && i < actual ? " (no hizo falta)" : ""}
+        <li key={p} className={i === 2 && sinAutorizacion && i < actual ? "opacity-60" : ""}>
+          <Pill fase={i < actual ? "ok" : i === actual ? "proceso" : "inicial"}>
+            {i + 1}. {p}
+            {i === 2 && sinAutorizacion && i < actual ? " (no hizo falta)" : ""}
+          </Pill>
         </li>
       ))}
     </ol>
@@ -79,9 +71,9 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
   const monedas = monedasDe(caja.moneda);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Pasos cambio={cambio} />
-      <p className="text-sm text-ink-600">
+      <p className="text-xs text-ink-600">
         Saliente: <strong>{nombreUsuario(cambio.salienteId)}</strong> · Entrante: <strong>{nombreUsuario(cambio.entranteId)}</strong> · Corte: {cambio.corte}. La caja está bloqueada hasta completar el relevo.
       </p>
       {reemplazo && (
@@ -91,8 +83,8 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
       )}
 
       {cambio.arqueo && (
-        <div className="rounded-lg border border-ink-200 p-3 text-sm">
-          <p className="font-semibold text-ink-900">Arqueo de relevo ({cambio.arqueo.fechaHora})</p>
+        <div className="rounded-lg border border-ink-300 bg-ink-25 p-3 text-xs">
+          <p className="font-bold text-ink-900">Arqueo de relevo ({cambio.arqueo.fechaHora})</p>
           <ul className="mt-1 text-ink-700">
             {monedas.map((m) => (
               <li key={m}>
@@ -107,7 +99,7 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
       {cambio.estado === "SOLICITADO" &&
         (cargaArqueo ? (
           <div>
-            <p className="mb-3 text-sm text-ink-600">Arqueo de relevo ciego por moneda y denominación, contra el saldo esperado del turno.</p>
+            <p className="mb-2 text-xs text-ink-600">Arqueo de relevo ciego por moneda y denominación, contra el saldo esperado del turno.</p>
             <FlujoRecuento key={`${cambio.id}-${cambio.resolucion?.fechaHora ?? ""}`} caja={caja} confirmar="Registrar arqueo de relevo" onConfirmar={(d, a) => aError(cargarArqueoRelevo(cambio.id, { detalle: d, ajustes: a }))} />
           </div>
         ) : (
@@ -141,10 +133,10 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
             esSupervisor(usuario) &&
             puedeAprobar(usuario, cambio.salienteId) && (
               <div className="flex gap-2">
-                <Button variant="success" onClick={() => setAccion("aprobar")}>
+                <Button size="sm" variant="success" onClick={() => setAccion("aprobar")}>
                   Aprobar diferencia
                 </Button>
-                <Button variant="outline" onClick={() => setAccion("rechazar")}>
+                <Button size="sm" variant="dangerOutline" onClick={() => setAccion("rechazar")}>
                   Rechazar
                 </Button>
               </div>
@@ -156,12 +148,14 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
       {cambio.estado === "PEND_RECEPCION" &&
         (entrante ? (
           <div>
-            <p className="mb-3 text-sm text-ink-600">
+            <p className="mb-2 text-xs text-ink-600">
               Contá el saldo real ya ajustado y aceptá. Si tu recuento no coincide con lo declarado por el saliente, no se acepta y se abre una incidencia.
             </p>
             <RecuentoForm monedas={monedas} detalle={detalle} onChange={setDetalle} ayuda={Object.fromEntries(monedas.map((m) => [m, saldosCaja(libro, caja)[m]]))} />
             <Button
-              className="mt-4"
+              size="sm"
+              variant="success"
+              className="mt-3"
               onClick={() => {
                 const r = recibirTurno(cambio.id, detalle);
                 setError(aError(r));
@@ -180,7 +174,7 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
         <Banner tone="error" title="Incidencia en la recepción">
           El recuento del entrante no coincide con lo declarado por el saliente.{" "}
           {esSupervisor(usuario) && puedeAprobar(usuario, cambio.salienteId) && usuario.id !== cambio.entranteId ? (
-            <Button size="sm" className="ml-2" onClick={() => setAccion("incidencia")}>
+            <Button size="xs" variant="navyOutline" className="ml-2" onClick={() => setAccion("incidencia")}>
               Resolver incidencia
             </Button>
           ) : (
@@ -190,7 +184,7 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
       )}
 
       {(saliente || usuario.id === cambio.iniciadoPor) && (
-        <Button variant="ghost" onClick={() => setError(aError(cancelarCambioTurno(cambio.id)))}>
+        <Button size="xs" variant="dangerOutline" onClick={() => setError(aError(cancelarCambioTurno(cambio.id)))}>
           Cancelar el relevo
         </Button>
       )}
@@ -247,29 +241,27 @@ function NuevoRelevo({ caja, jornada, usuario }: { caja: Caja; jornada: Jornada;
   if (posibles.length === 0) return <Banner tone="warning">La caja no tiene otro cajero asignado para recibir el turno.</Banner>;
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <label className="block">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Cajero entrante</span>
-        <select value={elegido} onChange={(e) => setEntrante(e.target.value)} aria-label="Cajero entrante" className={`${CLASE_INPUT} w-64`}>
+      <Campo label="Cajero entrante" className="w-64">
+        <select value={elegido} onChange={(e) => setEntrante(e.target.value)} aria-label="Cajero entrante" className={INPUT_COMPACTO}>
           {posibles.map((p) => (
             <option key={p.usuarioId} value={p.usuarioId}>
               {nombreUsuario(p.usuarioId)} · {p.desde} a {p.hasta}
             </option>
           ))}
         </select>
-      </label>
+      </Campo>
       {esSaliente && (
-        <label className="flex items-center gap-2 pb-2 text-sm text-ink-700">
-          <input type="checkbox" checked={reemplazo} onChange={(e) => setReemplazo(e.target.checked)} className="h-4 w-4" />
+        <label className="flex items-center gap-2 pb-1.5 text-xs text-ink-700">
+          <input type="checkbox" checked={reemplazo} onChange={(e) => setReemplazo(e.target.checked)} className="h-3.5 w-3.5" />
           Reemplazo por emergencia
         </label>
       )}
       {emergencia && (
-        <label className="block">
-          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Motivo del reemplazo</span>
-          <input value={motivo} onChange={(e) => setMotivo(e.target.value)} aria-label="Motivo del reemplazo" placeholder="Ej.: el cajero se sintió mal" className={`${CLASE_INPUT} w-72`} />
-        </label>
+        <Campo label="Motivo del reemplazo" className="w-72">
+          <input value={motivo} onChange={(e) => setMotivo(e.target.value)} aria-label="Motivo del reemplazo" placeholder="Ej.: el cajero se sintió mal" className={INPUT_COMPACTO} />
+        </Campo>
       )}
-      <Button onClick={() => setError(aError(solicitarCambioTurno(caja.id, elegido, { variante: emergencia ? "REEMPLAZO" : "TURNO", motivo })))}>
+      <Button size="sm" variant="success" onClick={() => setError(aError(solicitarCambioTurno(caja.id, elegido, { variante: emergencia ? "REEMPLAZO" : "TURNO", motivo })))}>
         {emergencia ? "Solicitar reemplazo" : "Solicitar cambio de turno"}
       </Button>
       <ErrorBanner error={error} />
@@ -290,31 +282,29 @@ export function PantallaTurno() {
 
   return (
     <PaginaCaja titulo="Cambio de turno" descripcion="Relevo entre cajeros con arqueo de corte. Cada cajero responde por su turno y la caja sigue abierta hasta el cierre definitivo.">
-      <Card>
-        <CardHeader title={caja ? caja.nombre : "Cambio de turno"} action={visibles.length > 1 ? <SelectorCaja cajas={visibles} valor={cajaId} onChange={setElegida} /> : undefined} />
-        <div className="space-y-5 p-5">
+      <PanelVentana titulo={caja ? caja.nombre : "Cambio de turno"} accion={visibles.length > 1 ? <SelectorCaja cajas={visibles} valor={cajaId} onChange={setElegida} /> : undefined}>
+        <div className="space-y-4">
           {!caja || !jornada ? (
             <Banner tone="info">No hay cajas abiertas visibles para {usuario.nombre}. Abrí una caja desde «Apertura de caja» o cambiá el usuario en «Actuar como».</Banner>
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-3 text-sm text-ink-700">
-                <StatusBadge tone="success">Abierta</StatusBadge>
+              <div className="flex flex-wrap items-center gap-2.5 text-xs text-ink-700">
+                <Pill fase="ok">Abierta</Pill>
                 Turno en curso: <strong>{nombreUsuario(jornada.turnoUsuarioId)}</strong> · Modalidad de relevo: {caja.relevo === "DIRECTO" ? "directo, con doble confirmación" : "por tesoro"}
               </div>
               {cambio ? <Relevo key={cambio.id} cambio={cambio} caja={caja} usuario={usuario} /> : <NuevoRelevo caja={caja} jornada={jornada} usuario={usuario} />}
             </>
           )}
         </div>
-      </Card>
+      </PanelVentana>
 
-      <Card className="mt-6">
-        <CardHeader title="Relevos de hoy" />
+      <PanelVentana titulo="Relevos de hoy" className="mt-4">
         {historial.length === 0 ? (
-          <p className="px-5 py-6 text-center text-sm text-ink-400">Todavía no hubo relevos completados hoy en esta caja.</p>
+          <p className="py-3 text-center text-xs text-ink-400">Todavía no hubo relevos completados hoy en esta caja.</p>
         ) : (
-          <ul className="divide-y divide-ink-100">
+          <ul className="-my-3 divide-y divide-ink-100">
             {historial.map((t) => (
-              <li key={t.id} className="px-5 py-3 text-sm text-ink-700">
+              <li key={t.id} className="py-2.5 text-xs text-ink-700">
                 <span className="font-mono text-xs font-bold text-brand-700">{t.id}</span> · {nombreUsuario(t.salienteId)} → {nombreUsuario(t.entranteId)} · corte {t.corte}, fin {t.fin}
                 {t.variante === "REEMPLAZO" && ` · reemplazo por emergencia (${t.motivo})`}
                 {t.resolucion && ` · aprobado por ${nombreUsuario(t.resolucion.supervisorId)}`}
@@ -323,7 +313,7 @@ export function PantallaTurno() {
             ))}
           </ul>
         )}
-      </Card>
+      </PanelVentana>
     </PaginaCaja>
   );
 }

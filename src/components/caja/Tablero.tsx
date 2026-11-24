@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useState } from "react";
 import {
   ESTADO_TABLERO,
@@ -18,22 +19,21 @@ import { ESTADO_CIERRE_DIARIO_LABEL, ESTADO_CUSTODIA_LABEL, MONEDAS, TIPO_CAJA_L
 import { ordenarArqueoSorpresivo } from "@/lib/cierre-diario";
 import { plazosControl, usePlazos } from "@/lib/control-store";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/SelectField";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { IconChevronDown } from "@/components/icons";
+import { Cifra, PanelVentana, Pill, Punto, TablaCompacta, Td, Th } from "./compacto";
 import { ExcepcionesHorario } from "./ExcepcionesHorario";
 import { ErrorBanner, PaginaCaja, descargarXlsx, dinero, nombreRoles, quien } from "./comunes";
 
-const TONO_CIERRE = {
-  ABIERTA: "neutral",
-  EN_CONTROLES: "info",
-  EN_VENTANA: "info",
-  CERRADA_OK: "success",
-  CERRADA_CON_PENDIENTES: "warning",
-  NO_CERRADA: "danger",
-  REABIERTA: "warning",
+const FASE_CIERRE = {
+  ABIERTA: "inicial",
+  EN_CONTROLES: "proceso",
+  EN_VENTANA: "proceso",
+  CERRADA_OK: "ok",
+  CERRADA_CON_PENDIENTES: "espera",
+  NO_CERRADA: "rechazo",
+  REABIERTA: "espera",
 } as const;
 
 // Casa Central ordena un arqueo sorpresivo de una caja y designa al controlador (sin aviso previo al cajero).
@@ -93,19 +93,7 @@ function OrdenarArqueo({ onClose }: { onClose: () => void }) {
   );
 }
 
-const PUNTO = { success: "bg-success-600", warning: "bg-warning-500", danger: "bg-danger-600" } as const;
-
-function Tarjeta({ titulo, valor, detalle, tono }: { titulo: string; valor: string; detalle?: string; tono?: "warning" | "danger" }) {
-  return (
-    <Card className="p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">{titulo}</p>
-      <p className={`mt-1 text-xl font-bold tabular-nums ${tono === "danger" ? "text-danger-700" : tono === "warning" ? "text-warning-700" : "text-ink-900"}`}>
-        {valor}
-      </p>
-      {detalle && <p className="mt-1 text-xs text-ink-500">{detalle}</p>}
-    </Card>
-  );
-}
+const FASE_TONO = { success: "ok", warning: "espera", danger: "rechazo" } as const;
 
 const porMoneda = (v: PorMoneda, monedas: Moneda[] = MONEDAS) =>
   monedas
@@ -121,7 +109,7 @@ function Diferencias({ d, monedas }: { d: DiferenciaCaja; monedas: Moneda[] }) {
       {monedas.map((m) => (
         <p key={m}>
           <span className="text-success-700">+ {dinero(m, d.favor[m])}</span> /{" "}
-          <span className="text-danger-700">− {dinero(m, d.contra[m])}</span>
+          <span className="font-semibold text-danger-700">− {dinero(m, d.contra[m])}</span>
         </p>
       ))}
     </div>
@@ -195,187 +183,191 @@ export function PantallaTablero() {
       titulo="Tablero de tesoros"
       descripcion="Una fila por caja con su estado, responsable del turno y saldo según el sistema; diferencias a favor y en contra, fondos en tránsito y alertas."
     >
-      <Card className="p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-ink-700">Alertas</h2>
-          <span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-ink-500">
-            {propias.length} para {nombreRoles(d.usuario)}
-            {otras.length > 0 && ` · ${otras.length} para otros roles`}
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Cifra label="Pendientes de autorización" tono={p.total > 0 ? "malo" : "neutro"}>
+          {p.total}
+          <span className="mt-0.5 block text-[11px] font-normal text-ink-500">
+            {p.movimientos} movimientos · {p.jornadas} aperturas o cierres · {p.relevos} relevos · {p.incidencias} incidencias
           </span>
-          {otras.length > 0 && (
-            <label className="ml-auto flex items-center gap-2 text-xs font-medium text-ink-600">
+        </Cifra>
+        <Cifra label="Fondos en tránsito">
+          {porMoneda(resumen.enTransito)}
+          <span className="mt-0.5 block text-[11px] font-normal text-ink-500">Salieron del origen y el destino todavía no los aceptó.</span>
+        </Cifra>
+        <Cifra label="Cajas sobre el máximo" tono={resumen.sobreMaximo.length > 0 ? "malo" : "neutro"}>
+          {resumen.sobreMaximo.length}
+          <span className="mt-0.5 block text-[11px] font-normal text-ink-500">
+            {resumen.sobreMaximo.length > 0 ? "Conviene un retiro de excedente." : "Ninguna supera su importe máximo."}
+          </span>
+        </Cifra>
+        <Cifra label="Diferencias de caja">
+          {`+ ${porMoneda(resumen.diferencias.favor)}`}
+          <span className="mt-0.5 block text-[11px] font-normal text-danger-700">{`En contra: ${porMoneda(resumen.diferencias.contra)}`}</span>
+        </Cifra>
+      </div>
+
+      <PanelVentana
+        className="mt-4"
+        titulo={
+          <>
+            Alertas{" "}
+            <span className="ml-1 font-normal text-ink-500">
+              · {propias.length} para {nombreRoles(d.usuario)}
+              {otras.length > 0 && ` · ${otras.length} para otros roles`}
+            </span>
+          </>
+        }
+        accion={
+          otras.length > 0 ? (
+            <label className="flex items-center gap-1.5 text-[11px] font-medium text-ink-600">
               <input type="checkbox" checked={verTodas} onChange={(e) => setVerTodas(e.target.checked)} />
               Ver todas
             </label>
-          )}
-        </div>
+          ) : undefined
+        }
+      >
         {visibles.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-ink-200 px-4 py-4 text-center text-sm text-ink-400">
-            No hay alertas para vos en este momento.
-          </p>
+          <p className="rounded-md border border-dashed border-ink-200 px-3 py-3 text-center text-xs text-ink-400">No hay alertas para vos en este momento.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-ink-100">
+          <ul className="divide-y divide-ink-100">
             {visibles.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-3 py-2.5">
-                <StatusBadge tone={a.tipo === "ARQUEO_VENCIDO" ? "info" : "warning"}>{TIPO_ALERTA_LABEL[a.tipo]}</StatusBadge>
-                <span className="min-w-60 flex-1 text-sm text-ink-700">{a.mensaje}</span>
+              <li key={a.id} className="flex flex-wrap items-center gap-2.5 py-1.5">
+                <Pill fase={a.tipo === "ARQUEO_VENCIDO" ? "proceso" : "espera"}>{TIPO_ALERTA_LABEL[a.tipo]}</Pill>
+                <span className="min-w-60 flex-1 text-xs text-ink-700">{a.mensaje}</span>
                 <span className="text-[11px] text-ink-400">Avisa a {a.destinatarios.map((r) => (r === "TESORERO" ? "Tesorero" : r === "SUPERVISOR" ? "Supervisor" : "Cajero")).join(" y ")}</span>
               </li>
             ))}
           </ul>
         )}
-      </Card>
+      </PanelVentana>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Tarjeta
-          titulo="Pendientes de autorización"
-          valor={String(p.total)}
-          tono={p.total > 0 ? "warning" : undefined}
-          detalle={`${p.movimientos} movimientos · ${p.jornadas} aperturas o cierres · ${p.relevos} relevos · ${p.incidencias} incidencias`}
-        />
-        <Tarjeta titulo="Fondos en tránsito" valor={porMoneda(resumen.enTransito)} detalle="Salieron del origen y el destino todavía no los aceptó." />
-        <Tarjeta
-          titulo="Cajas sobre el máximo"
-          valor={String(resumen.sobreMaximo.length)}
-          tono={resumen.sobreMaximo.length > 0 ? "danger" : undefined}
-          detalle={resumen.sobreMaximo.length > 0 ? "Conviene un retiro de excedente." : "Ninguna supera su importe máximo."}
-        />
-        <Tarjeta
-          titulo="Diferencias de caja"
-          valor={`+ ${porMoneda(resumen.diferencias.favor)}`}
-          detalle={`En contra: ${porMoneda(resumen.diferencias.contra)}`}
-        />
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-ink-700">Tablero de tesoros</h2>
-        <div className="ml-auto flex flex-wrap gap-2">
-          {veTodo(d.usuario) && (
-            <Button variant="outline" onClick={() => setOrdenando(true)}>
-              Ordenar arqueo sorpresivo
+      <PanelVentana
+        className="mt-4"
+        titulo="Tablero de tesoros"
+        accion={
+          <span className="flex flex-wrap gap-1.5">
+            {veTodo(d.usuario) && (
+              <Button size="xs" variant="dangerOutline" onClick={() => setOrdenando(true)}>
+                Ordenar arqueo sorpresivo
+              </Button>
+            )}
+            <Link href="/caja/actas" className="inline-flex h-7 items-center rounded-md border border-navy-800 bg-white px-2.5 text-[11px] font-semibold text-navy-800 hover:bg-ink-100">
+              Ver actas
+            </Link>
+            <Button size="xs" variant="navyOutline" onClick={exportar}>
+              Exportar a Excel
             </Button>
-          )}
-          <Button variant="outline" onClick={exportar}>
-            Exportar a Excel
-          </Button>
-        </div>
-      </div>
-      <Card className="mt-3 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[78rem] text-left text-sm">
-            <thead>
-              <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                <th className="px-3 py-2.5">Caja</th>
-                <th className="px-3 py-2.5">Sucursal</th>
-                <th className="px-3 py-2.5">Tipo</th>
-                <th className="px-3 py-2.5">Estado</th>
-                <th className="px-3 py-2.5">Responsable del turno</th>
-                <th className="px-3 py-2.5 text-right">Saldo en pesos</th>
-                <th className="px-3 py-2.5 text-right">Saldo en dólares</th>
-                <th className="px-3 py-2.5">A favor / en contra</th>
-                <th className="px-3 py-2.5">Efectivo al cierre</th>
-                <th className="px-3 py-2.5">Cierre diario</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-100">
-              {filas.map((f) => {
-                const abierta = abiertas[f.cajaId];
-                const puedeExpandir = f.porTurno.length > 0;
-                return (
-                  <Fragment key={f.cajaId}>
-                    <tr>
-                      <td className="px-3 py-3 font-semibold text-ink-900">
-                        <div className="flex items-center gap-2">
-                          {puedeExpandir ? (
-                            <button
-                              type="button"
-                              aria-expanded={abierta}
-                              aria-label={`Desglose por turno de ${f.nombre}`}
-                              onClick={() => setAbiertas((a) => ({ ...a, [f.cajaId]: !a[f.cajaId] }))}
-                              className="text-ink-400 hover:text-ink-700"
-                            >
-                              <IconChevronDown width={14} height={14} className={`transition-transform ${abierta ? "" : "-rotate-90"}`} />
-                            </button>
-                          ) : (
-                            <span className="w-3.5" />
-                          )}
-                          {f.nombre}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-ink-700">{f.sucursal}</td>
-                      <td className="px-3 py-3 text-ink-700">{TIPO_CAJA_LABEL[f.tipo]}</td>
-                      <td className="px-3 py-3">
-                        <span className="inline-flex items-center gap-2 text-ink-700">
-                          <span aria-hidden className={`h-2.5 w-2.5 rounded-full ${PUNTO[f.tono]}`} />
-                          {ESTADO_TABLERO[f.estado].label}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-ink-700">{quien(f.responsableId)}</td>
-                      <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">
-                        {f.monedas.includes("ARS") ? dinero("ARS", f.saldos.ARS) : <span className="font-normal text-ink-400">—</span>}
-                      </td>
-                      <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">
-                        {f.monedas.includes("USD") ? dinero("USD", f.saldos.USD) : <span className="font-normal text-ink-400">—</span>}
-                      </td>
-                      <td className="px-3 py-3">
-                        <Diferencias d={f.diferencias} monedas={f.monedas} />
-                      </td>
-                      <td className="px-3 py-3">
-                        {efectivoDe(f.cajaId) ? (
-                          <StatusBadge tone={efectivoDe(f.cajaId) === ESTADO_CUSTODIA_LABEL.CUSTODIA ? "success" : "warning"}>{efectivoDe(f.cajaId)}</StatusBadge>
+          </span>
+        }
+      >
+        <TablaCompacta etiqueta="Tablero de tesoros" minWidth="min-w-[70rem]">
+          <thead>
+            <tr>
+              <Th>Sucursal / Caja</Th>
+              <Th>Tipo</Th>
+              <Th>Estado</Th>
+              <Th>Responsable del turno</Th>
+              <Th derecha>Saldo en pesos</Th>
+              <Th derecha>Saldo en dólares</Th>
+              <Th>Diferencias (a favor / en contra)</Th>
+              <Th>Efectivo al cierre</Th>
+              <Th>Cierre diario</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f) => {
+              const abierta = abiertas[f.cajaId];
+              const puedeExpandir = f.porTurno.length > 0;
+              const cd = cierreDe(f.cajaId);
+              return (
+                <Fragment key={f.cajaId}>
+                  <tr>
+                    <Td className="font-semibold text-ink-900">
+                      <div className="flex items-center gap-1.5">
+                        {puedeExpandir ? (
+                          <button
+                            type="button"
+                            aria-expanded={abierta}
+                            aria-label={`Desglose por turno de ${f.nombre}`}
+                            onClick={() => setAbiertas((a) => ({ ...a, [f.cajaId]: !a[f.cajaId] }))}
+                            className="text-ink-400 hover:text-ink-700"
+                          >
+                            <IconChevronDown width={13} height={13} className={`transition-transform ${abierta ? "" : "-rotate-90"}`} />
+                          </button>
                         ) : (
-                          <span className="text-ink-400">—</span>
+                          <span className="w-3" />
                         )}
-                      </td>
-                      <td className="px-3 py-3">
-                        {(() => {
-                          const cd = cierreDe(f.cajaId);
-                          if (!cd) return <span className="text-ink-400">—</span>;
-                          return (
-                            <>
-                              <StatusBadge tone={TONO_CIERRE[cd.estado]}>{ESTADO_CIERRE_DIARIO_LABEL[cd.estado]}</StatusBadge>
-                              {cd.cierre && <span className="mt-1 block text-xs text-ink-500">Responsable: {quien(cd.cierre.usuarioId)}</span>}
-                            </>
-                          );
-                        })()}
-                      </td>
+                        <span>
+                          {f.nombre}
+                          <span className="block text-[11px] font-normal text-ink-500">{f.sucursal}</span>
+                        </span>
+                      </div>
+                    </Td>
+                    <Td>{TIPO_CAJA_LABEL[f.tipo]}</Td>
+                    <Td>
+                      <Punto fase={FASE_TONO[f.tono]}>{ESTADO_TABLERO[f.estado].label}</Punto>
+                    </Td>
+                    <Td>{quien(f.responsableId)}</Td>
+                    <Td derecha className="font-semibold text-ink-900">
+                      {f.monedas.includes("ARS") ? dinero("ARS", f.saldos.ARS) : <span className="font-normal text-ink-400">—</span>}
+                    </Td>
+                    <Td derecha className="font-semibold text-ink-900">
+                      {f.monedas.includes("USD") ? dinero("USD", f.saldos.USD) : <span className="font-normal text-ink-400">—</span>}
+                    </Td>
+                    <Td>
+                      <Diferencias d={f.diferencias} monedas={f.monedas} />
+                    </Td>
+                    <Td>
+                      {efectivoDe(f.cajaId) ? (
+                        <Pill fase={efectivoDe(f.cajaId) === ESTADO_CUSTODIA_LABEL.CUSTODIA ? "ok" : "espera"}>{efectivoDe(f.cajaId)}</Pill>
+                      ) : (
+                        <span className="text-ink-400">—</span>
+                      )}
+                    </Td>
+                    <Td>
+                      {!cd ? (
+                        <span className="text-ink-400">—</span>
+                      ) : (
+                        <>
+                          <Punto fase={FASE_CIERRE[cd.estado]}>{ESTADO_CIERRE_DIARIO_LABEL[cd.estado]}</Punto>
+                          {cd.cierre && <span className="mt-0.5 block text-[11px] text-ink-500">Responsable: {quien(cd.cierre.usuarioId)}</span>}
+                        </>
+                      )}
+                    </Td>
+                  </tr>
+                  {abierta && puedeExpandir && (
+                    <tr className="bg-ink-25">
+                      <Td colSpan={9}>
+                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-500">Diferencias por turno</p>
+                        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {f.porTurno.map((t) => (
+                            <li key={t.turnoUsuarioId} className="rounded-md border border-ink-200 bg-white px-2.5 py-1.5">
+                              <p className="text-xs font-semibold text-ink-900">Turno de {quien(t.turnoUsuarioId)}</p>
+                              <Diferencias d={t.diferencia} monedas={f.monedas} />
+                            </li>
+                          ))}
+                        </ul>
+                      </Td>
                     </tr>
-                    {abierta && puedeExpandir && (
-                      <tr className="bg-ink-25">
-                        <td colSpan={10} className="px-3 py-3">
-                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-400">Diferencias por turno</p>
-                          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                            {f.porTurno.map((t) => (
-                              <li key={t.turnoUsuarioId} className="rounded-lg border border-ink-200 bg-white px-3 py-2">
-                                <p className="text-sm font-medium text-ink-900">Turno de {quien(t.turnoUsuarioId)}</p>
-                                <Diferencias d={t.diferencia} monedas={f.monedas} />
-                              </li>
-                            ))}
-                          </ul>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-ink-200 bg-ink-25 font-semibold text-ink-900">
-                <td className="px-3 py-3" colSpan={5}>
-                  Total de efectivo en cajas y tesoros
-                </td>
-                <td className="px-3 py-3 text-right tabular-nums">{dinero("ARS", resumen.efectivoTotal.ARS)}</td>
-                <td className="px-3 py-3 text-right tabular-nums">{dinero("USD", resumen.efectivoTotal.USD)}</td>
-                <td className="px-3 py-3 text-xs font-normal text-ink-500" colSpan={3}>
-                  Suma simple de los saldos de arriba
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </Card>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="bg-ink-25 font-semibold text-ink-900">
+              <Td colSpan={4}>Total de efectivo en cajas y tesoros</Td>
+              <Td derecha>{dinero("ARS", resumen.efectivoTotal.ARS)}</Td>
+              <Td derecha>{dinero("USD", resumen.efectivoTotal.USD)}</Td>
+              <Td colSpan={3} className="text-[11px] font-normal text-ink-500">
+                Suma simple de los saldos de arriba
+              </Td>
+            </tr>
+          </tfoot>
+        </TablaCompacta>
+      </PanelVentana>
 
-      <div className="mt-8">
+      <div className="mt-5">
         <ExcepcionesHorario />
       </div>
       {ordenando && <OrdenarArqueo onClose={() => setOrdenando(false)} />}

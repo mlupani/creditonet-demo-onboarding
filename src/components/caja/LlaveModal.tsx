@@ -9,7 +9,8 @@ import { esCasaCentral, firmar, rolDeFirma } from "@/lib/llave";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { CLASE_INPUT, ErrorBanner } from "./comunes";
+import { ErrorBanner } from "./comunes";
+import { Campo, INPUT_COMPACTO } from "./compacto";
 import { LlaveCampos } from "./LlaveCampos";
 
 // Qué se está firmando. El usuario que cargó la operación (`cargadoPor`) no puede firmarla.
@@ -21,8 +22,6 @@ export interface DatosFirma {
   cargadoPor?: string;
   remota?: boolean;
 }
-
-const ETIQUETA = "mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400";
 
 // Pide la llave de autorización (R6) a un usuario y devuelve la firma registrada. Con `usuarioId` el
 // firmante es fijo (el usuario que está actuando); sin él se elige de la lista, y con `datos.remota`
@@ -77,35 +76,34 @@ export function LlaveModal({
       maxWidth="max-w-lg"
       footer={
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={cerrar}>
+          <Button size="sm" variant="navyOutline" onClick={cerrar}>
             Cancelar
           </Button>
-          <Button onClick={confirmarFirma}>{confirmar}</Button>
+          <Button size="sm" variant="success" onClick={confirmarFirma}>{confirmar}</Button>
         </div>
       }
     >
-      {descripcion && <p className="mb-3 text-sm text-ink-600">{descripcion}</p>}
+      {descripcion && <p className="mb-3 text-xs text-ink-600">{descripcion}</p>}
       {datos.remota && (
         <Banner tone="warning" title="Autorización remota — sin verificación física" className="mb-3">
           La firma remota de Casa Central no equivale a la recepción ni a la verificación física del efectivo: queda marcada así en el acta.
         </Banner>
       )}
       {usuarioId ? (
-        <p className="text-sm text-ink-700">
+        <p className="text-xs text-ink-700">
           Firma: <span className="font-semibold">{usuario?.nombre}</span>
           {usuario && <span className="text-ink-500"> · {ROL_CAJA_LABEL[rolDeFirma(usuario)]}</span>}
         </p>
       ) : (
-        <label className="block">
-          <span className={ETIQUETA}>Usuario que firma</span>
-          <select value={firmante} onChange={(e) => setElegido(e.target.value)} aria-label="Usuario que firma" className={CLASE_INPUT}>
+        <Campo label="Usuario que firma">
+          <select value={firmante} onChange={(e) => setElegido(e.target.value)} aria-label="Usuario que firma" className={INPUT_COMPACTO}>
             {candidatos.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.nombre} · {ROL_CAJA_LABEL[rolDeFirma(u)]}
               </option>
             ))}
           </select>
-        </label>
+        </Campo>
       )}
       <LlaveCampos usuarioId={firmante} clave={clave} codigo={codigo} onClave={setClave} onCodigo={setCodigo} />
       <ErrorBanner error={error} titulo="No se pudo firmar" />

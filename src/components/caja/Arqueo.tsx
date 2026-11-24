@@ -7,13 +7,12 @@ import { hoy, nombreUsuario, useCajaDatos, useMotivosDiferencia } from "@/lib/ca
 import { monedasDe, type Arqueo, type Caja, type TipoArqueo } from "@/lib/caja-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActaDatos, ActaFirmas, ActaModal, ActaRecuento } from "./Acta";
 import { ActaPanel } from "./ActaPanel";
 import { aError } from "./Jornada";
 import { FlujoRecuento } from "./RecuentoForm";
-import { CLASE_INPUT, ErrorBanner, PaginaCaja, dinero, dineroConSigno } from "./comunes";
+import { Campo, INPUT_COMPACTO, PanelVentana, Pill, TablaCompacta, Td, Th } from "./compacto";
+import { ErrorBanner, PaginaCaja, dinero, dineroConSigno } from "./comunes";
 
 const TIPO_LABEL: Record<TipoArqueo, string> = { ORDINARIO: "Ordinario", SORPRESIVO: "Sorpresivo" };
 
@@ -49,22 +48,22 @@ function ArqueoEnCurso({ arqueo, caja, controla }: { arqueo: Arqueo; caja: Caja;
   const [error, setError] = useState<string | null>(null);
   const monedas = monedasDe(caja.moneda);
   return (
-    <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-4">
+    <div className="rounded-lg border border-brand-200 bg-brand-50/40 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-sm font-semibold text-ink-900">
+        <p className="text-xs font-bold text-ink-900">
           {arqueo.id} · {caja.nombre}
         </p>
-        <StatusBadge tone="info">{TIPO_LABEL[arqueo.tipo]}</StatusBadge>
-        <StatusBadge tone="warning">En curso</StatusBadge>
-        {arqueo.grupoId && <StatusBadge tone="neutral">Corte compartido</StatusBadge>}
+        <Pill fase="proceso">{TIPO_LABEL[arqueo.tipo]}</Pill>
+        <Pill fase="espera">En curso</Pill>
+        {arqueo.grupoId && <Pill fase="inicial">Corte compartido</Pill>}
       </div>
-      <p className="mt-1 text-sm text-ink-600">
+      <p className="mt-1 text-xs text-ink-600">
         Corte: {arqueo.corte} · Controlador: {nombreUsuario(arqueo.controladorId)}. Los movimientos están congelados y las operaciones nuevas suspendidas hasta finalizar.
       </p>
 
       {arqueo.conteos.map((c, i) => (
-        <div key={i} className="mt-3 rounded-lg border border-ink-200 bg-white p-3 text-sm">
-          <p className="font-semibold text-ink-900">
+        <div key={i} className="mt-2 rounded-lg border border-ink-300 bg-white p-2.5 text-xs">
+          <p className="font-bold text-ink-900">
             Conteo {i + 1} · {nombreUsuario(c.usuarioId)} ({c.fechaHora})
           </p>
           <ul className="mt-1 space-y-0.5 text-ink-700">
@@ -78,10 +77,10 @@ function ArqueoEnCurso({ arqueo, caja, controla }: { arqueo: Arqueo; caja: Caja;
       ))}
 
       {!controla ? (
-        <p className="mt-3 text-sm text-ink-500">Sólo el controlador carga el recuento y finaliza el arqueo.</p>
+        <p className="mt-3 text-xs text-ink-500">Sólo el controlador carga el recuento y finaliza el arqueo.</p>
       ) : arqueo.conteos.length === 0 ? (
-        <div className="mt-4">
-          <p className="mb-3 text-sm text-ink-600">Recuento ciego: el cajero declara las cantidades sin ver el esperado.</p>
+        <div className="mt-3">
+          <p className="mb-2 text-xs text-ink-600">Recuento ciego: el cajero declara las cantidades sin ver el esperado.</p>
           <FlujoRecuento caja={caja} conMotivos={false} confirmar="Registrar conteo" onConfirmar={(detalle) => aError(registrarConteoArqueo(arqueo.id, detalle))} />
         </div>
       ) : (
@@ -93,11 +92,11 @@ function ArqueoEnCurso({ arqueo, caja, controla }: { arqueo: Arqueo; caja: Caja;
           )}
           <div className="flex flex-wrap gap-2">
             {arqueo.conteos.length < 2 && !segundo && (
-              <Button variant="outline" onClick={() => setSegundo(true)}>
+              <Button size="sm" variant="navyOutline" onClick={() => setSegundo(true)}>
                 Cargar segundo conteo (opcional)
               </Button>
             )}
-            <Button onClick={() => setError(aError(finalizarArqueo(arqueo.id)))}>Finalizar arqueo y liberar la caja</Button>
+            <Button size="sm" variant="success" onClick={() => setError(aError(finalizarArqueo(arqueo.id)))}>Finalizar arqueo y liberar la caja</Button>
           </div>
         </div>
       )}
@@ -113,7 +112,7 @@ function GrupoEnCurso({ arqueos, cajas, usuarioId }: { arqueos: Arqueo[]; cajas:
   const caja = cajas.find((c) => c.id === activo.cajaId);
   return (
     <div>
-      <p className="mb-2 text-sm text-ink-600">
+      <p className="mb-2 text-xs text-ink-600">
         Corte único {arqueos[0].corte} · grupo {arqueos[0].grupoId} · {arqueos.length} cajas
       </p>
       <div role="tablist" aria-label="Cajas del arqueo" className="mb-3 flex flex-wrap gap-1 rounded-lg bg-ink-100 p-0.5">
@@ -126,7 +125,7 @@ function GrupoEnCurso({ arqueos, cajas, usuarioId }: { arqueos: Arqueo[]; cajas:
               role="tab"
               aria-selected={a.id === activo.id}
               onClick={() => setElegido(a.id)}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${a.id === activo.id ? "bg-white text-brand-700 shadow-xs" : "text-ink-500 hover:text-ink-800"}`}
+              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${a.id === activo.id ? "bg-white text-brand-700 shadow-xs" : "text-ink-500 hover:text-ink-800"}`}
             >
               {c?.nombre ?? a.cajaId}
               <span className="ml-1.5 text-[10px] font-medium text-ink-400">{a.conteos.length > 0 ? `${a.conteos.length} conteo${a.conteos.length > 1 ? "s" : ""}` : "sin contar"}</span>
@@ -186,36 +185,35 @@ export function PantallaArqueo() {
   return (
     <PaginaCaja titulo="Arqueo de caja" descripcion="Control ordinario o sorpresivo con corte y recuento ciego. El arqueo no corrige saldos: la diferencia se regulariza sólo con un ajuste autorizado por un supervisor.">
       {vencidas.length > 0 && (
-        <Banner tone="warning" title="Arqueos ordinarios vencidos" className="mb-6">
+        <Banner tone="warning" title="Arqueos ordinarios vencidos" className="mb-4">
           {vencidas.map((c) => `${c.nombre} (cada ${c.frecuenciaArqueo.toLowerCase()})`).join(" · ")}
         </Banner>
       )}
 
-      <Card className="mb-6">
-        <CardHeader title="Nuevo arqueo" description="Lo hace un Supervisor o un Tesorero con permiso Realizar arqueo; no puede ser responsable de la caja arqueada." />
-        <div className="p-5">
+      <PanelVentana titulo="Nuevo arqueo · lo hace un Supervisor o un Tesorero con permiso Realizar arqueo; no puede ser responsable de la caja arqueada" className="mb-4">
+        <div>
           {!puede ? (
             <Banner tone="info">{usuario.nombre} no tiene el permiso Realizar arqueo. Actuá como Supervisor o Tesorero.</Banner>
           ) : (
             <div className="flex flex-wrap items-end gap-3">
-              <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Caja a arquear</span>
-                <select value={cajaId} onChange={(e) => setCajaElegida(e.target.value)} aria-label="Caja a arquear" className={`${CLASE_INPUT} w-72`}>
+              <Campo label="Caja a arquear" className="w-72">
+                <select value={cajaId} onChange={(e) => setCajaElegida(e.target.value)} aria-label="Caja a arquear" className={INPUT_COMPACTO}>
                   {candidatas.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.nombre}
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Tipo</span>
-                <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoArqueo)} aria-label="Tipo de arqueo" className={`${CLASE_INPUT} w-44`}>
+              </Campo>
+              <Campo label="Tipo" className="w-44">
+                <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoArqueo)} aria-label="Tipo de arqueo" className={INPUT_COMPACTO}>
                   <option value="SORPRESIVO">Sorpresivo</option>
                   <option value="ORDINARIO">Ordinario</option>
                 </select>
-              </label>
+              </Campo>
               <Button
+                size="sm"
+                variant="success"
                 onClick={() => {
                   const r = iniciarArqueo(cajaId, tipo, incluidasValidas);
                   setError(aError(r));
@@ -228,13 +226,13 @@ export function PantallaArqueo() {
             </div>
           )}
           {puede && incluibles.length > 0 && (
-            <fieldset className="mt-4">
-              <legend className="text-sm font-semibold text-ink-900">Incluir en el mismo corte</legend>
-              <p className="text-xs text-ink-500">Cajas de cajero de la sucursal: se arquean con el mismo corte y cada una tiene su recuento y su acta.</p>
-              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5">
+            <fieldset className="mt-3">
+              <legend className="text-xs font-bold text-ink-900">Incluir en el mismo corte</legend>
+              <p className="text-[11px] text-ink-500">Cajas de cajero de la sucursal: se arquean con el mismo corte y cada una tiene su recuento y su acta.</p>
+              <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
                 {incluibles.map((c) => (
-                  <label key={c.id} className="flex items-center gap-2 text-sm text-ink-700">
-                    <input type="checkbox" checked={incluidasValidas.includes(c.id)} onChange={() => alternarIncluida(c.id)} className="h-4 w-4" />
+                  <label key={c.id} className="flex items-center gap-2 text-xs text-ink-700">
+                    <input type="checkbox" checked={incluidasValidas.includes(c.id)} onChange={() => alternarIncluida(c.id)} className="h-3.5 w-3.5" />
                     {c.nombre}
                   </label>
                 ))}
@@ -243,25 +241,23 @@ export function PantallaArqueo() {
           )}
           <ErrorBanner error={error} />
         </div>
-      </Card>
+      </PanelVentana>
 
       {enCurso.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader title="Arqueos en curso" />
-          <div className="space-y-4 p-5">
+        <PanelVentana titulo="Arqueos en curso" className="mb-4">
+          <div className="space-y-3">
             {gruposEnCurso.map((g) => {
               if (g.length > 1) return <GrupoEnCurso key={g[0].grupoId} arqueos={g} cajas={cajas} usuarioId={usuario.id} />;
               const c = cajaDe(g[0].cajaId);
               return c ? <ArqueoEnCurso key={g[0].id} arqueo={g[0]} caja={c} controla={g[0].controladorId === usuario.id} /> : null;
             })}
           </div>
-        </Card>
+        </PanelVentana>
       )}
 
-      <Card>
-        <CardHeader title="Historial de arqueos" description="Las actas no se modifican ni se eliminan." />
-        <div className="flex flex-wrap gap-2 border-b border-ink-100 px-5 py-3">
-          <select value={fCaja} onChange={(e) => setFCaja(e.target.value)} aria-label="Filtrar por caja" className={`${CLASE_INPUT} w-60`}>
+      <PanelVentana titulo="Historial de arqueos · las actas no se modifican ni se eliminan">
+        <div className="mb-3 flex flex-wrap gap-2">
+          <select value={fCaja} onChange={(e) => setFCaja(e.target.value)} aria-label="Filtrar por caja" className={`${INPUT_COMPACTO} w-60`}>
             <option value="">Caja: todas</option>
             {cajas.map((c) => (
               <option key={c.id} value={c.id}>
@@ -269,81 +265,80 @@ export function PantallaArqueo() {
               </option>
             ))}
           </select>
-          <select value={fTipo} onChange={(e) => setFTipo(e.target.value)} aria-label="Filtrar por tipo" className={`${CLASE_INPUT} w-44`}>
+          <select value={fTipo} onChange={(e) => setFTipo(e.target.value)} aria-label="Filtrar por tipo" className={`${INPUT_COMPACTO} w-44`}>
             <option value="">Tipo: todos</option>
             <option value="ORDINARIO">Ordinario</option>
             <option value="SORPRESIVO">Sorpresivo</option>
           </select>
-          <select value={fResultado} onChange={(e) => setFResultado(e.target.value)} aria-label="Filtrar por resultado" className={`${CLASE_INPUT} w-48`}>
+          <select value={fResultado} onChange={(e) => setFResultado(e.target.value)} aria-label="Filtrar por resultado" className={`${INPUT_COMPACTO} w-48`}>
             <option value="">Resultado: todos</option>
             <option value="CONFORME">Conforme</option>
             <option value="CON_DIFERENCIA">Con diferencia</option>
           </select>
         </div>
         {historial.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">Todavía no hay arqueos finalizados.</p>
+          <p className="py-4 text-center text-xs text-ink-400">Todavía no hay arqueos finalizados.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[44rem] text-left text-sm">
-              <thead>
-                <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                  <th className="px-4 py-2.5">ID</th>
-                  <th className="px-4 py-2.5">Caja</th>
-                  <th className="px-4 py-2.5">Tipo</th>
-                  <th className="px-4 py-2.5">Controlador</th>
-                  <th className="px-4 py-2.5">Fin</th>
-                  <th className="px-4 py-2.5">Resultado</th>
-                  <th className="px-4 py-2.5" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {historial.map((a) => (
-                  <tr key={a.id} className={a.grupoId ? "bg-brand-50/30" : undefined}>
-                    <td className={`px-4 py-3 font-mono text-xs font-bold text-brand-700 ${a.grupoId ? "border-l-4 border-brand-300" : ""}`}>
-                      {a.id}
-                      {a.grupoId && <span className="block text-[10px] font-medium text-ink-400">Corte compartido · {a.grupoId}</span>}
-                    </td>
-                    <td className="px-4 py-3">{cajaDe(a.cajaId)?.nombre}</td>
-                    <td className="px-4 py-3">{TIPO_LABEL[a.tipo]}</td>
-                    <td className="px-4 py-3">{nombreUsuario(a.controladorId)}</td>
-                    <td className="px-4 py-3 tabular-nums">{a.fin}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge tone={a.resultado === "CONFORME" ? "success" : a.ajusteAprobado ? "info" : a.ajusteRechazado ? "danger" : "warning"}>
-                        {a.resultado === "CONFORME" ? "Conforme" : a.ajusteAprobado ? "Diferencia ajustada" : a.ajusteRechazado ? "Ajuste rechazado" : "Con diferencia"}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1.5">
-                        <Button size="sm" variant="outline" onClick={() => setActa(a.id)}>
-                          Ver acta
+          <TablaCompacta etiqueta="Historial de arqueos" minWidth="min-w-[44rem]">
+            <thead>
+              <tr>
+                <Th>ID</Th>
+                <Th>Caja</Th>
+                <Th>Tipo</Th>
+                <Th>Controlador</Th>
+                <Th>Fin</Th>
+                <Th>Resultado</Th>
+                <Th />
+              </tr>
+            </thead>
+            <tbody>
+              {historial.map((a) => (
+                <tr key={a.id} className={a.grupoId ? "bg-brand-50/30" : undefined}>
+                  <Td className={`font-mono font-bold text-brand-700 ${a.grupoId ? "border-l-4 border-l-brand-300" : ""}`}>
+                    {a.id}
+                    {a.grupoId && <span className="block text-[10px] font-medium text-ink-400">Corte compartido · {a.grupoId}</span>}
+                  </Td>
+                  <Td>{cajaDe(a.cajaId)?.nombre}</Td>
+                  <Td>{TIPO_LABEL[a.tipo]}</Td>
+                  <Td>{nombreUsuario(a.controladorId)}</Td>
+                  <Td className="tabular-nums">{a.fin}</Td>
+                  <Td>
+                    <Pill fase={a.resultado === "CONFORME" ? "ok" : a.ajusteAprobado ? "proceso" : a.ajusteRechazado ? "rechazo" : "espera"}>
+                      {a.resultado === "CONFORME" ? "Conforme" : a.ajusteAprobado ? "Diferencia ajustada" : a.ajusteRechazado ? "Ajuste rechazado" : "Con diferencia"}
+                    </Pill>
+                  </Td>
+                  <Td>
+                    <div className="flex justify-end gap-1.5">
+                      <Button size="xs" variant="navyOutline" onClick={() => setActa(a.id)}>
+                        Ver acta
+                      </Button>
+                      {a.resultado === "CON_DIFERENCIA" && (
+                        <Button size="xs" variant="brandOutline" onClick={() => setAjuste(ajusteId === a.id ? null : a.id)}>
+                          Acta de diferencia
                         </Button>
-                        {a.resultado === "CON_DIFERENCIA" && (
-                          <Button size="sm" variant="ghost" onClick={() => setAjuste(ajusteId === a.id ? null : a.id)}>
-                            Acta de diferencia
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </TablaCompacta>
         )}
-      </Card>
+      </PanelVentana>
 
       {actaArqueo && cajaDe(actaArqueo.cajaId) && <ActaArqueo arqueo={actaArqueo} caja={cajaDe(actaArqueo.cajaId)!} onClose={() => setActa(null)} />}
       {ajuste && (
-        <Card className="mt-6">
-          <CardHeader
-            title={`Acta de diferencia del arqueo ${ajuste.id}`}
-            description="El responsable de la caja firma conforme o disconforme; después un supervisor distinto del controlador autoriza el ajuste o lo rechaza. La diferencia no desaparece: el ajuste es un movimiento propio."
-          />
-          <div className="p-5">
+        <PanelVentana
+          titulo={`Acta de diferencia del arqueo ${ajuste.id}`}
+          className="mt-4"
+        >
+          <p className="mb-3 text-xs text-ink-500">
+            El responsable de la caja firma conforme o disconforme; después un supervisor distinto del controlador autoriza el ajuste o lo rechaza. La diferencia no desaparece: el ajuste es un movimiento propio.
+          </p>
+          <div>
             {!ajuste.ajusteAprobado && !ajuste.ajusteRechazado && (
-              <label className="mb-3 block max-w-md">
-                <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">Motivo de la diferencia (para autorizar el ajuste)</span>
-                <select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} aria-label="Motivo de la diferencia" className={CLASE_INPUT}>
+              <Campo label="Motivo de la diferencia (para autorizar el ajuste)" className="mb-3 max-w-md">
+                <select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} aria-label="Motivo de la diferencia" className={INPUT_COMPACTO}>
                   <option value="">Elegí un motivo…</option>
                   {motivos.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -351,7 +346,7 @@ export function PantallaArqueo() {
                     </option>
                   ))}
                 </select>
-              </label>
+              </Campo>
             )}
             {ajuste.ajusteAprobado && <Banner tone="success">Ajuste autorizado por {nombreUsuario(ajuste.ajusteAprobado.supervisorId)} · {ajuste.ajusteAprobado.fechaHora}.</Banner>}
             {ajuste.ajusteRechazado && (
@@ -369,7 +364,7 @@ export function PantallaArqueo() {
               onRechazar={(nota, firmaId) => aError(rechazarAjusteArqueo(ajuste.id, nota, firmaId))}
             />
           </div>
-        </Card>
+        </PanelVentana>
       )}
     </PaginaCaja>
   );

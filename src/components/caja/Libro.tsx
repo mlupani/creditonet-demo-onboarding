@@ -17,10 +17,9 @@ import {
   type TipoCaja,
 } from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { imprimirDocumento } from "./Acta";
+import { Cifra, PanelVentana, Pill, TablaCompacta, Td, Th } from "./compacto";
 import { CLASE_INPUT, Dato, PaginaCaja, descargarXlsx, dinero, sinAcentos } from "./comunes";
 
 interface Filtros {
@@ -84,7 +83,7 @@ const cuenta = (m: MovimientoCaja) => m.medio === "EFECTIVO" && m.estado === "CO
 function Campo({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">{label}</span>
+      <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ink-500">{label}</span>
       {children}
     </label>
   );
@@ -281,9 +280,8 @@ export function PantallaLibro() {
 
   return (
     <PaginaCaja titulo="Libro de movimientos de caja" descripcion="Consulta, sin operación, de todo lo ocurrido en una caja o en todas, en formato de mayor de caja. Los confirmados no se borran ni se modifican; los cobros con tarjeta o transferencia figuran sin modificar el saldo de efectivo.">
-      <Card>
-        <CardHeader title="Filtros" action={<Button size="sm" variant="ghost" onClick={() => setF(VACIOS)}>Limpiar</Button>} />
-        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+      <PanelVentana titulo="Filtros" accion={<Button size="xs" variant="navyOutline" onClick={() => setF(VACIOS)}>Limpiar</Button>}>
+        <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <Campo label="Sucursal">
             <select value={f.sucursalId} onChange={(e) => setF((x) => ({ ...x, sucursalId: e.target.value, cajaId: "" }))} className={CLASE_INPUT} aria-label="Sucursal">
               <option value="">Todas</option>
@@ -359,7 +357,7 @@ export function PantallaLibro() {
           <Campo label="Hora hasta">
             <input type="time" value={f.horaHasta} onChange={(e) => set("horaHasta", e.target.value)} className={CLASE_INPUT} aria-label="Hora hasta" />
           </Campo>
-          <Campo label="Comprobante, ID de crédito o cliente">
+          <Campo label="Comprobante, crédito o cliente">
             <input value={f.texto} onChange={(e) => set("texto", e.target.value)} className={CLASE_INPUT} aria-label="Comprobante, crédito o cliente" placeholder="Ej.: MT-0001" />
           </Campo>
           <Campo label="Importe mínimo">
@@ -368,90 +366,87 @@ export function PantallaLibro() {
           <Campo label="Importe máximo">
             <input type="number" min={0} value={f.maximo} onChange={(e) => set("maximo", e.target.value)} className={CLASE_INPUT} aria-label="Importe máximo" />
           </Campo>
-          <label className="flex items-center gap-2 self-end pb-2 text-sm text-ink-700 lg:col-span-2">
-            <input type="checkbox" checked={f.soloDiferencia} onChange={(e) => set("soloDiferencia", e.target.checked)} className="h-4 w-4" />
+          <label className="flex items-center gap-2 self-end pb-1.5 text-xs text-ink-700 sm:col-span-2">
+            <input type="checkbox" checked={f.soloDiferencia} onChange={(e) => set("soloDiferencia", e.target.checked)} className="h-3.5 w-3.5" />
             Sólo movimientos con diferencia o incidencia
           </label>
         </div>
-      </Card>
+      </PanelVentana>
 
-      <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-ink-500">Período: {periodo}</p>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportar}>Exportar a Excel</Button>
-          <Button variant="outline" onClick={exportarPdf}>Exportar a PDF</Button>
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-xs text-ink-500">Período: {periodo}</p>
+        <div className="flex gap-1.5">
+          <Button size="xs" variant="navyOutline" onClick={exportar}>Exportar a Excel</Button>
+          <Button size="xs" variant="navyOutline" onClick={exportarPdf}>Exportar a PDF</Button>
         </div>
       </div>
 
-      <div className="mt-3 space-y-5">
-        {visibles.length === 0 && <Card className="px-5 py-8 text-center text-sm text-ink-400">Ningún movimiento coincide con los filtros.</Card>}
+      <div className="mt-2 space-y-4">
+        {visibles.length === 0 && <p className="rounded-md border border-dashed border-ink-200 px-4 py-6 text-center text-xs text-ink-400">Ningún movimiento coincide con los filtros.</p>}
         {visibles.map((b) => (
-          <Card key={`${b.caja.id}-${b.moneda}`} className="overflow-hidden">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ink-100 bg-ink-25 px-5 py-3">
-              <h2 className="text-sm font-bold text-ink-900">{b.caja.nombre} · {b.moneda === "ARS" ? "Pesos" : "Dólares"}</h2>
-              <p className="text-sm text-ink-600">Saldo inicial: <strong className="tabular-nums">{dinero(b.moneda, b.inicial)}</strong></p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[70rem] text-sm">
-                <thead>
-                  <tr className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                    <th className="px-3 py-2 text-left">Fecha y hora</th>
-                    <th className="px-3 py-2 text-left">Turno</th>
-                    <th className="px-3 py-2 text-left">Tipo</th>
-                    <th className="px-3 py-2 text-left">Descripción</th>
-                    <th className="px-3 py-2 text-left">Comprobante</th>
-                    <th className="px-3 py-2 text-right">Ingreso</th>
-                    <th className="px-3 py-2 text-right">Egreso</th>
-                    <th className="px-3 py-2 text-right">Saldo</th>
-                    <th className="px-3 py-2 text-left">Medio</th>
-                    <th className="px-3 py-2 text-left">Responsable</th>
-                    <th className="px-3 py-2 text-left">Estado</th>
+          <PanelVentana
+            key={`${b.caja.id}-${b.moneda}`}
+            titulo={`${b.caja.nombre} · ${b.moneda === "ARS" ? "Pesos" : "Dólares"}`}
+            accion={<span>Saldo inicial: <strong className="tabular-nums text-ink-900">{dinero(b.moneda, b.inicial)}</strong></span>}
+          >
+            <TablaCompacta etiqueta={`Libro de ${b.caja.nombre}`} minWidth="min-w-[64rem]">
+              <thead>
+                <tr>
+                  <Th>Fecha y hora</Th>
+                  <Th>Turno</Th>
+                  <Th>Tipo</Th>
+                  <Th>Descripción</Th>
+                  <Th>Comprobante</Th>
+                  <Th derecha>Ingreso</Th>
+                  <Th derecha>Egreso</Th>
+                  <Th derecha>Saldo</Th>
+                  <Th>Medio</Th>
+                  <Th>Responsable</Th>
+                  <Th>Estado</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {b.filas.length === 0 && (
+                  <tr><Td colSpan={11} className="py-3 text-center text-ink-400">Sin movimientos en el período.</Td></tr>
+                )}
+                {b.filas.map(({ mov, saldo }) => (
+                  <tr key={mov.id} onClick={() => setDetalle(mov)} className={`cursor-pointer hover:bg-ink-25 ${mov.estado === "ANULADO" ? "text-ink-400 line-through" : ""}`}>
+                    <Td className="whitespace-nowrap tabular-nums">{mov.fecha} {mov.hora}</Td>
+                    <Td>{nombreUsuario(mov.turnoUsuarioId)}</Td>
+                    <Td>{mov.tipo}</Td>
+                    <Td>{mov.descripcion}</Td>
+                    <Td className="font-mono">{mov.comprobante}</Td>
+                    <Td derecha className="text-success-700">{mov.ingreso > 0 ? dinero(mov.moneda, mov.ingreso) : ""}</Td>
+                    <Td derecha className="text-danger-700">{mov.egreso > 0 ? dinero(mov.moneda, mov.egreso) : ""}</Td>
+                    <Td derecha className="font-semibold">{dinero(mov.moneda, saldo)}</Td>
+                    <Td>{MEDIO_LABEL[mov.medio]}</Td>
+                    <Td>{nombreUsuario(mov.responsableId)}</Td>
+                    <Td><Pill fase={mov.estado === "CONFIRMADO" ? "ok" : "rechazo"}>{mov.estado === "CONFIRMADO" ? "Confirmado" : "Anulado"}</Pill></Td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-100">
-                  {b.filas.length === 0 && (
-                    <tr><td colSpan={11} className="px-3 py-4 text-center text-ink-400">Sin movimientos en el período.</td></tr>
-                  )}
-                  {b.filas.map(({ mov, saldo }) => (
-                    <tr key={mov.id} onClick={() => setDetalle(mov)} className={`cursor-pointer hover:bg-ink-25 ${mov.estado === "ANULADO" ? "text-ink-400 line-through" : ""}`}>
-                      <td className="whitespace-nowrap px-3 py-2 tabular-nums">{mov.fecha} {mov.hora}</td>
-                      <td className="px-3 py-2">{nombreUsuario(mov.turnoUsuarioId)}</td>
-                      <td className="px-3 py-2">{mov.tipo}</td>
-                      <td className="px-3 py-2">{mov.descripcion}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{mov.comprobante}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{mov.ingreso > 0 ? dinero(mov.moneda, mov.ingreso) : ""}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{mov.egreso > 0 ? dinero(mov.moneda, mov.egreso) : ""}</td>
-                      <td className="px-3 py-2 text-right font-semibold tabular-nums">{dinero(mov.moneda, saldo)}</td>
-                      <td className="px-3 py-2">{MEDIO_LABEL[mov.medio]}</td>
-                      <td className="px-3 py-2">{nombreUsuario(mov.responsableId)}</td>
-                      <td className="px-3 py-2"><StatusBadge tone={mov.estado === "CONFIRMADO" ? "success" : "neutral"}>{mov.estado === "CONFIRMADO" ? "Confirmado" : "Anulado"}</StatusBadge></td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-ink-200 bg-ink-25 text-sm font-semibold">
-                    <td colSpan={5} className="px-3 py-2.5 text-ink-700">Totales (efectivo confirmado)</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{dinero(b.moneda, b.ingresos)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{dinero(b.moneda, b.egresos)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{dinero(b.moneda, b.final)}</td>
-                    <td colSpan={3} className="px-3 py-2.5 text-ink-500">Saldo final</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </Card>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-ink-25 font-semibold">
+                  <Td colSpan={5} className="text-ink-700">Totales (efectivo confirmado)</Td>
+                  <Td derecha>{dinero(b.moneda, b.ingresos)}</Td>
+                  <Td derecha>{dinero(b.moneda, b.egresos)}</Td>
+                  <Td derecha>{dinero(b.moneda, b.final)}</Td>
+                  <Td colSpan={3} className="text-ink-500">Saldo final</Td>
+                </tr>
+              </tfoot>
+            </TablaCompacta>
+          </PanelVentana>
         ))}
 
         {consolidado.map((c) => (
-          <Card key={c.moneda} className="border-brand-200 bg-brand-50/40 px-5 py-4">
-            <h2 className="text-sm font-bold text-ink-900">Consolidado · {c.moneda === "ARS" ? "Pesos" : "Dólares"} ({c.bloques} cajas)</h2>
-            <dl className="mt-2 grid gap-3 sm:grid-cols-4">
-              <Dato label="Saldo inicial">{dinero(c.moneda, c.inicial)}</Dato>
-              <Dato label="Total de ingresos">{dinero(c.moneda, c.ingresos)}</Dato>
-              <Dato label="Total de egresos">{dinero(c.moneda, c.egresos)}</Dato>
-              <Dato label="Saldo final">{dinero(c.moneda, c.final)}</Dato>
-            </dl>
-          </Card>
+          <PanelVentana key={c.moneda} className="border-brand-200" titulo={`Consolidado · ${c.moneda === "ARS" ? "Pesos" : "Dólares"} (${c.bloques} cajas)`}>
+            <div className="grid gap-2 sm:grid-cols-4">
+              <Cifra label="Saldo inicial">{dinero(c.moneda, c.inicial)}</Cifra>
+              <Cifra label="Total de ingresos">{dinero(c.moneda, c.ingresos)}</Cifra>
+              <Cifra label="Total de egresos">{dinero(c.moneda, c.egresos)}</Cifra>
+              <Cifra label="Saldo final" tono="bueno">{dinero(c.moneda, c.final)}</Cifra>
+            </div>
+          </PanelVentana>
         ))}
       </div>
       {detalle && <DetalleFila mov={detalle} onClose={() => setDetalle(null)} />}

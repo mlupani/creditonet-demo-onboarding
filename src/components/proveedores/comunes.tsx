@@ -17,10 +17,7 @@ import {
   type Proveedor,
 } from "@/lib/proveedores-tipos";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { FormField } from "@/components/ui/FormField";
-import { SelectField } from "@/components/ui/SelectField";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Campo, Cifra, INPUT_COMPACTO, Pill, TablaCompacta, Td, Th, type Fase } from "@/components/caja/compacto";
 import { descargarXlsx } from "@/components/caja/comunes";
 
 const formato = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -37,32 +34,32 @@ export const textoNumero = (n: number) => (n === 0 ? "" : String(n));
 
 export const numeroComprobante = (c: Pick<Comprobante, "prefijo" | "numero">) => `${c.prefijo}-${c.numero}`;
 
-const TONO_ESTADO: Record<EstadoComprobanteId, "info" | "success" | "danger" | "warning" | "neutral"> = {
-  PREAPROBADO: "info",
-  PARA_LIQUIDAR: "success",
-  EN_ORDEN_PAGO: "info",
-  RECHAZADO: "danger",
-  PAGO_PARCIAL: "warning",
-  PAGADO: "neutral",
-  ANULADO: "neutral",
+const FASE_ESTADO: Record<EstadoComprobanteId, Fase> = {
+  PREAPROBADO: "inicial",
+  PARA_LIQUIDAR: "espera",
+  EN_ORDEN_PAGO: "proceso",
+  RECHAZADO: "rechazo",
+  PAGO_PARCIAL: "espera",
+  PAGADO: "ok",
+  ANULADO: "rechazo",
 };
 
 export function EstadoComprobanteBadge({ estado }: { estado: EstadoComprobanteId }) {
-  return <StatusBadge tone={TONO_ESTADO[estado]}>{ESTADO_COMPROBANTE_LABEL[estado]}</StatusBadge>;
+  return <Pill fase={FASE_ESTADO[estado]}>{ESTADO_COMPROBANTE_LABEL[estado]}</Pill>;
 }
 
-const TONO_ORDEN: Record<EstadoOrdenPago, "info" | "success" | "danger" | "warning" | "neutral"> = {
-  BORRADOR: "neutral",
-  EMITIDA: "info",
-  AUTORIZADA: "success",
-  PENDIENTE_TRANSFERENCIA: "warning",
-  PAGADA: "neutral",
-  RECHAZADA: "danger",
-  ANULADA: "neutral",
+const FASE_ORDEN: Record<EstadoOrdenPago, Fase> = {
+  BORRADOR: "inicial",
+  EMITIDA: "proceso",
+  AUTORIZADA: "espera",
+  PENDIENTE_TRANSFERENCIA: "espera",
+  PAGADA: "ok",
+  RECHAZADA: "rechazo",
+  ANULADA: "rechazo",
 };
 
 export function EstadoOrdenBadge({ estado }: { estado: EstadoOrdenPago }) {
-  return <StatusBadge tone={TONO_ORDEN[estado]}>{ESTADO_ORDEN_LABEL[estado]}</StatusBadge>;
+  return <Pill fase={FASE_ORDEN[estado]}>{ESTADO_ORDEN_LABEL[estado]}</Pill>;
 }
 
 export const nombreProveedor = (proveedores: Proveedor[], id: string) =>
@@ -103,7 +100,7 @@ export function Pestanas<T extends string>({
           type="button"
           aria-pressed={valor === id}
           onClick={() => onChange(id)}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${valor === id ? "bg-white text-brand-700 shadow-xs" : "text-ink-500 hover:text-ink-800"}`}
+          className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${valor === id ? "bg-navy-800 text-white shadow-xs" : "text-ink-600 hover:text-ink-900"}`}
         >
           {label}
         </button>
@@ -112,11 +109,9 @@ export function Pestanas<T extends string>({
   );
 }
 
-export function Th({ children, derecha }: { children?: React.ReactNode; derecha?: boolean }) {
-  return <th className={`px-3 py-2.5 ${derecha ? "text-right" : ""}`}>{children}</th>;
-}
+export { Th };
 
-export const ENCABEZADO = "bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400";
+export const ENCABEZADO = "bg-navy-800 text-[11px] font-bold text-white";
 
 // Cuenta corriente de un proveedor (v2, 6.3): se arma sola con los comprobantes y los pagos, no se edita.
 export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
@@ -171,111 +166,109 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
     ]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <FormField id="cc-desde" label="Desde (carga o pago)" type="date" value={desde} onChange={setDesde} />
-        <FormField id="cc-hasta" label="Hasta" type="date" value={hasta} onChange={setHasta} />
-        <SelectField
-          id="cc-tipo"
-          label="Tipo de comprobante"
-          value={tipoId}
-          onChange={setTipoId}
-          placeholder="Todos"
-          options={tipos.map((t) => ({ value: t.id, label: t.descripcion }))}
-        />
-        <SelectField
-          id="cc-estado"
-          label="Estado"
-          value={estado}
-          onChange={(v) => setEstado(v as "" | EstadoCuenta)}
-          placeholder="Todos"
-          options={(Object.keys(ESTADO_CUENTA_LABEL) as EstadoCuenta[]).map((e) => ({ value: e, label: ESTADO_CUENTA_LABEL[e] }))}
-        />
+        <Campo label="Desde (carga o pago)">
+          <input id="cc-desde" aria-label="Desde (carga o pago)" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className={INPUT_COMPACTO} />
+        </Campo>
+        <Campo label="Hasta">
+          <input id="cc-hasta" aria-label="Hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className={INPUT_COMPACTO} />
+        </Campo>
+        <Campo label="Tipo de comprobante">
+          <select id="cc-tipo" aria-label="Tipo de comprobante" value={tipoId} onChange={(e) => setTipoId(e.target.value)} className={INPUT_COMPACTO}>
+            <option value="">Todos</option>
+            {tipos.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.descripcion}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo label="Estado">
+          <select id="cc-estado" aria-label="Estado" value={estado} onChange={(e) => setEstado(e.target.value as "" | EstadoCuenta)} className={INPUT_COMPACTO}>
+            <option value="">Todos</option>
+            {(Object.keys(ESTADO_CUENTA_LABEL) as EstadoCuenta[]).map((e) => (
+              <option key={e} value={e}>
+                {ESTADO_CUENTA_LABEL[e]}
+              </option>
+            ))}
+          </select>
+        </Campo>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Card className="p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Saldo inicial del período</p>
-          <p className="text-xl font-bold tabular-nums text-ink-900">{pesos(cc.saldoInicial)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Saldo actual (lo que se le debe)</p>
-          <p className="text-xl font-bold tabular-nums text-ink-900">{pesos(cc.saldoActual)}</p>
-        </Card>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Cifra label="Saldo inicial del período">{pesos(cc.saldoInicial)}</Cifra>
+        <Cifra label="Saldo actual (lo que se le debe)">{pesos(cc.saldoActual)}</Cifra>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-xs text-ink-500">
+        <p className="text-[11px] leading-snug text-ink-500">
           La cuenta corriente se arma sola con la carga de comprobantes y los pagos: no se edita a mano. Sólo cuentan los comprobantes ya
           autorizados.
         </p>
         <div className="ml-auto">
-          <Button variant="outline" onClick={exportar}>
+          <Button size="sm" variant="navyOutline" onClick={exportar}>
             Exportar a Excel
           </Button>
         </div>
       </div>
 
-      <Card className="overflow-hidden">
-        {filas.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">No hay movimientos para mostrar.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[66rem] text-left text-sm">
-              <thead>
-                <tr className={ENCABEZADO}>
-                  <Th>Carga / pago</Th>
-                  <Th>Comprobante</Th>
-                  <Th>Vencimiento</Th>
-                  <Th>Tipo</Th>
-                  <Th>Número / OP</Th>
-                  <Th derecha>Importe</Th>
-                  <Th derecha>Pagos aplicados</Th>
-                  <Th derecha>Saldo pendiente</Th>
-                  <Th derecha>Saldo acumulado</Th>
-                  <Th>Estado</Th>
+      {filas.length === 0 ? (
+        <p className="rounded-lg border border-ink-200 bg-white px-5 py-6 text-center text-xs text-ink-400">No hay movimientos para mostrar.</p>
+      ) : (
+        <TablaCompacta etiqueta="Cuenta corriente" minWidth="min-w-[62rem]">
+          <thead>
+            <tr>
+              <Th>Carga / pago</Th>
+              <Th>Comprobante</Th>
+              <Th>Vencimiento</Th>
+              <Th>Tipo</Th>
+              <Th>Número / OP</Th>
+              <Th derecha>Importe</Th>
+              <Th derecha>Pagos aplicados</Th>
+              <Th derecha>Saldo pendiente</Th>
+              <Th derecha>Saldo acumulado</Th>
+              <Th>Estado</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f) => {
+              const c = comprobantes.find((x) => x.id === f.comprobanteId);
+              const pago = f.tipoFila === "PAGO" ? pagoDe(f.id) : undefined;
+              return (
+                <tr key={f.clave} className={f.tipoFila === "PAGO" ? "bg-ink-25/60" : undefined}>
+                  <Td className="whitespace-nowrap">{f.fechaCarga}</Td>
+                  <Td className="whitespace-nowrap">{f.fechaComprobante || "—"}</Td>
+                  <Td className="whitespace-nowrap">
+                    {f.vencimiento || "—"}
+                    {atrasoDe(f) !== undefined && (atrasoDe(f) as number) > 0 && (
+                      <span className="block text-[11px] font-semibold text-danger-700">Vencido hace {atrasoDe(f)} d</span>
+                    )}
+                  </Td>
+                  <Td>
+                    {f.tipoDescripcion}
+                    {pago && (
+                      <span className="block text-[11px] text-ink-500">
+                        {MEDIO_PAGO_LABEL[pago.medio]} · {origenTexto(pago)} · aplicado a {pago.aplicaciones.map((a) => a.comprobanteId).join(", ")}
+                      </span>
+                    )}
+                  </Td>
+                  <Td className="font-mono">{f.numero}</Td>
+                  <Td derecha className={`font-semibold ${f.importe < 0 ? "text-success-700" : ""}`}>
+                    {pesos(f.importe)}
+                  </Td>
+                  <Td derecha>{f.tipoFila === "COMPROBANTE" ? pesos(f.pagosAplicados) : ""}</Td>
+                  <Td derecha>{f.tipoFila === "COMPROBANTE" ? pesos(f.saldoPendiente) : ""}</Td>
+                  <Td derecha className="font-semibold">{pesos(f.saldoAcumulado)}</Td>
+                  <Td>
+                    {c && <Pill fase={estadoCuenta(c, pagos, ordenes) === "PAGADO" ? "ok" : estadoCuenta(c, pagos, ordenes) === "PAGO_PARCIAL" ? "espera" : "proceso"}>{ESTADO_CUENTA_LABEL[estadoCuenta(c, pagos, ordenes)]}</Pill>}
+                  </Td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {filas.map((f) => {
-                  const c = comprobantes.find((x) => x.id === f.comprobanteId);
-                  const pago = f.tipoFila === "PAGO" ? pagoDe(f.id) : undefined;
-                  return (
-                    <tr key={f.clave} className={f.tipoFila === "PAGO" ? "bg-ink-25/60" : undefined}>
-                      <td className="whitespace-nowrap px-3 py-3 text-ink-700">{f.fechaCarga}</td>
-                      <td className="whitespace-nowrap px-3 py-3 text-ink-700">{f.fechaComprobante || "—"}</td>
-                      <td className="whitespace-nowrap px-3 py-3 text-ink-700">
-                        {f.vencimiento || "—"}
-                        {atrasoDe(f) !== undefined && (atrasoDe(f) as number) > 0 && (
-                          <span className="block text-xs font-semibold text-danger-700">Vencido hace {atrasoDe(f)} d</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-ink-700">
-                        {f.tipoDescripcion}
-                        {pago && (
-                          <span className="block text-xs text-ink-400">
-                            {MEDIO_PAGO_LABEL[pago.medio]} · {origenTexto(pago)} · aplicado a {pago.aplicaciones.map((a) => a.comprobanteId).join(", ")}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 font-mono text-xs text-ink-700">{f.numero}</td>
-                      <td className={`px-3 py-3 text-right font-semibold tabular-nums ${f.importe < 0 ? "text-success-700" : "text-ink-900"}`}>
-                        {pesos(f.importe)}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums text-ink-700">{f.tipoFila === "COMPROBANTE" ? pesos(f.pagosAplicados) : ""}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-ink-700">{f.tipoFila === "COMPROBANTE" ? pesos(f.saldoPendiente) : ""}</td>
-                      <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{pesos(f.saldoAcumulado)}</td>
-                      <td className="px-3 py-3">
-                        {c && <StatusBadge tone={estadoCuenta(c, pagos, ordenes) === "PAGADO" ? "neutral" : estadoCuenta(c, pagos, ordenes) === "PAGO_PARCIAL" ? "warning" : "info"}>{ESTADO_CUENTA_LABEL[estadoCuenta(c, pagos, ordenes)]}</StatusBadge>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+              );
+            })}
+          </tbody>
+        </TablaCompacta>
+      )}
     </div>
   );
 }

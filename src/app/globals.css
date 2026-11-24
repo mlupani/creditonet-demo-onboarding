@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  --color-navy-800: #1e2a4a;
+  --color-navy-700: #2b3a63;
   --color-brand-50: #eef3ff;
   --color-brand-100: #dfeaff;
   --color-brand-200: #c5d6fe;

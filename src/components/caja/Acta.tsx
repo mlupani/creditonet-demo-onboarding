@@ -54,10 +54,10 @@ export function ActaModal({ open, onClose, titulo, children }: { open: boolean; 
       maxWidth="max-w-3xl"
       footer={
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={onClose}>
+          <Button size="sm" variant="navyOutline" onClick={onClose}>
             Cerrar
           </Button>
-          <Button onClick={imprimir}>
+          <Button size="sm" variant="success" onClick={imprimir}>
             <IconPrinter width={16} height={16} />
             Imprimir / PDF
           </Button>

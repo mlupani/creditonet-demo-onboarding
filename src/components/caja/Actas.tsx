@@ -7,10 +7,10 @@ import { nombreUsuario, useActas, useCajas, useUsuarioActual } from "@/lib/caja-
 import { ESTADO_ACTA_LABEL, TIPO_ACTA_LABEL, type ActaConformidad, type EstadoActa, type TipoActa } from "@/lib/caja-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { ActaConformidadModal } from "./Acta";
 import { ActaPanel, ActaResumen, EstadoActaBadge } from "./ActaPanel";
-import { CLASE_INPUT, PaginaCaja, descargarXlsx } from "./comunes";
+import { INPUT_COMPACTO, PanelVentana, TablaCompacta, Td, Th } from "./compacto";
+import { PaginaCaja, descargarXlsx } from "./comunes";
 
 // Pantalla donde se resuelve cada diferencia: el acta DIFERENCIA se firma desde la pantalla de su evento.
 const PANTALLA_DEL_EVENTO: Record<string, { href: string; label: string }> = {
@@ -93,23 +93,21 @@ export function PantallaActas() {
       descripcion="Historial de actas de conformidad: apertura, arqueo, relevo, reemplazo y diferencias. Cada acta tiene dos firmantes distintos con su llave, es inalterable y se descarga en PDF."
     >
       {pendientes.length > 0 && (
-        <Banner tone="warning" title={`${pendientes.length} ${pendientes.length === 1 ? "acta pendiente" : "actas pendientes"} de firma o de resolución`} className="mb-6">
+        <Banner tone="warning" title={`${pendientes.length} ${pendientes.length === 1 ? "acta pendiente" : "actas pendientes"} de firma o de resolución`} className="mb-4">
           {pendientes.map((a) => `${a.id} (${TIPO_ACTA_LABEL[a.tipo].toLowerCase()} · ${ESTADO_ACTA_LABEL[a.estado].toLowerCase()})`).join(" · ")}
         </Banner>
       )}
 
-      <Card>
-        <CardHeader
-          title="Historial de actas"
-          description="Las actas no se modifican ni se eliminan: una corrección es un acta nueva que referencia a la anterior."
-          action={
-            <Button size="sm" variant="outline" onClick={exportar}>
-              Exportar a Excel
-            </Button>
-          }
-        />
-        <div className="flex flex-wrap items-end gap-2 border-b border-ink-100 px-5 py-3">
-          <select value={fCaja} onChange={(e) => setFCaja(e.target.value)} aria-label="Filtrar por caja" className={`${CLASE_INPUT} w-60`}>
+      <PanelVentana
+        titulo="Historial de actas · no se modifican ni se eliminan: una corrección es un acta nueva que referencia a la anterior"
+        accion={
+          <Button size="xs" variant="navyOutline" onClick={exportar}>
+            Exportar a Excel
+          </Button>
+        }
+      >
+        <div className="mb-3 flex flex-wrap items-end gap-2">
+          <select value={fCaja} onChange={(e) => setFCaja(e.target.value)} aria-label="Filtrar por caja" className={`${INPUT_COMPACTO} w-60`}>
             <option value="">Caja: todas</option>
             {cajasConActas.map((c) => (
               <option key={c.id} value={c.id}>
@@ -117,7 +115,7 @@ export function PantallaActas() {
               </option>
             ))}
           </select>
-          <select value={fTipo} onChange={(e) => setFTipo(e.target.value)} aria-label="Filtrar por tipo" className={`${CLASE_INPUT} w-64`}>
+          <select value={fTipo} onChange={(e) => setFTipo(e.target.value)} aria-label="Filtrar por tipo" className={`${INPUT_COMPACTO} w-64`}>
             <option value="">Tipo: todos</option>
             {(Object.keys(TIPO_ACTA_LABEL) as TipoActa[]).map((t) => (
               <option key={t} value={t}>
@@ -125,7 +123,7 @@ export function PantallaActas() {
               </option>
             ))}
           </select>
-          <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} aria-label="Filtrar por estado" className={`${CLASE_INPUT} w-52`}>
+          <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} aria-label="Filtrar por estado" className={`${INPUT_COMPACTO} w-52`}>
             <option value="">Estado: todos</option>
             {(Object.keys(ESTADO_ACTA_LABEL) as EstadoActa[]).map((e) => (
               <option key={e} value={e}>
@@ -133,75 +131,72 @@ export function PantallaActas() {
               </option>
             ))}
           </select>
-          <label className="flex items-center gap-1.5 text-xs text-ink-500">
+          <label className="flex items-center gap-1.5 text-[11px] text-ink-500">
             Desde
-            <input type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} aria-label="Fecha desde" className={`${CLASE_INPUT} w-40`} />
+            <input type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} aria-label="Fecha desde" className={`${INPUT_COMPACTO} w-36`} />
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-ink-500">
+          <label className="flex items-center gap-1.5 text-[11px] text-ink-500">
             Hasta
-            <input type="date" value={fHasta} onChange={(e) => setFHasta(e.target.value)} aria-label="Fecha hasta" className={`${CLASE_INPUT} w-40`} />
+            <input type="date" value={fHasta} onChange={(e) => setFHasta(e.target.value)} aria-label="Fecha hasta" className={`${INPUT_COMPACTO} w-36`} />
           </label>
         </div>
         {filtradas.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">No hay actas para los filtros elegidos.</p>
+          <p className="py-4 text-center text-xs text-ink-400">No hay actas para los filtros elegidos.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[52rem] text-left text-sm">
-              <thead>
-                <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                  <th className="px-4 py-2.5">Acta</th>
-                  <th className="px-4 py-2.5">Fecha y hora</th>
-                  <th className="px-4 py-2.5">Tipo</th>
-                  <th className="px-4 py-2.5">Caja</th>
-                  <th className="px-4 py-2.5">Firmantes</th>
-                  <th className="px-4 py-2.5">Estado</th>
-                  <th className="px-4 py-2.5" />
+          <TablaCompacta etiqueta="Historial de actas" minWidth="min-w-[52rem]">
+            <thead>
+              <tr>
+                <Th>Acta</Th>
+                <Th>Fecha y hora</Th>
+                <Th>Tipo</Th>
+                <Th>Caja</Th>
+                <Th>Firmantes</Th>
+                <Th>Estado</Th>
+                <Th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtradas.map((a) => (
+                <tr key={a.id}>
+                  <Td className="font-mono font-bold text-brand-700">
+                    {a.id}
+                    {a.referenciaActaId && <span className="block text-[10px] font-medium text-ink-400">corrige {a.referenciaActaId}</span>}
+                  </Td>
+                  <Td className="tabular-nums">{a.fechaHora}</Td>
+                  <Td>{TIPO_ACTA_LABEL[a.tipo]}</Td>
+                  <Td>{nombreCaja(a.cajaId)}</Td>
+                  <Td>
+                    {a.firma1 ? nombreUsuario(a.firma1.usuarioId) : a.firmante1Id ? <span className="text-ink-400">{nombreUsuario(a.firmante1Id)} (pendiente)</span> : "—"}
+                    {" · "}
+                    {a.firma2 ? nombreUsuario(a.firma2.usuarioId) : <span className="text-ink-400">pendiente</span>}
+                  </Td>
+                  <Td>
+                    <EstadoActaBadge estado={a.estado} />
+                  </Td>
+                  <Td>
+                    <div className="flex justify-end gap-1.5">
+                      <Button size="xs" variant="navyOutline" onClick={() => setAbierta(abierta === a.id ? null : a.id)}>
+                        {abierta === a.id ? "Ocultar" : "Ver detalle"}
+                      </Button>
+                      <Button size="xs" variant="brandOutline" onClick={() => setPdf(a)}>
+                        PDF
+                      </Button>
+                    </div>
+                  </Td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {filtradas.map((a) => (
-                  <tr key={a.id} className="align-top">
-                    <td className="px-4 py-3 font-mono text-xs font-bold text-brand-700">
-                      {a.id}
-                      {a.referenciaActaId && <span className="block text-[10px] font-medium text-ink-400">corrige {a.referenciaActaId}</span>}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums text-ink-700">{a.fechaHora}</td>
-                    <td className="px-4 py-3 text-ink-800">{TIPO_ACTA_LABEL[a.tipo]}</td>
-                    <td className="px-4 py-3 text-ink-700">{nombreCaja(a.cajaId)}</td>
-                    <td className="px-4 py-3 text-ink-700">
-                      {a.firma1 ? nombreUsuario(a.firma1.usuarioId) : a.firmante1Id ? <span className="text-ink-400">{nombreUsuario(a.firmante1Id)} (pendiente)</span> : "—"}
-                      {" · "}
-                      {a.firma2 ? nombreUsuario(a.firma2.usuarioId) : <span className="text-ink-400">pendiente</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <EstadoActaBadge estado={a.estado} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1.5">
-                        <Button size="sm" variant="outline" onClick={() => setAbierta(abierta === a.id ? null : a.id)}>
-                          {abierta === a.id ? "Ocultar" : "Ver detalle"}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setPdf(a)}>
-                          PDF
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </TablaCompacta>
         )}
-      </Card>
+      </PanelVentana>
 
       {abierta && (
-        <Card className="mt-6">
-          <CardHeader title={`Detalle del acta ${abierta}`} />
-          <div className="p-5">{(() => {
+        <PanelVentana titulo={`Detalle del acta ${abierta}`} className="mt-4">
+          {(() => {
             const a = actas.find((x) => x.id === abierta);
             return a ? detalle(a) : null;
-          })()}</div>
-        </Card>
+          })()}
+        </PanelVentana>
       )}
       {pdf && <ActaConformidadModal acta={actas.find((x) => x.id === pdf.id) ?? pdf} onClose={() => setPdf(null)} />}
     </PaginaCaja>

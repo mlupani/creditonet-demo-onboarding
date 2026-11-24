@@ -64,16 +64,16 @@ export const cajasPropias = (cajas: Caja[], usuario: UsuarioCaja) =>
   cajas.filter((c) => c.estado === "ACTIVO" && esResponsable(c, usuario.id));
 
 export const CLASE_INPUT =
-  "h-10 w-full rounded-lg border border-ink-300 bg-white px-3 text-sm text-ink-700 shadow-xs outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
+  "h-8 w-full rounded-md border border-ink-300 bg-white px-2.5 text-xs text-ink-800 outline-none transition hover:border-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
 export function CajaBarra() {
   const usuario = useUsuarioActual();
   const hora = useHoraDemo();
   const fecha = useFechaDemo();
   return (
-    <div className="mb-6 flex flex-wrap items-end gap-4 rounded-xl border border-ink-200 bg-ink-25 px-4 py-3">
+    <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2">
       <label className="block">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+        <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ink-500">
           Actuar como
         </span>
         <select
@@ -90,7 +90,7 @@ export function CajaBarra() {
         </select>
       </label>
       <div className="block">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+        <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ink-500">
           Fecha operativa de la demo
         </span>
         <div className="flex items-center gap-2">
@@ -107,7 +107,7 @@ export function CajaBarra() {
         </div>
       </div>
       <div className="block">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+        <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ink-500">
           Hora operativa de la demo
         </span>
         <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ export function CajaBarra() {
           </Button>
         </div>
       </div>
-      <p className="min-w-56 flex-1 text-xs text-ink-500">
+      <p className="min-w-56 flex-1 text-[11px] leading-snug text-ink-500">
         Simulación de demo: la fecha y la hora son simuladas para poder probar apertura, cierre, feriados y alertas
         a cualquier día y hora, y el usuario se cambia para probar que nadie aprueba lo que cargó.
       </p>
@@ -151,13 +151,13 @@ export function PaginaCaja({
 }) {
   const { hidratado } = useApplication();
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
       <div className="animate-fade-in">
         <p className="text-xs font-bold uppercase tracking-widest text-brand-600">Módulo Caja y Bancos · {seccion}</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink-900">{titulo}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-ink-500">{descripcion}</p>
+        <h1 className="mt-0.5 text-xl font-bold tracking-tight text-ink-900">{titulo}</h1>
+        <p className="mt-0.5 max-w-3xl text-xs text-ink-500">{descripcion}</p>
       </div>
-      <div className="mt-6">
+      <div className="mt-4">
         <CajaBarra />
         {hidratado ? (
           children
@@ -192,7 +192,7 @@ export function SelectorCaja({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-ink-400">{label}</span>
+      <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ink-500">{label}</span>
       <select value={valor} onChange={(e) => onChange(e.target.value)} aria-label={label} className={`${CLASE_INPUT} w-72`}>
         {todas && <option value="">{todas}</option>}
         {cajas.length === 0 && !todas && <option value="">Sin cajas disponibles</option>}

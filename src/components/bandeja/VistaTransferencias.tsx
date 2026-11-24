@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { bancoTexto } from "@/lib/caja-operaciones";
-import { useCajaDatos, useCheques, useCuentasBancarias, useReservas } from "@/lib/caja-store";
+import { useCajaDatos, useCheques, useCuentasBancarias, useReservas, useUsuarioActual } from "@/lib/caja-store";
 import { emitirAlerta } from "@/lib/alertas";
 import { lotesDeBandeja, type FiltrosBandeja } from "@/lib/bandeja-reglas";
+import { firmar } from "@/lib/llave";
 import {
   confirmarTransferencia,
   csvLoteTransferencia,
@@ -15,27 +16,121 @@ import {
 } from "@/lib/proveedores-operaciones";
 import { puedePagarOrden } from "@/lib/proveedores-reglas";
 import { useOrdenesPago, usePagosProveedor, useProveedores } from "@/lib/proveedores-store";
-import { ESTADO_PAGO_LABEL } from "@/lib/proveedores-tipos";
+import { ESTADO_PAGO_LABEL, type PagoProveedor } from "@/lib/proveedores-tipos";
 import { posicionBanco } from "@/lib/saldos-reglas";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { NotaModal, descargarXlsx } from "@/components/caja/comunes";
-import { ENCABEZADO, Th, descargarTexto, formatearCbu, pesos } from "./comunes";
+import { Modal } from "@/components/ui/Modal";
+import { IconCopy } from "@/components/icons";
+import { ErrorBanner, NotaModal, descargarXlsx } from "@/components/caja/comunes";
+import { LlaveCampos } from "@/components/caja/LlaveCampos";
+import { INPUT_COMPACTO, PanelVentana, Pill, TablaCompacta, Td, Th, type Fase } from "@/components/caja/compacto";
+import { descargarTexto, formatearCbu, pesos } from "./comunes";
 
-type Accion = { tipo: "ejecutar" | "rechazar"; item: ItemLoteTransferencia };
+type Resultado = "EJECUTADA" | "RECHAZADA";
+// Lo que se marcó en cada fila antes de registrarlo: el resultado y su dato (comprobante o motivo).
+type Marca = { resultado: Resultado; dato: string };
 
-const TONO: Record<string, "info" | "warning" | "success" | "danger" | "neutral"> = {
-  PREPARADA: "info",
-  PENDIENTE_EJECUCION: "warning",
-  EJECUTADA: "success",
-  CONFIRMADA: "neutral",
-  RECHAZADA: "danger",
-};
+const FASE: Record<PagoProveedor["estado"], Fase> = {
+  PREPARADA: "inicial",
+  PENDIENTE_EJECUCION: "espera",
+  EJECUTADA: "proceso",
+  CONFIRMADA: "ok",
+  RECHAZADA: "rechazo",
+} as Record<PagoProveedor["estado"], Fase>;
+
+const numeroOrden = (ordenPago: string) => `OP ${ordenPago.replace(/^OP-0*/, "")}`;
+
+// Registra el resultado marcado en varias filas con una sola llave (R6): la firma se arma una vez y se
+// comparte entre todas las transferencias del lote.
+function LlaveLoteModal({
+  filas,
+  onClose,
+  onHecho,
+}: {
+  filas: { item: ItemLoteTransferencia; marca: Marca }[];
+  onClose: () => void;
+  onHecho: (texto: string) => void;
+}) {
+  const usuario = useUsuarioActual();
+  const [clave, setClave] = useState("");
+  const [codigo, setCodigo] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const total = filas.reduce((s, f) => s + f.item.importe, 0);
+  const ejecutadas = filas.filter((f) => f.marca.resultado === "EJECUTADA").length;
+  const rechazadas = filas.length - ejecutadas;
+
+  const confirmar = () => {
+    const f = firmar({
+      usuarioId: usuario.id,
+      clave,
+      codigo,
+      operacion: "Resultado de transferencias",
+      referencia: filas.map((x) => x.item.pagoId).join(", "),
+      importe: total,
+      moneda: "ARS",
+    });
+    if (!f.ok) return setError(f.error);
+    const errores: string[] = [];
+    let hechas = 0;
+    for (const { item, marca } of filas) {
+      const r =
+        marca.resultado === "EJECUTADA"
+          ? registrarResultadoTransferencia(item.pagoId, { resultado: "EJECUTADA", comprobante: marca.dato, firmaId: f.firma.id })
+          : registrarResultadoTransferencia(item.pagoId, { resultado: "RECHAZADA", motivo: marca.dato, firmaId: f.firma.id });
+      if (!r.ok) {
+        errores.push(`${item.pagoId}: ${r.error}`);
+        continue;
+      }
+      hechas += 1;
+      if (marca.resultado === "RECHAZADA")
+        emitirAlerta("PAGO_FALLIDO_O_PARCIAL", `La transferencia ${item.pagoId} a ${item.proveedor} por ${pesos(item.importe)} fue rechazada: ${marca.dato}`, item.pagoId);
+    }
+    if (errores.length > 0) return setError(`Se registraron ${hechas} de ${filas.length}. ${errores.join(" · ")}`);
+    onHecho(`${hechas} ${hechas === 1 ? "transferencia registrada" : "transferencias registradas"} con la llave de ${usuario.nombre} (${ejecutadas} ejecutadas, ${rechazadas} rechazadas).`);
+    onClose();
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Registrar resultado con llave"
+      maxWidth="max-w-md"
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button size="sm" variant="dangerOutline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button size="sm" variant="success" onClick={confirmar}>
+            Confirmar con llave
+          </Button>
+        </div>
+      }
+    >
+      <p className="text-xs text-ink-600">
+        Se registra el resultado de {filas.length} {filas.length === 1 ? "transferencia" : "transferencias"} por {pesos(total)}: {ejecutadas} ejecutadas y{" "}
+        {rechazadas} rechazadas. Una sola firma respalda todo el lote.
+      </p>
+      <ul className="mt-2 space-y-1 text-xs text-ink-700">
+        {filas.map(({ item, marca }) => (
+          <li key={item.pagoId} className="flex items-center justify-between gap-2 rounded-md border border-ink-200 bg-ink-25 px-2 py-1">
+            <span className="min-w-0 truncate">
+              {item.pagoId} · {item.proveedor}
+            </span>
+            <Pill fase={marca.resultado === "EJECUTADA" ? "ok" : "rechazo"}>{marca.resultado === "EJECUTADA" ? "Ejecutada" : "Rechazada"}</Pill>
+          </li>
+        ))}
+      </ul>
+      <LlaveCampos usuarioId={usuario.id} clave={clave} codigo={codigo} onClave={setClave} onCodigo={setCodigo} />
+      <ErrorBanner error={error} />
+    </Modal>
+  );
+}
 
 // Todo lo que sale por transferencia, agrupado por la cuenta bancaria de origen. Como el banco no está
 // integrado, alguien entra al home banking: el lote se copia o se descarga y después se registra el
-// resultado de cada ítem con la llave.
+// resultado de cada ítem (ejecutada con comprobante o rechazada con motivo) con la llave.
 export function VistaTransferencias({ filtros }: { filtros: FiltrosBandeja }) {
   const { usuario, movimientos } = useCajaDatos();
   const cuentas = useCuentasBancarias();
@@ -44,7 +139,11 @@ export function VistaTransferencias({ filtros }: { filtros: FiltrosBandeja }) {
   const pagos = usePagosProveedor();
   const ordenes = useOrdenesPago();
   const proveedores = useProveedores();
-  const [accion, setAccion] = useState<Accion | null>(null);
+  const [devuelta, setDevuelta] = useState<ItemLoteTransferencia | null>(null);
+  const [lote, setLote] = useState<{ item: ItemLoteTransferencia; marca: Marca }[] | null>(null);
+  const [marcas, setMarcas] = useState<Record<string, Marca>>({});
+  const [tildadas, setTildadas] = useState<Record<string, boolean>>({});
+  const [errorLote, setErrorLote] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
 
   // Los lotes se recalculan cuando cambian los pagos, las órdenes o los proveedores.
@@ -54,15 +153,31 @@ export function VistaTransferencias({ filtros }: { filtros: FiltrosBandeja }) {
 
   const resultado = (r: { ok: boolean; error?: string }, ok: string) => setAviso(r.ok ? { tipo: "ok", texto: ok } : { tipo: "error", texto: r.error ?? "No se pudo completar." });
 
+  const marcar = (item: ItemLoteTransferencia, res: Resultado) => {
+    setMarcas((m) => (m[item.pagoId]?.resultado === res ? Object.fromEntries(Object.entries(m).filter(([k]) => k !== item.pagoId)) : { ...m, [item.pagoId]: { resultado: res, dato: m[item.pagoId]?.dato ?? "" } }));
+    setTildadas((t) => ({ ...t, [item.pagoId]: marcas[item.pagoId]?.resultado !== res }));
+    setErrorLote(null);
+  };
+  const escribir = (pagoId: string, dato: string) => setMarcas((m) => (m[pagoId] ? { ...m, [pagoId]: { ...m[pagoId], dato } } : m));
+
   const copiar = async (cuentaId: string) => {
-    const lote = lotes.find((l) => l.cuentaId === cuentaId);
-    if (!lote) return;
-    const texto = lote.items.map((i) => `${i.proveedor} · CBU ${i.cbuDestino} · $ ${i.importe} · ${i.ordenPago}`).join("\n");
+    const l = lotes.find((x) => x.cuentaId === cuentaId);
+    if (!l) return;
+    const texto = l.items.map((i) => `${i.proveedor} · CBU ${i.cbuDestino} · $ ${i.importe} · ${i.ordenPago}`).join("\n");
     try {
       await navigator.clipboard.writeText(texto);
       setAviso({ tipo: "ok", texto: "Datos del lote copiados al portapapeles." });
     } catch {
       setAviso({ tipo: "error", texto: "No se pudo copiar: descargá el lote en CSV." });
+    }
+  };
+
+  const copiarCbu = async (cbu: string) => {
+    try {
+      await navigator.clipboard.writeText(cbu);
+      setAviso({ tipo: "ok", texto: "CBU copiado al portapapeles." });
+    } catch {
+      setAviso({ tipo: "error", texto: "No se pudo copiar el CBU." });
     }
   };
 
@@ -74,70 +189,207 @@ export function VistaTransferencias({ filtros }: { filtros: FiltrosBandeja }) {
       ),
     ]);
 
+  // Abre la llave con las filas tildadas que tienen resultado marcado; antes exige el dato de cada una.
+  const registrar = (items: ItemLoteTransferencia[]) => {
+    const filas = items.filter((i) => i.estado === "PENDIENTE_EJECUCION" && tildadas[i.pagoId] && marcas[i.pagoId]).map((i) => ({ item: i, marca: marcas[i.pagoId] }));
+    if (filas.length === 0) {
+      setErrorLote("Tildá al menos una transferencia pendiente y marcá su resultado.");
+      return;
+    }
+    const falta = filas.find((f) => !f.marca.dato.trim());
+    if (falta) {
+      setErrorLote(
+        falta.marca.resultado === "EJECUTADA"
+          ? `Cargá el número de operación del banco de ${falta.item.pagoId}.`
+          : `Indicá el motivo del rechazo de ${falta.item.pagoId}.`
+      );
+      return;
+    }
+    setErrorLote(null);
+    setLote(filas);
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="max-w-2xl text-sm text-ink-500">
-          Preparada: reserva el saldo y baja el estimado. Pendiente de ejecución: se envió a quien opera el home banking. Ejecutada: se hizo en el
-          banco, baja el real y consume la reserva. Confirmada: se verificó contra el extracto.
+        <p className="max-w-3xl text-xs text-ink-500">
+          Reúne lo que tiene banco de origen asignado y espera ser transferido. Preparada: reserva el saldo. Pendiente de ejecución: se envió a quien opera el home
+          banking. Ejecutada: baja el real y consume la reserva. Confirmada: se verificó contra el extracto.
         </p>
-        <Button variant="outline" size="sm" onClick={exportar} disabled={lotes.length === 0}>
+        <Button variant="navyOutline" size="xs" onClick={exportar} disabled={lotes.length === 0}>
           Exportar a Excel
         </Button>
       </div>
       {denegado && <p className="text-xs text-ink-500">{denegado}</p>}
       {aviso && (
-        <p role="status" className={`rounded-lg border px-3 py-2 text-sm ${aviso.tipo === "ok" ? "border-success-200 bg-success-50 text-success-700" : "border-danger-200 bg-danger-50 text-danger-700"}`}>
+        <p role="status" className={`rounded-md border px-3 py-1.5 text-xs ${aviso.tipo === "ok" ? "border-success-200 bg-success-50 text-success-700" : "border-danger-200 bg-danger-50 text-danger-700"}`}>
           {aviso.texto}
+        </p>
+      )}
+      {errorLote && (
+        <p role="alert" className="rounded-md border border-danger-200 bg-danger-50 px-3 py-1.5 text-xs text-danger-700">
+          {errorLote}
         </p>
       )}
 
       {lotes.length === 0 && (
-        <Card className="px-5 py-8 text-center text-sm text-ink-400">No hay transferencias preparadas, pendientes ni por confirmar con estos filtros.</Card>
+        <Card className="px-5 py-6 text-center text-xs text-ink-400">No hay transferencias preparadas, pendientes ni por confirmar con estos filtros.</Card>
       )}
 
-      {lotes.map((lote) => {
-        const cuenta = cuentas.find((c) => c.id === lote.cuentaId);
+      {lotes.map((l) => {
+        const cuenta = cuentas.find((c) => c.id === l.cuentaId);
         const pos = cuenta ? posicionBanco(cuenta, movimientos, pagos, cheques, reservas) : null;
-        const porEnviar = lote.items.filter((i) => i.estado === "PREPARADA");
-        const paraBanco = lote.items.filter((i) => i.estado === "PREPARADA" || i.estado === "PENDIENTE_EJECUCION");
+        const porEnviar = l.items.filter((i) => i.estado === "PREPARADA");
+        const paraBanco = l.items.filter((i) => i.estado === "PREPARADA" || i.estado === "PENDIENTE_EJECUCION");
+        const pendientes = l.items.filter((i) => i.estado === "PENDIENTE_EJECUCION");
+        const listas = pendientes.filter((i) => tildadas[i.pagoId] && marcas[i.pagoId]).length;
         return (
-          <Card key={lote.cuentaId} className="overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 bg-ink-25 px-4 py-3">
-              <div>
-                <p className="text-sm font-bold text-ink-900">{bancoTexto(lote.cuentaId)}</p>
-                <p className="text-xs text-ink-500">
-                  {lote.items.length} {lote.items.length === 1 ? "ítem" : "ítems"} · total {pesos(lote.total)}
-                </p>
-              </div>
-              {pos && (
-                <div className="flex flex-wrap gap-4 text-xs">
-                  <span className="text-ink-500">
-                    Real <span className="font-semibold text-ink-800">{pesos(pos.real)}</span>
+          <PanelVentana
+            key={l.cuentaId}
+            titulo={`Bandeja › Transferencias · ${bancoTexto(l.cuentaId)}`}
+            accion={
+              pos && (
+                <span className="flex flex-wrap gap-3 font-normal">
+                  <span>
+                    Real <b className="text-ink-800">{pesos(pos.real)}</b>
                   </span>
-                  <span className="text-ink-500">
-                    Comprometido <span className="font-semibold text-ink-800">{pesos(pos.comprometido)}</span>
+                  <span>
+                    Comprometido <b className="text-ink-800">{pesos(pos.comprometido)}</b>
                   </span>
-                  <span className="text-ink-500">
-                    Estimado <span className="font-semibold text-ink-900">{pesos(pos.estimado)}</span>
+                  <span>
+                    Estimado <b className="text-ink-900">{pesos(pos.estimado)}</b>
                   </span>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-1.5">
-                <Button size="sm" variant="outline" onClick={() => copiar(lote.cuentaId)}>
-                  Copiar datos
-                </Button>
+                </span>
+              )
+            }
+          >
+            <TablaCompacta etiqueta={`Transferencias ${bancoTexto(l.cuentaId)}`} minWidth="min-w-[62rem]">
+              <thead>
+                <tr>
+                  <Th className="w-8">
+                    <input
+                      type="checkbox"
+                      aria-label="Tildar las transferencias pendientes"
+                      disabled={!!denegado || pendientes.length === 0}
+                      checked={pendientes.length > 0 && pendientes.every((i) => tildadas[i.pagoId])}
+                      onChange={(e) => setTildadas((t) => ({ ...t, ...Object.fromEntries(pendientes.map((i) => [i.pagoId, e.target.checked])) }))}
+                    />
+                  </Th>
+                  <Th>Ref.</Th>
+                  <Th>Origen</Th>
+                  <Th>Beneficiario</Th>
+                  <Th>CUIT / CUIL</Th>
+                  <Th>CBU destino</Th>
+                  <Th derecha>Importe</Th>
+                  <Th>Concepto</Th>
+                  <Th>Estado</Th>
+                  <Th>Resultado</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {l.items.map((i) => {
+                  const marca = marcas[i.pagoId];
+                  const pendiente = i.estado === "PENDIENTE_EJECUCION";
+                  return (
+                    <tr key={i.pagoId}>
+                      <Td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Tildar ${i.pagoId}`}
+                          disabled={!!denegado || !pendiente}
+                          checked={!!tildadas[i.pagoId] && pendiente}
+                          onChange={(e) => setTildadas((t) => ({ ...t, [i.pagoId]: e.target.checked }))}
+                        />
+                      </Td>
+                      <Td className="whitespace-nowrap font-semibold">
+                        {i.ordenPago}
+                        <span className="block text-[10px] font-normal text-ink-400">{i.pagoId}</span>
+                      </Td>
+                      <Td>Proveedor</Td>
+                      <Td>{i.proveedor}</Td>
+                      <Td className="whitespace-nowrap">{i.cuit}</Td>
+                      <Td className="whitespace-nowrap font-mono text-[11px]">
+                        {i.cbuDestino ? formatearCbu(i.cbuDestino) : "—"}
+                        {i.cbuDestino && (
+                          <button
+                            type="button"
+                            aria-label={`Copiar el CBU de ${i.proveedor}`}
+                            title="Copiar CBU"
+                            onClick={() => copiarCbu(i.cbuDestino)}
+                            className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded align-middle text-ink-500 hover:bg-ink-100"
+                          >
+                            <IconCopy width={12} height={12} />
+                          </button>
+                        )}
+                      </Td>
+                      <Td derecha className="whitespace-nowrap">{pesos(i.importe)}</Td>
+                      <Td className="whitespace-nowrap">{numeroOrden(i.ordenPago)}</Td>
+                      <Td>
+                        <Pill fase={FASE[i.estado] ?? "inicial"}>{ESTADO_PAGO_LABEL[i.estado]}</Pill>
+                      </Td>
+                      <Td className="min-w-64">
+                        {i.estado === "PREPARADA" && (
+                          <Button size="xs" variant="navyOutline" disabled={!!denegado} onClick={() => resultado(marcarPendienteEjecucion(i.pagoId), `${i.pagoId} pasó a Pendiente de ejecución.`)}>
+                            Pasar a pendiente de ejecución
+                          </Button>
+                        )}
+                        {pendiente && (
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap gap-1.5">
+                              <Button size="xs" variant={marca?.resultado === "EJECUTADA" ? "success" : "successOutline"} aria-pressed={marca?.resultado === "EJECUTADA"} disabled={!!denegado} onClick={() => marcar(i, "EJECUTADA")}>
+                                Ejecutada + comprobante
+                              </Button>
+                              <Button size="xs" variant={marca?.resultado === "RECHAZADA" ? "danger" : "dangerOutline"} aria-pressed={marca?.resultado === "RECHAZADA"} disabled={!!denegado} onClick={() => marcar(i, "RECHAZADA")}>
+                                Rechazada
+                              </Button>
+                            </div>
+                            {marca && (
+                              <input
+                                value={marca.dato}
+                                onChange={(e) => escribir(i.pagoId, e.target.value)}
+                                aria-label={marca.resultado === "EJECUTADA" ? `Número de operación de ${i.pagoId}` : `Motivo del rechazo de ${i.pagoId}`}
+                                placeholder={marca.resultado === "EJECUTADA" ? "Nº de operación del banco (comprobante)" : "Motivo del rechazo (obligatorio)"}
+                                className={INPUT_COMPACTO}
+                              />
+                            )}
+                          </div>
+                        )}
+                        {i.estado === "EJECUTADA" && (
+                          <div className="flex flex-wrap gap-1.5">
+                            <Button size="xs" variant="successOutline" disabled={!!denegado} onClick={() => resultado(confirmarTransferencia(i.pagoId), `${i.pagoId} quedó Confirmada.`)}>
+                              Confirmar contra extracto
+                            </Button>
+                            <Button size="xs" variant="dangerOutline" disabled={!!denegado} onClick={() => setDevuelta(i)}>
+                              Devuelta por el banco
+                            </Button>
+                          </div>
+                        )}
+                        {(i.estado === "CONFIRMADA" || i.estado === "RECHAZADA") && <span className="text-ink-400">—</span>}
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </TablaCompacta>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button size="xs" variant="navyOutline" onClick={() => copiar(l.cuentaId)}>
+                <IconCopy width={12} height={12} />
+                Copiar datos
+              </Button>
+              <Button
+                size="xs"
+                variant="navyOutline"
+                disabled={paraBanco.length === 0}
+                onClick={() => descargarTexto(`lote-${l.cuentaId}.csv`, csvLoteTransferencia(l.cuentaId))}
+              >
+                Descargar lote para el banco
+              </Button>
+              {porEnviar.length > 0 && (
                 <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={paraBanco.length === 0}
-                  onClick={() => descargarTexto(`lote-${lote.cuentaId}.csv`, csvLoteTransferencia(lote.cuentaId))}
-                >
-                  Descargar lote CSV
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={!!denegado || porEnviar.length === 0}
+                  size="xs"
+                  variant="brandOutline"
+                  disabled={!!denegado}
                   title={denegado ?? "Pasar las preparadas a Pendiente de ejecución"}
                   onClick={() => {
                     let n = 0;
@@ -152,106 +404,42 @@ export function VistaTransferencias({ filtros }: { filtros: FiltrosBandeja }) {
                 >
                   Enviar preparadas ({porEnviar.length})
                 </Button>
-              </div>
+              )}
+              <Button size="xs" variant="success" disabled={!!denegado || pendientes.length === 0} title={denegado ?? undefined} onClick={() => registrar(l.items)}>
+                Registrar resultado con llave{listas > 0 ? ` (${listas})` : ""}
+              </Button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className={ENCABEZADO}>
-                    <Th>Pago</Th>
-                    <Th>Proveedor</Th>
-                    <Th>CBU destino</Th>
-                    <Th derecha>Importe</Th>
-                    <Th>Estado</Th>
-                    <Th>Acciones</Th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-100">
-                  {lote.items.map((i) => (
-                    <tr key={i.pagoId}>
-                      <td className="px-3 py-3">
-                        <p className="font-semibold text-ink-900">{i.pagoId}</p>
-                        <p className="text-xs text-ink-400">{i.ordenPago}</p>
-                      </td>
-                      <td className="px-3 py-3">
-                        <p className="font-medium text-ink-800">{i.proveedor}</p>
-                        <p className="text-xs text-ink-400">CUIT {i.cuit}</p>
-                      </td>
-                      <td className="px-3 py-3 font-mono text-xs">{i.cbuDestino ? formatearCbu(i.cbuDestino) : "—"}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">{pesos(i.importe)}</td>
-                      <td className="px-3 py-3">
-                        <StatusBadge tone={TONO[i.estado] ?? "neutral"}>{ESTADO_PAGO_LABEL[i.estado]}</StatusBadge>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-wrap gap-1.5">
-                          {i.estado === "PREPARADA" && (
-                            <Button size="sm" variant="outline" disabled={!!denegado} onClick={() => resultado(marcarPendienteEjecucion(i.pagoId), `${i.pagoId} pasó a Pendiente de ejecución.`)}>
-                              Enviar a ejecución
-                            </Button>
-                          )}
-                          {i.estado === "PENDIENTE_EJECUCION" && (
-                            <Button size="sm" variant="success" disabled={!!denegado} onClick={() => setAccion({ tipo: "ejecutar", item: i })}>
-                              Registrar ejecutada
-                            </Button>
-                          )}
-                          {i.estado === "EJECUTADA" && (
-                            <Button size="sm" variant="outline" disabled={!!denegado} onClick={() => resultado(confirmarTransferencia(i.pagoId), `${i.pagoId} quedó Confirmada.`)}>
-                              Confirmar
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" disabled={!!denegado} onClick={() => setAccion({ tipo: "rechazar", item: i })}>
-                            {i.estado === "EJECUTADA" ? "Devuelta por el banco" : "Rechazada"}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          </PanelVentana>
         );
       })}
 
-      {accion?.tipo === "ejecutar" && (
+      <div className="rounded-r-md border-l-4 border-brand-600 bg-brand-50 px-3.5 py-2 text-xs text-ink-700">
+        <b>Con API bancaria (futuro):</b> los pasos de preparación, home banking y resultado se hacen solos; el sistema envía el lote y recibe el resultado de
+        cada transferencia. Hoy el proceso es manual, con los mismos estados.
+      </div>
+
+      {lote && <LlaveLoteModal filas={lote} onClose={() => setLote(null)} onHecho={(texto) => {
+        setAviso({ tipo: "ok", texto });
+        setMarcas({});
+        setTildadas({});
+      }} />}
+
+      {devuelta && (
         <NotaModal
           open
-          titulo={`Registrar ${accion.item.pagoId} como ejecutada`}
-          descripcion={`Transferencia de ${pesos(accion.item.importe)} a ${accion.item.proveedor}. Baja el saldo real de la cuenta y consume la reserva.`}
-          etiquetaNota="Comprobante del banco (nº de operación)"
-          requerida
-          confirmar="Registrar ejecutada"
-          tono="success"
-          llave={{ operacion: "Ejecución de transferencia", referencia: accion.item.pagoId, importe: accion.item.importe, moneda: "ARS" }}
-          onClose={() => setAccion(null)}
-          onConfirmar={(nota, firmaId) => {
-            const r = registrarResultadoTransferencia(accion.item.pagoId, { resultado: "EJECUTADA", comprobante: nota, firmaId });
-            if (!r.ok) return r.error;
-            setAviso({ tipo: "ok", texto: `${accion.item.pagoId} quedó Ejecutada.` });
-            return null;
-          }}
-        />
-      )}
-      {accion?.tipo === "rechazar" && (
-        <NotaModal
-          open
-          titulo={`Rechazar ${accion.item.pagoId}`}
-          descripcion={
-            accion.item.estado === "EJECUTADA"
-              ? "El banco devolvió la transferencia ya ejecutada: el real vuelve y el importe queda otra vez pendiente en la orden."
-              : "No se pudo pagar (por ejemplo, falló el CBU o el banco cerró). Se libera la reserva y el importe vuelve a quedar pendiente en la orden, que sigue Autorizada."
-          }
+          titulo={`Rechazar ${devuelta.pagoId}`}
+          descripcion="El banco devolvió la transferencia ya ejecutada: el real vuelve y el importe queda otra vez pendiente en la orden."
           etiquetaNota="Motivo"
           requerida
-          confirmar="Rechazar transferencia"
+          confirmar="Registrar devolución"
           tono="danger"
-          llave={{ operacion: "Rechazo de transferencia", referencia: accion.item.pagoId, importe: accion.item.importe, moneda: "ARS" }}
-          onClose={() => setAccion(null)}
+          llave={{ operacion: "Rechazo de transferencia", referencia: devuelta.pagoId, importe: devuelta.importe, moneda: "ARS" }}
+          onClose={() => setDevuelta(null)}
           onConfirmar={(nota, firmaId) => {
-            const r = registrarResultadoTransferencia(accion.item.pagoId, { resultado: "RECHAZADA", motivo: nota, firmaId });
+            const r = registrarResultadoTransferencia(devuelta.pagoId, { resultado: "RECHAZADA", motivo: nota, firmaId });
             if (!r.ok) return r.error;
-            emitirAlerta("PAGO_FALLIDO_O_PARCIAL", `La transferencia ${accion.item.pagoId} a ${accion.item.proveedor} por ${pesos(accion.item.importe)} fue rechazada: ${nota}`, accion.item.pagoId);
-            setAviso({ tipo: "ok", texto: `${accion.item.pagoId} se rechazó: la orden ${accion.item.ordenPago} volvió a tener el importe pendiente.` });
+            emitirAlerta("PAGO_FALLIDO_O_PARCIAL", `La transferencia ${devuelta.pagoId} a ${devuelta.proveedor} por ${pesos(devuelta.importe)} fue rechazada: ${nota}`, devuelta.pagoId);
+            setAviso({ tipo: "ok", texto: `${devuelta.pagoId} se rechazó: la orden ${devuelta.ordenPago} volvió a tener el importe pendiente.` });
             return null;
           }}
         />

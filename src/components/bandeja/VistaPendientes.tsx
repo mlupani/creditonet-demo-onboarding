@@ -6,16 +6,15 @@ import { lotesTransferencia } from "@/lib/proveedores-operaciones";
 import { useOrdenesPago, usePagosProveedor, useProveedores } from "@/lib/proveedores-store";
 import { TIPO_PENDIENTE_LABEL, pendientesDeBandeja, type FiltrosBandeja, type TipoPendiente, type VistaBandeja } from "@/lib/bandeja-reglas";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { descargarXlsx, dinero } from "@/components/caja/comunes";
+import { Pill, TablaCompacta, Td, Th, type Fase } from "@/components/caja/compacto";
 import { pesos } from "./comunes";
 
-const TONO: Record<TipoPendiente, "danger" | "warning"> = {
-  PAGO_RECHAZADO: "danger",
-  CHEQUE: "danger",
-  PARCIAL: "warning",
-  INCIDENCIA: "danger",
+const FASE: Record<TipoPendiente, Fase> = {
+  PAGO_RECHAZADO: "rechazo",
+  CHEQUE: "rechazo",
+  PARCIAL: "espera",
+  INCIDENCIA: "rechazo",
 };
 
 const ACCION: Record<TipoPendiente, string> = {
@@ -45,42 +44,53 @@ export function VistaPendientes({ filtros, onIr }: { filtros: FiltrosBandeja; on
     ]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="max-w-2xl text-sm text-ink-500">
+        <p className="max-w-3xl text-[11px] text-ink-500">
           Una transferencia rechazada vuelve a Autorizado con su comentario y libera la reserva; un cheque rechazado o anulado reabre la deuda; un
           pago parcial deja saldo. Cada contingencia avisa por mail al Tesorero central y al Director (ver Alertas enviadas).
         </p>
-        <Button variant="outline" size="sm" onClick={exportar} disabled={lista.length === 0}>
+        <Button variant="navyOutline" size="xs" onClick={exportar} disabled={lista.length === 0}>
           Exportar a Excel
         </Button>
       </div>
 
-      {lista.length === 0 ? (
-        <Card className="px-5 py-8 text-center text-sm text-ink-400">No hay contingencias pendientes para tu perfil.</Card>
-      ) : (
-        <ul className="space-y-2">
+      <TablaCompacta etiqueta="Contingencias pendientes" minWidth="min-w-[44rem]">
+        <thead>
+          <tr>
+            <Th>Contingencia</Th>
+            <Th>Qué pasa</Th>
+            <Th derecha>Importe</Th>
+            <Th>Cómo se resuelve</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {lista.length === 0 && (
+            <tr>
+              <Td colSpan={4} className="py-6 text-center text-ink-400">
+                No hay contingencias pendientes para tu perfil.
+              </Td>
+            </tr>
+          )}
           {lista.map((p) => (
-            <li key={p.clave}>
-              <Card className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge tone={TONO[p.tipo]}>{TIPO_PENDIENTE_LABEL[p.tipo]}</StatusBadge>
-                    <span className="text-sm font-semibold text-ink-900">{p.titulo}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-ink-600">{p.detalle}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold tabular-nums text-ink-900">{p.moneda === "ARS" ? pesos(p.importe) : dinero(p.moneda, p.importe)}</span>
-                  <Button size="sm" onClick={() => onIr(p.vista, p.busqueda)}>
-                    {ACCION[p.tipo]}
-                  </Button>
-                </div>
-              </Card>
-            </li>
+            <tr key={p.clave}>
+              <Td>
+                <Pill fase={FASE[p.tipo]}>{TIPO_PENDIENTE_LABEL[p.tipo]}</Pill>
+                <p className="mt-1 font-semibold text-ink-900">{p.titulo}</p>
+              </Td>
+              <Td>{p.detalle}</Td>
+              <Td derecha className="whitespace-nowrap font-semibold text-ink-900">
+                {p.moneda === "ARS" ? pesos(p.importe) : dinero(p.moneda, p.importe)}
+              </Td>
+              <Td>
+                <Button size="xs" variant="brandOutline" onClick={() => onIr(p.vista, p.busqueda)}>
+                  {ACCION[p.tipo]}
+                </Button>
+              </Td>
+            </tr>
           ))}
-        </ul>
-      )}
+        </tbody>
+      </TablaCompacta>
     </div>
   );
 }

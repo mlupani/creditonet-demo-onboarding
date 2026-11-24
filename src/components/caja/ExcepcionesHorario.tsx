@@ -4,9 +4,9 @@ import { useState } from "react";
 import { habilitarFueraDeHorario, nombreCaja } from "@/lib/caja-operaciones";
 import { useCajas, useExcepciones, useFechaDemo, useHoraDemo, useUsuarioActual } from "@/lib/caja-store";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
+import { PanelVentana, TablaCompacta, Td, Th } from "./compacto";
 import { CLASE_INPUT, ErrorBanner, quien } from "./comunes";
 
 export function ExcepcionesHorario() {
@@ -40,15 +40,14 @@ export function ExcepcionesHorario() {
   };
 
   return (
-    <Card className="p-5">
-      <h2 className="text-sm font-bold uppercase tracking-widest text-ink-700">Excepciones de horario</h2>
-      <p className="mt-1 max-w-3xl text-sm text-ink-500">
+    <PanelVentana titulo="Excepciones de horario">
+      <p className="max-w-4xl text-xs text-ink-600">
         Fuera del horario operativo (o en un feriado o día no operativo) ningún cajero opera, salvo una excepción
         habilitada por el Tesorero. Queda registrado quién, cuándo, hasta qué hora y por qué motivo.
       </p>
 
       {esTesorero ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <SelectField
             id="exc-caja"
             label="Caja"
@@ -76,55 +75,55 @@ export function ExcepcionesHorario() {
           <FormField id="exc-motivo" label="Motivo" required value={motivo} onChange={setMotivo} placeholder="Ej.: cierre de mes" />
         </div>
       ) : (
-        <p className="mt-4 rounded-lg border border-ink-200 bg-ink-25 px-3 py-2 text-sm text-ink-600">
+        <p className="mt-3 rounded-md border border-ink-200 bg-ink-25 px-3 py-2 text-xs text-ink-600">
           Sólo el Tesorero puede habilitar la operación fuera de horario. Cambiá a un usuario con ese rol para cargar una
           excepción.
         </p>
       )}
 
       {esTesorero && (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button onClick={habilitar} disabled={!cajaId}>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button size="sm" variant="success" onClick={habilitar} disabled={!cajaId}>
             Habilitar excepción
           </Button>
-          <span className="text-xs text-ink-400">Hora operativa actual de la demo: {hora}</span>
-          {ok && <span className="text-sm font-medium text-success-700">Excepción registrada.</span>}
+          <span className="text-[11px] text-ink-400">Hora operativa actual de la demo: {hora}</span>
+          {ok && <span className="text-xs font-semibold text-success-700">Excepción registrada.</span>}
         </div>
       )}
       <ErrorBanner error={error} titulo="No se pudo habilitar la excepción" />
 
-      <div className="mt-5 overflow-x-auto">
+      <div className="mt-4">
         {delDia.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-ink-200 px-4 py-4 text-center text-sm text-ink-400">
+          <p className="rounded-md border border-dashed border-ink-200 px-4 py-3 text-center text-xs text-ink-400">
             No hay excepciones habilitadas para el {fecha}.
           </p>
         ) : (
-          <table className="w-full min-w-[40rem] text-left text-sm">
+          <TablaCompacta etiqueta="Excepciones de horario del día" minWidth="min-w-[40rem]">
             <thead>
-              <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                <th className="px-3 py-2.5">Caja</th>
-                <th className="px-3 py-2.5">Usuario habilitado</th>
-                <th className="px-3 py-2.5">Hasta</th>
-                <th className="px-3 py-2.5">Motivo</th>
-                <th className="px-3 py-2.5">Habilitó</th>
-                <th className="px-3 py-2.5">Cuándo</th>
+              <tr>
+                <Th>Caja</Th>
+                <Th>Usuario habilitado</Th>
+                <Th>Hasta</Th>
+                <Th>Motivo</Th>
+                <Th>Habilitó</Th>
+                <Th>Cuándo</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-ink-100">
+            <tbody>
               {delDia.map((e) => (
                 <tr key={e.id}>
-                  <td className="px-3 py-2.5 text-ink-900">{nombreCaja(e.cajaId)}</td>
-                  <td className="px-3 py-2.5 text-ink-700">{quien(e.usuarioId)}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-ink-700">{e.hastaHora}</td>
-                  <td className="px-3 py-2.5 text-ink-700">{e.motivo}</td>
-                  <td className="px-3 py-2.5 text-ink-700">{quien(e.habilitadaPor)}</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-ink-500">{e.fechaHora}</td>
+                  <Td className="text-ink-900">{nombreCaja(e.cajaId)}</Td>
+                  <Td>{quien(e.usuarioId)}</Td>
+                  <Td className="tabular-nums">{e.hastaHora}</Td>
+                  <Td>{e.motivo}</Td>
+                  <Td>{quien(e.habilitadaPor)}</Td>
+                  <Td className="whitespace-nowrap text-ink-500">{e.fechaHora}</Td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </TablaCompacta>
         )}
       </div>
-    </Card>
+    </PanelVentana>
   );
 }

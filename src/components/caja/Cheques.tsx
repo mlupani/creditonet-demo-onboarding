@@ -19,23 +19,21 @@ import {
 import { diasHastaPago, formaDeTipo, numeracionDe, totalPorMoneda, vencePronto } from "@/lib/cheques-reglas";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/SelectField";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Campo, Cifra, INPUT_COMPACTO, PanelVentana, Pill, TablaCompacta, Td, Th, type Fase } from "./compacto";
 import { ErrorBanner, NotaModal, PaginaCaja, descargarXlsx, dinero } from "./comunes";
 
-type Tono = "success" | "warning" | "danger" | "neutral" | "info";
-const TONO_ESTADO: Record<EstadoCheque, Tono> = {
-  EN_CUSTODIA: "info",
-  DEPOSITADO: "success",
-  RECHAZADO: "danger",
-  ENTREGADO: "neutral",
-  EMITIDO: "info",
-  PRESENTADO: "warning",
-  DEBITADO: "success",
-  ANULADO: "neutral",
+const FASE_ESTADO: Record<EstadoCheque, Fase> = {
+  EN_CUSTODIA: "proceso",
+  DEPOSITADO: "ok",
+  RECHAZADO: "rechazo",
+  ENTREGADO: "proceso",
+  EMITIDO: "espera",
+  PRESENTADO: "espera",
+  DEBITADO: "ok",
+  ANULADO: "rechazo",
 };
 
 // Un cheque propio sigue vigente (y con su importe reservado) hasta que el banco lo debita o se anula/rechaza.
@@ -49,8 +47,8 @@ function Vencimiento({ cheque }: { cheque: Cheque }) {
   return (
     <span className="whitespace-nowrap">
       {cheque.fechaPago}
-      {vivo && dias < 0 && <StatusBadge tone="danger" className="ml-2">Vencido</StatusBadge>}
-      {vivo && dias >= 0 && dias <= 7 && <StatusBadge tone="warning" className="ml-2">{dias === 0 ? "Vence hoy" : `Vence en ${dias} d`}</StatusBadge>}
+      {vivo && dias < 0 && <Pill fase="rechazo" className="ml-2">Vencido</Pill>}
+      {vivo && dias >= 0 && dias <= 7 && <Pill fase="espera" className="ml-2">{dias === 0 ? "Vence hoy" : `Vence en ${dias} d`}</Pill>}
     </span>
   );
 }
@@ -320,23 +318,16 @@ export function PantallaCheques() {
       titulo="Cheques y valores"
       descripcion="Cheques de terceros en custodia de cada caja (se cuentan aparte del efectivo) y cheques propios emitidos desde las chequeras."
     >
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">En custodia</p>
-          <p className="mt-1 text-lg font-bold text-ink-900">{enCustodiaTotal.length} cheques</p>
-          <p className="text-sm text-ink-500">{(["ARS", "USD"] as Moneda[]).filter((m) => totales[m] > 0).map((m) => dinero(m, totales[m])).join(" y ") || "—"}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Vencen en 7 días</p>
-          <p className="mt-1 text-lg font-bold text-ink-900">{porVencer}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Propios emitidos</p>
-          <p className="mt-1 text-lg font-bold text-ink-900">{cheques.filter((c) => c.origen === "PROPIO" && PROPIO_VIGENTE.includes(c.estado)).length} sin debitar</p>
-        </Card>
+      <div className="mb-4 grid gap-2 sm:grid-cols-3">
+        <Cifra label="En custodia">
+          {enCustodiaTotal.length} cheques
+          <span className="mt-0.5 block text-[11px] font-normal text-ink-500">{(["ARS", "USD"] as Moneda[]).filter((m) => totales[m] > 0).map((m) => dinero(m, totales[m])).join(" y ") || "—"}</span>
+        </Cifra>
+        <Cifra label="Vencen en 7 días" tono={porVencer > 0 ? "malo" : "neutro"}>{porVencer}</Cifra>
+        <Cifra label="Propios emitidos">{cheques.filter((c) => c.origen === "PROPIO" && PROPIO_VIGENTE.includes(c.estado)).length} sin debitar</Cifra>
       </div>
 
-      <div className="mb-4 flex gap-2" role="tablist">
+      <div className="mb-3 flex gap-1.5" role="tablist">
         {([["custodia", "En custodia de caja"], ["propios", "Propios emitidos"]] as const).map(([id, label]) => (
           <button
             key={id}
@@ -347,7 +338,7 @@ export function PantallaCheques() {
               setEstado("");
               setError(null);
             }}
-            className={`rounded-lg border px-4 py-2 text-sm font-semibold ${pestana === id ? "border-brand-500 bg-brand-50 text-brand-700" : "border-ink-200 text-ink-600 hover:bg-ink-25"}`}
+            className={`rounded-md border px-3.5 py-1.5 text-xs font-bold ${pestana === id ? "border-navy-800 bg-navy-800 text-white" : "border-ink-300 bg-white text-ink-600 hover:bg-ink-25"}`}
           >
             {label}
           </button>
@@ -355,16 +346,15 @@ export function PantallaCheques() {
       </div>
 
       {pestana === "propios" && (
-        <Card className="mb-5">
-          <CardHeader title="Numeración por chequera" description="Números usados y disponibles de cada chequera activa." />
-          <div className="grid gap-3 p-5 sm:grid-cols-2">
+        <PanelVentana className="mb-4" titulo="Numeración por chequera · números usados y disponibles de cada chequera activa">
+          <div className="grid gap-2 sm:grid-cols-2">
             {chequeras
               .filter((q) => q.estado === "ACTIVO")
               .map((q) => {
                 const n = numeracionDe(q, cheques);
                 const tipo = tipos.find((t) => t.id === q.tipoId);
                 return (
-                  <div key={q.id} className="rounded-xl border border-ink-200 p-3 text-sm">
+                  <div key={q.id} className="rounded-md border border-ink-200 px-3 py-2 text-xs">
                     <p className="font-semibold text-ink-900">
                       {q.id} · {tipo?.descripcion ?? "—"} · {cuentaTexto(q.cuentaId)}
                     </p>
@@ -377,125 +367,145 @@ export function PantallaCheques() {
                 );
               })}
           </div>
-        </Card>
+        </PanelVentana>
       )}
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <SelectField id="f-estado" label="Estado" value={estado} onChange={setEstado} placeholder="Todos" options={estados.map((e) => ({ value: e, label: ESTADO_CHEQUE_LABEL[e] }))} />
-        <SelectField id="f-forma" label="Forma" value={forma} onChange={setForma} placeholder="Todas" options={[{ value: "FISICO", label: "Físico" }, { value: "ECHEQ", label: "E-cheq" }]} />
+      <div className="mb-3 flex flex-wrap items-end gap-3">
+        <Campo label="Estado">
+          <select value={estado} onChange={(e) => setEstado(e.target.value)} aria-label="Estado" className={`${INPUT_COMPACTO} w-40`}>
+            <option value="">Todos</option>
+            {estados.map((e) => (
+              <option key={e} value={e}>{ESTADO_CHEQUE_LABEL[e]}</option>
+            ))}
+          </select>
+        </Campo>
+        <Campo label="Forma">
+          <select value={forma} onChange={(e) => setForma(e.target.value)} aria-label="Forma" className={`${INPUT_COMPACTO} w-32`}>
+            <option value="">Todas</option>
+            <option value="FISICO">Físico</option>
+            <option value="ECHEQ">E-cheq</option>
+          </select>
+        </Campo>
         {pestana === "custodia" && (
-          <SelectField id="f-caja" label="Caja" value={cajaId} onChange={setCajaId} placeholder="Todas" options={cajas.filter((c) => c.estado === "ACTIVO").map((c) => ({ value: c.id, label: c.nombre }))} />
+          <Campo label="Caja">
+            <select value={cajaId} onChange={(e) => setCajaId(e.target.value)} aria-label="Caja" className={`${INPUT_COMPACTO} w-56`}>
+              <option value="">Todas</option>
+              {cajas.filter((c) => c.estado === "ACTIVO").map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </Campo>
         )}
-        <label className="flex h-10 items-center gap-2 text-sm text-ink-700">
-          <input type="checkbox" checked={soloPronto} onChange={(e) => setSoloPronto(e.target.checked)} className="size-4" />
+        <label className="flex h-8 items-center gap-2 text-xs text-ink-700">
+          <input type="checkbox" checked={soloPronto} onChange={(e) => setSoloPronto(e.target.checked)} className="size-3.5" />
           Vencen en 7 días
         </label>
-        <div className="ml-auto flex gap-2">
-          <Button variant="outline" onClick={exportar}>
+        <div className="ml-auto flex gap-1.5">
+          <Button size="xs" variant="navyOutline" onClick={exportar}>
             Exportar a Excel
           </Button>
           {pestana === "custodia" ? (
-            <Button onClick={() => setAccion({ tipo: "recibir" })}>Recibir cheque</Button>
+            <Button size="xs" variant="success" onClick={() => setAccion({ tipo: "recibir" })}>Recibir cheque</Button>
           ) : (
-            <Button onClick={() => setAccion({ tipo: "emitir" })}>Emitir cheque</Button>
+            <Button size="xs" variant="success" onClick={() => setAccion({ tipo: "emitir" })}>Emitir cheque</Button>
           )}
         </div>
       </div>
 
       <ErrorBanner error={error} />
 
-      <Card className="mt-3 overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="mt-3">
+        <TablaCompacta etiqueta={pestana === "custodia" ? "Cheques en custodia" : "Cheques propios"} minWidth="min-w-[58rem]">
           <thead>
-            <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-              <th className="px-4 py-2.5">ID</th>
-              <th className="px-4 py-2.5">{pestana === "custodia" ? "Caja" : "Cuenta"}</th>
-              <th className="px-4 py-2.5">Cheque</th>
-              <th className="px-4 py-2.5">{pestana === "custodia" ? "Librador" : "Beneficiario"}</th>
-              <th className="px-4 py-2.5 text-right">Importe</th>
-              <th className="px-4 py-2.5">Vencimiento</th>
-              <th className="px-4 py-2.5">Estado</th>
-              <th className="px-4 py-2.5">Acciones</th>
+            <tr>
+              <Th>ID</Th>
+              <Th>{pestana === "custodia" ? "Caja" : "Cuenta"}</Th>
+              <Th>Cheque</Th>
+              <Th>{pestana === "custodia" ? "Librador" : "Beneficiario"}</Th>
+              <Th derecha>Importe</Th>
+              <Th>Vencimiento</Th>
+              <Th>Estado</Th>
+              <Th>Acciones</Th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-ink-100">
+          <tbody>
             {filas.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-ink-400">
+                <Td colSpan={8} className="py-5 text-center text-ink-400">
                   No hay cheques con esos filtros.
-                </td>
+                </Td>
               </tr>
             )}
             {filas.map((c) => (
               <tr key={c.id}>
-                <td className="px-4 py-3 font-semibold text-ink-900">{c.id}</td>
-                <td className="px-4 py-3 text-ink-700">{pestana === "custodia" ? cajaNombre(c.cajaId) : cuentaTexto(c.cuentaId)}</td>
-                <td className="px-4 py-3 text-ink-700">
+                <Td className="font-semibold text-ink-900">{c.id}</Td>
+                <Td>{pestana === "custodia" ? cajaNombre(c.cajaId) : cuentaTexto(c.cuentaId)}</Td>
+                <Td>
                   {FORMA_CHEQUE_LABEL[c.forma]} · {c.banco} {c.numero}
-                  {c.referencia && <span className="block text-xs text-ink-400">{c.referencia}</span>}
-                </td>
-                <td className="px-4 py-3 text-ink-700">{c.parte}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-ink-900">{dinero(c.moneda, c.importe)}</td>
-                <td className="px-4 py-3 text-ink-700">
+                  {c.referencia && <span className="block text-[11px] text-ink-400">{c.referencia}</span>}
+                </Td>
+                <Td>{c.parte}</Td>
+                <Td derecha className="text-ink-900">{dinero(c.moneda, c.importe)}</Td>
+                <Td>
                   <Vencimiento cheque={c} />
-                </td>
-                <td className="px-4 py-3">
-                  <StatusBadge tone={TONO_ESTADO[c.estado]}>{ESTADO_CHEQUE_LABEL[c.estado]}</StatusBadge>
-                  {c.origen === "PROPIO" && PROPIO_VIGENTE.includes(c.estado) && <span className="mt-1 block text-xs text-ink-400">Importe reservado</span>}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1.5">
+                </Td>
+                <Td>
+                  <Pill fase={FASE_ESTADO[c.estado]}>{ESTADO_CHEQUE_LABEL[c.estado]}</Pill>
+                  {c.origen === "PROPIO" && PROPIO_VIGENTE.includes(c.estado) && <span className="mt-0.5 block text-[11px] text-ink-400">Importe reservado</span>}
+                </Td>
+                <Td>
+                  <div className="flex flex-wrap gap-1">
                     {c.origen === "TERCERO" && c.estado === "EN_CUSTODIA" && (
                       <>
-                        <Button size="sm" variant="outline" disabled={!puedeOperar(c)} title={puedeOperar(c) ? undefined : "Sólo un responsable de la caja"} onClick={() => setAccion({ tipo: "depositar", cheque: c })}>
+                        <Button size="xs" variant="successOutline" disabled={!puedeOperar(c)} title={puedeOperar(c) ? undefined : "Sólo un responsable de la caja"} onClick={() => setAccion({ tipo: "depositar", cheque: c })}>
                           Depositar
                         </Button>
-                        <Button size="sm" variant="outline" disabled={!puedeOperar(c)} onClick={() => setAccion({ tipo: "entregar", cheque: c })}>
+                        <Button size="xs" variant="brandOutline" disabled={!puedeOperar(c)} onClick={() => setAccion({ tipo: "entregar", cheque: c })}>
                           Entregar
                         </Button>
                       </>
                     )}
                     {c.origen === "TERCERO" && (c.estado === "EN_CUSTODIA" || c.estado === "DEPOSITADO") && (
-                      <Button size="sm" variant="outline" disabled={!puedeOperar(c)} onClick={() => setAccion({ tipo: "rechazar", cheque: c })}>
+                      <Button size="xs" variant="dangerOutline" disabled={!puedeOperar(c)} onClick={() => setAccion({ tipo: "rechazar", cheque: c })}>
                         Rechazar
                       </Button>
                     )}
                     {c.origen === "PROPIO" && c.estado === "EMITIDO" && (
                       <>
-                        <Button size="sm" variant="outline" disabled={!puedePropios} title={puedePropios ? undefined : "Sólo Tesorero, Tesorero central o Supervisor"} onClick={() => setAccion({ tipo: "entregar-propio", cheque: c })}>
+                        <Button size="xs" variant="successOutline" disabled={!puedePropios} title={puedePropios ? undefined : "Sólo Tesorero, Tesorero central o Supervisor"} onClick={() => setAccion({ tipo: "entregar-propio", cheque: c })}>
                           Entregar
                         </Button>
-                        <Button size="sm" variant="outline" disabled={!puedePropios} onClick={() => setAccion({ tipo: "anular", cheque: c })}>
+                        <Button size="xs" variant="dangerOutline" disabled={!puedePropios} onClick={() => setAccion({ tipo: "anular", cheque: c })}>
                           Anular
                         </Button>
                       </>
                     )}
                     {c.origen === "PROPIO" && c.estado === "ENTREGADO" && (
-                      <Button size="sm" variant="outline" disabled={!puedePropios} title="El beneficiario lo presentó al cobro" onClick={() => correr(presentarChequePropio(c.id))}>
+                      <Button size="xs" variant="brandOutline" disabled={!puedePropios} title="El beneficiario lo presentó al cobro" onClick={() => correr(presentarChequePropio(c.id))}>
                         Presentado
                       </Button>
                     )}
                     {c.origen === "PROPIO" && c.estado === "PRESENTADO" && (
                       <>
-                        <Button size="sm" variant="outline" disabled={!puedePropios} title="Debitado en el extracto: baja el saldo real" onClick={() => correr(debitarChequePropio(c.id))}>
+                        <Button size="xs" variant="successOutline" disabled={!puedePropios} title="Debitado en el extracto: baja el saldo real" onClick={() => correr(debitarChequePropio(c.id))}>
                           Debitado
                         </Button>
-                        <Button size="sm" variant="outline" disabled={!puedePropios} onClick={() => setAccion({ tipo: "rechazar-propio", cheque: c })}>
+                        <Button size="xs" variant="dangerOutline" disabled={!puedePropios} onClick={() => setAccion({ tipo: "rechazar-propio", cheque: c })}>
                           Rechazado por el banco
                         </Button>
                       </>
                     )}
-                    <Button size="sm" variant="outline" onClick={() => setAccion({ tipo: "traza", cheque: c })}>
+                    <Button size="xs" variant="navyOutline" onClick={() => setAccion({ tipo: "traza", cheque: c })}>
                       Historial
                     </Button>
                   </div>
-                  <span className="mt-1 block text-xs text-ink-400">Alta: {c.usuarioAlta} · {c.fechaAlta}</span>
-                </td>
+                  <span className="mt-1 block text-[11px] text-ink-400">Alta: {c.usuarioAlta} · {c.fechaAlta}</span>
+                </Td>
               </tr>
             ))}
           </tbody>
-        </table>
-      </Card>
+        </TablaCompacta>
+      </div>
 
       {accion?.tipo === "recibir" && <RecibirModal onClose={() => setAccion(null)} />}
       {accion?.tipo === "emitir" && <EmitirModal onClose={() => setAccion(null)} />}

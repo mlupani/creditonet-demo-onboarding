@@ -7,11 +7,9 @@ import { antiguedadDeuda, saldoProveedor, formatearCuit, TRAMOS_DEUDA, type Deud
 import { useComprobantes, useOrdenesPago, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
 import { ESTADO_ABM_LABEL, type EstadoAbm } from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { SelectField } from "@/components/ui/SelectField";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { PaginaCaja, CLASE_INPUT, descargarXlsx, sinAcentos } from "@/components/caja/comunes";
-import { CuentaCorriente, ENCABEZADO, Th, pesos } from "./comunes";
+import { PaginaCaja, descargarXlsx, sinAcentos } from "@/components/caja/comunes";
+import { Campo, Cifra, INPUT_COMPACTO, Pill, TablaCompacta, Td, Th } from "@/components/caja/compacto";
+import { CuentaCorriente, pesos } from "./comunes";
 
 type Orden = "NOMBRE" | "ID" | "SALDO";
 
@@ -78,13 +76,13 @@ export function PantallaPosicionProveedores() {
         titulo={`Cuenta corriente · ${seleccionado.razonSocial}`}
         descripcion={`${seleccionado.id} · CUIT ${formatearCuit(seleccionado.cuit)}`}
       >
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => setElegido(null)}>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="navyOutline" onClick={() => setElegido(null)}>
             Volver a la posición
           </Button>
           <Link
             href="/parametros?solapa=proveedores"
-            className="inline-flex h-10 items-center rounded-lg border border-ink-300 bg-white px-4 text-sm font-semibold text-brand-700 shadow-xs hover:bg-ink-50"
+            className="inline-flex h-8 items-center rounded-lg border border-brand-600 bg-white px-3 text-xs font-semibold text-brand-700 hover:bg-brand-50"
           >
             Ficha del proveedor en Parámetros
           </Link>
@@ -100,116 +98,108 @@ export function PantallaPosicionProveedores() {
       titulo="Posición de proveedores"
       descripcion="Todos los proveedores con el saldo de su cuenta corriente (lo que se les debe) y la antigüedad de la deuda: lo que todavía no venció y los días vencidos a la fecha operativa. Las notas de crédito descuentan del saldo pero no figuran en los tramos."
     >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-ink-700">Buscar por CUIT, razón social o ID</span>
+      <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end">
+        <Campo label="Buscar por CUIT, razón social o ID">
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             aria-label="Buscar proveedor"
             placeholder="Buscar…"
-            className={CLASE_INPUT}
+            className={INPUT_COMPACTO}
           />
-        </label>
-        <SelectField
-          id="pos-estado"
-          label="Estado"
-          value={estado}
-          onChange={(v) => setEstado(v as "" | EstadoAbm)}
-          placeholder="Activos y suspendidos"
-          options={(Object.keys(ESTADO_ABM_LABEL) as EstadoAbm[]).map((e) => ({ value: e, label: ESTADO_ABM_LABEL[e] }))}
-        />
-        <SelectField
-          id="pos-orden"
-          label="Ordenar por"
-          value={orden}
-          onChange={(v) => setOrden((v || "NOMBRE") as Orden)}
-          options={[
-            { value: "NOMBRE", label: "Nombre" },
-            { value: "ID", label: "ID" },
-            { value: "SALDO", label: "Saldo (mayor deuda primero)" },
-          ]}
-        />
+        </Campo>
+        <Campo label="Estado">
+          <select id="pos-estado" aria-label="Estado" value={estado} onChange={(e) => setEstado(e.target.value as "" | EstadoAbm)} className={INPUT_COMPACTO}>
+            <option value="">Activos y suspendidos</option>
+            {(Object.keys(ESTADO_ABM_LABEL) as EstadoAbm[]).map((e) => (
+              <option key={e} value={e}>
+                {ESTADO_ABM_LABEL[e]}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo label="Ordenar por">
+          <select id="pos-orden" aria-label="Ordenar por" value={orden} onChange={(e) => setOrden((e.target.value || "NOMBRE") as Orden)} className={INPUT_COMPACTO}>
+            <option value="NOMBRE">Nombre</option>
+            <option value="ID">ID</option>
+            <option value="SALDO">Saldo (mayor deuda primero)</option>
+          </select>
+        </Campo>
+        <Button size="sm" variant="navyOutline" onClick={exportar}>
+          Exportar a Excel
+        </Button>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <p className="text-sm text-ink-600">
-          Deuda total de la lista: <span className="font-bold tabular-nums text-ink-900">{pesos(total)}</span>
-        </p>
-        <div className="ml-auto">
-          <Button variant="outline" onClick={exportar}>
-            Exportar a Excel
-          </Button>
-        </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <Cifra label="Deuda total de la lista">{pesos(total)}</Cifra>
+        <Cifra label="Deuda vencida" tono={totalTramos.slice(1).some((v) => v > 0) ? "malo" : "neutro"}>
+          {pesos(totalTramos.slice(1).reduce((s, x) => s + x, 0))}
+        </Cifra>
+        <Cifra label="Proveedores en la lista">{filas.length}</Cifra>
       </div>
 
-      <Card className="mt-3 overflow-hidden">
+      <div className="mt-3">
         {filas.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-400">No hay proveedores para mostrar.</p>
+          <p className="rounded-lg border border-ink-200 bg-white px-5 py-6 text-center text-xs text-ink-400">No hay proveedores para mostrar.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[64rem] text-left text-sm">
-              <thead>
-                <tr className={ENCABEZADO}>
-                  <Th>ID</Th>
-                  <Th>CUIT</Th>
-                  <Th>Razón social</Th>
-                  <Th>Estado</Th>
-                  <Th derecha>Saldo</Th>
-                  {TRAMOS_DEUDA.map((t) => (
-                    <Th key={t.id} derecha>
-                      {t.id === "NO_VENCIDO" ? t.label : `${t.label} d`}
-                    </Th>
-                  ))}
-                  <Th />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {filas.map(({ p, saldo, deuda }) => (
-                  <tr key={p.id}>
-                    <td className="px-3 py-3 font-mono text-xs font-bold text-brand-700">{p.id}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-ink-700">{formatearCuit(p.cuit)}</td>
-                    <td className="px-3 py-3 text-ink-900">{p.razonSocial}</td>
-                    <td className="px-3 py-3">
-                      <StatusBadge tone={p.estado === "ACTIVO" ? "success" : "neutral"}>{ESTADO_ABM_LABEL[p.estado]}</StatusBadge>
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{pesos(saldo)}</td>
-                    {TRAMOS_DEUDA.map((t) => (
-                      <td
-                        key={t.id}
-                        className={`px-3 py-3 text-right tabular-nums ${
-                          deuda[t.id] === 0 ? "text-ink-300" : t.id === "NO_VENCIDO" ? "text-ink-700" : "font-semibold text-danger-700"
-                        }`}
-                      >
-                        {deuda[t.id] === 0 ? "—" : pesos(deuda[t.id])}
-                      </td>
-                    ))}
-                    <td className="px-3 py-3 text-right">
-                      <Button size="sm" variant="outline" onClick={() => setElegido(p.id)}>
-                        Cuenta corriente
-                      </Button>
-                    </td>
-                  </tr>
+          <TablaCompacta etiqueta="Posición de proveedores" minWidth="min-w-[60rem]">
+            <thead>
+              <tr>
+                <Th>ID</Th>
+                <Th>CUIT</Th>
+                <Th>Razón social</Th>
+                <Th>Estado</Th>
+                <Th derecha>Saldo</Th>
+                {TRAMOS_DEUDA.map((t) => (
+                  <Th key={t.id} derecha>
+                    {t.id === "NO_VENCIDO" ? t.label : `${t.label} d`}
+                  </Th>
                 ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-ink-200 bg-ink-25 font-semibold text-ink-900">
-                  <td className="px-3 py-3" colSpan={4}>
-                    Totales
-                  </td>
-                  <td className="px-3 py-3 text-right tabular-nums">{pesos(total)}</td>
-                  {totalTramos.map((v, i) => (
-                    <td key={TRAMOS_DEUDA[i].id} className={`px-3 py-3 text-right tabular-nums ${i > 0 && v > 0 ? "text-danger-700" : ""}`}>
-                      {pesos(v)}
-                    </td>
+                <Th>Acciones</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map(({ p, saldo, deuda }) => (
+                <tr key={p.id}>
+                  <Td className="font-mono font-bold text-brand-700">{p.id}</Td>
+                  <Td className="whitespace-nowrap">{formatearCuit(p.cuit)}</Td>
+                  <Td className="text-ink-900">{p.razonSocial}</Td>
+                  <Td>
+                    <Pill fase={p.estado === "ACTIVO" ? "ok" : "inicial"}>{ESTADO_ABM_LABEL[p.estado]}</Pill>
+                  </Td>
+                  <Td derecha className="font-semibold text-ink-900">{pesos(saldo)}</Td>
+                  {TRAMOS_DEUDA.map((t) => (
+                    <Td
+                      key={t.id}
+                      derecha
+                      className={deuda[t.id] === 0 ? "text-ink-300" : t.id === "NO_VENCIDO" ? "" : "font-semibold text-danger-700"}
+                    >
+                      {deuda[t.id] === 0 ? "—" : pesos(deuda[t.id])}
+                    </Td>
                   ))}
-                  <td />
+                  <Td>
+                    <Button size="xs" variant="brandOutline" onClick={() => setElegido(p.id)}>
+                      Cuenta corriente
+                    </Button>
+                  </Td>
                 </tr>
-              </tfoot>
-            </table>
-          </div>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-ink-25 font-bold text-ink-900">
+                <Td colSpan={4}>Totales</Td>
+                <Td derecha>{pesos(total)}</Td>
+                {totalTramos.map((v, i) => (
+                  <Td key={TRAMOS_DEUDA[i].id} derecha className={i > 0 && v > 0 ? "text-danger-700" : ""}>
+                    {pesos(v)}
+                  </Td>
+                ))}
+                <Td />
+              </tr>
+            </tfoot>
+          </TablaCompacta>
         )}
-      </Card>
+      </div>
     </PaginaCaja>
   );
 }

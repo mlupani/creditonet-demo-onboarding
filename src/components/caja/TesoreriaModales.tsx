@@ -244,7 +244,7 @@ export function PedidoModal({ cajaId, onClose }: { cajaId: string; onClose: () =
         </Pie>
       }
     >
-      <p className="mb-4 text-sm text-ink-600">El pedido no mueve dinero: el tesoro lo aprueba total o parcialmente, o lo rechaza, y recién ahí se genera el envío.</p>
+      <p className="mb-3 text-xs text-ink-600">El pedido no mueve dinero: el tesoro lo aprueba total o parcialmente, o lo rechaza, y recién ahí se genera el envío.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectField id="pr-sol" label="Caja que pide" required value={solicitante} onChange={setSolicitante} options={propias.map((c) => ({ value: c.id, label: c.nombre }))} />
         <SelectField id="pr-a" label="Se pide a" required value={aElegido} onChange={setA} options={tesoros.map((c) => ({ value: c.id, label: c.nombre }))} />
@@ -291,7 +291,7 @@ export function ResolverPedidoModal({ pedido, onClose }: { pedido: PedidoRefuerz
         </Pie>
       }
     >
-      <p className="mb-3 text-sm text-ink-600">
+      <p className="mb-3 text-xs text-ink-600">
         {nombreCaja(pedido.solicitanteCajaId)} pide {dinero(pedido.moneda, pedido.importe)}: {pedido.motivo}
       </p>
       <MoneyInput id="rp-importe" label="Importe a aprobar" value={importe} onChange={setImporte} hint="Menor al pedido = aprobación parcial." />
@@ -333,11 +333,11 @@ export function EnviarModal({ mov, onClose }: { mov: MovimientoTesoreria; onClos
         </Pie>
       }
     >
-      <p className="mb-3 text-sm text-ink-600">
+      <p className="mb-3 text-xs text-ink-600">
         Importe a entregar: <strong>{dinero(mov.moneda, mov.importe)}</strong> a {destinoTexto(mov)}. Al confirmar pasa a «En tránsito»: deja de figurar en el origen y todavía no figura en el destino.
       </p>
       <RecuentoForm monedas={[mov.moneda]} detalle={detalle} onChange={setDetalle} ayuda={{ [mov.moneda]: mov.importe }} />
-      <p className={`mt-2 text-sm ${contado === mov.importe ? "text-success-700" : "text-ink-500"}`}>
+      <p className={`mt-2 text-xs ${contado === mov.importe ? "text-success-700" : "text-ink-500"}`}>
         Contado {dinero(mov.moneda, contado)} de {dinero(mov.moneda, mov.importe)}.
       </p>
       <div className="mt-3">
@@ -397,7 +397,7 @@ export function RecibirModal({ mov, onClose }: { mov: MovimientoTesoreria; onClo
         </Banner>
       ) : (
         <>
-          <p className="mb-3 text-sm text-ink-600">
+          <p className="mb-3 text-xs text-ink-600">
             {origenTexto(mov)} {mov.origenBancoId ? "entregó los fondos extraídos" : "envió el movimiento"}. Abrilo, contá por denominación y aceptá. Si no coincide, se carga la diferencia y queda con incidencia.
           </p>
           <RecuentoForm monedas={[mov.moneda]} detalle={detalle} onChange={setDetalle} ayuda={{ [mov.moneda]: mov.importe }} />
@@ -434,7 +434,7 @@ export function ResolverIncidenciaModal({ mov, onClose }: { mov: MovimientoTesor
         </Pie>
       }
     >
-      <p className="mb-3 text-sm text-ink-600">
+      <p className="mb-3 text-xs text-ink-600">
         Enviado {dinero(mov.moneda, mov.importe)} · contado por {nombreUsuario(mov.recepcion?.usuarioId ?? "")}: {dinero(mov.moneda, mov.recepcion?.importe ?? 0)}.
       </p>
       <MoneyInput id="ri-importe" label="Importe a integrar a la caja destino" value={importe} onChange={setImporte} />
@@ -467,7 +467,7 @@ export function BoletaModal({ mov, onClose }: { mov: MovimientoTesoreria; onClos
         </Pie>
       }
     >
-      <p className="mb-3 text-sm text-ink-600">
+      <p className="mb-3 text-xs text-ink-600">
         {dinero(mov.moneda, mov.importe)} a {destinoTexto(mov)}. El movimiento queda en tránsito hasta cargar la boleta (o conciliar la acreditación en Bancos).
       </p>
       <FormField id="bo-numero" label="Número de boleta de depósito" required value={boleta} onChange={setBoleta} />
@@ -501,7 +501,7 @@ export function ExtraccionModal({ mov, onClose }: { mov: MovimientoTesoreria; on
         </Pie>
       }
     >
-      <p className="mb-3 text-sm text-ink-600">
+      <p className="mb-3 text-xs text-ink-600">
         {dinero(mov.moneda, mov.importe)} de {origenTexto(mov)} para {destinoTexto(mov)}. Al cargar la boleta el importe sale de la cuenta y queda en tránsito hasta que el tesoro lo cuente y acepte.
       </p>
       <FormField id="ex-boleta" label="Número de boleta de extracción" required value={boleta} onChange={setBoleta} />
@@ -534,7 +534,7 @@ export function DocumentarModal({ mov, onClose }: { mov: MovimientoTesoreria; on
         </Pie>
       }
     >
-      <p className="mb-3 text-sm text-ink-600">
+      <p className="mb-3 text-xs text-ink-600">
         El destino ya aceptó {dinero(mov.moneda, mov.importe)}. Para finalizarlo cargá el número de acta (o de boleta de depósito o de extracción) que lo documenta: pasa al histórico y no se modifica más.
       </p>
       <FormField id="doc-numero" label="Número de acta o de boleta" required value={documento} onChange={setDocumento} />
@@ -561,7 +561,7 @@ export function DetalleMovimientoModal({ mov, onClose }: { mov: MovimientoTesore
   if (mov.finalizacion) hitos.push(["Finalizado", `${nombreUsuario(mov.finalizacion.usuarioId)} · ${mov.finalizacion.fechaHora} · ${mov.finalizacion.documento}`]);
   return (
     <Modal open onClose={onClose} title={`Movimiento ${mov.id}`} maxWidth="max-w-xl" footer={<Button onClick={onClose}>Cerrar</Button>}>
-      <dl className="grid grid-cols-[150px_1fr] gap-x-3 gap-y-1.5 text-sm">
+      <dl className="grid grid-cols-[150px_1fr] gap-x-3 gap-y-1.5 text-xs">
         {[
           ["Estado", estadoTexto(mov)],
           ["Origen", origenTexto(mov)],
@@ -582,7 +582,7 @@ export function DetalleMovimientoModal({ mov, onClose }: { mov: MovimientoTesore
       <h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-widest text-ink-700">Línea de tiempo</h3>
       <ol className="space-y-2 border-l-2 border-brand-200 pl-4">
         {hitos.map(([k, v]) => (
-          <li key={k} className="text-sm">
+          <li key={k} className="text-xs">
             <p className="font-semibold text-ink-900">{k}</p>
             <p className="text-ink-600">{v}</p>
           </li>

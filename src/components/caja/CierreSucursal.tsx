@@ -34,23 +34,22 @@ import { plazosControl, usePlazos } from "@/lib/control-store";
 import type { Firma } from "@/lib/control-tipos";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { aError } from "./Jornada";
 import { LlaveModal } from "./LlaveModal";
-import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, dinero, quien } from "./comunes";
+import { Campo, INPUT_COMPACTO, PanelVentana, Pill, TablaCompacta, Td, Th, type Fase } from "./compacto";
+import { ErrorBanner, NotaModal, PaginaCaja, dinero, quien } from "./comunes";
 
 type EstadoVisible = keyof typeof ESTADO_CIERRE_DIARIO_LABEL;
-const TONO: Record<EstadoVisible, "success" | "warning" | "danger" | "info" | "neutral"> = {
-  ABIERTA: "neutral",
-  EN_CONTROLES: "info",
-  EN_VENTANA: "info",
-  CERRADA_OK: "success",
-  CERRADA_CON_PENDIENTES: "warning",
-  NO_CERRADA: "danger",
-  REABIERTA: "warning",
+const FASE: Record<EstadoVisible, Fase> = {
+  ABIERTA: "inicial",
+  EN_CONTROLES: "proceso",
+  EN_VENTANA: "proceso",
+  CERRADA_OK: "ok",
+  CERRADA_CON_PENDIENTES: "espera",
+  NO_CERRADA: "rechazo",
+  REABIERTA: "espera",
 };
 
 const textoVentana = (min: number) => (min <= 0 ? "vencida" : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`);
@@ -81,9 +80,8 @@ function AjusteForm({ cierre, onError }: { cierre: CierreSucursal; onError: (e: 
   };
 
   return (
-    <div className="mt-4 rounded-xl border border-ink-200 p-4">
-      <h3 className="text-sm font-semibold text-ink-900">Cargar un ajuste</h3>
-      <p className="mt-0.5 text-xs text-ink-500">
+    <PanelVentana titulo="Cargar un ajuste" className="mt-4">
+      <p className="text-xs text-ink-500">
         Un ajuste asienta un movimiento propio en el libro (positivo ingresa a la caja, negativo egresa); nunca edita un movimiento confirmado. Lo autoriza un supervisor con su llave.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -95,17 +93,16 @@ function AjusteForm({ cierre, onError }: { cierre: CierreSucursal; onError: (e: 
           onChange={(v) => setMoneda(v as Moneda)}
           options={monedas.map((m) => ({ value: m, label: m === "ARS" ? "Pesos" : "Dólares" }))}
         />
-        <label className="block">
-          <span className="mb-1 block text-[13px] font-medium text-ink-700">Importe (con signo)</span>
+        <Campo label="Importe (con signo)">
           <input
             value={importe}
             onChange={(e) => setImporte(e.target.value.replace(/[^\d.,-]/g, ""))}
             inputMode="decimal"
             aria-label="Importe del ajuste"
             placeholder="-2000"
-            className={CLASE_INPUT}
+            className={INPUT_COMPACTO}
           />
-        </label>
+        </Campo>
         <SelectField
           id="aj-motivo"
           label="Motivo"
@@ -117,45 +114,45 @@ function AjusteForm({ cierre, onError }: { cierre: CierreSucursal; onError: (e: 
       </div>
       <FormField id="aj-nota" label="Detalle" value={nota} onChange={setNota} className="mt-3" />
       <div className="mt-3">
-        <Button size="sm" variant="outline" onClick={cargar}>
+        <Button size="sm" variant="navyOutline" onClick={cargar}>
           Cargar el ajuste
         </Button>
       </div>
-    </div>
+    </PanelVentana>
   );
 }
 
-const TONO_AJUSTE: Record<AjusteCierre["estado"], "warning" | "success" | "danger"> = { PENDIENTE: "warning", AUTORIZADO: "success", RECHAZADO: "danger" };
+const FASE_AJUSTE: Record<AjusteCierre["estado"], Fase> = { PENDIENTE: "espera", AUTORIZADO: "ok", RECHAZADO: "rechazo" };
 
 function ListaAjustes({ ajustes, puedeResolver }: { ajustes: AjusteCierre[]; puedeResolver: boolean }) {
   const { cajas, motivos } = useCajaDatos();
   const [resolviendo, setResolviendo] = useState<{ ajuste: AjusteCierre; aprobar: boolean } | null>(null);
-  if (ajustes.length === 0) return <p className="mt-3 text-sm text-ink-500">Todavía no se cargaron ajustes.</p>;
+  if (ajustes.length === 0) return <p className="text-xs text-ink-500">Todavía no se cargaron ajustes.</p>;
   return (
     <>
-      <ul className="mt-3 divide-y divide-ink-100 rounded-xl border border-ink-200">
+      <ul className="divide-y divide-ink-100 rounded-lg border border-ink-300">
         {ajustes.map((a) => (
-          <li key={a.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-            <span className="font-semibold text-ink-900">{a.id}</span>
+          <li key={a.id} className="flex flex-wrap items-center gap-2.5 px-3 py-2 text-xs">
+            <span className="font-mono font-bold text-brand-700">{a.id}</span>
             <span className="text-ink-700">
               {cajas.find((c) => c.id === a.cajaId)?.nombre ?? a.cajaId} · {a.importe > 0 ? "+" : ""}
               {dinero(a.moneda, a.importe)} · {motivos.find((m) => m.id === a.motivoId)?.descripcion ?? a.motivoId}
               {a.nota && ` (${a.nota})`}
             </span>
-            <span className="text-xs text-ink-500">Cargó {quien(a.cargadoPor)}</span>
-            <StatusBadge tone={TONO_AJUSTE[a.estado]}>{a.estado === "PENDIENTE" ? "Pendiente" : a.estado === "AUTORIZADO" ? "Autorizado" : "Rechazado"}</StatusBadge>
+            <span className="text-ink-500">Cargó {quien(a.cargadoPor)}</span>
+            <Pill fase={FASE_AJUSTE[a.estado]}>{a.estado === "PENDIENTE" ? "Pendiente" : a.estado === "AUTORIZADO" ? "Autorizado" : "Rechazado"}</Pill>
             {a.autorizacion && (
-              <span className="text-xs text-ink-500">
+              <span className="text-ink-500">
                 {quien(a.autorizacion.supervisorId)} · {a.autorizacion.fechaHora}
                 {a.libroId && ` · ${a.libroId}`}
               </span>
             )}
             {a.estado === "PENDIENTE" && puedeResolver && (
               <span className="ml-auto flex gap-2">
-                <Button size="sm" variant="success" onClick={() => setResolviendo({ ajuste: a, aprobar: true })}>
+                <Button size="xs" variant="success" onClick={() => setResolviendo({ ajuste: a, aprobar: true })}>
                   Autorizar
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setResolviendo({ ajuste: a, aprobar: false })}>
+                <Button size="xs" variant="dangerOutline" onClick={() => setResolviendo({ ajuste: a, aprobar: false })}>
                   Rechazar
                 </Button>
               </span>
@@ -198,9 +195,8 @@ function ConfirmarCierre({ cierre, justificables }: { cierre: CierreSucursal; ju
   };
 
   return (
-    <div className="mt-4 rounded-xl border border-ink-200 p-4">
-      <h3 className="text-sm font-semibold text-ink-900">Acta de cierre diario</h3>
-      <p className="mt-0.5 text-xs text-ink-500">
+    <PanelVentana titulo="Acta de cierre diario" className="mt-4">
+      <p className="text-xs text-ink-500">
         Doble firma con llave: el tesorero y un supervisor de la sucursal{remota ? " (la sucursal no tiene otro usuario: la segunda firma es remota, de Casa Central)" : ""}. Con pendientes justificados la fecha queda «Cerrada con pendientes».
       </p>
       {justificables.length > 0 && (
@@ -220,6 +216,8 @@ function ConfirmarCierre({ cierre, justificables }: { cierre: CierreSucursal; ju
       )}
       <div className="mt-3">
         <Button
+          size="sm"
+          variant="success"
           onClick={() => {
             if (faltan.length > 0) return setError(`Justificá los pendientes de «${faltan[0].label}».`);
             setError(null);
@@ -259,7 +257,7 @@ function ConfirmarCierre({ cierre, justificables }: { cierre: CierreSucursal; ju
         }}
         onClose={cerrar}
       />
-    </div>
+    </PanelVentana>
   );
 }
 
@@ -298,7 +296,9 @@ export function PantallaCierreSucursal() {
       descripcion="Cierre integral y obligatorio del local: el sistema revisa seis controles, se da una ventana para registrar faltantes o ajustes, el tesorero y un supervisor firman el acta y la fecha queda bloqueada. Casa Central ve el estado y el responsable en el Tablero de tesoros."
     >
       {visibles.length === 0 ? (
-        <Card className="px-5 py-8 text-center text-sm text-ink-400">Tu usuario no tiene sucursales a cargo para el cierre diario.</Card>
+        <PanelVentana titulo="Cierre diario">
+          <p className="py-4 text-center text-xs text-ink-400">Tu usuario no tiene sucursales a cargo para el cierre diario.</p>
+        </PanelVentana>
       ) : (
         <>
           <div className="max-w-xs">
@@ -314,10 +314,10 @@ export function PantallaCierreSucursal() {
             />
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="text-sm text-ink-600">Estado de la fecha {fecha}:</span>
-            <StatusBadge tone={TONO[estado]}>{ESTADO_CIERRE_DIARIO_LABEL[estado]}</StatusBadge>
-            {cierre && <span className="text-sm text-ink-500">Responsable del cierre: {quien(cierre.usuarioId)}</span>}
+          <div className="mt-3 flex flex-wrap items-center gap-2.5">
+            <span className="text-xs text-ink-600">Estado de la fecha {fecha}:</span>
+            <Pill fase={FASE[estado]}>{ESTADO_CIERRE_DIARIO_LABEL[estado]}</Pill>
+            {cierre && <span className="text-xs text-ink-500">Responsable del cierre: {quien(cierre.usuarioId)}</span>}
           </div>
 
           {estado === "NO_CERRADA" && (
@@ -338,54 +338,52 @@ export function PantallaCierreSucursal() {
             </Banner>
           )}
 
-          <h2 className="mt-6 text-xs font-bold uppercase tracking-widest text-ink-700">Controles automáticos</h2>
-          <Card className="mt-2 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[44rem] text-left text-sm">
-                <thead>
-                  <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                    <th className="px-3 py-2.5">Control</th>
-                    <th className="px-3 py-2.5">Qué verifica el sistema</th>
-                    <th className="px-3 py-2.5">Resultado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-100">
-                  {controles.map((c) => (
-                    <tr key={c.id}>
-                      <td className="px-3 py-3 font-semibold text-ink-900">{c.label}</td>
-                      <td className="px-3 py-3 text-ink-600">{c.verifica}</td>
-                      <td className="px-3 py-3">
-                        {c.informativo ? (
-                          <StatusBadge tone="neutral">No aplica en la demo (1.7 pendiente)</StatusBadge>
-                        ) : c.ok ? (
-                          <StatusBadge tone="success">✔ Cumple</StatusBadge>
-                        ) : (
-                          <div className="space-y-1">
-                            {c.bloqueantes.map((p) => (
-                              <p key={p} className="flex gap-1.5 text-xs text-danger-700">
-                                <span aria-hidden>✘</span>
-                                {p}
-                              </p>
-                            ))}
-                            {c.justificables.map((p) => (
-                              <p key={p} className="flex gap-1.5 text-xs text-warning-700">
-                                <span aria-hidden>!</span>
-                                {p} <span className="text-ink-400">(se puede justificar)</span>
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          <h2 className="mb-1.5 mt-5 text-[11px] font-bold uppercase tracking-wide text-ink-700">Controles automáticos</h2>
+          <TablaCompacta etiqueta="Controles automáticos" minWidth="min-w-[44rem]">
+            <thead>
+              <tr>
+                <Th>Control</Th>
+                <Th>Qué verifica el sistema</Th>
+                <Th>Resultado</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {controles.map((c) => (
+                <tr key={c.id}>
+                  <Td className="font-bold text-ink-900">{c.label}</Td>
+                  <Td className="text-ink-600">{c.verifica}</Td>
+                  <Td>
+                    {c.informativo ? (
+                      <Pill fase="inicial">No aplica en la demo (1.7 pendiente)</Pill>
+                    ) : c.ok ? (
+                      <Pill fase="ok">✔ Cumple</Pill>
+                    ) : (
+                      <div className="space-y-1">
+                        {c.bloqueantes.map((p) => (
+                          <p key={p} className="flex gap-1.5 text-[11px] text-danger-700">
+                            <span aria-hidden>✘</span>
+                            {p}
+                          </p>
+                        ))}
+                        {c.justificables.map((p) => (
+                          <p key={p} className="flex gap-1.5 text-[11px] text-warning-700">
+                            <span aria-hidden>!</span>
+                            {p} <span className="text-ink-400">(se puede justificar)</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </TablaCompacta>
 
           {!enCurso && !(cierre && estaCerrado(cierre)) && (
-            <div className="mt-4">
+            <div className="mt-3">
               <Button
+                size="sm"
+                variant="success"
                 onClick={() => setError(aError(iniciarCierreDiario(sucursalId)))}
                 disabled={!esTesoreroDeLaSucursal}
                 title={esTesoreroDeLaSucursal ? undefined : "Sólo el tesorero de la sucursal inicia el cierre diario."}
@@ -397,8 +395,10 @@ export function PantallaCierreSucursal() {
           )}
 
           {enCurso?.estado === "EN_CONTROLES" && (
-            <div className="mt-4">
+            <div className="mt-3">
               <Button
+                size="sm"
+                variant="success"
                 onClick={() => setError(aError(abrirVentanaDeAjuste(enCurso.id)))}
                 disabled={bloqueantes.length > 0 || enCurso.usuarioId !== usuario.id}
                 title={bloqueantes.length > 0 ? "Resolvé los controles marcados con ✘." : enCurso.usuarioId !== usuario.id ? "Sigue el tesorero que inició el cierre." : undefined}
@@ -411,104 +411,104 @@ export function PantallaCierreSucursal() {
           )}
 
           {enCurso?.estado === "EN_VENTANA" && (
-            <Card className="mt-6">
-              <CardHeader title="Ventana de ajuste" description="El tesorero registra faltantes o ajustes y el supervisor los autoriza con su llave; las correcciones nunca editan un movimiento confirmado (R7)." />
-              <div className="p-5">
+            <PanelVentana titulo="Ventana de ajuste" className="mt-4">
+              <p className="mb-3 text-xs text-ink-500">
+                El tesorero registra faltantes o ajustes y el supervisor los autoriza con su llave; las correcciones nunca editan un movimiento confirmado (R7).
+              </p>
+              <div>
                 <ListaAjustes ajustes={ajustesDe(enCurso.id)} puedeResolver={supervisaLaSucursal} />
                 {esTesoreroDeLaSucursal && enCurso.usuarioId === usuario.id && (ventanaAbierta(enCurso, minutos)) && <AjusteForm cierre={enCurso} onError={setError} />}
                 {enCurso.usuarioId === usuario.id && <ConfirmarCierre cierre={enCurso} justificables={justificables} />}
                 <ErrorBanner error={error} />
               </div>
-            </Card>
+            </PanelVentana>
           )}
 
-          <h2 className="mt-8 text-xs font-bold uppercase tracking-widest text-ink-700">Historial de cierres</h2>
-          <Card className="mt-2 overflow-hidden">
-            {historial.length === 0 ? (
-              <p className="px-5 py-6 text-center text-sm text-ink-400">Esta sucursal todavía no cerró ninguna fecha.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[52rem] text-left text-sm">
-                  <thead>
-                    <tr className="bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
-                      <th className="px-3 py-2.5">Fecha</th>
-                      <th className="px-3 py-2.5">Responsable</th>
-                      <th className="px-3 py-2.5">Estado</th>
-                      <th className="px-3 py-2.5">Acta</th>
-                      <th className="px-3 py-2.5">Reapertura</th>
-                      <th className="px-3 py-2.5 text-right">Acción</th>
+          <h2 className="mb-1.5 mt-6 text-[11px] font-bold uppercase tracking-wide text-ink-700">Historial de cierres</h2>
+          {historial.length === 0 ? (
+            <PanelVentana titulo="Historial de cierres">
+              <p className="py-3 text-center text-xs text-ink-400">Esta sucursal todavía no cerró ninguna fecha.</p>
+            </PanelVentana>
+          ) : (
+            <TablaCompacta etiqueta="Historial de cierres" minWidth="min-w-[52rem]">
+              <thead>
+                <tr>
+                  <Th>Fecha</Th>
+                  <Th>Responsable</Th>
+                  <Th>Estado</Th>
+                  <Th>Acta</Th>
+                  <Th>Reapertura</Th>
+                  <Th derecha>Acción</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {historial.map((c) => {
+                  const acta = actaDe(c);
+                  const pendiente = c.reapertura && !c.reapertura.autorizadaPor;
+                  return (
+                    <tr key={c.id}>
+                      <Td className="tabular-nums font-semibold text-ink-900">
+                        {c.fecha}
+                        <span className="block text-[11px] font-normal text-ink-400">{c.id}{c.reabreDeId && ` · reabre ${c.reabreDeId}`}</span>
+                      </Td>
+                      <Td>
+                        {quien(c.usuarioId)}
+                        <span className="block text-[11px] text-ink-400">{c.cerradaEn ?? c.fechaHora}</span>
+                      </Td>
+                      <Td>
+                        <Pill fase={FASE[c.estado]}>{ESTADO_CIERRE_DIARIO_LABEL[c.estado]}</Pill>
+                        {c.pendientes && c.pendientes.length > 0 && (
+                          <ul className="mt-1 space-y-0.5 text-[11px] text-ink-500">
+                            {c.pendientes.map((p) => (
+                              <li key={p.control}>
+                                {p.control}: {p.justificacion}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </Td>
+                      <Td className="text-ink-600">
+                        {acta ? (
+                          <>
+                            {acta.id} · {estadoActaTexto(acta)}
+                            <span className="block text-ink-400">
+                              {quien(acta.firma1?.usuarioId)} + {quien(acta.firma2?.usuarioId)}
+                              {acta.remota && " · autorización remota, sin verificación física"}
+                            </span>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                      <Td className="text-ink-600">
+                        {c.reapertura
+                          ? `${quien(c.reapertura.solicitadaPor)}: ${c.reapertura.motivo}${c.reapertura.autorizadaPor ? ` · autorizó ${nombreUsuario(c.reapertura.autorizadaPor)} (${c.reapertura.fechaHoraAutorizacion})` : " · espera la autorización de Casa Central"}`
+                          : "—"}
+                      </Td>
+                      <Td derecha>
+                        {estaCerrado(c) && !c.reapertura && (
+                          <Button
+                            size="xs"
+                            variant="navyOutline"
+                            disabled={!esTesoreroDeLaSucursal}
+                            title={esTesoreroDeLaSucursal ? undefined : "Pide la reapertura el tesorero de la sucursal."}
+                            onClick={() => setPidiendo(c)}
+                          >
+                            Pedir reapertura
+                          </Button>
+                        )}
+                        {estaCerrado(c) && pendiente && (
+                          <Button size="xs" variant="success" onClick={() => setAutorizando(c)} disabled={!veTodo(usuario)} title={veTodo(usuario) ? undefined : "Autoriza el Tesorero central o el Director."}>
+                            Autorizar reapertura
+                          </Button>
+                        )}
+                      </Td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-ink-100">
-                    {historial.map((c) => {
-                      const acta = actaDe(c);
-                      const pendiente = c.reapertura && !c.reapertura.autorizadaPor;
-                      return (
-                        <tr key={c.id}>
-                          <td className="px-3 py-3 tabular-nums text-ink-900">
-                            {c.fecha}
-                            <span className="block text-xs text-ink-400">{c.id}{c.reabreDeId && ` · reabre ${c.reabreDeId}`}</span>
-                          </td>
-                          <td className="px-3 py-3 text-ink-700">
-                            {quien(c.usuarioId)}
-                            <span className="block text-xs text-ink-400">{c.cerradaEn ?? c.fechaHora}</span>
-                          </td>
-                          <td className="px-3 py-3">
-                            <StatusBadge tone={TONO[c.estado]}>{ESTADO_CIERRE_DIARIO_LABEL[c.estado]}</StatusBadge>
-                            {c.pendientes && c.pendientes.length > 0 && (
-                              <ul className="mt-1 space-y-0.5 text-xs text-ink-500">
-                                {c.pendientes.map((p) => (
-                                  <li key={p.control}>
-                                    {p.control}: {p.justificacion}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-xs text-ink-600">
-                            {acta ? (
-                              <>
-                                {acta.id} · {estadoActaTexto(acta)}
-                                <span className="block text-ink-400">
-                                  {quien(acta.firma1?.usuarioId)} + {quien(acta.firma2?.usuarioId)}
-                                  {acta.remota && " · autorización remota, sin verificación física"}
-                                </span>
-                              </>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-xs text-ink-600">
-                            {c.reapertura
-                              ? `${quien(c.reapertura.solicitadaPor)}: ${c.reapertura.motivo}${c.reapertura.autorizadaPor ? ` · autorizó ${nombreUsuario(c.reapertura.autorizadaPor)} (${c.reapertura.fechaHoraAutorizacion})` : " · espera la autorización de Casa Central"}`
-                              : "—"}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {estaCerrado(c) && !c.reapertura && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={!esTesoreroDeLaSucursal}
-                                title={esTesoreroDeLaSucursal ? undefined : "Pide la reapertura el tesorero de la sucursal."}
-                                onClick={() => setPidiendo(c)}
-                              >
-                                Pedir reapertura
-                              </Button>
-                            )}
-                            {estaCerrado(c) && pendiente && (
-                              <Button size="sm" onClick={() => setAutorizando(c)} disabled={!veTodo(usuario)} title={veTodo(usuario) ? undefined : "Autoriza el Tesorero central o el Director."}>
-                                Autorizar reapertura
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
+                  );
+                })}
+              </tbody>
+            </TablaCompacta>
+          )}
         </>
       )}
 

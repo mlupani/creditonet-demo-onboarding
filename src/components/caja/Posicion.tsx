@@ -8,10 +8,8 @@ import { usePagosProveedor } from "@/lib/proveedores-store";
 import { MONEDAS, NOMBRE_MONEDA, TIPO_CAJA_LABEL, TIPO_CUENTA_LABEL, monedasDe, type Moneda, type Reserva } from "@/lib/caja-tipos";
 import { posicionCaja } from "@/lib/saldos-reglas";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Cifra, PanelVentana, TablaCompacta, Td, Th } from "./compacto";
 import { PaginaCaja, descargarXlsx, dinero } from "./comunes";
-
-const ENCABEZADO = "bg-ink-25 text-[11px] font-semibold uppercase tracking-wider text-ink-400";
 
 interface Fila {
   clave: string;
@@ -99,85 +97,77 @@ export function PantallaPosicion() {
     ]);
 
   const tabla = (titulo: string, filas: Fila[], extra?: React.ReactNode) => (
-    <>
-      <div className="mt-8 flex flex-wrap items-center gap-2 first:mt-6">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-ink-700">{titulo}</h2>
-        {extra}
-      </div>
-      <Card className="mt-3 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[56rem] text-left text-sm">
-            <thead>
-              <tr className={ENCABEZADO}>
-                <th className="px-3 py-2.5">{titulo === "Cuentas bancarias" ? "Cuenta" : "Caja"}</th>
-                <th className="px-3 py-2.5">Moneda</th>
-                <th className="px-3 py-2.5 text-right">Saldo real</th>
-                <th className="px-3 py-2.5 text-right">(−) Comprometido</th>
-                <th className="px-3 py-2.5 text-right">Saldo estimado</th>
-                <th className="px-3 py-2.5 text-right">A recibir (informativo)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-100">
-              {filas.map((f) => (
-                <Fragment key={f.clave}>
-                  <tr>
-                    <td className="px-3 py-3 font-semibold text-ink-900">
-                      {f.nombre}
-                      <span className="block text-xs font-normal text-ink-400">{f.detalle}</span>
-                    </td>
-                    <td className="px-3 py-3 text-ink-700">{NOMBRE_MONEDA[f.moneda]}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-ink-900">{dinero(f.moneda, f.real)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-ink-700">
-                      {f.comprometido > 0 ? (
-                        <button
-                          type="button"
-                          aria-expanded={abierta === f.clave}
-                          onClick={() => setAbierta(abierta === f.clave ? null : f.clave)}
-                          className="font-semibold text-brand-700 underline decoration-dotted underline-offset-2 hover:text-brand-800"
-                        >
-                          {dinero(f.moneda, f.comprometido)}
-                        </button>
-                      ) : (
-                        dinero(f.moneda, 0)
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{dinero(f.moneda, f.estimado)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-ink-500">{dinero(f.moneda, f.aRecibir)}</td>
-                  </tr>
-                  {abierta === f.clave && (
-                    <tr className="bg-ink-25/60">
-                      <td colSpan={6} className="px-3 py-3">
-                        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-400">Qué compone lo comprometido</p>
-                        <ul className="space-y-1 text-sm text-ink-700">
-                          {f.reservas.map((r) => (
-                            <li key={r.id}>
-                              <span className="font-mono text-xs font-bold text-brand-700">{r.id}</span> · pago o cheque {r.operacionId} · {dinero(r.moneda, r.importe)}
-                              <span className="text-xs text-ink-400"> · reservó {r.creada.usuarioId} el {r.creada.fechaHora}</span>
-                            </li>
-                          ))}
-                          {f.autorizados.map((a) => (
-                            <li key={a.id}>
-                              <span className="font-mono text-xs font-bold text-brand-700">{a.id}</span> · movimiento de tesorería autorizado a {a.destino} · {dinero(f.moneda, a.importe)}
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
-                    </tr>
+    <PanelVentana className="mt-4" titulo={titulo} accion={extra}>
+      <TablaCompacta etiqueta={titulo} minWidth="min-w-[48rem]">
+        <thead>
+          <tr>
+            <Th>{titulo === "Cuentas bancarias" ? "Cuenta" : "Caja"}</Th>
+            <Th>Moneda</Th>
+            <Th derecha>Saldo real</Th>
+            <Th derecha>(−) Comprometido</Th>
+            <Th derecha>Saldo estimado</Th>
+            <Th derecha>A recibir (informativo)</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f) => (
+            <Fragment key={f.clave}>
+              <tr>
+                <Td className="font-semibold text-ink-900">
+                  {f.nombre}
+                  <span className="block text-[11px] font-normal text-ink-500">{f.detalle}</span>
+                </Td>
+                <Td>{NOMBRE_MONEDA[f.moneda]}</Td>
+                <Td derecha className="text-ink-900">{dinero(f.moneda, f.real)}</Td>
+                <Td derecha>
+                  {f.comprometido > 0 ? (
+                    <button
+                      type="button"
+                      aria-expanded={abierta === f.clave}
+                      onClick={() => setAbierta(abierta === f.clave ? null : f.clave)}
+                      className="font-semibold text-warning-700 underline decoration-dotted underline-offset-2 hover:text-warning-600"
+                    >
+                      {dinero(f.moneda, f.comprometido)}
+                    </button>
+                  ) : (
+                    dinero(f.moneda, 0)
                   )}
-                </Fragment>
-              ))}
-              {filas.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-ink-400">
-                    No hay datos para mostrar.
-                  </td>
+                </Td>
+                <Td derecha className="font-bold text-success-700">{dinero(f.moneda, f.estimado)}</Td>
+                <Td derecha className="text-ink-500">{dinero(f.moneda, f.aRecibir)}</Td>
+              </tr>
+              {abierta === f.clave && (
+                <tr className="bg-ink-25">
+                  <Td colSpan={6}>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-ink-500">Qué compone lo comprometido</p>
+                    <ul className="space-y-0.5 text-xs text-ink-700">
+                      {f.reservas.map((r) => (
+                        <li key={r.id}>
+                          <span className="font-mono font-bold text-brand-700">{r.id}</span> · pago o cheque {r.operacionId} · {dinero(r.moneda, r.importe)}
+                          <span className="text-ink-400"> · reservó {r.creada.usuarioId} el {r.creada.fechaHora}</span>
+                        </li>
+                      ))}
+                      {f.autorizados.map((a) => (
+                        <li key={a.id}>
+                          <span className="font-mono font-bold text-brand-700">{a.id}</span> · movimiento de tesorería autorizado a {a.destino} · {dinero(f.moneda, a.importe)}
+                        </li>
+                      ))}
+                    </ul>
+                  </Td>
                 </tr>
               )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </>
+            </Fragment>
+          ))}
+          {filas.length === 0 && (
+            <tr>
+              <Td colSpan={6} className="py-4 text-center text-ink-400">
+                No hay datos para mostrar.
+              </Td>
+            </tr>
+          )}
+        </tbody>
+      </TablaCompacta>
+    </PanelVentana>
   );
 
   return (
@@ -186,36 +176,33 @@ export function PantallaPosicion() {
       titulo="Posición de saldos"
       descripcion="Saldo real y saldo estimado de todas las cajas y cuentas bancarias, por cuenta y moneda. El estimado (real − comprometido) es el que manda: ningún egreso se autoriza por encima de él."
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         {MONEDAS.map((m) => (
-          <Card key={m} className="p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Posición total en {NOMBRE_MONEDA[m].toLowerCase()}</p>
-            <p className="mt-1 text-xl font-bold tabular-nums text-ink-900">{dinero(m, total(todas, m, "estimado"))}</p>
-            <p className="mt-1 text-xs text-ink-500">
+          <Cifra key={m} label={`Posición total en ${NOMBRE_MONEDA[m].toLowerCase()}`} tono="bueno">
+            {dinero(m, total(todas, m, "estimado"))}
+            <span className="mt-0.5 block text-[11px] font-normal text-ink-500">
               Estimado · real {dinero(m, total(todas, m, "real"))} − comprometido {dinero(m, total(todas, m, "comprometido"))}
               {total(todas, m, "aRecibir") > 0 && ` · a recibir ${dinero(m, total(todas, m, "aRecibir"))} (no suma hasta que entra)`}
-            </p>
-          </Card>
+            </span>
+          </Cifra>
         ))}
       </div>
 
       {tabla(
         "Cajas y tesoros",
         filasCaja,
-        <div className="ml-auto">
-          <Button variant="outline" onClick={exportar}>
-            Exportar a Excel
-          </Button>
-        </div>
+        <Button size="xs" variant="navyOutline" onClick={exportar}>
+          Exportar a Excel
+        </Button>
       )}
       {tabla(
         "Cuentas bancarias",
         filasBanco,
-        <Link href="/caja/bancos" className="ml-auto text-sm font-semibold text-brand-700 hover:underline">
+        <Link href="/caja/bancos" className="text-[11px] font-semibold text-brand-700 hover:underline">
           Ir a Conciliaciones
         </Link>
       )}
-      <p className="mt-4 max-w-3xl text-xs text-ink-500">
+      <p className="mt-3 max-w-4xl text-[11px] leading-snug text-ink-500">
         Real: efectivo del libro en las cajas; en los bancos, saldo inicial + depósitos conciliados − transferencias ejecutadas − cheques debitados.
         Comprometido: reservas de las operaciones autorizadas (transferencias preparadas, cheques emitidos y no debitados, movimientos de tesorería
         autorizados que esperan su envío). A recibir: lo enviado que todavía no entró.
