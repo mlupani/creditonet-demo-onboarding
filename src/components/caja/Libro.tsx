@@ -18,6 +18,7 @@ import {
 } from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { IconChevronDown } from "@/components/icons";
 import { imprimirDocumento } from "./Acta";
 import { Cifra, PanelVentana, Pill, TablaCompacta, Td, Th } from "./compacto";
 import { CLASE_INPUT, Dato, NotaModal, PaginaCaja, descargarXlsx, dinero, horaActual, hoy, sinAcentos } from "./comunes";
@@ -299,7 +300,12 @@ export function PantallaLibro() {
   const sucursales = sucursalesVisibles(usuario, todasSucursales, todasCajas);
   const [f, setF] = useState<Filtros>(VACIOS);
   const [detalle, setDetalle] = useState<MovimientoCaja | null>(null);
-  const set = <K extends keyof Filtros>(k: K, v: Filtros[K]) => setF((x) => ({ ...x, [k]: v }));
+  // Los filtros menos usados van plegados; el contador y el resumen avisan si hay alguno activo.
+  const [mas, setMas] = useState(false);
+  const avanzados = { ...f, sucursalId: "", cajaId: "", moneda: "", desde: "", hasta: "", texto: "" };
+  const activosAvanzados = [f.tipoCaja, f.tipo, f.sentido, f.medio, f.estado, f.responsableId, f.turnoId, f.horaDesde, f.horaHasta, f.minimo, f.maximo].filter(Boolean).length + (f.soloDiferencia ? 1 : 0);
+  const resumenAvanzado = resumenFiltros(avanzados);
+  const set =<K extends keyof Filtros>(k: K, v: Filtros[K]) => setF((x) => ({ ...x, [k]: v }));
   const tiposMov = [...new Set(libro.map((m) => m.tipo))].sort();
   const turnos = [...new Set(libro.map((m) => m.turnoUsuarioId))].sort((a, b) => nombreUsuario(a).localeCompare(nombreUsuario(b), "es"));
   const bloques = calcularBloques(f, cajas, libro);
@@ -341,7 +347,27 @@ export function PantallaLibro() {
 
   return (
     <PaginaCaja titulo="Libro de movimientos de caja" descripcion="Consulta, sin operación, de todo lo ocurrido en una caja o en todas, en formato de mayor de caja. Los confirmados no se borran ni se modifican; los cobros con tarjeta o transferencia figuran sin modificar el saldo de efectivo.">
-      <PanelVentana titulo="Filtros" accion={<Button size="xs" variant="navyOutline" onClick={() => setF(VACIOS)}>Limpiar</Button>}>
+      <PanelVentana
+        titulo="Filtros"
+        accion={
+          <span className="flex items-center gap-1.5">
+            <Button
+              size="xs"
+              variant="navyOutline"
+              onClick={() => setMas((v) => !v)}
+              aria-expanded={mas}
+              aria-controls="libro-mas-filtros"
+            >
+              {mas ? "Menos filtros" : "Más filtros"}
+              {activosAvanzados > 0 && (
+                <span className="rounded-full bg-navy-800 px-1.5 text-[10px] font-bold leading-4 text-white">{activosAvanzados}</span>
+              )}
+              <IconChevronDown width={12} height={12} className={`transition-transform ${mas ? "rotate-180" : ""}`} />
+            </Button>
+            <Button size="xs" variant="navyOutline" onClick={() => setF(VACIOS)}>Limpiar</Button>
+          </span>
+        }
+      >
         <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <Campo label="Sucursal">
             <select value={f.sucursalId} onChange={(e) => setF((x) => ({ ...x, sucursalId: e.target.value, cajaId: "" }))} className={CLASE_INPUT} aria-label="Sucursal">
@@ -353,12 +379,6 @@ export function PantallaLibro() {
             <select value={f.cajaId} onChange={(e) => set("cajaId", e.target.value)} className={CLASE_INPUT} aria-label="Caja">
               <option value="">Todas</option>
               {cajasLista.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Tipo de caja">
-            <select value={f.tipoCaja} onChange={(e) => set("tipoCaja", e.target.value)} className={CLASE_INPUT} aria-label="Tipo de caja">
-              <option value="">Todos</option>
-              {(Object.keys(TIPO_CAJA_LABEL) as TipoCaja[]).map((t) => <option key={t} value={t}>{TIPO_CAJA_LABEL[t]}</option>)}
             </select>
           </Campo>
           <Campo label="Moneda">
@@ -374,64 +394,81 @@ export function PantallaLibro() {
           <Campo label="Hasta">
             <input type="date" value={f.hasta} onChange={(e) => set("hasta", e.target.value)} className={CLASE_INPUT} aria-label="Fecha hasta" />
           </Campo>
-          <Campo label="Tipo de movimiento">
-            <select value={f.tipo} onChange={(e) => set("tipo", e.target.value)} className={CLASE_INPUT} aria-label="Tipo de movimiento">
-              <option value="">Todos</option>
-              {tiposMov.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Sentido">
-            <select value={f.sentido} onChange={(e) => set("sentido", e.target.value)} className={CLASE_INPUT} aria-label="Sentido">
-              <option value="">Ingresos y egresos</option>
-              <option value="ingreso">Ingresos</option>
-              <option value="egreso">Egresos</option>
-            </select>
-          </Campo>
-          <Campo label="Medio">
-            <select value={f.medio} onChange={(e) => set("medio", e.target.value)} className={CLASE_INPUT} aria-label="Medio">
-              <option value="">Todos</option>
-              {(Object.keys(MEDIO_LABEL) as MedioMovimiento[]).map((m) => <option key={m} value={m}>{MEDIO_LABEL[m]}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Estado">
-            <select value={f.estado} onChange={(e) => set("estado", e.target.value)} className={CLASE_INPUT} aria-label="Estado">
-              <option value="">Todos</option>
-              <option value="CONFIRMADO">Confirmado</option>
-              <option value="ANULADO">Anulado</option>
-            </select>
-          </Campo>
-          <Campo label="Responsable">
-            <select value={f.responsableId} onChange={(e) => set("responsableId", e.target.value)} className={CLASE_INPUT} aria-label="Responsable">
-              <option value="">Todos</option>
-              {USUARIOS_CAJA.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Turno">
-            <select value={f.turnoId} onChange={(e) => set("turnoId", e.target.value)} className={CLASE_INPUT} aria-label="Turno">
-              <option value="">Todos</option>
-              {turnos.map((id) => <option key={id} value={id}>{nombreUsuario(id)}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Hora desde">
-            <input type="time" value={f.horaDesde} onChange={(e) => set("horaDesde", e.target.value)} className={CLASE_INPUT} aria-label="Hora desde" />
-          </Campo>
-          <Campo label="Hora hasta">
-            <input type="time" value={f.horaHasta} onChange={(e) => set("horaHasta", e.target.value)} className={CLASE_INPUT} aria-label="Hora hasta" />
-          </Campo>
           <Campo label="Comprobante, crédito o cliente">
             <input value={f.texto} onChange={(e) => set("texto", e.target.value)} className={CLASE_INPUT} aria-label="Comprobante, crédito o cliente" placeholder="Ej.: MT-0001" />
           </Campo>
-          <Campo label="Importe mínimo">
-            <input type="number" min={0} value={f.minimo} onChange={(e) => set("minimo", e.target.value)} className={CLASE_INPUT} aria-label="Importe mínimo" />
-          </Campo>
-          <Campo label="Importe máximo">
-            <input type="number" min={0} value={f.maximo} onChange={(e) => set("maximo", e.target.value)} className={CLASE_INPUT} aria-label="Importe máximo" />
-          </Campo>
-          <label className="flex items-center gap-2 self-end pb-1.5 text-xs text-ink-700 sm:col-span-2">
-            <input type="checkbox" checked={f.soloDiferencia} onChange={(e) => set("soloDiferencia", e.target.checked)} className="h-3.5 w-3.5" />
-            Sólo movimientos con diferencia o incidencia
-          </label>
         </div>
+
+        {mas && (
+          <div id="libro-mas-filtros" className="mt-2.5 grid gap-2.5 border-t border-ink-200 pt-2.5 sm:grid-cols-3 lg:grid-cols-6">
+            <Campo label="Tipo de caja">
+              <select value={f.tipoCaja} onChange={(e) => set("tipoCaja", e.target.value)} className={CLASE_INPUT} aria-label="Tipo de caja">
+                <option value="">Todos</option>
+                {(Object.keys(TIPO_CAJA_LABEL) as TipoCaja[]).map((t) => <option key={t} value={t}>{TIPO_CAJA_LABEL[t]}</option>)}
+              </select>
+            </Campo>
+            <Campo label="Tipo de movimiento">
+              <select value={f.tipo} onChange={(e) => set("tipo", e.target.value)} className={CLASE_INPUT} aria-label="Tipo de movimiento">
+                <option value="">Todos</option>
+                {tiposMov.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Campo>
+            <Campo label="Sentido">
+              <select value={f.sentido} onChange={(e) => set("sentido", e.target.value)} className={CLASE_INPUT} aria-label="Sentido">
+                <option value="">Ingresos y egresos</option>
+                <option value="ingreso">Ingresos</option>
+                <option value="egreso">Egresos</option>
+              </select>
+            </Campo>
+            <Campo label="Medio">
+              <select value={f.medio} onChange={(e) => set("medio", e.target.value)} className={CLASE_INPUT} aria-label="Medio">
+                <option value="">Todos</option>
+                {(Object.keys(MEDIO_LABEL) as MedioMovimiento[]).map((m) => <option key={m} value={m}>{MEDIO_LABEL[m]}</option>)}
+              </select>
+            </Campo>
+            <Campo label="Estado">
+              <select value={f.estado} onChange={(e) => set("estado", e.target.value)} className={CLASE_INPUT} aria-label="Estado">
+                <option value="">Todos</option>
+                <option value="CONFIRMADO">Confirmado</option>
+                <option value="ANULADO">Anulado</option>
+              </select>
+            </Campo>
+            <Campo label="Responsable">
+              <select value={f.responsableId} onChange={(e) => set("responsableId", e.target.value)} className={CLASE_INPUT} aria-label="Responsable">
+                <option value="">Todos</option>
+                {USUARIOS_CAJA.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+              </select>
+            </Campo>
+            <Campo label="Turno">
+              <select value={f.turnoId} onChange={(e) => set("turnoId", e.target.value)} className={CLASE_INPUT} aria-label="Turno">
+                <option value="">Todos</option>
+                {turnos.map((id) => <option key={id} value={id}>{nombreUsuario(id)}</option>)}
+              </select>
+            </Campo>
+            <Campo label="Hora desde">
+              <input type="time" value={f.horaDesde} onChange={(e) => set("horaDesde", e.target.value)} className={CLASE_INPUT} aria-label="Hora desde" />
+            </Campo>
+            <Campo label="Hora hasta">
+              <input type="time" value={f.horaHasta} onChange={(e) => set("horaHasta", e.target.value)} className={CLASE_INPUT} aria-label="Hora hasta" />
+            </Campo>
+            <Campo label="Importe mínimo">
+              <input type="number" min={0} value={f.minimo} onChange={(e) => set("minimo", e.target.value)} className={CLASE_INPUT} aria-label="Importe mínimo" />
+            </Campo>
+            <Campo label="Importe máximo">
+              <input type="number" min={0} value={f.maximo} onChange={(e) => set("maximo", e.target.value)} className={CLASE_INPUT} aria-label="Importe máximo" />
+            </Campo>
+            <label className="flex items-center gap-2 self-end pb-1.5 text-xs text-ink-700">
+              <input type="checkbox" checked={f.soloDiferencia} onChange={(e) => set("soloDiferencia", e.target.checked)} className="h-3.5 w-3.5" />
+              Sólo con diferencia o incidencia
+            </label>
+          </div>
+        )}
+
+        {!mas && activosAvanzados > 0 && (
+          <p className="mt-2 text-[11px] text-ink-600">
+            <span className="font-semibold text-ink-700">Filtros activos:</span> {resumenAvanzado}
+          </p>
+        )}
       </PanelVentana>
 
       <div className="mt-4 flex items-center justify-between">
