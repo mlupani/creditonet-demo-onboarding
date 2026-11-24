@@ -6,7 +6,7 @@ import { hoy, siguienteId, usuarioActual } from "@/lib/caja-store";
 import { PROVINCIAS_ARGENTINA } from "@/lib/provincias-impuestos";
 import { datosArca } from "@/lib/proveedores-operaciones";
 import { formatearCuit, saldoProveedor, validarCuit } from "@/lib/proveedores-reglas";
-import { provStores, useComprobantes, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
+import { provStores, useComprobantes, useOrdenesPago, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
 import { CONDICION_IVA_LABEL, type CondicionIva, type Proveedor } from "@/lib/proveedores-tipos";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
@@ -174,8 +174,9 @@ export function Proveedores() {
   const lista = useProveedores();
   const comprobantes = useComprobantes();
   const pagos = usePagosProveedor();
+  const ordenes = useOrdenesPago();
   const tipos = useTiposComprobante();
-  const saldo = (p: Proveedor) => saldoProveedor(p.id, comprobantes, pagos, tipos);
+  const saldo = (p: Proveedor) => saldoProveedor(p.id, comprobantes, pagos, tipos, ordenes);
 
   const COLUMNAS: Columna<Proveedor>[] = [
     { clave: "cuit", label: "CUIT", valor: (p) => formatearCuit(p.cuit) },

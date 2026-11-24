@@ -7,14 +7,18 @@ import { recuentoSugerido, saldoCaja } from "./caja-reglas";
 import { cajaStores as S, fijarFechaDemo, fijarUsuarioActual, reiniciarCaja } from "./caja-store";
 import {
   anularChequePropio,
+  debitarChequePropio,
   depositarCheque,
   emitirChequePropio,
   entregarCheque,
-  marcarChequeCobrado,
+  entregarChequePropio,
+  presentarChequePropio,
   rechazarCheque,
+  rechazarChequePropio,
   recibirChequeTercero,
   registrarConteoValores,
 } from "./cheques-operaciones";
+import { saldosBancarios } from "./caja-operaciones";
 import { enCustodia, numeracionDe, proximoNumero, puedeTransicionar, vencePronto } from "./cheques-reglas";
 
 const como = fijarUsuarioActual;
@@ -34,6 +38,18 @@ test("la emisión toma el próximo número libre del rango de la chequera", () =
   assert.equal(r.cheque.estado, "EMITIDO");
   assert.equal(r.cheque.moneda, "ARS");
   assert.equal(r.cheque.forma, "FISICO");
+  // Emitir crea la reserva (baja el estimado) pero no mueve el saldo real del banco.
+  assert.equal(r.reserva.estado, "ACTIVA");
+  assert.equal(r.reserva.importe, 100000);
+  const antes = saldosBancarios().find((s) => s.cuentaId === "CB-001")!;
+  assert.equal(antes.real, 7850000);
+  assert.equal(antes.estimado, 7850000 - 310000 - 100000 - 100000, "CHE-0005 (310.000), PAG-0003 (100.000) y el cheque nuevo");
+});
+
+test("no se emite un cheque por encima del saldo estimado de la cuenta", () => {
+  const r = emitirChequePropio({ ...emision, importe: 7600000, cuentaId: "CB-001", chequeraId: "CHQ-001" });
+  assert.equal(r.ok, false);
+  assert.match(r.ok ? "" : r.error, /saldo estimado/);
 });
 
 test("sin chequera elegida usa la primera activa de la cuenta", () => {
@@ -79,9 +95,47 @@ test("transiciones de estado válidas por origen", () => {
   assert.ok(puedeTransicionar({ origen: "TERCERO", estado: "DEPOSITADO" }, "RECHAZADO"));
   assert.equal(puedeTransicionar({ origen: "TERCERO", estado: "DEPOSITADO" }, "ENTREGADO"), false);
   assert.equal(puedeTransicionar({ origen: "TERCERO", estado: "ENTREGADO" }, "EN_CUSTODIA"), false);
-  assert.ok(puedeTransicionar({ origen: "PROPIO", estado: "EMITIDO" }, "COBRADO"));
-  assert.equal(puedeTransicionar({ origen: "PROPIO", estado: "COBRADO" }, "ANULADO"), false);
+  assert.ok(puedeTransicionar({ origen: "PROPIO", estado: "EMITIDO" }, "ENTREGADO"));
+  assert.ok(puedeTransicionar({ origen: "PROPIO", estado: "EMITIDO" }, "ANULADO"));
+  assert.ok(puedeTransicionar({ origen: "PROPIO", estado: "ENTREGADO" }, "PRESENTADO"));
+  assert.ok(puedeTransicionar({ origen: "PROPIO", estado: "PRESENTADO" }, "DEBITADO"));
+  assert.ok(puedeTransicionar({ origen: "PROPIO", estado: "PRESENTADO" }, "RECHAZADO"));
+  assert.equal(puedeTransicionar({ origen: "PROPIO", estado: "ENTREGADO" }, "ANULADO"), false); // se anula antes de entregar
+  assert.equal(puedeTransicionar({ origen: "PROPIO", estado: "EMITIDO" }, "DEBITADO"), false); // no se saltea la entrega
+  assert.equal(puedeTransicionar({ origen: "PROPIO", estado: "DEBITADO" }, "RECHAZADO"), false);
   assert.equal(puedeTransicionar({ origen: "PROPIO", estado: "EMITIDO" }, "DEPOSITADO"), false);
+});
+
+test("el ciclo del cheque propio: el débito baja el real y consume la reserva; anular o rechazar la liberan", () => {
+  const banco = () => saldosBancarios().find((s) => s.cuentaId === "CB-001")!;
+  assert.equal(banco().comprometido, 410000);
+  como("marta-diaz");
+  // CHE-0005 ya está Entregado en los datos de ejemplo (reserva de 310.000).
+  assert.equal(debitarChequePropio("CHE-0005").ok, false); // falta presentarlo
+  assert.ok(presentarChequePropio("CHE-0005").ok);
+  assert.ok(debitarChequePropio("CHE-0005").ok);
+  assert.equal(banco().real, 7850000 - 310000);
+  assert.equal(banco().comprometido, 100000, "la reserva se consumió");
+  assert.equal(banco().estimado, 7850000 - 310000 - 100000, "el estimado no cambia con el débito");
+  assert.equal(S.reservas.get().find((r) => r.id === "RSV-0001")?.estado, "CONSUMIDA");
+
+  // Un emitido se anula; un presentado, rechazado por el banco, también libera su reserva.
+  const nuevo = emitirChequePropio({ ...emision, cuentaId: "CB-001", chequeraId: "CHQ-001" });
+  assert.ok(nuevo.ok);
+  if (!nuevo.ok) return;
+  assert.equal(banco().comprometido, 200000);
+  assert.ok(anularChequePropio(nuevo.cheque.id, "Error de carga").ok);
+  assert.equal(banco().comprometido, 100000);
+  assert.equal(S.reservas.get().find((r) => r.id === nuevo.reserva.id)?.estado, "LIBERADA");
+  const otro = emitirChequePropio({ ...emision, cuentaId: "CB-001", chequeraId: "CHQ-001" });
+  assert.ok(otro.ok);
+  if (!otro.ok) return;
+  assert.ok(entregarChequePropio(otro.cheque.id, "Proveedor").ok);
+  assert.ok(presentarChequePropio(otro.cheque.id).ok);
+  assert.equal(rechazarChequePropio(otro.cheque.id, " ").ok, false);
+  assert.ok(rechazarChequePropio(otro.cheque.id, "Sin fondos del librador").ok);
+  assert.equal(banco().comprometido, 100000);
+  assert.equal(banco().real, 7850000 - 310000, "rechazado nunca bajó el real");
 });
 
 test("sólo un responsable de la caja opera el cheque en custodia", () => {
@@ -109,14 +163,14 @@ test("rechazar y anular exigen motivo; propios sólo los cambia Tesorero o Super
   assert.ok(rechazarCheque("CHE-0001", "Sin fondos").ok);
   assert.equal(entregarCheque("CHE-0001", "X").ok, false);
   como("ana-gomez");
-  assert.equal(marcarChequeCobrado("CHE-0005").ok, false);
+  assert.equal(entregarChequePropio("CHE-0006", "Proveedor").ok, false);
   como("marta-diaz");
-  assert.equal(anularChequePropio("CHE-0005", "").ok, false);
-  assert.ok(anularChequePropio("CHE-0005", "Error de carga").ok);
-  assert.equal(marcarChequeCobrado("CHE-0005").ok, false); // ya anulado
+  assert.equal(anularChequePropio("CHE-0006", "").ok, false);
+  assert.ok(anularChequePropio("CHE-0006", "Error de carga").ok);
+  assert.equal(entregarChequePropio("CHE-0006", "Proveedor").ok, false); // ya anulado
   // El número anulado sigue consumido: el próximo no lo reutiliza.
-  const r = emitirChequePropio({ ...emision, cuentaId: "CB-001", chequeraId: "CHQ-001" });
-  assert.ok(r.ok && r.cheque.numero === "10002");
+  const r = emitirChequePropio({ ...emision, cuentaId: "CB-002", chequeraId: "CHQ-002" });
+  assert.ok(r.ok && r.cheque.numero === "E-0002");
 });
 
 test("recibir un cheque exige ser responsable de la caja y no repetir banco y número", () => {

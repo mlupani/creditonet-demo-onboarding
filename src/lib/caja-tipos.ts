@@ -25,16 +25,20 @@ export const esTesoro = (t: TipoCaja) => t === "TESORO_CENTRAL" || t === "TESORO
 
 // Usuarios y roles (sección Usuarios). Un usuario puede tener más de un rol; el Tesorero incluye las
 // facultades del Cajero.
-export type RolCaja = "CAJERO" | "TESORERO" | "SUPERVISOR";
+export type RolCaja = "CAJERO" | "TESORERO" | "SUPERVISOR" | "DIRECTOR" | "TESORERO_CENTRAL";
 export const ROL_CAJA_LABEL: Record<RolCaja, string> = {
   CAJERO: "Cajero",
   TESORERO: "Tesorero",
-  SUPERVISOR: "Supervisor",
+  SUPERVISOR: "Supervisor de caja",
+  DIRECTOR: "Director",
+  TESORERO_CENTRAL: "Tesorero central",
 };
 export interface UsuarioCaja {
   id: string;
   nombre: string;
   roles: RolCaja[];
+  // Sucursal donde trabaja. Sin sucursal (Director y Tesorero central) ve todas las cajas.
+  sucursalId?: string;
 }
 
 export interface Sucursal {
@@ -142,6 +146,8 @@ export interface TipoMovimientoTesoreria {
   destinos: PuntaMovimiento[];
   requiereAutorizacion: boolean;
   cuentaTransito: string;
+  // El dinero sale de una cuenta bancaria (pedido de refuerzo a banco, v4): el origen no es una caja.
+  origenBanco?: boolean;
   estado: EstadoAbm;
 }
 
@@ -152,14 +158,20 @@ export type EstadoMovimiento =
   | "RECHAZADO"
   | "EN_TRANSITO"
   | "CON_INCIDENCIA"
-  | "ACEPTADO";
+  | "ACEPTADO"
+  | "FINALIZADO";
 export const ESTADOS_MOVIMIENTO: { id: EstadoMovimiento; label: string; significado: string }[] = [
   { id: "SOLICITADO", label: "Solicitado", significado: "Cargado, espera autorización" },
   { id: "AUTORIZADO", label: "Autorizado", significado: "Aprobado, todavía no salió" },
   { id: "RECHAZADO", label: "Rechazado", significado: "No aprobado. No mueve dinero." },
   { id: "EN_TRANSITO", label: "En tránsito", significado: "Salió del origen y el destino todavía no lo aceptó" },
   { id: "CON_INCIDENCIA", label: "Con incidencia", significado: "El destino contó un importe distinto. Espera al supervisor." },
-  { id: "ACEPTADO", label: "Aceptado", significado: "Estado final: el dinero forma parte de la caja de destino" },
+  { id: "ACEPTADO", label: "Aceptado", significado: "El destino aceptó: el dinero forma parte de la caja de destino. Falta documentarlo." },
+  {
+    id: "FINALIZADO",
+    label: "Finalizado",
+    significado: "Estado final: movimiento cerrado y documentado (acta o boleta de depósito o de extracción). Pasa al histórico.",
+  },
 ];
 
 export interface CuentaContable {
@@ -244,6 +256,8 @@ export interface Aprobacion {
   fechaHora: string;
   resultado: "APROBADA" | "RECHAZADA";
   nota: string;
+  // Firma con llave de autorización (R6) que respalda la aprobación.
+  firmaId?: string;
 }
 
 export interface Recuento {
@@ -293,16 +307,45 @@ export interface ConteoValores {
 // Cheques y valores (v2: 1.1/1.2 "se cuentan por separado del efectivo", 2.2 chequeras).
 export type OrigenCheque = "TERCERO" | "PROPIO";
 export type FormaCheque = "FISICO" | "ECHEQ";
-export type EstadoCheque = "EN_CUSTODIA" | "DEPOSITADO" | "RECHAZADO" | "ENTREGADO" | "EMITIDO" | "COBRADO" | "ANULADO";
+// Terceros: EN_CUSTODIA → DEPOSITADO | RECHAZADO | ENTREGADO. Propios (v4, 2.5): EMITIDO → ENTREGADO →
+// PRESENTADO → DEBITADO, con ANULADO (antes de entregar) y RECHAZADO (por el banco, ya presentado).
+export type EstadoCheque =
+  | "EN_CUSTODIA"
+  | "DEPOSITADO"
+  | "RECHAZADO"
+  | "ENTREGADO"
+  | "EMITIDO"
+  | "PRESENTADO"
+  | "DEBITADO"
+  | "ANULADO";
 export const ESTADO_CHEQUE_LABEL: Record<EstadoCheque, string> = {
   EN_CUSTODIA: "En custodia",
   DEPOSITADO: "Depositado",
   RECHAZADO: "Rechazado",
   ENTREGADO: "Entregado",
   EMITIDO: "Emitido",
-  COBRADO: "Cobrado",
+  PRESENTADO: "Presentado",
+  DEBITADO: "Debitado",
   ANULADO: "Anulado",
 };
+
+// Reserva de saldo (v4, R3 y 4.1): una sola por operación autorizada. El comprometido de una caja o de
+// una cuenta es la suma de sus reservas activas; el estimado es el real menos el comprometido. Los
+// movimientos de tesorería autorizados ya reservan por derivación (`reservado` en caja-reglas) y no
+// crean filas acá: `MOVIMIENTO` queda previsto para cuando se unifiquen.
+export type EstadoReserva = "ACTIVA" | "CONSUMIDA" | "LIBERADA";
+export interface Reserva {
+  id: string; // RSV-0001
+  origenTipo: "CAJA" | "BANCO";
+  origenId: string; // id de caja o de cuenta bancaria
+  moneda: Moneda;
+  importe: number;
+  operacionTipo: "PAGO" | "MOVIMIENTO";
+  operacionId: string; // id del pago (PAG-0001) o del movimiento
+  estado: EstadoReserva;
+  creada: { usuarioId: string; fechaHora: string };
+  cierre?: { usuarioId: string; fechaHora: string; motivo: string };
+}
 export const FORMA_CHEQUE_LABEL: Record<FormaCheque, string> = { FISICO: "Físico", ECHEQ: "E-cheq" };
 
 export interface TrazaCheque {
@@ -427,10 +470,19 @@ export interface MovimientoTesoreria {
   solicitanteId: string;
   fechaSolicitud: string;
   autorizacion?: Aprobacion;
-  envio?: { usuarioId: string; fechaHora: string; detalle: DetalleRecuento; importe: number; conformidad: boolean };
-  recepcion?: { usuarioId: string; fechaHora: string; detalle: DetalleRecuento; importe: number };
+  // Entrega de la remesa al portador: acta firmada por quien entrega (llave) y conformidad del portador.
+  envio?: { usuarioId: string; fechaHora: string; detalle: DetalleRecuento; importe: number; conformidad: boolean; firmaId?: string; portadorConforme?: boolean };
+  // Recepción: el destino cuenta y firma el acta con su llave.
+  recepcion?: { usuarioId: string; fechaHora: string; detalle: DetalleRecuento; importe: number; firmaId?: string };
   resolucion?: Aprobacion & { importeAceptado: number };
   boletaDeposito?: string;
+  // Pedido de refuerzo a banco: cuenta de la que se extraen los fondos. `origenId` es el tesoro que los recibe.
+  origenBancoId?: string;
+  extraccion?: { usuarioId: string; fechaHora: string; importe: number; boleta: string };
+  // Restitución de fondo fijo: rendición de gastos (simplificada) contra la que se repone.
+  rendicion?: { detalle: string; comprobantes: number; importe: number };
+  // Cierre documentado del movimiento: número de acta o boleta de depósito o de extracción.
+  finalizacion?: { usuarioId: string; fechaHora: string; documento: string; firmaId?: string };
   // Conciliación de un depósito: la acreditación se confirma contra el extracto del banco.
   conciliacion?: { usuarioId: string; fechaHora: string; fechaAcreditacion: string; importe: number; referencia: string };
   pedidoId?: string;
@@ -447,7 +499,7 @@ export interface PedidoRefuerzo {
   usuarioId: string;
   estado: "PENDIENTE" | "APROBADO" | "RECHAZADO";
   importeAprobado?: number;
-  resolucion?: { usuarioId: string; fechaHora: string; nota: string };
+  resolucion?: { usuarioId: string; fechaHora: string; nota: string; firmaId?: string };
   movimientoId?: string;
 }
 

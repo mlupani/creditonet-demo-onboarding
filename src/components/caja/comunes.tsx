@@ -18,6 +18,9 @@ import {
   useUsuarioActual,
 } from "@/lib/caja-store";
 import { ROL_CAJA_LABEL, SIMBOLO, type Caja, type Moneda, type UsuarioCaja } from "@/lib/caja-tipos";
+import { firmar } from "@/lib/llave";
+import { LlaveCampos } from "./LlaveCampos";
+import type { DatosFirma } from "./LlaveModal";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -29,6 +32,12 @@ export const dinero = (moneda: Moneda, valor: number) =>
 
 export const dineroConSigno = (moneda: Moneda, valor: number) =>
   valor === 0 ? dinero(moneda, 0) : `${valor > 0 ? "+" : ""}${dinero(moneda, valor)}`;
+
+// Importe y moneda de la primera diferencia distinta de cero, para registrarlos en la firma.
+export function datosDiferencia(d: Record<Moneda, number>): { importe?: number; moneda?: Moneda } {
+  const m = (["ARS", "USD"] as Moneda[]).find((x) => d[x] !== 0);
+  return m ? { importe: Math.abs(d[m]), moneda: m } : {};
+}
 
 export const nombreRoles = (u: UsuarioCaja) => u.roles.map((r) => ROL_CAJA_LABEL[r]).join(" y ");
 
@@ -198,7 +207,8 @@ export function SelectorCaja({
 }
 
 // Modal con una nota (obligatoria o no) para aprobar, rechazar o resolver. `onConfirmar` devuelve un
-// error para mostrar o null si salió bien.
+// error para mostrar o null si salió bien. Con `llave` pide además la llave de autorización (R6) del
+// usuario que está actuando y entrega el id de la firma registrada como segundo argumento.
 export function NotaModal({
   open,
   titulo,
@@ -207,6 +217,7 @@ export function NotaModal({
   requerida,
   confirmar,
   tono = "primary",
+  llave,
   onClose,
   onConfirmar,
   children,
@@ -218,14 +229,20 @@ export function NotaModal({
   requerida?: boolean;
   confirmar: string;
   tono?: "primary" | "danger" | "success";
+  llave?: DatosFirma;
   onClose: () => void;
-  onConfirmar: (nota: string) => string | null;
+  onConfirmar: (nota: string, firmaId?: string) => string | null;
   children?: ReactNode;
 }) {
   const [nota, setNota] = useState("");
+  const [clave, setClave] = useState("");
+  const [codigo, setCodigo] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const usuario = useUsuarioActual();
   const cerrar = () => {
     setNota("");
+    setClave("");
+    setCodigo("");
     setError(null);
     onClose();
   };
@@ -243,7 +260,13 @@ export function NotaModal({
           <Button
             variant={tono}
             onClick={() => {
-              const e = onConfirmar(nota);
+              let firmaId: string | undefined;
+              if (llave) {
+                const f = firmar({ usuarioId: usuario.id, clave, codigo, ...llave });
+                if (!f.ok) return setError(f.error);
+                firmaId = f.firma.id;
+              }
+              const e = onConfirmar(nota, firmaId);
               if (e) setError(e);
               else cerrar();
             }}
@@ -263,6 +286,7 @@ export function NotaModal({
         onChange={setNota}
         className="mt-3"
       />
+      {llave && <LlaveCampos usuarioId={usuario.id} clave={clave} codigo={codigo} onClave={setClave} onCodigo={setCodigo} />}
       <ErrorBanner error={error} />
     </Modal>
   );

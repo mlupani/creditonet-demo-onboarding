@@ -221,7 +221,10 @@ test("depósito en banco: queda en tránsito hasta cargar la boleta", () => {
   assert.ok(enviarMovimiento(id, contar("ARS", 1000000), true).ok);
   assert.ok(!cargarBoletaDeposito(id, " ").ok);
   assert.ok(cargarBoletaDeposito(id, "BOL-123").ok);
-  assert.equal(S.movimientos.get().find((m) => m.id === id)?.estado, "ACEPTADO");
+  // La boleta de depósito documenta el movimiento: queda Finalizado.
+  const dep = S.movimientos.get().find((m) => m.id === id);
+  assert.equal(dep?.estado, "FINALIZADO");
+  assert.match(dep?.finalizacion?.documento ?? "", /BOL-123/);
 });
 
 test("conciliación: sólo el tesorero, por el importe exacto, y suma al saldo de la cuenta", () => {
@@ -347,8 +350,12 @@ test("mínimo operativo y reserva: al autorizar se reserva y no se puede comprom
   const a = pedir(7000000);
   const b = pedir(1000000);
   assert.ok(a.ok && b.ok);
+  // La matriz de autorizaciones: un supervisor llega hasta $ 5.000.000; por encima autoriza el Tesorero central.
   como("marta-diaz");
+  assert.ok(!autorizarMovimiento(a.ok ? a.movimientoId : "", true, "").ok, "7.000.000 supera el tope del supervisor");
+  como("ricardo-pena");
   assert.ok(autorizarMovimiento(a.ok ? a.movimientoId : "", true, "").ok);
+  como("marta-diaz");
   const sobrepasa = autorizarMovimiento(b.ok ? b.movimientoId : "", true, "");
   assert.ok(!sobrepasa.ok && /mínimo/.test(sobrepasa.error), "reservó 7.000.000: sólo quedan 500.000 sobre el mínimo");
   como("tomas-ruiz");

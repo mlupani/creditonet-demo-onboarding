@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { disponibleParaAutorizar, esResponsable, esSupervisor, puedeAprobar, reservado, saldoCaja } from "@/lib/caja-reglas";
-import { autorizarMovimiento, nombreCaja } from "@/lib/caja-operaciones";
+import { esResponsable, esSupervisor, puedeAprobar } from "@/lib/caja-reglas";
+import { autorizarMovimiento, errorAutorizarMovimiento, nombreCaja, origenTexto, posicionDeCaja } from "@/lib/caja-operaciones";
 import { nombreUsuario, useCajaDatos } from "@/lib/caja-store";
 import { formatNumber } from "@/lib/format";
 import { monedasDe, type Caja, type MovimientoTesoreria, type PedidoRefuerzo, type UsuarioCaja } from "@/lib/caja-tipos";
@@ -14,7 +14,9 @@ import { aError } from "./Jornada";
 import {
   BoletaModal,
   DetalleMovimientoModal,
+  DocumentarModal,
   EnviarModal,
+  ExtraccionModal,
   NuevoMovimientoModal,
   PedidoModal,
   RecibirModal,
@@ -43,20 +45,23 @@ const TONO: Record<string, "success" | "warning" | "danger" | "info" | "neutral"
   RECHAZADO: "danger",
   EN_TRANSITO: "info",
   CON_INCIDENCIA: "danger",
-  ACEPTADO: "success",
+  ACEPTADO: "info",
+  FINALIZADO: "success",
 };
 
 type Modal =
   | { tipo: "nuevo" }
   | { tipo: "pedido" }
   | { tipo: "pedido-resolver"; pedido: PedidoRefuerzo }
-  | { tipo: "enviar" | "recibir" | "incidencia" | "boleta" | "detalle" | "autorizar" | "rechazar"; mov: MovimientoTesoreria };
+  | { tipo: "enviar" | "recibir" | "incidencia" | "boleta" | "detalle" | "autorizar" | "rechazar" | "extraccion" | "documentar"; mov: MovimientoTesoreria };
 
-export function PantallaTesoreria() {
-  const { cajas, movimientos, pedidos, usuario, libro } = useCajaDatos();
+// Contenido de Movimientos de tesorería (remesas, refuerzos, retiros, depósitos y pases). Lo muestra la
+// Bandeja, que ya pone la barra de usuario y el encabezado; `cajaId` preselecciona la caja.
+export function PanelRemesas({ cajaId: cajaInicial }: { cajaId?: string } = {}) {
+  const { cajas, movimientos, pedidos, usuario } = useCajaDatos();
   const supervisa = esSupervisor(usuario);
   const visibles: Caja[] = supervisa ? cajas.filter((c) => c.estado === "ACTIVO") : cajasPropias(cajas, usuario);
-  const [elegida, setElegida] = useState<string | null>(null);
+  const [elegida, setElegida] = useState<string | null>(cajaInicial ?? null);
   const cajaId = elegida !== null && (elegida === "" ? supervisa : visibles.some((c) => c.id === elegida)) ? elegida : supervisa ? "" : (visibles[0]?.id ?? "");
   const [seccion, setSeccion] = useState<Seccion>("autorizar");
   const [busqueda, setBusqueda] = useState("");
@@ -71,14 +76,15 @@ export function PantallaTesoreria() {
 
   const filtroMov: Record<Exclude<Seccion, "realizados" | "recibidos">, (m: MovimientoTesoreria) => boolean> = {
     autorizar: (m) => m.estado === "SOLICITADO" && toca(m),
-    transito: (m) => (m.estado === "EN_TRANSITO" || m.estado === "AUTORIZADO") && delOrigen(m),
+    // Un pedido a banco en tránsito ya está por recibir en el tesoro: no figura como enviado.
+    transito: (m) => ((m.estado === "EN_TRANSITO" && !m.origenBancoId) || m.estado === "AUTORIZADO") && delOrigen(m),
     recibir: (m) => m.estado === "EN_TRANSITO" && delDestino(m),
     incidencia: (m) => m.estado === "CON_INCIDENCIA" && toca(m),
-    finalizados: (m) => (m.estado === "ACEPTADO" || m.estado === "RECHAZADO") && toca(m),
+    finalizados: (m) => (m.estado === "ACEPTADO" || m.estado === "FINALIZADO" || m.estado === "RECHAZADO") && toca(m),
   };
   const q = sinAcentos(busqueda.trim());
   const coincideMov = (m: MovimientoTesoreria) =>
-    !q || sinAcentos(`${m.id} ${m.fechaSolicitud} ${nombreCaja(m.origenId)} ${destinoTexto(m)} ${m.importe} ${formatNumber(m.importe)} ${m.motivo}`).includes(q);
+    !q || sinAcentos(`${m.id} ${m.fechaSolicitud} ${origenTexto(m)} ${destinoTexto(m)} ${m.importe} ${formatNumber(m.importe)} ${m.motivo}`).includes(q);
   const coincidePedido = (p: PedidoRefuerzo) =>
     !q || sinAcentos(`${p.id} ${p.fecha} ${nombreCaja(p.solicitanteCajaId)} ${nombreCaja(p.aCajaId)} ${p.importe} ${formatNumber(p.importe)}`).includes(q);
 
@@ -101,7 +107,7 @@ export function PantallaTesoreria() {
       cab,
       ...(esPedidos
         ? filasPedido.map((p) => [p.id, p.fecha, "Pedido de refuerzo", nombreCaja(p.solicitanteCajaId), nombreCaja(p.aCajaId), p.moneda, String(p.importe), p.estado, nombreUsuario(p.usuarioId), p.motivo])
-        : filasMov.map((m) => [m.id, m.fechaSolicitud, m.tipoId, nombreCaja(m.origenId), destinoTexto(m), m.moneda, String(m.importe), estadoTexto(m), nombreUsuario(m.solicitanteId), m.motivo])),
+        : filasMov.map((m) => [m.id, m.fechaSolicitud, m.tipoId, origenTexto(m), destinoTexto(m), m.moneda, String(m.importe), estadoTexto(m), nombreUsuario(m.solicitanteId), m.motivo])),
     ]);
   };
 
@@ -110,7 +116,7 @@ export function PantallaTesoreria() {
     const destino = m.destino.tipo === "CAJA" ? cajas.find((c) => c.id === (m.destino as { cajaId: string }).cajaId) : undefined;
     return (
       <div className="flex flex-wrap justify-end gap-1.5">
-        {m.estado === "SOLICITADO" && puedeAprobar(u, m.solicitanteId) && (
+        {m.estado === "SOLICITADO" && errorAutorizarMovimiento(m, u) === null && (
           <>
             <Button size="sm" variant="success" onClick={() => setModal({ tipo: "autorizar", mov: m })}>
               Autorizar
@@ -120,9 +126,19 @@ export function PantallaTesoreria() {
             </Button>
           </>
         )}
-        {m.estado === "AUTORIZADO" && origen && esResponsable(origen, u.id) && (
+        {m.estado === "AUTORIZADO" && origen && !m.origenBancoId && esResponsable(origen, u.id) && (
           <Button size="sm" onClick={() => setModal({ tipo: "enviar", mov: m })}>
             Enviar
+          </Button>
+        )}
+        {m.estado === "AUTORIZADO" && origen && m.origenBancoId && esResponsable(origen, u.id) && (
+          <Button size="sm" onClick={() => setModal({ tipo: "extraccion", mov: m })}>
+            Registrar extracción
+          </Button>
+        )}
+        {m.estado === "ACEPTADO" && (esSupervisor(u) || (origen && esResponsable(origen, u.id)) || (destino && esResponsable(destino, u.id))) && (
+          <Button size="sm" variant="outline" onClick={() => setModal({ tipo: "documentar", mov: m })}>
+            Documentar
           </Button>
         )}
         {m.estado === "EN_TRANSITO" && destino && esResponsable(destino, u.id) && (
@@ -149,7 +165,7 @@ export function PantallaTesoreria() {
 
   const th = "px-3 py-2.5 text-left";
   return (
-    <PaginaCaja titulo="Movimientos de tesorería" seccion="Bandeja de autorizaciones" descripcion="Bandeja única para todo traslado de fondos entre tesoros, cajas y bancos: remesas, refuerzos, retiros, depósitos y pases entre cajeros.">
+    <div>
       <div className="flex flex-wrap items-end gap-3">
         <SelectorCaja cajas={visibles} valor={cajaId} onChange={setElegida} todas={supervisa ? "Todas las cajas" : undefined} />
         <Button onClick={() => setModal({ tipo: "nuevo" })}>
@@ -180,27 +196,30 @@ export function PantallaTesoreria() {
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Fondos de {cajaActual.nombre}</p>
           <div className="mt-2 grid gap-x-8 gap-y-3 sm:grid-cols-2">
             {monedasDe(cajaActual.moneda).map((m) => {
-              const saldo = saldoCaja(libro, cajaActual.id, m);
-              const reserva = reservado(movimientos, cajaActual.id, m);
+              // Real, comprometido y estimado (R3): el estimado manda, y lo que viene en camino es sólo informativo.
+              const p = posicionDeCaja(cajaActual.id, m);
               const minimo = cajaActual.minimoOperativo?.[m] ?? 0;
-              const disponible = disponibleParaAutorizar(libro, movimientos, cajaActual, m);
               return (
-                <dl key={m} className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+                <dl key={m} className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-5">
                   <div>
-                    <dt className="text-xs text-ink-500">Saldo</dt>
-                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, saldo)}</dd>
+                    <dt className="text-xs text-ink-500">Real</dt>
+                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, p.real)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-ink-500">Reservado</dt>
-                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, reserva)}</dd>
+                    <dt className="text-xs text-ink-500">Comprometido</dt>
+                    <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, p.comprometido)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-500">Estimado</dt>
+                    <dd className={`font-semibold tabular-nums ${p.estimado <= minimo ? "text-danger-700" : "text-success-700"}`}>{dinero(m, p.estimado)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-500">A recibir</dt>
+                    <dd className="font-semibold tabular-nums text-ink-500">{dinero(m, p.aRecibir)}</dd>
                   </div>
                   <div>
                     <dt className="text-xs text-ink-500">Mínimo operativo</dt>
                     <dd className="font-semibold tabular-nums text-ink-900">{dinero(m, minimo)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-ink-500">Disponible</dt>
-                    <dd className={`font-semibold tabular-nums ${disponible <= 0 ? "text-danger-700" : "text-success-700"}`}>{dinero(m, Math.max(0, disponible))}</dd>
                   </div>
                 </dl>
               );
@@ -295,7 +314,7 @@ export function PantallaTesoreria() {
                   <tr key={m.id}>
                     <td className="px-3 py-3 font-mono text-xs font-bold text-brand-700">{m.id}</td>
                     <td className="px-3 py-3 tabular-nums">{m.fechaSolicitud}</td>
-                    <td className="px-3 py-3">{nombreCaja(m.origenId)}</td>
+                    <td className="px-3 py-3">{origenTexto(m)}</td>
                     <td className="px-3 py-3">{destinoTexto(m)}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{dinero(m.moneda, m.importe)}</td>
                     <td className="px-3 py-3">
@@ -320,21 +339,50 @@ export function PantallaTesoreria() {
       {modal?.tipo === "recibir" && <RecibirModal mov={modal.mov} onClose={() => setModal(null)} />}
       {modal?.tipo === "incidencia" && <ResolverIncidenciaModal mov={modal.mov} onClose={() => setModal(null)} />}
       {modal?.tipo === "boleta" && <BoletaModal mov={modal.mov} onClose={() => setModal(null)} />}
+      {modal?.tipo === "extraccion" && <ExtraccionModal mov={modal.mov} onClose={() => setModal(null)} />}
+      {modal?.tipo === "documentar" && <DocumentarModal mov={modal.mov} onClose={() => setModal(null)} />}
       {modal?.tipo === "detalle" && <DetalleMovimientoModal mov={modal.mov} onClose={() => setModal(null)} />}
       <NotaModal
         open={modal?.tipo === "autorizar" || modal?.tipo === "rechazar"}
         titulo={modal?.tipo === "autorizar" ? "Autorizar el movimiento" : "Rechazar el movimiento"}
-        descripcion={modal?.tipo === "autorizar" ? "Sin autorización no sale el dinero." : "Un movimiento rechazado no mueve dinero."}
+        descripcion={
+          modal?.tipo === "autorizar"
+            ? "Sin autorización no sale el dinero. Al autorizar se reserva el importe en el origen y se firma con tu llave de autorización."
+            : "Un movimiento rechazado no mueve dinero."
+        }
         etiquetaNota={modal?.tipo === "rechazar" ? "Motivo del rechazo" : "Nota (opcional)"}
         requerida={modal?.tipo === "rechazar"}
         confirmar={modal?.tipo === "autorizar" ? "Autorizar" : "Rechazar"}
         tono={modal?.tipo === "autorizar" ? "success" : "danger"}
+        llave={
+          modal?.tipo === "autorizar"
+            ? {
+                operacion: "Autorización de movimiento de tesorería",
+                referencia: modal.mov.id,
+                importe: modal.mov.importe,
+                moneda: modal.mov.moneda,
+                cargadoPor: modal.mov.solicitanteId,
+              }
+            : undefined
+        }
         onClose={() => setModal(null)}
-        onConfirmar={(nota) => {
+        onConfirmar={(nota, firmaId) => {
           if (modal?.tipo !== "autorizar" && modal?.tipo !== "rechazar") return null;
-          return aError(autorizarMovimiento(modal.mov.id, modal.tipo === "autorizar", nota));
+          return aError(autorizarMovimiento(modal.mov.id, modal.tipo === "autorizar", nota, firmaId));
         }}
       />
+    </div>
+  );
+}
+
+export function PantallaTesoreria() {
+  return (
+    <PaginaCaja
+      titulo="Movimientos de tesorería"
+      seccion="Bandeja de autorizaciones"
+      descripcion="Bandeja única para todo traslado de fondos entre tesoros, cajas y bancos: remesas, refuerzos, retiros, depósitos y pases entre cajeros."
+    >
+      <PanelRemesas />
     </PaginaCaja>
   );
 }

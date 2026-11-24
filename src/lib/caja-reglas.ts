@@ -147,7 +147,8 @@ export const cierreVigente = (cierres: CierreSucursal[], sucursalId: string, fec
 // Importe aprobado que espera su envío: queda reservado y no se puede comprometer en otro movimiento.
 export function reservado(movimientos: MovimientoTesoreria[], cajaId: string, moneda: Moneda, ignorarId?: string): number {
   return movimientos
-    .filter((m) => m.origenId === cajaId && m.moneda === moneda && m.estado === "AUTORIZADO" && m.id !== ignorarId)
+    // Un pedido de refuerzo a banco no reserva en el tesoro (`origenId` es quien recibe): reserva en la cuenta.
+    .filter((m) => m.origenId === cajaId && !m.origenBancoId && m.moneda === moneda && m.estado === "AUTORIZADO" && m.id !== ignorarId)
     .reduce((s, m) => s + m.importe, 0);
 }
 
@@ -275,3 +276,23 @@ export function arqueoVencido(caja: Caja, arqueos: Arqueo[], hoy: string): boole
 
 // Importe en tránsito de un movimiento: salió del origen y todavía no figura en el destino.
 export const enTransito = (m: MovimientoTesoreria) => m.estado === "EN_TRANSITO" || m.estado === "CON_INCIDENCIA";
+
+// ---------- Visibilidad por rol (R5 y 1.5) ----------
+
+// Sólo el Director y el Tesorero central ven todas las cajas y sucursales.
+export const veTodo = (u: UsuarioCaja | undefined) => tieneRol(u, "DIRECTOR") || tieneRol(u, "TESORERO_CENTRAL");
+
+// Tesorero y Supervisor de caja ven las cajas de su sucursal; el Cajero, sólo la suya.
+export function cajasVisibles(u: UsuarioCaja | undefined, cajas: Caja[]): Caja[] {
+  if (!u) return [];
+  if (veTodo(u)) return cajas;
+  const deSucursal = tieneRol(u, "TESORERO") || tieneRol(u, "SUPERVISOR");
+  return cajas.filter((c) => (deSucursal && !!u.sucursalId && c.sucursalId === u.sucursalId) || esResponsable(c, u.id));
+}
+
+export function sucursalesVisibles(u: UsuarioCaja | undefined, sucursales: Sucursal[], cajas: Caja[]): Sucursal[] {
+  if (!u) return [];
+  if (veTodo(u)) return sucursales;
+  const ids = new Set(cajasVisibles(u, cajas).map((c) => c.sucursalId));
+  return sucursales.filter((s) => ids.has(s.id));
+}

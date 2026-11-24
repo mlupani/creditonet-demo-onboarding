@@ -8,8 +8,12 @@ export const TRANSICIONES: Record<Cheque["origen"], Partial<Record<EstadoCheque,
     EN_CUSTODIA: ["DEPOSITADO", "RECHAZADO", "ENTREGADO"],
     DEPOSITADO: ["RECHAZADO"],
   },
+  // v4, 2.5: Emitido → Entregado → Presentado → Debitado; se anula antes de entregar y el banco puede
+  // rechazar un cheque presentado.
   PROPIO: {
-    EMITIDO: ["COBRADO", "ANULADO"],
+    EMITIDO: ["ENTREGADO", "ANULADO"],
+    ENTREGADO: ["PRESENTADO"],
+    PRESENTADO: ["DEBITADO", "RECHAZADO"],
   },
 };
 

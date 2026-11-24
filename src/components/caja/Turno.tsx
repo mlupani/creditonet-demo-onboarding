@@ -19,7 +19,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { aError } from "./Jornada";
 import { FlujoRecuento, RecuentoForm } from "./RecuentoForm";
-import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, dinero, dineroConSigno } from "./comunes";
+import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, datosDiferencia, dinero, dineroConSigno } from "./comunes";
 
 const PASOS = ["Solicitud y corte", "Arqueo de relevo", "Autorización", "Recepción", "Completado"];
 
@@ -174,8 +174,13 @@ function Relevo({ cambio, caja, usuario }: { cambio: CambioTurno; caja: Caja; us
         requerida={accion === "rechazar"}
         confirmar={accion === "aprobar" ? "Aprobar" : "Rechazar"}
         tono={accion === "aprobar" ? "success" : "danger"}
+        llave={
+          accion === "aprobar"
+            ? { operacion: "Aprobación de diferencia de relevo", referencia: cambio.id, cargadoPor: cambio.salienteId, ...datosDiferencia(cambio.arqueo?.diferencia ?? { ARS: 0, USD: 0 }) }
+            : undefined
+        }
         onClose={() => setAccion(null)}
-        onConfirmar={(nota) => aError(resolverRelevo(cambio.id, accion === "aprobar", nota))}
+        onConfirmar={(nota, firmaId) => aError(resolverRelevo(cambio.id, accion === "aprobar", nota, firmaId))}
       />
       <NotaModal
         open={accion === "incidencia"}

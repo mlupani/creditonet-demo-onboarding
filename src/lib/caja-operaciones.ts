@@ -10,8 +10,8 @@ import {
   enHorario,
   enTransito,
   motivoNoOperativo,
-  reservado,
   esResponsable,
+  esSupervisor,
   excepcionVigente,
   jornadaVigente,
   monedasFueraDeTolerancia,
@@ -23,7 +23,7 @@ import {
   totalRecuento,
   turnoActivoEn,
 } from "./caja-reglas";
-import { TIPO_REFUERZO_ID } from "./caja-datos";
+import { TIPO_REFUERZO_ID, TIPO_RESTITUCION_ID } from "./caja-datos";
 import {
   ahoraTexto,
   auditar,
@@ -35,6 +35,9 @@ import {
   usuarioActual,
 } from "./caja-store";
 import { provStores } from "./proveedores-store";
+import { alcanzaElEstimado, posicionBanco, posicionCaja } from "./saldos-reglas";
+import { emitirAlerta } from "./alertas";
+import { puedeAutorizarPorMatriz } from "./matriz";
 import {
   TIPO_CUENTA_LABEL,
   esTesoro,
@@ -55,6 +58,7 @@ import {
   type Recuento,
   type TipoArqueo,
   type Transportista,
+  type UsuarioCaja,
 } from "./caja-tipos";
 
 export type Res<T extends object = object> = ({ ok: true } & T) | { ok: false; error: string };
@@ -146,7 +150,7 @@ export function pendientesDeCaja(cajaId: string): MovimientoTesoreria[] {
     .get()
     .filter(
       (m) =>
-        !["ACEPTADO", "RECHAZADO"].includes(m.estado) &&
+        !["ACEPTADO", "RECHAZADO", "FINALIZADO"].includes(m.estado) &&
         (m.origenId === cajaId || (m.destino.tipo === "CAJA" && m.destino.cajaId === cajaId))
     );
 }
@@ -190,8 +194,26 @@ function asentarDiferencias(caja: Caja, recuento: Recuento, comprobante: string)
   }
 }
 
-function aprobacion(resultado: Aprobacion["resultado"], nota: string): Aprobacion {
-  return { supervisorId: usuarioActual().id, fechaHora: ahoraTexto(), resultado, nota };
+function aprobacion(resultado: Aprobacion["resultado"], nota: string, firmaId?: string): Aprobacion {
+  return { supervisorId: usuarioActual().id, fechaHora: ahoraTexto(), resultado, nota, ...(firmaId ? { firmaId } : {}) };
+}
+
+// Mail de alerta (R4) cuando un recuento se pasa de la tolerancia de la caja.
+function alertaDiferencia(caja: Caja, momento: string, referencia: string, recuento: Recuento) {
+  const detalle = monedasFueraDeTolerancia(caja, recuento.diferencia)
+    .map((m) => `${m === "ARS" ? "pesos" : "dólares"}: ${recuento.diferencia[m] > 0 ? "sobrante" : "faltante"} de ${Math.abs(recuento.diferencia[m]).toLocaleString("es-AR")}`)
+    .join(" · ");
+  emitirAlerta(
+    "DIFERENCIA_SOBRE_TOLERANCIA",
+    `Diferencia mayor a la tolerancia en ${momento} de ${caja.nombre} (${detalle}). Responsable de los fondos: ${nombreUsuario(recuento.usuarioId)}.`,
+    referencia,
+    { sucursalId: caja.sucursalId }
+  );
+}
+
+// Un acta rechazada por el segundo firmante es un acta No conforme: dispara el mail.
+function alertaNoConforme(caja: Caja, evento: string, referencia: string, nota: string) {
+  emitirAlerta("ACTA_NO_CONFORME", `${evento} de ${caja.nombre} rechazada por ${usuarioActual().nombre}: ${nota}`, referencia, { sucursalId: caja.sucursalId });
 }
 
 // ---------- Apertura y cierre ----------
@@ -232,21 +254,24 @@ export function registrarApertura(cajaId: string, entrada: EntradaRecuento): Res
   };
   S.jornadas.commit([...jornadas, jornada]);
   if (!r.necesitaSupervisor) asentarDiferencias(caja, r.recuento, jornada.id);
+  else alertaDiferencia(caja, "la apertura", jornada.id, r.recuento);
   return { ok: true, jornadaId: jornada.id, estado: jornada.estado };
 }
 
-export function resolverApertura(jornadaId: string, aprobar: boolean, nota: string): Res {
+// `firmaId` es la firma con llave (R6) que respalda la aprobación; la pantalla la exige.
+export function resolverApertura(jornadaId: string, aprobar: boolean, nota: string, firmaId?: string): Res {
   const jornada = S.jornadas.get().find((j) => j.id === jornadaId);
   const caja = jornada && cajaPorId(jornada.cajaId);
   if (!jornada || !caja || jornada.estado !== "PEND_APERTURA") return error("La apertura ya no está pendiente.");
   if (!puedeAprobar(usuarioActual(), jornada.apertura.usuarioId))
     return error("Sólo un supervisor distinto de quien cargó el recuento puede resolverla.");
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
-  const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota);
+  const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota, firmaId);
   if (!aprobar) {
     // Se rechaza: se repite el recuento. La jornada se descarta y queda el registro del rechazo.
     S.jornadas.commit(S.jornadas.get().filter((j) => j.id !== jornada.id));
     auditar("Apertura de caja", jornada.id, "ESTADO", `Pendiente de autorización (${caja.nombre})`, `Rechazada por ${nombreUsuario(ap.supervisorId)}: ${nota}`);
+    alertaNoConforme(caja, "La apertura", jornada.id, nota);
     return { ok: true };
   }
   const apertura = { ...jornada.apertura, aprobacion: ap };
@@ -267,17 +292,18 @@ export function registrarCierre(cajaId: string, entrada: EntradaRecuento): Res<{
   const estado = r.necesitaSupervisor ? "PEND_CIERRE" : "CERRADA";
   S.jornadas.commit(S.jornadas.get().map((j) => (j.id === jornada.id ? { ...j, estado, cierre: r.recuento } : j)));
   if (!r.necesitaSupervisor) asentarDiferencias(caja, r.recuento, `${jornada.id}-C`);
+  else alertaDiferencia(caja, "el cierre", `${jornada.id}-C`, r.recuento);
   return { ok: true, estado };
 }
 
-export function resolverCierre(jornadaId: string, aprobar: boolean, nota: string): Res {
+export function resolverCierre(jornadaId: string, aprobar: boolean, nota: string, firmaId?: string): Res {
   const jornada = S.jornadas.get().find((j) => j.id === jornadaId);
   const caja = jornada && cajaPorId(jornada.cajaId);
   if (!jornada?.cierre || !caja || jornada.estado !== "PEND_CIERRE") return error("El cierre ya no está pendiente.");
   if (!puedeAprobar(usuarioActual(), jornada.cierre.usuarioId))
     return error("Sólo un supervisor distinto de quien cargó el recuento puede resolverlo.");
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
-  const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota);
+  const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota, firmaId);
   if (!aprobar) {
     // El cierre rechazado vuelve a Abierta: se repite el recuento.
     S.jornadas.commit(
@@ -285,6 +311,7 @@ export function resolverCierre(jornadaId: string, aprobar: boolean, nota: string
         j.id === jornada.id ? { ...j, estado: "ABIERTA" as const, cierre: undefined, rechazos: [...j.rechazos, { etapa: "CIERRE" as const, aprobacion: ap }] } : j
       )
     );
+    alertaNoConforme(caja, "El cierre", `${jornada.id}-C`, nota);
     return { ok: true };
   }
   const cierre = { ...jornada.cierre, aprobacion: ap };
@@ -361,11 +388,22 @@ export function finalizarArqueo(arqueoId: string): Res {
       a.id === arqueoId ? { ...a, estado: "FINALIZADO" as const, fin: ahoraTexto(), resultado: conforme ? ("CONFORME" as const) : ("CON_DIFERENCIA" as const) } : a
     )
   );
+  if (!conforme) {
+    // Un arqueo sorpresivo avisa ante cualquier diferencia; el ordinario, sólo si pasa la tolerancia.
+    if (arqueo.tipo === "SORPRESIVO")
+      emitirAlerta(
+        "ARQUEO_SORPRESIVO_DIFERENCIA",
+        `El arqueo sorpresivo de ${caja.nombre} (controlador ${nombreUsuario(arqueo.controladorId)}) terminó con diferencia.`,
+        arqueo.id,
+        { sucursalId: caja.sucursalId }
+      );
+    else if (monedasFueraDeTolerancia(caja, ultimo.diferencia).length > 0) alertaDiferencia(caja, "el arqueo", arqueo.id, ultimo);
+  }
   return { ok: true };
 }
 
 // El arqueo no corrige saldos: la diferencia se regulariza sólo con un ajuste autorizado por un supervisor.
-export function ajustarDiferenciaArqueo(arqueoId: string, motivoId: string, nota: string): Res {
+export function ajustarDiferenciaArqueo(arqueoId: string, motivoId: string, nota: string, firmaId?: string): Res {
   const arqueo = S.arqueos.get().find((a) => a.id === arqueoId);
   const caja = arqueo && cajaPorId(arqueo.cajaId);
   if (!arqueo || !caja || arqueo.estado !== "FINALIZADO" || arqueo.resultado !== "CON_DIFERENCIA" || arqueo.ajusteAprobado)
@@ -377,7 +415,7 @@ export function ajustarDiferenciaArqueo(arqueoId: string, motivoId: string, nota
   const ultimo = arqueo.conteos[arqueo.conteos.length - 1];
   for (const m of monedasDe(caja.moneda)) asentarAjuste(caja.id, m, ultimo.diferencia[m], arqueo.id, motivoId, nota);
   const movimientoId = S.libro.get()[S.libro.get().length - 1].id;
-  const ap = aprobacion("APROBADA", nota);
+  const ap = aprobacion("APROBADA", nota, firmaId);
   S.arqueos.commit(S.arqueos.get().map((a) => (a.id === arqueoId ? { ...a, ajusteAprobado: { ...ap, motivoId, movimientoId } } : a)));
   return { ok: true };
 }
@@ -426,19 +464,21 @@ export function cargarArqueoRelevo(cambioId: string, entrada: EntradaRecuento): 
     return { ok: true, estado: "PEND_RECEPCION" };
   }
   actualizarCambio(cambioId, { arqueo: r.recuento, estado: "PEND_AUTORIZACION" });
+  alertaDiferencia(caja, "el relevo", cambio.id, r.recuento);
   return { ok: true, estado: "PEND_AUTORIZACION" };
 }
 
 // La diferencia aprobada queda atribuida al cajero saliente.
-export function resolverRelevo(cambioId: string, aprobar: boolean, nota: string): Res {
+export function resolverRelevo(cambioId: string, aprobar: boolean, nota: string, firmaId?: string): Res {
   const cambio = S.cambiosTurno.get().find((c) => c.id === cambioId);
   const caja = cambio && cajaPorId(cambio.cajaId);
   if (!cambio?.arqueo || !caja || cambio.estado !== "PEND_AUTORIZACION") return error("El relevo no está pendiente de autorización.");
   if (!puedeAprobar(usuarioActual(), cambio.salienteId)) return error("Sólo un supervisor distinto del cajero saliente puede resolverlo.");
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
-  const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota);
+  const ap = aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota, firmaId);
   if (!aprobar) {
     actualizarCambio(cambioId, { estado: "SOLICITADO", arqueo: undefined, resolucion: ap });
+    alertaNoConforme(caja, "El arqueo de relevo", cambio.id, nota);
     return { ok: true };
   }
   asentarDiferencias(caja, { ...cambio.arqueo, aprobacion: ap }, cambio.id);
@@ -459,6 +499,12 @@ export function recibirTurno(cambioId: string, detalle: DetalleRecuento): Res<{ 
   const recepcion = { usuarioId: cambio.entranteId, fechaHora: ahoraTexto(), detalle, contado };
   if (!coincide) {
     actualizarCambio(cambioId, { recepcion, estado: "CON_INCIDENCIA" });
+    emitirAlerta(
+      "INCIDENCIA_RECEPCION",
+      `El recuento de ${nombreUsuario(cambio.entranteId)} no coincide con lo declarado por ${nombreUsuario(cambio.salienteId)} en el relevo de ${caja.nombre}.`,
+      cambio.id,
+      { sucursalId: caja.sucursalId }
+    );
     return { ok: true, estado: "CON_INCIDENCIA" };
   }
   S.jornadas.commit(S.jornadas.get().map((j) => (j.id === cambio.jornadaId ? { ...j, turnoUsuarioId: cambio.entranteId } : j)));
@@ -498,14 +544,40 @@ export interface NuevoMovimiento {
   transportista?: Transportista;
   precinto: string;
   observaciones: string;
+  // Pedido de refuerzo a banco: cuenta de la que se extraen los fondos. `origenId` es el tesoro que los recibe.
+  origenBancoId?: string;
+  // Restitución de fondo fijo: rendición de gastos contra la que se repone.
+  rendicion?: { detalle: string; comprobantes: number; importe: number };
 }
 
 const destinoCajaId = (m: MovimientoTesoreria) => (m.destino.tipo === "CAJA" ? m.destino.cajaId : undefined);
+const origenTexto = (m: MovimientoTesoreria) => (m.origenBancoId ? bancoTexto(m.origenBancoId) : nombreCaja(m.origenId));
+export { origenTexto };
+
+// Pedido de refuerzo a banco: el tesoro (`origenId`) pide fondos de una cuenta. Valida la cuenta contra su
+// saldo estimado; el tesoro es también el destino.
+function errorPedidoABanco(n: NuevoMovimiento, tipo: { descripcion: string; destinos: string[] }): string | undefined {
+  const tesoro = cajaPorId(n.origenId);
+  const cuenta = S.cuentasBancarias.get().find((c) => c.id === n.origenBancoId);
+  if (!tesoro) return "Elegí el tesoro que recibe los fondos.";
+  if (tesoro.estado !== "ACTIVO") return "El tesoro no está activo.";
+  if (!tipo.destinos.includes(tesoro.tipo)) return `El tipo "${tipo.descripcion}" no admite como destino a ${tesoro.nombre}.`;
+  if (!monedasDe(tesoro.moneda).includes(n.moneda)) return "El tesoro no opera en esa moneda.";
+  if (!cuenta) return "Elegí la cuenta bancaria de la que se extraen los fondos.";
+  if (cuenta.estado !== "ACTIVO") return "La cuenta bancaria no está activa.";
+  if (cuenta.moneda !== n.moneda) return "La cuenta bancaria es de otra moneda.";
+  if (!(n.importe > 0)) return "Ingresá un importe mayor a cero.";
+  if (!alcanzaElEstimado(posicionDeCuenta(cuenta.id), n.importe)) return "La cuenta no tiene saldo estimado suficiente (descontado lo ya reservado).";
+  if (!n.motivo.trim()) return "Ingresá el motivo del pedido.";
+  if (!n.transportista?.nombre.trim() || !n.transportista.documento.trim()) return "Cargá el nombre y el documento de quien va a extraer los fondos.";
+  return undefined;
+}
 
 export function errorNuevoMovimiento(n: NuevoMovimiento): string | undefined {
   const tipo = S.tipos.get().find((t) => t.id === n.tipoId);
-  const origen = cajaPorId(n.origenId);
   if (!tipo || tipo.estado !== "ACTIVO") return "Elegí un tipo de movimiento activo.";
+  if (tipo.origenBanco) return errorPedidoABanco(n, tipo);
+  const origen = cajaPorId(n.origenId);
   if (!origen) return "Elegí el origen.";
   if (!tipo.origenes.includes(origen.tipo)) return `El tipo "${tipo.descripcion}" no admite como origen a un ${origen.nombre}.`;
   if (origen.estado !== "ACTIVO") return "La caja de origen no está activa.";
@@ -526,9 +598,14 @@ export function errorNuevoMovimiento(n: NuevoMovimiento): string | undefined {
     if (!monedasDe(destino.moneda).includes(n.moneda)) return "El destino no opera en esa moneda.";
   }
   if (!(n.importe > 0)) return "Ingresá un importe mayor a cero.";
-  if (n.importe > saldoCaja(S.libro.get(), origen.id, n.moneda) - reservado(S.movimientos.get(), origen.id, n.moneda))
-    return "El origen no tiene saldo suficiente (descontado lo ya reservado para otros movimientos autorizados).";
+  if (!alcanzaElEstimado(posicionDeCaja(origen.id, n.moneda), n.importe))
+    return "El origen no tiene saldo estimado suficiente (descontado lo ya reservado y comprometido).";
   if (!n.motivo.trim()) return "Ingresá el motivo del movimiento.";
+  if (tipo.id === TIPO_RESTITUCION_ID) {
+    const r = n.rendicion;
+    if (!r || !r.detalle.trim() || !(r.comprobantes >= 1)) return "Cargá la rendición de gastos del fondo fijo: detalle y comprobantes adjuntos.";
+    if (r.importe !== n.importe) return "La restitución tiene que ser por el importe de los gastos rendidos.";
+  }
   const entreCajeros = origen.tipo === "CAJA_CAJERO" && n.destino.tipo === "CAJA" && cajaPorId(n.destino.cajaId)?.tipo === "CAJA_CAJERO";
   if (!entreCajeros && (!n.transportista?.nombre.trim() || !n.transportista.documento.trim()))
     return "Cargá el nombre y el documento del responsable del traslado.";
@@ -539,13 +616,17 @@ export function crearMovimiento(n: NuevoMovimiento): Res<{ movimientoId: string 
   const u = usuarioActual();
   const origen = cajaPorId(n.origenId);
   const tipo = S.tipos.get().find((t) => t.id === n.tipoId);
-  if (!puedeOperarCaja(u) || !origen || !esResponsable(origen, u.id)) return error("Sólo un responsable del origen puede cargar el movimiento.");
+  if (!puedeOperarCaja(u) || !origen || !esResponsable(origen, u.id))
+    return error(tipo?.origenBanco ? "Sólo un responsable del tesoro que recibe los fondos puede pedirlos." : "Sólo un responsable del origen puede cargar el movimiento.");
   const e = errorNuevoMovimiento(n);
   if (e || !tipo) return error(e ?? "Elegí el tipo de movimiento.");
   const lista = S.movimientos.get();
   const mov: MovimientoTesoreria = {
     id: siguienteId("MT", lista.map((m) => m.id), 4),
     ...n,
+    // En un pedido a banco el tesoro que pide es también el destino.
+    ...(tipo.origenBanco ? { destino: { tipo: "CAJA" as const, cajaId: n.origenId } } : {}),
+    ...(tipo.id === TIPO_RESTITUCION_ID ? {} : { rendicion: undefined }),
     estado: tipo.requiereAutorizacion ? "SOLICITADO" : "AUTORIZADO",
     solicitanteId: u.id,
     fechaSolicitud: ahoraTexto(),
@@ -558,16 +639,54 @@ const actualizarMovimiento = (id: string, parche: Partial<MovimientoTesoreria>) 
   S.movimientos.commit(S.movimientos.get().map((m) => (m.id === id ? { ...m, ...parche } : m)));
 const movimientoPorId = (id: string) => S.movimientos.get().find((m) => m.id === id);
 
-export function autorizarMovimiento(id: string, aprobar: boolean, nota: string): Res {
+// Quién puede autorizar un movimiento (v4, R6 y 7.18): un usuario distinto del que lo cargó, con un perfil
+// que la matriz de autorizaciones habilite para ese importe. Devuelve el motivo si no puede.
+export function errorAutorizarMovimiento(m: MovimientoTesoreria, usuario: UsuarioCaja | undefined = usuarioActual()): string | null {
+  if (!usuario) return "Elegí el usuario que autoriza.";
+  if (usuario.id === m.solicitanteId) return "Nadie autoriza lo que cargó él mismo, tampoco con otro de sus roles.";
+  return puedeAutorizarPorMatriz(usuario, "MOVIMIENTO_TESORERIA", m.importe, m.moneda);
+}
+
+// Al autorizar se crea la reserva ÚNICA del movimiento en el origen. En una caja la reserva es el propio
+// movimiento Autorizado (`reservado`, que `comprometidoCaja` suma sin duplicar); en un pedido a banco es una
+// fila de `reservas` sobre la cuenta, que se consume al registrar la extracción.
+export function autorizarMovimiento(id: string, aprobar: boolean, nota: string, firmaId?: string): Res {
   const m = movimientoPorId(id);
   if (!m || m.estado !== "SOLICITADO") return error("El movimiento no está esperando autorización.");
-  if (!puedeAprobar(usuarioActual(), m.solicitanteId)) return error("Sólo un supervisor distinto del solicitante puede autorizarlo.");
+  const sinPermiso = errorAutorizarMovimiento(m);
+  if (sinPermiso) return error(sinPermiso);
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
-  // Al autorizar se reserva el importe: no puede dejar al origen por debajo de su mínimo operativo.
-  const origen = cajaPorId(m.origenId);
-  if (aprobar && origen && m.importe > disponibleParaAutorizar(S.libro.get(), S.movimientos.get(), origen, m.moneda, m.id))
-    return error("Al autorizarlo, el origen quedaría por debajo de su mínimo operativo o comprometería fondos ya reservados.");
-  actualizarMovimiento(id, { estado: aprobar ? "AUTORIZADO" : "RECHAZADO", autorizacion: aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota) });
+  if (aprobar) {
+    if (m.origenBancoId) {
+      if (!alcanzaElEstimado(posicionDeCuenta(m.origenBancoId), m.importe))
+        return error("Al autorizarlo, el importe supera el saldo estimado de la cuenta (real menos lo ya comprometido).");
+    } else {
+      // Ningún egreso se autoriza si supera el estimado, ni deja al origen bajo su mínimo operativo.
+      const origen = cajaPorId(m.origenId);
+      if (origen && m.importe > disponibleParaAutorizar(S.libro.get(), S.movimientos.get(), origen, m.moneda, m.id))
+        return error("Al autorizarlo, el origen quedaría por debajo de su mínimo operativo o comprometería fondos ya reservados.");
+      if (origen && !alcanzaElEstimado(posicionDeCaja(origen.id, m.moneda), m.importe))
+        return error("Al autorizarlo, el importe supera el saldo estimado del origen (real menos lo ya comprometido).");
+    }
+  }
+  if (aprobar && m.origenBancoId) {
+    const reservas = S.reservas.get();
+    S.reservas.commit([
+      ...reservas,
+      {
+        id: siguienteId("RSV", reservas.map((r) => r.id), 4),
+        origenTipo: "BANCO",
+        origenId: m.origenBancoId,
+        moneda: m.moneda,
+        importe: m.importe,
+        operacionTipo: "MOVIMIENTO",
+        operacionId: m.id,
+        estado: "ACTIVA",
+        creada: { usuarioId: usuarioActual().id, fechaHora: ahoraTexto() },
+      },
+    ]);
+  }
+  actualizarMovimiento(id, { estado: aprobar ? "AUTORIZADO" : "RECHAZADO", autorizacion: aprobacion(aprobar ? "APROBADA" : "RECHAZADA", nota, firmaId) });
   return { ok: true };
 }
 
@@ -581,10 +700,14 @@ const abierta = (cajaId: string) => jornadaVigente(S.jornadas.get(), cajaId)?.es
 
 // Envío: el origen entrega con recuento por denominación. El importe pasa a En tránsito (sale del
 // libro del origen y todavía no entra en el del destino).
-export function enviarMovimiento(id: string, detalle: DetalleRecuento, conformidad: boolean): Res {
+// `acta` es el acta de entrega al portador: la firma con llave de quien entrega y la conformidad del portador
+// (que recibe). La pantalla la exige; sin acta se registra igual, como antes de la v4.
+export function enviarMovimiento(id: string, detalle: DetalleRecuento, conformidad: boolean, acta?: { firmaId: string; portadorConforme: boolean }): Res {
   const m = movimientoPorId(id);
   const origen = m && cajaPorId(m.origenId);
   if (!m || !origen || m.estado !== "AUTORIZADO") return error("El movimiento no está autorizado para salir.");
+  if (m.origenBancoId) return error("Un pedido a banco no se envía: se registra la extracción con su boleta.");
+  if (acta && !acta.portadorConforme) return error("El portador tiene que firmar el acta de entrega.");
   if (!esResponsable(origen, usuarioActual().id)) return error("Sólo un responsable del origen registra el envío.");
   if (!abierta(origen.id)) return error("El origen no tiene la caja abierta: sin apertura no se puede operar.");
   const bloqueo = bloqueoCaja(origen.id) ?? errorFueraDeHorario(origen);
@@ -594,6 +717,7 @@ export function enviarMovimiento(id: string, detalle: DetalleRecuento, conformid
   if (contado !== m.importe) return error("El recuento por denominación no coincide con el importe del movimiento.");
   if (m.importe > saldoCaja(S.libro.get(), origen.id, m.moneda)) return error("El origen no tiene saldo suficiente.");
   const tipo = S.tipos.get().find((t) => t.id === m.tipoId);
+  const firmaEntrega = acta ? { firmaId: acta.firmaId, portadorConforme: true } : {};
   asentar({
     cajaId: origen.id,
     tipo: tipo?.descripcion ?? "Movimiento de tesorería",
@@ -603,7 +727,44 @@ export function enviarMovimiento(id: string, detalle: DetalleRecuento, conformid
     egreso: m.importe,
     refId: m.id,
   });
-  actualizarMovimiento(id, { estado: "EN_TRANSITO", envio: { usuarioId: usuarioActual().id, fechaHora: ahoraTexto(), detalle, importe: m.importe, conformidad } });
+  actualizarMovimiento(id, {
+    estado: "EN_TRANSITO",
+    envio: { usuarioId: usuarioActual().id, fechaHora: ahoraTexto(), detalle, importe: m.importe, conformidad, ...firmaEntrega },
+  });
+  return { ok: true };
+}
+
+// Pedido de refuerzo a banco: alguien va al banco a extraer. Al cargar la boleta de extracción el importe sale
+// de la cuenta (baja el real y se consume la reserva) y queda En tránsito hasta que el tesoro lo cuente y acepte.
+export function registrarExtraccion(id: string, boleta: string): Res {
+  const m = movimientoPorId(id);
+  const tesoro = m && cajaPorId(m.origenId);
+  if (!m || !tesoro || !m.origenBancoId || m.estado !== "AUTORIZADO") return error("El pedido a banco no está autorizado para extraer.");
+  if (!esResponsable(tesoro, usuarioActual().id)) return error("Sólo un responsable del tesoro que recibe los fondos registra la extracción.");
+  if (!boleta.trim()) return error("Ingresá el número de la boleta de extracción.");
+  const ahora = ahoraTexto();
+  S.reservas.commit(
+    S.reservas.get().map((r) =>
+      r.operacionTipo === "MOVIMIENTO" && r.operacionId === m.id && r.estado === "ACTIVA"
+        ? { ...r, estado: "CONSUMIDA" as const, cierre: { usuarioId: usuarioActual().id, fechaHora: ahora, motivo: `Extracción ${boleta.trim()}` } }
+        : r
+    )
+  );
+  actualizarMovimiento(id, { estado: "EN_TRANSITO", extraccion: { usuarioId: usuarioActual().id, fechaHora: ahora, importe: m.importe, boleta: boleta.trim() } });
+  return { ok: true };
+}
+
+// Cierra un movimiento aceptado con su documento: acta de recepción o boleta de depósito o de extracción.
+export function finalizarMovimiento(id: string, documento: string, firmaId?: string): Res {
+  const m = movimientoPorId(id);
+  if (!m || m.estado !== "ACEPTADO") return error("Sólo se finaliza un movimiento aceptado.");
+  const u = usuarioActual();
+  const destino = destinoCajaId(m) ? cajaPorId(destinoCajaId(m) as string) : undefined;
+  const origen = cajaPorId(m.origenId);
+  if (!(destino && esResponsable(destino, u.id)) && !(origen && esResponsable(origen, u.id)) && !esSupervisor(u))
+    return error("Sólo un responsable del origen o del destino, o un supervisor, documenta el movimiento.");
+  if (!documento.trim()) return error("Ingresá el número de acta o de boleta que documenta el movimiento.");
+  actualizarMovimiento(id, { estado: "FINALIZADO", finalizacion: { usuarioId: u.id, fechaHora: ahoraTexto(), documento: documento.trim(), ...(firmaId ? { firmaId } : {}) } });
   return { ok: true };
 }
 
@@ -615,7 +776,9 @@ export { bancoTexto };
 
 // Recepción: el movimiento sólo se completa con la aceptación del receptor. Si el recuento no
 // coincide, queda Con incidencia y el dinero no se integra hasta que un supervisor resuelva.
-export function recibirMovimiento(id: string, detalle: DetalleRecuento): Res<{ estado: MovimientoTesoreria["estado"] }> {
+// Con `firmaId` (acta de recepción firmada con llave) o con la boleta de extracción cargada, el movimiento queda
+// documentado y pasa directo a Finalizado; si no, queda Aceptado hasta documentarlo (`finalizarMovimiento`).
+export function recibirMovimiento(id: string, detalle: DetalleRecuento, firmaId?: string): Res<{ estado: MovimientoTesoreria["estado"] }> {
   const m = movimientoPorId(id);
   const destinoId = m && destinoCajaId(m);
   const destino = destinoId ? cajaPorId(destinoId) : undefined;
@@ -625,21 +788,36 @@ export function recibirMovimiento(id: string, detalle: DetalleRecuento): Res<{ e
   const bloqueo = bloqueoCaja(destino.id) ?? errorFueraDeHorario(destino);
   if (bloqueo) return error(bloqueo);
   const contado = totalRecuento(detalle, S.denominaciones.get())[m.moneda];
-  const recepcion = { usuarioId: usuarioActual().id, fechaHora: ahoraTexto(), detalle, importe: contado };
+  const recepcion = { usuarioId: usuarioActual().id, fechaHora: ahoraTexto(), detalle, importe: contado, ...(firmaId ? { firmaId } : {}) };
   if (contado !== m.importe) {
     actualizarMovimiento(id, { estado: "CON_INCIDENCIA", recepcion });
+    emitirAlerta(
+      "INCIDENCIA_RECEPCION",
+      `${destino.nombre} contó ${contado.toLocaleString("es-AR")} y el movimiento ${m.id} enviaba ${m.importe.toLocaleString("es-AR")} (${m.moneda}).`,
+      m.id,
+      { sucursalId: destino.sucursalId }
+    );
     return { ok: true, estado: "CON_INCIDENCIA" };
   }
   const tipo = S.tipos.get().find((t) => t.id === m.tipoId);
   asentar({
     cajaId: destino.id,
     tipo: tipo?.descripcion ?? "Movimiento de tesorería",
-    descripcion: `Recepción de ${nombreCaja(m.origenId)}`,
+    descripcion: `Recepción de ${origenTexto(m)}`,
     comprobante: m.id,
     moneda: m.moneda,
     ingreso: contado,
     refId: m.id,
   });
+  const documento = m.extraccion ? `Boleta de extracción ${m.extraccion.boleta}` : firmaId ? `Acta de recepción ${firmaId}` : undefined;
+  if (documento) {
+    actualizarMovimiento(id, {
+      estado: "FINALIZADO",
+      recepcion,
+      finalizacion: { usuarioId: usuarioActual().id, fechaHora: ahoraTexto(), documento, ...(firmaId ? { firmaId } : {}) },
+    });
+    return { ok: true, estado: "FINALIZADO" };
+  }
   actualizarMovimiento(id, { estado: "ACEPTADO", recepcion });
   return { ok: true, estado: "ACEPTADO" };
 }
@@ -660,7 +838,7 @@ export function resolverIncidenciaMovimiento(id: string, importeAceptado: number
     asentar({
       cajaId: destino.id,
       tipo: "Recepción con incidencia",
-      descripcion: `Recepción de ${nombreCaja(m.origenId)} · enviado ${m.importe}, integrado ${importeAceptado}`,
+      descripcion: `Recepción de ${origenTexto(m)} · enviado ${m.importe}, integrado ${importeAceptado}`,
       comprobante: m.id,
       moneda: m.moneda,
       ingreso: importeAceptado,
@@ -679,7 +857,12 @@ export function cargarBoletaDeposito(id: string, boleta: string): Res {
   if (!m || !origen || m.destino.tipo !== "BANCO" || m.estado !== "EN_TRANSITO") return error("El movimiento no es un depósito en tránsito.");
   if (!esResponsable(origen, usuarioActual().id)) return error("Sólo un responsable del origen carga la boleta.");
   if (!boleta.trim()) return error("Ingresá el número de la boleta de depósito.");
-  actualizarMovimiento(id, { estado: "ACEPTADO", boletaDeposito: boleta.trim() });
+  // La boleta de depósito documenta el movimiento: queda Finalizado (la acreditación se concilia aparte).
+  actualizarMovimiento(id, {
+    estado: "FINALIZADO",
+    boletaDeposito: boleta.trim(),
+    finalizacion: { usuarioId: usuarioActual().id, fechaHora: ahoraTexto(), documento: `Boleta de depósito ${boleta.trim()}` },
+  });
   return { ok: true };
 }
 
@@ -688,15 +871,17 @@ export function cargarBoletaDeposito(id: string, boleta: string): Res {
 export function conciliarDeposito(id: string, importe: number, fechaAcreditacion: string, referencia: string): Res {
   const m = movimientoPorId(id);
   const u = usuarioActual();
-  if (!m || m.destino.tipo !== "BANCO" || !["EN_TRANSITO", "ACEPTADO"].includes(m.estado) || !m.envio || m.conciliacion)
+  if (!m || m.destino.tipo !== "BANCO" || !["EN_TRANSITO", "ACEPTADO", "FINALIZADO"].includes(m.estado) || !m.envio || m.conciliacion)
     return error("El depósito no está pendiente de conciliar.");
   if (!u.roles.includes("TESORERO")) return error("Sólo el Tesorero concilia las acreditaciones.");
   if (!fechaAcreditacion) return error("Ingresá la fecha de acreditación.");
   if (!referencia.trim()) return error("Ingresá la referencia del extracto bancario.");
   if (importe !== m.importe) return error("El importe acreditado no coincide con el depositado: revisalo con el banco antes de conciliar.");
+  // Conciliar contra el extracto también documenta el depósito: si todavía no tenía boleta, queda Finalizado.
   actualizarMovimiento(id, {
-    estado: "ACEPTADO",
+    estado: "FINALIZADO",
     conciliacion: { usuarioId: u.id, fechaHora: ahoraTexto(), fechaAcreditacion, importe, referencia: referencia.trim() },
+    finalizacion: m.finalizacion ?? { usuarioId: u.id, fechaHora: ahoraTexto(), documento: `Extracto bancario ${referencia.trim()}` },
   });
   return { ok: true };
 }
@@ -705,34 +890,52 @@ export interface SaldoBancario {
   cuentaId: string;
   saldoInicial: number; // con el que la cuenta entra al módulo
   conciliado: number; // acreditaciones conciliadas
-  pagado: number; // pagos a proveedores con origen en la cuenta (egresos bancarios)
-  saldo: number; // saldo inicial + conciliado − pagado
-  enTransito: number; // enviado al banco y todavía sin conciliar
+  pagado: number; // egresos que ya bajaron el real: transferencias ejecutadas y cheques debitados
+  saldo: number; // = real (se conserva el nombre para quienes ya lo usaban)
+  real: number; // saldo inicial + conciliado − pagado
+  comprometido: number; // reservas activas (transferencias preparadas, cheques emitidos)
+  estimado: number; // real − comprometido: el saldo que manda
+  aRecibir: number; // enviado al banco y todavía sin conciliar (informativo)
+  enTransito: number; // igual que aRecibir
 }
 
-// Posición de cada cuenta bancaria: saldo inicial, depósitos conciliados menos pagos a proveedores, y lo
-// que todavía viaja. El saldo puede quedar negativo (la cuenta puede operar en descubierto o con acuerdo).
+// Posición de cada cuenta bancaria (v4, R3): real, comprometido, estimado y a recibir. Ningún egreso se
+// aprueba por encima del estimado, así que la cuenta no queda en descubierto.
 export function saldosBancarios(): SaldoBancario[] {
   const pagos = provStores.pagos.get();
+  const cheques = S.cheques.get();
+  const reservas = S.reservas.get();
   return S.cuentasBancarias.get().map((c) => {
-    const deps = S.movimientos.get().filter((m) => m.destino.tipo === "BANCO" && m.destino.cuentaId === c.id && m.envio);
-    const conciliado = deps.filter((m) => m.conciliacion).reduce((s, m) => s + m.importe, 0);
-    const pagado = pagos.filter((p) => p.origenTipo === "BANCO" && p.origenId === c.id).reduce((s, p) => s + p.importe, 0);
-    const saldoInicial = c.saldoInicial ?? 0;
+    const p = posicionBanco(c, S.movimientos.get(), pagos, cheques, reservas);
     return {
       cuentaId: c.id,
-      saldoInicial,
-      conciliado,
-      pagado,
-      saldo: saldoInicial + conciliado - pagado,
-      enTransito: deps.filter((m) => !m.conciliacion).reduce((s, m) => s + m.importe, 0),
+      saldoInicial: p.saldoInicial,
+      conciliado: p.conciliado,
+      pagado: p.pagado,
+      saldo: p.real,
+      real: p.real,
+      comprometido: p.comprometido,
+      estimado: p.estimado,
+      aRecibir: p.aRecibir,
+      enTransito: p.aRecibir,
     };
   });
 }
 
-// Pago a proveedor desde una caja. El efectivo sale del libro y exige lo mismo que cualquier operación de
-// caja (responsable, apertura activa, sin bloqueos, dentro del horario y con saldo). Una transferencia o
-// un cheque figuran en el libro sin mover el efectivo.
+// Posición de una cuenta bancaria con los datos actuales (para validar egresos contra el estimado).
+export function posicionDeCuenta(cuentaId: string) {
+  const cuenta = S.cuentasBancarias.get().find((c) => c.id === cuentaId);
+  if (!cuenta) return { real: 0, comprometido: 0, estimado: 0, aRecibir: 0 };
+  return posicionBanco(cuenta, S.movimientos.get(), provStores.pagos.get(), S.cheques.get(), S.reservas.get());
+}
+
+// Posición (real, comprometido, estimado, a recibir) de una caja en una moneda, con los datos actuales.
+export const posicionDeCaja = (cajaId: string, moneda: Moneda) =>
+  posicionCaja(S.libro.get(), S.reservas.get(), S.movimientos.get(), cajaId, moneda);
+
+// Pago en efectivo a un proveedor desde una caja. Sale del libro y exige lo mismo que cualquier operación
+// de caja (responsable, apertura activa, sin bloqueos, dentro del horario) y que el importe no supere el
+// saldo estimado (real menos lo comprometido). Se puede registrar otro medio sin mover el efectivo.
 export function pagarDesdeCaja(p: {
   cajaId: string;
   medio: MedioMovimiento;
@@ -750,7 +953,8 @@ export function pagarDesdeCaja(p: {
     if (!abierta(caja.id)) return error("La caja no está abierta: sin apertura no se puede operar.");
     const bloqueo = bloqueoCaja(caja.id) ?? errorFueraDeHorario(caja);
     if (bloqueo) return error(bloqueo);
-    if (p.importe > saldoCaja(S.libro.get(), caja.id, "ARS")) return error("La caja no tiene saldo suficiente en pesos.");
+    if (p.importe > posicionDeCaja(caja.id, "ARS").estimado + 0.001)
+      return error("El importe supera el saldo estimado de la caja en pesos (descontado lo ya reservado).");
   }
   const mov = asentar({
     cajaId: caja.id,
@@ -791,14 +995,14 @@ export function crearPedidoRefuerzo(p: { solicitanteCajaId: string; aCajaId: str
 
 // El tesoro aprueba total o parcialmente, o rechaza. El pedido no mueve dinero: al aprobarlo se genera
 // el movimiento de refuerzo, que sigue el circuito general.
-export function resolverPedidoRefuerzo(id: string, aprobar: boolean, importeAprobado: number, nota: string): Res<{ movimientoId?: string }> {
+export function resolverPedidoRefuerzo(id: string, aprobar: boolean, importeAprobado: number, nota: string, firmaId?: string): Res<{ movimientoId?: string }> {
   const p = S.pedidos.get().find((x) => x.id === id);
   const aCaja = p && cajaPorId(p.aCajaId);
   const u = usuarioActual();
   if (!p || !aCaja || p.estado !== "PENDIENTE") return error("El pedido ya fue resuelto.");
   if (!esResponsable(aCaja, u.id)) return error("Sólo un responsable del tesoro que recibe el pedido puede resolverlo.");
   if (!aprobar && !nota.trim()) return error("Indicá el motivo del rechazo.");
-  const resolucion = { usuarioId: u.id, fechaHora: ahoraTexto(), nota };
+  const resolucion = { usuarioId: u.id, fechaHora: ahoraTexto(), nota, ...(firmaId ? { firmaId } : {}) };
   if (!aprobar) {
     S.pedidos.commit(S.pedidos.get().map((x) => (x.id === id ? { ...x, estado: "RECHAZADO" as const, resolucion } : x)));
     return { ok: true };
@@ -818,7 +1022,7 @@ export function resolverPedidoRefuerzo(id: string, aprobar: boolean, importeApro
   // El transportista se completa en el movimiento: acá se crea sin validar ese dato.
   const tipo = S.tipos.get().find((t) => t.id === TIPO_REFUERZO_ID);
   if (!tipo || tipo.estado !== "ACTIVO") return error("El tipo de movimiento Refuerzo no está activo.");
-  if (importeAprobado > saldoCaja(S.libro.get(), p.aCajaId, p.moneda)) return error("El tesoro no tiene saldo suficiente para ese importe.");
+  if (!alcanzaElEstimado(posicionDeCaja(p.aCajaId, p.moneda), importeAprobado)) return error("El tesoro no tiene saldo estimado suficiente para ese importe.");
   const lista = S.movimientos.get();
   const mov: MovimientoTesoreria = {
     id: siguienteId("MT", lista.map((m) => m.id), 4),

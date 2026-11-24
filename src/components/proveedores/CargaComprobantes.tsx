@@ -26,6 +26,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Modal } from "@/components/ui/Modal";
 import { SelectField } from "@/components/ui/SelectField";
 import { ErrorBanner, NotaModal, PaginaCaja, descargarXlsx, quien } from "@/components/caja/comunes";
+import { LlaveModal } from "@/components/caja/LlaveModal";
 import { ENCABEZADO, EstadoComprobanteBadge, Pestanas, Th, nombreProveedor, numeroComprobante, pesos } from "./comunes";
 import { FormularioComprobante } from "./FormularioComprobante";
 
@@ -416,10 +417,9 @@ function ListaComprobantes() {
     .sort((a, b) => b.id.localeCompare(a.id));
   const tipoTexto = (id: string) => tipos.find((t) => t.id === id)?.descripcion ?? id;
 
-  const autorizar = (c: Comprobante) => {
-    const r = autorizarComprobante(c.id);
-    setError(r.ok ? null : r.error);
-  };
+  // La autorización se firma con la llave del autorizador (R6); recién ahí se autoriza el comprobante.
+  const [firmando, setFirmando] = useState<Comprobante | null>(null);
+  const autorizar = (c: Comprobante) => setFirmando(c);
 
   return (
     <div className="space-y-4">
@@ -442,8 +442,8 @@ function ListaComprobantes() {
         />
       </div>
       <p className="text-xs text-ink-500">
-        Autoriza un Supervisor o un Tesorero distinto de quien cargó el comprobante (cambiá el usuario en «Actuar como»). Al autorizar, el sistema
-        asigna el número de orden de pago.
+        Autoriza un Supervisor o un Tesorero distinto de quien cargó el comprobante (cambiá el usuario en «Actuar como»). Al autorizar queda Para
+        liquidar; el número de orden de pago se genera cuando el perfil financiero lo incluye en una orden (Órdenes de pago).
       </p>
       <ErrorBanner error={error} />
       <Card className="overflow-hidden">
@@ -557,6 +557,21 @@ function ListaComprobantes() {
           const r = anulando ? anularComprobante(anulando.id, motivo) : null;
           return r && !r.ok ? r.error : null;
         }}
+      />
+      <LlaveModal
+        open={!!firmando}
+        titulo={`Autorizar ${firmando?.id ?? ""}`}
+        descripcion="La autorización se firma con tu llave de autorización. Tiene que ser un usuario distinto del que cargó el comprobante."
+        usuarioId={usuario.id}
+        datos={{ operacion: "Autorización de comprobante", referencia: firmando?.id ?? "", importe: firmando?.total, moneda: "ARS", cargadoPor: firmando?.cargadoPor }}
+        confirmar="Autorizar"
+        onFirmada={() => {
+          const r = firmando ? autorizarComprobante(firmando.id) : null;
+          if (r && !r.ok) return r.error;
+          setError(null);
+          return null;
+        }}
+        onClose={() => setFirmando(null)}
       />
       {corrigiendo && <CorregirModal key={corrigiendo.id} comprobante={corrigiendo} onClose={() => setCorrigiendo(null)} />}
     </div>

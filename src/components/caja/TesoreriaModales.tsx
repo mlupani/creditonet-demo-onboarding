@@ -9,14 +9,21 @@ import {
   crearPedidoRefuerzo,
   enviarMovimiento,
   errorNuevoMovimiento,
+  finalizarMovimiento,
   nombreCaja,
+  origenTexto,
+  posicionDeCaja,
+  posicionDeCuenta,
   recibirMovimiento,
+  registrarExtraccion,
   resolverIncidenciaMovimiento,
   resolverPedidoRefuerzo,
   type NuevoMovimiento,
 } from "@/lib/caja-operaciones";
-import { disponibleParaAutorizar, totalRecuento } from "@/lib/caja-reglas";
+import { TIPO_PEDIDO_TESORO_ID, TIPO_RESTITUCION_ID } from "@/lib/caja-datos";
+import { totalRecuento } from "@/lib/caja-reglas";
 import { nombreUsuario, useCajaDatos } from "@/lib/caja-store";
+import { firmar } from "@/lib/llave";
 import {
   ESTADOS_MOVIMIENTO,
   TIPO_CAJA_LABEL,
@@ -37,6 +44,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { aError } from "./Jornada";
 import { RecuentoForm } from "./RecuentoForm";
 import { ErrorBanner, cajasPropias, dinero } from "./comunes";
+import { LlaveCampos } from "./LlaveCampos";
 
 const Pie = ({ onClose, children }: { onClose: () => void; children: React.ReactNode }) => (
   <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -47,16 +55,33 @@ const Pie = ({ onClose, children }: { onClose: () => void; children: React.React
   </div>
 );
 
+// Llave de autorización (R6) del usuario que está actuando: los campos de clave y código y la firma con la que se
+// respalda la operación. Devuelve el id de la firma registrada o el error para mostrar.
+function useLlave() {
+  const { usuario } = useCajaDatos();
+  const [clave, setClave] = useState("");
+  const [codigo, setCodigo] = useState("");
+  const campos = <LlaveCampos usuarioId={usuario.id} clave={clave} codigo={codigo} onClave={setClave} onCodigo={setCodigo} />;
+  const firmarCon = (datos: { operacion: string; referencia: string; importe?: number; moneda?: Moneda; cargadoPor?: string }): { firmaId: string } | { error: string } => {
+    const r = firmar({ usuarioId: usuario.id, clave, codigo, ...datos });
+    return r.ok ? { firmaId: r.firma.id } : { error: r.error };
+  };
+  return { campos, firmarCon };
+}
+
 export const destinoTexto = (m: MovimientoTesoreria) =>
   m.destino.tipo === "CAJA" ? nombreCaja(m.destino.cajaId) : bancoTexto(m.destino.cuentaId);
 
-export const estadoTexto = (m: MovimientoTesoreria) =>
-  m.estado === "ACEPTADO" && m.destino.tipo === "BANCO" ? "Depositado" : (ESTADOS_MOVIMIENTO.find((e) => e.id === m.estado)?.label ?? m.estado);
+export const estadoTexto = (m: MovimientoTesoreria) => {
+  const label = ESTADOS_MOVIMIENTO.find((e) => e.id === m.estado)?.label ?? m.estado;
+  return m.destino.tipo === "BANCO" && (m.estado === "ACEPTADO" || m.estado === "FINALIZADO") ? `${label} · depositado` : label;
+};
 
 export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: string; onClose: () => void }) {
-  const { cajas, tipos, usuario, libro, movimientos } = useCajaDatos();
+  const { cajas, tipos, usuario } = useCajaDatos();
   const propias = cajasPropias(cajas, usuario);
-  const tiposActivos = tipos.filter((t) => t.estado === "ACTIVO" && !t.descripcion.startsWith("Pedido"));
+  // El pedido a otro tesoro tiene su propia pantalla; el pedido a banco sí se carga acá.
+  const tiposActivos = tipos.filter((t) => t.estado === "ACTIVO" && t.id !== TIPO_PEDIDO_TESORO_ID);
   const [tipoId, setTipoId] = useState(tiposActivos[0]?.id ?? "");
   const [origenId, setOrigenId] = useState(propias.some((c) => c.id === cajaInicial) ? cajaInicial : (propias[0]?.id ?? ""));
   const [haciaBanco, setHaciaBanco] = useState(false);
@@ -71,13 +96,21 @@ export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: st
   const [documento, setDocumento] = useState("");
   const [precinto, setPrecinto] = useState("");
   const [observaciones, setObservaciones] = useState("");
+  const [rendDetalle, setRendDetalle] = useState("");
+  const [rendComprobantes, setRendComprobantes] = useState("");
+  const [rendImporte, setRendImporte] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const tipo = tiposActivos.find((t) => t.id === tipoId);
-  const origen = cajas.find((c) => c.id === origenId);
-  const bancoPosible = !!tipo?.destinos.includes("BANCO");
+  const pedidoABanco = !!tipo?.origenBanco;
+  const esRestitucion = tipo?.id === TIPO_RESTITUCION_ID;
+  // En un pedido a banco el origen es la cuenta y el tesoro propio es quien recibe: se elige entre los tesoros del usuario.
+  const origenesPosibles = pedidoABanco ? propias.filter((c) => tipo?.destinos.includes(c.tipo)) : propias;
+  const origenSel = origenesPosibles.some((c) => c.id === origenId) ? origenId : (origenesPosibles[0]?.id ?? "");
+  const origen = cajas.find((c) => c.id === origenSel);
+  const bancoPosible = !pedidoABanco && !!tipo?.destinos.includes("BANCO");
   const banco = bancoPosible && (haciaBanco || !tipo?.destinos.some((d) => d !== "BANCO"));
-  const destinosCaja = cajas.filter((c) => c.estado === "ACTIVO" && c.id !== origenId && tipo?.destinos.includes(c.tipo));
+  const destinosCaja = cajas.filter((c) => c.estado === "ACTIVO" && c.id !== origenSel && tipo?.destinos.includes(c.tipo));
   const destinoElegido = destinosCaja.some((c) => c.id === destinoId) ? destinoId : (destinosCaja[0]?.id ?? "");
   const monedas = origen ? monedasDe(origen.moneda) : (["ARS"] as Moneda[]);
   const monedaElegida = monedas.includes(moneda) ? moneda : monedas[0];
@@ -86,8 +119,10 @@ export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: st
 
   const nuevo: NuevoMovimiento = {
     tipoId,
-    origenId,
-    destino: banco ? { tipo: "BANCO", cuentaId: cuentaElegida } : { tipo: "CAJA", cajaId: destinoElegido },
+    origenId: origenSel,
+    destino: pedidoABanco ? { tipo: "CAJA", cajaId: origenSel } : banco ? { tipo: "BANCO", cuentaId: cuentaElegida } : { tipo: "CAJA", cajaId: destinoElegido },
+    ...(pedidoABanco ? { origenBancoId: cuentaElegida } : {}),
+    ...(esRestitucion ? { rendicion: { detalle: rendDetalle, comprobantes: Number(rendComprobantes) || 0, importe: rendImporte } } : {}),
     moneda: monedaElegida,
     importe,
     motivo,
@@ -95,6 +130,7 @@ export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: st
     precinto,
     observaciones,
   };
+  const estimadoOrigen = pedidoABanco ? posicionDeCuenta(cuentaElegida).estimado : origen ? posicionDeCaja(origen.id, monedaElegida).estimado : 0;
   const vivo = importe > 0 || motivo ? errorNuevoMovimiento(nuevo) : undefined;
 
   return (
@@ -122,11 +158,21 @@ export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: st
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField id="mt-tipo" label="Tipo de movimiento" required value={tipoId} onChange={setTipoId} options={tiposActivos.map((t) => ({ value: t.id, label: t.descripcion }))} hint={tipo?.requiereAutorizacion ? "Requiere autorización de un supervisor." : "No requiere autorización."} />
-          <SelectField id="mt-origen" label="Origen" required value={origenId} onChange={setOrigenId} options={propias.map((c) => ({ value: c.id, label: `${c.nombre} · ${TIPO_CAJA_LABEL[c.tipo]}` }))} />
+          <SelectField
+            id="mt-origen"
+            label={pedidoABanco ? "Tesoro que recibe los fondos" : "Origen"}
+            required
+            value={origenSel}
+            onChange={setOrigenId}
+            options={origenesPosibles.map((c) => ({ value: c.id, label: `${c.nombre} · ${TIPO_CAJA_LABEL[c.tipo]}` }))}
+            placeholder={pedidoABanco ? "No sos responsable de un tesoro" : undefined}
+          />
           {bancoPosible && tipo?.destinos.some((d) => d !== "BANCO") && (
             <SelectField id="mt-punta" label="Destino" value={haciaBanco ? "banco" : "caja"} onChange={(v) => setHaciaBanco(v === "banco")} options={[{ value: "caja", label: "Tesoro o caja" }, { value: "banco", label: "Banco" }]} />
           )}
-          {banco ? (
+          {pedidoABanco ? (
+            <SelectField id="mt-cuenta-origen" label="Cuenta bancaria de origen" required value={cuentaElegida} onChange={setCuentaId} options={cuentasMoneda.map((c) => ({ value: c.id, label: `${c.banco} · ${c.numero}` }))} placeholder="Sin cuentas en esa moneda" />
+          ) : banco ? (
             <SelectField id="mt-cuenta" label="Cuenta bancaria de destino" required value={cuentaElegida} onChange={setCuentaId} options={cuentasMoneda.map((c) => ({ value: c.id, label: `${c.banco} · ${c.numero}` }))} placeholder="Sin cuentas en esa moneda" />
           ) : (
             <SelectField id="mt-destino" label="Destino" required value={destinoElegido} onChange={setDestinoId} options={destinosCaja.map((c) => ({ value: c.id, label: `${c.nombre} · ${TIPO_CAJA_LABEL[c.tipo]}` }))} placeholder="Sin destinos para este tipo" />
@@ -139,13 +185,22 @@ export function NuevoMovimientoModal({ cajaInicial, onClose }: { cajaInicial: st
             value={importe}
             onChange={setImporte}
             hint={
-              origen
-                ? `Disponible en ${origen.nombre}: ${dinero(monedaElegida, Math.max(0, disponibleParaAutorizar(libro, movimientos, origen, monedaElegida)))} (saldo menos lo reservado y el mínimo operativo).`
-                : undefined
+              pedidoABanco
+                ? `Estimado de la cuenta: ${dinero(monedaElegida, Math.max(0, estimadoOrigen))} (real menos lo ya comprometido).`
+                : origen
+                  ? `Estimado de ${origen.nombre}: ${dinero(monedaElegida, Math.max(0, estimadoOrigen))} (real menos lo ya reservado y comprometido).`
+                  : undefined
             }
           />
           <FormField id="mt-motivo" label="Motivo" required value={motivo} onChange={setMotivo} className="sm:col-span-2" />
-          <SelectField id="mt-transp" label="Responsable del traslado" value={tipoTransp} onChange={(v) => setTipoTransp(v as "EMPLEADO" | "EMPRESA")} options={[{ value: "EMPLEADO", label: "Empleado" }, { value: "EMPRESA", label: "Empresa transportadora" }]} />
+          {esRestitucion && (
+            <>
+              <FormField id="mt-rend-detalle" label="Rendición de gastos del fondo fijo" required value={rendDetalle} onChange={setRendDetalle} placeholder="Ej.: limpieza, librería, mensajería" className="sm:col-span-2" />
+              <FormField id="mt-rend-comp" label="Comprobantes adjuntos" required value={rendComprobantes} onChange={(v) => setRendComprobantes(v.replace(/\D/g, ""))} inputMode="numeric" hint="Cantidad de comprobantes de la rendición (adjunto simulado)." />
+              <MoneyInput id="mt-rend-importe" label="Importe rendido" required value={rendImporte} onChange={setRendImporte} hint="La restitución es por el importe de los gastos rendidos." />
+            </>
+          )}
+          <SelectField id="mt-transp" label={pedidoABanco ? "Responsable de la extracción" : "Responsable del traslado"} value={tipoTransp} onChange={(v) => setTipoTransp(v as "EMPLEADO" | "EMPRESA")} options={[{ value: "EMPLEADO", label: "Empleado" }, { value: "EMPRESA", label: "Empresa transportadora" }]} />
           <FormField id="mt-nombre" label="Nombre" value={nombre} onChange={setNombre} />
           <FormField id="mt-doc" label="Documento" value={documento} onChange={setDocumento} />
           <FormField id="mt-precinto" label="Precinto, sobre o boleta" value={precinto} onChange={setPrecinto} />
@@ -206,8 +261,16 @@ export function ResolverPedidoModal({ pedido, onClose }: { pedido: PedidoRefuerz
   const [importe, setImporte] = useState(pedido.importe);
   const [nota, setNota] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const llave = useLlave();
   const resolver = (aprobar: boolean) => {
-    const e = aError(resolverPedidoRefuerzo(pedido.id, aprobar, importe, nota));
+    // Aprobar el pedido se firma con la llave de autorización; rechazarlo sólo pide el motivo.
+    let firmaId: string | undefined;
+    if (aprobar) {
+      const f = llave.firmarCon({ operacion: "Aprobación de pedido de refuerzo", referencia: pedido.id, importe, moneda: pedido.moneda, cargadoPor: pedido.usuarioId });
+      if ("error" in f) return setError(f.error);
+      firmaId = f.firmaId;
+    }
+    const e = aError(resolverPedidoRefuerzo(pedido.id, aprobar, importe, nota, firmaId));
     if (e) setError(e);
     else onClose();
   };
@@ -233,6 +296,7 @@ export function ResolverPedidoModal({ pedido, onClose }: { pedido: PedidoRefuerz
       </p>
       <MoneyInput id="rp-importe" label="Importe a aprobar" value={importe} onChange={setImporte} hint="Menor al pedido = aprobación parcial." />
       <FormField id="rp-nota" label="Motivo (obligatorio si rechazás)" value={nota} onChange={setNota} className="mt-3" />
+      {llave.campos}
       <ErrorBanner error={error} />
     </Modal>
   );
@@ -242,7 +306,9 @@ export function EnviarModal({ mov, onClose }: { mov: MovimientoTesoreria; onClos
   const { denominaciones } = useCajaDatos();
   const [detalle, setDetalle] = useState<DetalleRecuento>({});
   const [conformidad, setConformidad] = useState(false);
+  const [portador, setPortador] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const llave = useLlave();
   const contado = totalRecuento(detalle, denominaciones)[mov.moneda];
   return (
     <Modal
@@ -254,7 +320,10 @@ export function EnviarModal({ mov, onClose }: { mov: MovimientoTesoreria; onClos
         <Pie onClose={onClose}>
           <Button
             onClick={() => {
-              const e = aError(enviarMovimiento(mov.id, detalle, conformidad));
+              // Acta de entrega al portador: firma con llave de quien entrega y conformidad del portador.
+              const f = llave.firmarCon({ operacion: "Acta de entrega de remesa al portador", referencia: mov.id, importe: mov.importe, moneda: mov.moneda });
+              if ("error" in f) return setError(f.error);
+              const e = aError(enviarMovimiento(mov.id, detalle, conformidad, { firmaId: f.firmaId, portadorConforme: portador }));
               if (e) setError(e);
               else onClose();
             }}
@@ -274,6 +343,16 @@ export function EnviarModal({ mov, onClose }: { mov: MovimientoTesoreria; onClos
       <div className="mt-3">
         <Checkbox checked={conformidad} onChange={setConformidad} label="Conformidad de quien entrega" description="El origen confirma lo que entrega al transportista." />
       </div>
+      <div className="mt-2">
+        <Checkbox
+          checked={portador}
+          onChange={setPortador}
+          label="El portador recibe y firma el acta"
+          description={mov.transportista ? `${mov.transportista.nombre} (${mov.transportista.documento}) recibe ${dinero(mov.moneda, mov.importe)} sellado.` : "El portador recibe el efectivo."}
+        />
+      </div>
+      <p className="mt-3 text-xs text-ink-500">Acta de entrega y recepción: firmás con tu llave de autorización (usuario, clave y código temporal).</p>
+      {llave.campos}
       <ErrorBanner error={error} />
     </Modal>
   );
@@ -283,6 +362,7 @@ export function RecibirModal({ mov, onClose }: { mov: MovimientoTesoreria; onClo
   const [detalle, setDetalle] = useState<DetalleRecuento>({});
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState(false);
+  const llave = useLlave();
   return (
     <Modal
       open
@@ -296,7 +376,10 @@ export function RecibirModal({ mov, onClose }: { mov: MovimientoTesoreria; onClo
           <Pie onClose={onClose}>
             <Button
               onClick={() => {
-                const r = recibirMovimiento(mov.id, detalle);
+                // Acta de recepción: quien recibe cuenta y firma con su llave.
+                const f = llave.firmarCon({ operacion: "Acta de recepción de remesa", referencia: mov.id, importe: mov.importe, moneda: mov.moneda });
+                if ("error" in f) return setError(f.error);
+                const r = recibirMovimiento(mov.id, detalle, f.firmaId);
                 if (!r.ok) setError(r.error);
                 else if (r.estado === "CON_INCIDENCIA") setAviso(true);
                 else onClose();
@@ -315,9 +398,11 @@ export function RecibirModal({ mov, onClose }: { mov: MovimientoTesoreria; onClo
       ) : (
         <>
           <p className="mb-3 text-sm text-ink-600">
-            {nombreCaja(mov.origenId)} envió el movimiento. Abrilo, contá por denominación y aceptá. Si no coincide, se carga la diferencia y queda con incidencia.
+            {origenTexto(mov)} {mov.origenBancoId ? "entregó los fondos extraídos" : "envió el movimiento"}. Abrilo, contá por denominación y aceptá. Si no coincide, se carga la diferencia y queda con incidencia.
           </p>
           <RecuentoForm monedas={[mov.moneda]} detalle={detalle} onChange={setDetalle} ayuda={{ [mov.moneda]: mov.importe }} />
+          <p className="mt-3 text-xs text-ink-500">Acta de recepción: firmás con tu llave de autorización (usuario, clave y código temporal).</p>
+          {llave.campos}
         </>
       )}
       <ErrorBanner error={error} />
@@ -391,25 +476,99 @@ export function BoletaModal({ mov, onClose }: { mov: MovimientoTesoreria; onClos
   );
 }
 
+// Pedido de refuerzo a banco: alguien extrae los fondos y se carga la boleta de extracción. Recién entonces el
+// importe sale de la cuenta (baja el real y se consume la reserva) y queda en tránsito hacia el tesoro.
+export function ExtraccionModal({ mov, onClose }: { mov: MovimientoTesoreria; onClose: () => void }) {
+  const [boleta, setBoleta] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Boleta de extracción de ${mov.id}`}
+      maxWidth="max-w-md"
+      footer={
+        <Pie onClose={onClose}>
+          <Button
+            onClick={() => {
+              const e = aError(registrarExtraccion(mov.id, boleta));
+              if (e) setError(e);
+              else onClose();
+            }}
+          >
+            Confirmar extracción
+          </Button>
+        </Pie>
+      }
+    >
+      <p className="mb-3 text-sm text-ink-600">
+        {dinero(mov.moneda, mov.importe)} de {origenTexto(mov)} para {destinoTexto(mov)}. Al cargar la boleta el importe sale de la cuenta y queda en tránsito hasta que el tesoro lo cuente y acepte.
+      </p>
+      <FormField id="ex-boleta" label="Número de boleta de extracción" required value={boleta} onChange={setBoleta} />
+      <ErrorBanner error={error} />
+    </Modal>
+  );
+}
+
+// Un movimiento aceptado se cierra con su documento: el acta de recepción o la boleta de depósito o de extracción.
+export function DocumentarModal({ mov, onClose }: { mov: MovimientoTesoreria; onClose: () => void }) {
+  const [documento, setDocumento] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Documentar ${mov.id}`}
+      maxWidth="max-w-md"
+      footer={
+        <Pie onClose={onClose}>
+          <Button
+            onClick={() => {
+              const e = aError(finalizarMovimiento(mov.id, documento));
+              if (e) setError(e);
+              else onClose();
+            }}
+          >
+            Finalizar movimiento
+          </Button>
+        </Pie>
+      }
+    >
+      <p className="mb-3 text-sm text-ink-600">
+        El destino ya aceptó {dinero(mov.moneda, mov.importe)}. Para finalizarlo cargá el número de acta (o de boleta de depósito o de extracción) que lo documenta: pasa al histórico y no se modifica más.
+      </p>
+      <FormField id="doc-numero" label="Número de acta o de boleta" required value={documento} onChange={setDocumento} />
+      <ErrorBanner error={error} />
+    </Modal>
+  );
+}
+
 export function DetalleMovimientoModal({ mov, onClose }: { mov: MovimientoTesoreria; onClose: () => void }) {
   const hitos: [string, string][] = [
     ["Solicitud", `${nombreUsuario(mov.solicitanteId)} · ${mov.fechaSolicitud}`],
   ];
   if (mov.autorizacion)
-    hitos.push([mov.autorizacion.resultado === "APROBADA" ? "Autorización" : "Rechazo", `${nombreUsuario(mov.autorizacion.supervisorId)} · ${mov.autorizacion.fechaHora}${mov.autorizacion.nota ? ` · ${mov.autorizacion.nota}` : ""}`]);
-  if (mov.envio) hitos.push(["Envío", `${nombreUsuario(mov.envio.usuarioId)} · ${mov.envio.fechaHora} · ${dinero(mov.moneda, mov.envio.importe)}${mov.envio.conformidad ? " · conformidad del origen" : ""}`]);
-  if (mov.recepcion) hitos.push(["Recepción", `${nombreUsuario(mov.recepcion.usuarioId)} · ${mov.recepcion.fechaHora} · contó ${dinero(mov.moneda, mov.recepcion.importe)}`]);
+    hitos.push([mov.autorizacion.resultado === "APROBADA" ? "Autorización" : "Rechazo", `${nombreUsuario(mov.autorizacion.supervisorId)} · ${mov.autorizacion.fechaHora}${mov.autorizacion.firmaId ? ` · firma ${mov.autorizacion.firmaId}` : ""}${mov.autorizacion.nota ? ` · ${mov.autorizacion.nota}` : ""}`]);
+  if (mov.extraccion) hitos.push(["Extracción del banco", `${nombreUsuario(mov.extraccion.usuarioId)} · ${mov.extraccion.fechaHora} · ${dinero(mov.moneda, mov.extraccion.importe)} · boleta ${mov.extraccion.boleta}`]);
+  if (mov.envio)
+    hitos.push([
+      "Envío",
+      `${nombreUsuario(mov.envio.usuarioId)} · ${mov.envio.fechaHora} · ${dinero(mov.moneda, mov.envio.importe)}${mov.envio.conformidad ? " · conformidad del origen" : ""}${mov.envio.portadorConforme ? " · conformidad del portador" : ""}${mov.envio.firmaId ? ` · acta de entrega, firma ${mov.envio.firmaId}` : ""}`,
+    ]);
+  if (mov.recepcion) hitos.push(["Recepción", `${nombreUsuario(mov.recepcion.usuarioId)} · ${mov.recepcion.fechaHora} · contó ${dinero(mov.moneda, mov.recepcion.importe)}${mov.recepcion.firmaId ? ` · acta de recepción, firma ${mov.recepcion.firmaId}` : ""}`]);
   if (mov.resolucion) hitos.push(["Resolución de incidencia", `${nombreUsuario(mov.resolucion.supervisorId)} · ${mov.resolucion.fechaHora} · integró ${dinero(mov.moneda, mov.resolucion.importeAceptado)} · ${mov.resolucion.nota}`]);
   if (mov.boletaDeposito) hitos.push(["Boleta de depósito", mov.boletaDeposito]);
+  if (mov.finalizacion) hitos.push(["Finalizado", `${nombreUsuario(mov.finalizacion.usuarioId)} · ${mov.finalizacion.fechaHora} · ${mov.finalizacion.documento}`]);
   return (
     <Modal open onClose={onClose} title={`Movimiento ${mov.id}`} maxWidth="max-w-xl" footer={<Button onClick={onClose}>Cerrar</Button>}>
       <dl className="grid grid-cols-[150px_1fr] gap-x-3 gap-y-1.5 text-sm">
         {[
           ["Estado", estadoTexto(mov)],
-          ["Origen", nombreCaja(mov.origenId)],
+          ["Origen", origenTexto(mov)],
           ["Destino", destinoTexto(mov)],
           ["Importe", dinero(mov.moneda, mov.importe)],
           ["Motivo", mov.motivo],
+          ...(mov.rendicion ? [["Rendición de gastos", `${mov.rendicion.detalle} · ${mov.rendicion.comprobantes} comprobantes · ${dinero(mov.moneda, mov.rendicion.importe)}`]] : []),
           ["Traslado", mov.transportista ? `${mov.transportista.tipo === "EMPRESA" ? "Empresa" : "Empleado"}: ${mov.transportista.nombre} (${mov.transportista.documento})` : "—"],
           ["Precinto o comprobante", mov.precinto || "—"],
           ["Observaciones", mov.observaciones || "—"],

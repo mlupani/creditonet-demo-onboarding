@@ -11,8 +11,12 @@ import {
   siguienteId,
   usuarioActual,
 } from "./caja-store";
-import { ESTADO_CHEQUE_LABEL, type Cheque, type EstadoCheque, type FormaCheque, type Moneda } from "./caja-tipos";
+import { ESTADO_CHEQUE_LABEL, type Cheque, type EstadoCheque, type FormaCheque, type Moneda, type Reserva } from "./caja-tipos";
 import { enCustodia, formaDeTipo, proximoNumero, puedeTransicionar } from "./cheques-reglas";
+import { cambiarEstadoPago, consumirReserva, crearReserva, liberarReserva, recalcularOrden, reservaDeCheque } from "./pagos-circuito";
+import { provStores as P } from "./proveedores-store";
+import type { EstadoPago } from "./proveedores-tipos";
+import { alcanzaElEstimado, posicionBanco } from "./saldos-reglas";
 
 type Res<T extends object = object> = ({ ok: true } & T) | { ok: false; error: string };
 const error = (mensaje: string): { ok: false; error: string } => ({ ok: false, error: mensaje });
@@ -42,11 +46,15 @@ export interface EntradaChequePropio {
   fechaPago: string;
   referencia: string;
   chequeraId?: string;
+  // Operación a la que queda atada la reserva (el pago que lo emite). Sin ella, el propio cheque.
+  operacionId?: string;
 }
 
 // Emite un cheque propio: toma el próximo número libre de la chequera (dentro del rango, o un correlativo
 // propio si es e-cheq sin rango). Sin `chequeraId` usa la primera chequera activa de la cuenta con numeración.
-export function emitirChequePropio(entrada: EntradaChequePropio): Res<{ cheque: Cheque }> {
+// Emitir crea la reserva del importe en el estimado de la cuenta (v4, 2.5): el saldo real no cambia hasta
+// que el cheque se debita, y no se emite por encima del estimado.
+export function emitirChequePropio(entrada: EntradaChequePropio): Res<{ cheque: Cheque; reserva: Reserva }> {
   const cuenta = S.cuentasBancarias.get().find((c) => c.id === entrada.cuentaId);
   if (!cuenta || cuenta.estado !== "ACTIVO") return error("Elegí una cuenta bancaria activa.");
   if (!(entrada.importe > 0)) return error("El importe debe ser mayor a cero.");
@@ -56,6 +64,8 @@ export function emitirChequePropio(entrada: EntradaChequePropio): Res<{ cheque: 
 
   const tipos = S.tiposChequera.get();
   const cheques = S.cheques.get();
+  const posicion = posicionBanco(cuenta, S.movimientos.get(), P.pagos.get(), cheques, S.reservas.get());
+  if (!alcanzaElEstimado(posicion, entrada.importe)) return error("El importe supera el saldo estimado de la cuenta (descontado lo ya reservado).");
   const candidatas = S.chequeras
     .get()
     .filter((q) => q.estado === "ACTIVO" && q.cuentaId === cuenta.id && (!entrada.chequeraId || q.id === entrada.chequeraId));
@@ -88,22 +98,49 @@ export function emitirChequePropio(entrada: EntradaChequePropio): Res<{ cheque: 
     };
     S.cheques.commit([...cheques, cheque]);
     auditar("Cheque", cheque.id, "ALTA", null, `Propio ${cheque.numero} · ${cheque.parte} · ${cheque.importe} ${cheque.moneda}`);
-    return { ok: true, cheque };
+    const reserva = crearReserva({
+      origenTipo: "BANCO",
+      origenId: cuenta.id,
+      moneda: cuenta.moneda,
+      importe: entrada.importe,
+      operacionId: entrada.operacionId ?? cheque.id,
+    });
+    return { ok: true, cheque, reserva };
   }
   return error("La chequera no tiene numeración disponible.");
 }
 
-function cambioPropio(id: string, hacia: "COBRADO" | "ANULADO", detalle: string): Res {
+// Cambio de estado de un cheque propio (v4, 2.5). Cada estado tiene un único efecto en los saldos: el
+// débito baja el real y consume la reserva; la anulación y el rechazo la liberan con su motivo. Si el
+// cheque nació de un pago, el pago y su orden acompañan el cambio (entregarlo deja la orden Pagada).
+function cambioPropio(id: string, hacia: EstadoCheque, detalle: string): Res {
   const c = chequePorId(id);
   if (!c || c.origen !== "PROPIO") return error("El cheque propio no existe.");
   const u = usuarioActual();
-  if (!u.roles.includes("TESORERO") && !u.roles.includes("SUPERVISOR")) return error("Sólo un Tesorero o un Supervisor cambia el estado de un cheque propio.");
+  if (!u.roles.some((r) => r === "TESORERO" || r === "TESORERO_CENTRAL" || r === "SUPERVISOR"))
+    return error("Sólo un Tesorero, el Tesorero central o un Supervisor cambia el estado de un cheque propio.");
   if (!puedeTransicionar(c, hacia)) return error(`Un cheque ${ESTADO_CHEQUE_LABEL[c.estado].toLowerCase()} no puede pasar a ${ESTADO_CHEQUE_LABEL[hacia].toLowerCase()}.`);
   cambiarEstado(c, hacia, detalle);
+
+  const reserva = reservaDeCheque(c);
+  if (hacia === "DEBITADO") consumirReserva(reserva?.id, `Cheque ${c.numero} debitado`);
+  if (hacia === "ANULADO" || hacia === "RECHAZADO") liberarReserva(reserva?.id, detalle);
+  const pago = P.pagos.get().find((p) => p.chequeId === c.id);
+  if (pago) {
+    cambiarEstadoPago(pago.id, hacia as EstadoPago, detalle);
+    recalcularOrden(pago.ordenPago);
+  }
   return { ok: true };
 }
 
-export const marcarChequeCobrado = (id: string): Res => cambioPropio(id, "COBRADO", "Cobrado por el beneficiario");
+export const entregarChequePropio = (id: string, destinatario: string): Res =>
+  destinatario.trim() ? cambioPropio(id, "ENTREGADO", `Entregado a ${destinatario.trim()}`) : error("Indicá a quién se entrega.");
+export const presentarChequePropio = (id: string): Res => cambioPropio(id, "PRESENTADO", "Presentado al cobro por el beneficiario");
+export const debitarChequePropio = (id: string): Res => cambioPropio(id, "DEBITADO", "Debitado en el extracto");
+export function rechazarChequePropio(id: string, motivo: string): Res {
+  if (!motivo.trim()) return error("Indicá el motivo del rechazo.");
+  return cambioPropio(id, "RECHAZADO", motivo.trim());
+}
 export function anularChequePropio(id: string, motivo: string): Res {
   if (!motivo.trim()) return error("Indicá el motivo de la anulación.");
   return cambioPropio(id, "ANULADO", motivo.trim());

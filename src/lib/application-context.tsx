@@ -99,6 +99,7 @@ import { hidratarLogPunitorios } from "./punitorios-cartera";
 import { hidratarMotivosObservacion } from "./motivos-observacion";
 import { hidratarCaja, reiniciarCaja } from "./caja-store";
 import { hidratarProveedores, reiniciarProveedores } from "./proveedores-store";
+import { hidratarControl, reiniciarControl } from "./control-store";
 import { hidratarProvinciasImpuestos } from "./provincias-impuestos";
 import { hidratarImpositivos } from "./impositivos";
 import { hidratarPlantillasNotificacion } from "./plantillas-notificacion";
@@ -473,6 +474,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAppDbId(null);
     reiniciarCaja();
     reiniciarProveedores();
+    reiniciarControl();
   }, [setAppRaw]);
 
   // Sincronización entre pestañas (creditonet-92). `ultimoDB` es la última base escrita o leída
@@ -521,6 +523,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hidratarMotivosObservacion();
       hidratarCaja();
       hidratarProveedores();
+      hidratarControl();
       hidratarProvinciasImpuestos();
       hidratarImpositivos();
       hidratarPlantillasNotificacion();

@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActaDatos, ActaFirmas, ActaModal, ActaRecuento } from "./Acta";
 import { aError } from "./Jornada";
 import { FlujoRecuento } from "./RecuentoForm";
-import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, dinero, dineroConSigno } from "./comunes";
+import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, datosDiferencia, dinero, dineroConSigno } from "./comunes";
 
 const TIPO_LABEL: Record<TipoArqueo, string> = { ORDINARIO: "Ordinario", SORPRESIVO: "Sorpresivo" };
 
@@ -337,8 +337,18 @@ export function PantallaArqueo() {
         descripcion="Genera un movimiento de ajuste en el libro de la caja con la cuenta contable del motivo. La caja tiene que estar abierta."
         etiquetaNota="Nota (opcional)"
         confirmar="Autorizar ajuste"
+        llave={
+          ajuste
+            ? {
+                operacion: "Autorización de ajuste por diferencia de arqueo",
+                referencia: ajuste.id,
+                cargadoPor: ajuste.controladorId,
+                ...datosDiferencia(ajuste.conteos[ajuste.conteos.length - 1]?.diferencia ?? { ARS: 0, USD: 0 }),
+              }
+            : undefined
+        }
         onClose={() => setAjuste(null)}
-        onConfirmar={(nota) => (ajuste ? aError(ajustarDiferenciaArqueo(ajuste.id, motivoId, nota)) : null)}
+        onConfirmar={(nota, firmaId) => (ajuste ? aError(ajustarDiferenciaArqueo(ajuste.id, motivoId, nota, firmaId)) : null)}
       >
         <select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} aria-label="Motivo de la diferencia" className={CLASE_INPUT}>
           <option value="">Elegí un motivo…</option>

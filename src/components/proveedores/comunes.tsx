@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 import { bancoTexto, nombreCaja } from "@/lib/caja-operaciones";
 import { hoy } from "@/lib/caja-store";
-import { cuentaCorriente, diasDeAtraso, formatearCuit, saldoComprobante, pagadoDe } from "@/lib/proveedores-reglas";
-import { useComprobantes, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
+import { creditoDe, cuentaCorriente, diasDeAtraso, formatearCuit, saldoComprobante, pagadoDe } from "@/lib/proveedores-reglas";
+import { useComprobantes, useOrdenesPago, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
 import {
   ESTADO_COMPROBANTE_LABEL,
+  ESTADO_ORDEN_LABEL,
   MEDIO_PAGO_LABEL,
   type Comprobante,
   type EstadoComprobanteId,
+  type EstadoOrdenPago,
+  type OrdenPago,
   type PagoProveedor,
   type Proveedor,
 } from "@/lib/proveedores-tipos";
@@ -37,6 +40,7 @@ export const numeroComprobante = (c: Pick<Comprobante, "prefijo" | "numero">) =>
 const TONO_ESTADO: Record<EstadoComprobanteId, "info" | "success" | "danger" | "warning" | "neutral"> = {
   PREAPROBADO: "info",
   PARA_LIQUIDAR: "success",
+  EN_ORDEN_PAGO: "info",
   RECHAZADO: "danger",
   PAGO_PARCIAL: "warning",
   PAGADO: "neutral",
@@ -45,6 +49,20 @@ const TONO_ESTADO: Record<EstadoComprobanteId, "info" | "success" | "danger" | "
 
 export function EstadoComprobanteBadge({ estado }: { estado: EstadoComprobanteId }) {
   return <StatusBadge tone={TONO_ESTADO[estado]}>{ESTADO_COMPROBANTE_LABEL[estado]}</StatusBadge>;
+}
+
+const TONO_ORDEN: Record<EstadoOrdenPago, "info" | "success" | "danger" | "warning" | "neutral"> = {
+  BORRADOR: "neutral",
+  EMITIDA: "info",
+  AUTORIZADA: "success",
+  PENDIENTE_TRANSFERENCIA: "warning",
+  PAGADA: "neutral",
+  RECHAZADA: "danger",
+  ANULADA: "neutral",
+};
+
+export function EstadoOrdenBadge({ estado }: { estado: EstadoOrdenPago }) {
+  return <StatusBadge tone={TONO_ORDEN[estado]}>{ESTADO_ORDEN_LABEL[estado]}</StatusBadge>;
 }
 
 export const nombreProveedor = (proveedores: Proveedor[], id: string) =>
@@ -60,10 +78,10 @@ export const ESTADO_CUENTA_LABEL: Record<EstadoCuenta, string> = {
   PAGO_PARCIAL: "Pago parcial",
   PAGADO: "Pagado",
 };
-export function estadoCuenta(c: Comprobante, pagos: PagoProveedor[]): EstadoCuenta {
-  const pagado = pagadoDe(c.id, pagos);
-  if (pagado <= 0) return "PENDIENTE";
-  return saldoComprobante(c, pagos) <= 0.001 ? "PAGADO" : "PAGO_PARCIAL";
+export function estadoCuenta(c: Comprobante, pagos: PagoProveedor[], ordenes: OrdenPago[] = []): EstadoCuenta {
+  const aplicado = pagadoDe(c.id, pagos) + creditoDe(c.id, ordenes);
+  if (aplicado <= 0) return "PENDIENTE";
+  return saldoComprobante(c, pagos, ordenes) <= 0.001 ? "PAGADO" : "PAGO_PARCIAL";
 }
 
 export function Pestanas<T extends string>({
@@ -105,6 +123,7 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
   const proveedores = useProveedores();
   const comprobantes = useComprobantes();
   const pagos = usePagosProveedor();
+  const ordenes = useOrdenesPago();
   const tipos = useTiposComprobante();
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
@@ -113,15 +132,15 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
 
   const proveedor = proveedores.find((p) => p.id === proveedorId);
   const cc = useMemo(
-    () => cuentaCorriente(proveedorId, comprobantes, pagos, tipos, { desde: desde || undefined, hasta: hasta || undefined }),
-    [proveedorId, comprobantes, pagos, tipos, desde, hasta]
+    () => cuentaCorriente(proveedorId, comprobantes, pagos, tipos, { desde: desde || undefined, hasta: hasta || undefined }, ordenes),
+    [proveedorId, comprobantes, pagos, ordenes, tipos, desde, hasta]
   );
 
   const filas = cc.filas.filter((f) => {
     const c = comprobantes.find((x) => x.id === f.comprobanteId);
     if (!c) return false;
     if (tipoId && c.tipoId !== tipoId) return false;
-    if (estado && estadoCuenta(c, pagos) !== estado) return false;
+    if (estado && estadoCuenta(c, pagos, ordenes) !== estado) return false;
     return true;
   });
   const pagoDe = (id: string) => pagos.find((p) => p.id === id);
@@ -146,7 +165,7 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
           f.tipoFila === "COMPROBANTE" ? String(f.pagosAplicados) : "",
           f.tipoFila === "COMPROBANTE" ? String(f.saldoPendiente) : "",
           String(f.saldoAcumulado),
-          c ? ESTADO_CUENTA_LABEL[estadoCuenta(c, pagos)] : "",
+          c ? ESTADO_CUENTA_LABEL[estadoCuenta(c, pagos, ordenes)] : "",
         ];
       }),
     ]);
@@ -235,7 +254,7 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
                         {f.tipoDescripcion}
                         {pago && (
                           <span className="block text-xs text-ink-400">
-                            {MEDIO_PAGO_LABEL[pago.medio]} · {origenTexto(pago)} · aplicado a {pago.comprobanteId}
+                            {MEDIO_PAGO_LABEL[pago.medio]} · {origenTexto(pago)} · aplicado a {pago.aplicaciones.map((a) => a.comprobanteId).join(", ")}
                           </span>
                         )}
                       </td>
@@ -247,7 +266,7 @@ export function CuentaCorriente({ proveedorId }: { proveedorId: string }) {
                       <td className="px-3 py-3 text-right tabular-nums text-ink-700">{f.tipoFila === "COMPROBANTE" ? pesos(f.saldoPendiente) : ""}</td>
                       <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{pesos(f.saldoAcumulado)}</td>
                       <td className="px-3 py-3">
-                        {c && <StatusBadge tone={estadoCuenta(c, pagos) === "PAGADO" ? "neutral" : estadoCuenta(c, pagos) === "PAGO_PARCIAL" ? "warning" : "info"}>{ESTADO_CUENTA_LABEL[estadoCuenta(c, pagos)]}</StatusBadge>}
+                        {c && <StatusBadge tone={estadoCuenta(c, pagos, ordenes) === "PAGADO" ? "neutral" : estadoCuenta(c, pagos, ordenes) === "PAGO_PARCIAL" ? "warning" : "info"}>{ESTADO_CUENTA_LABEL[estadoCuenta(c, pagos, ordenes)]}</StatusBadge>}
                       </td>
                     </tr>
                   );

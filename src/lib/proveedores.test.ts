@@ -7,15 +7,27 @@ import { recuentoSugerido, saldoCaja } from "./caja-reglas";
 import { cajaStores as S, fijarFechaDemo, fijarUsuarioActual as como, reiniciarCaja } from "./caja-store";
 import {
   anularComprobante,
+  anularOrdenPago,
+  armarOrdenPago,
   autorizarComprobante,
+  autorizarOrdenPago,
   cargarComprobante,
   confirmarLote,
+  confirmarTransferencia,
   corregirComprobante,
+  csvLoteTransferencia,
   generarPlantilla,
+  lotesTransferencia,
+  marcarPendienteEjecucion,
+  pagarOrdenPago,
   rechazarComprobante,
-  registrarPago,
+  rechazarOrdenPago,
+  registrarResultadoTransferencia,
   validarFilasLote,
 } from "./proveedores-operaciones";
+import { debitarChequePropio, entregarChequePropio, presentarChequePropio, rechazarChequePropio } from "./cheques-operaciones";
+import { pagadoDeOrden, pendienteDeOrden } from "./proveedores-reglas";
+import { posicionDeCaja } from "./caja-operaciones";
 import {
   antiguedadDeuda,
   cuentaCorriente,
@@ -93,27 +105,7 @@ test("no se puede cargar dos veces el mismo CUIT, tipo, prefijo y número", () =
   ok(cargarComprobante("PRV-004", datos("77")));
 });
 
-test("circuito: cargar, autorizar, pagar parcial y pagar", () => {
-  const c = ok(cargarComprobante("PRV-005", datos("100"))).comprobante;
-  assert.equal(c.estado, "PREAPROBADO");
-  assert.equal(c.cargadoPor, "ana-gomez");
-
-  como("marta-diaz");
-  const a = ok(autorizarComprobante(c.id)).comprobante;
-  assert.equal(a.estado, "PARA_LIQUIDAR");
-  assert.equal(a.ordenPago, "OP-0007");
-
-  como("carlos-ibarra");
-  const p1 = ok(registrarPago({ comprobanteId: c.id, importe: 50000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" })).pago;
-  assert.equal(p1.ordenPago, "OP-0007");
-  assert.equal(P.comprobantes.get().find((x) => x.id === c.id)?.estado, "PAGO_PARCIAL");
-  falla(registrarPago({ comprobanteId: c.id, importe: 80000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }), /supera el saldo/i);
-  ok(registrarPago({ comprobanteId: c.id, importe: 71000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }));
-  assert.equal(P.comprobantes.get().find((x) => x.id === c.id)?.estado, "PAGADO");
-  falla(anularComprobante(c.id, "error"), /pagos aplicados/i);
-});
-
-// Carga (Ana) y autoriza (Marta) un comprobante; deja al usuario actual en Ana.
+// Carga (Ana) y autoriza (Marta) un comprobante de PRV-005; deja al usuario actual en Ana.
 function autorizado(numero: string, base: number) {
   como("ana-gomez");
   const c = ok(cargarComprobante("PRV-005", datos(numero, base))).comprobante;
@@ -123,59 +115,273 @@ function autorizado(numero: string, base: number) {
   return c;
 }
 
-test("un pago desde el banco es un egreso: baja el saldo de la cuenta", () => {
-  const saldo = () => saldosBancarios().find((s) => s.cuentaId === "CB-001")!;
-  assert.equal(saldo().saldoInicial, 8000000);
-  assert.equal(saldo().pagado, 150000, "el pago de ejemplo PAG-0001 ya descontó");
-  assert.equal(saldo().saldo, 7850000);
-  const c = autorizado("200", 100000);
+// Arma (Carlos, Tesorero) y autoriza (Ricardo, Tesorero central) una orden de pago; deja a Ricardo, que paga.
+function ordenAutorizada(ids: string[], proveedorId = "PRV-005") {
   como("carlos-ibarra");
-  ok(registrarPago({ comprobanteId: c.id, importe: 50000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }));
-  assert.equal(saldo().saldo, 7800000);
-  falla(registrarPago({ comprobanteId: c.id, importe: 1000, medio: "EFECTIVO", origenTipo: "BANCO", origenId: "CB-001" }), /efectivo sale de una caja/i);
-  falla(registrarPago({ comprobanteId: c.id, importe: 1000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-003" }), /en pesos/i);
+  const orden = ok(armarOrdenPago(proveedorId, ids)).orden;
+  como("ricardo-pena");
+  ok(autorizarOrdenPago(orden.id));
+  return orden;
+}
+
+const banco = (id: string) => saldosBancarios().find((s) => s.cuentaId === id)!;
+const comprobante = (id: string) => P.comprobantes.get().find((c) => c.id === id)!;
+const orden = (id: string) => P.ordenesPago.get().find((o) => o.id === id)!;
+
+test("circuito: autorizar deja Para liquidar sin número de orden; la OP se arma y se autoriza aparte", () => {
+  const c = ok(cargarComprobante("PRV-005", datos("100"))).comprobante;
+  assert.equal(c.estado, "PREAPROBADO");
+  assert.equal(c.cargadoPor, "ana-gomez");
+
+  como("marta-diaz");
+  const a = ok(autorizarComprobante(c.id)).comprobante;
+  assert.equal(a.estado, "PARA_LIQUIDAR");
+  assert.equal(a.ordenPago, undefined, "el número de OP se genera al armarla");
+
+  como("carlos-ibarra");
+  const op = ok(armarOrdenPago("PRV-005", [c.id])).orden;
+  assert.equal(op.id, "OP-0005", "las órdenes de ejemplo llegan hasta OP-0004");
+  assert.equal(op.estado, "EMITIDA");
+  assert.equal(op.total, 121000);
+  assert.equal(op.cuentaDestino, "0170099220000067890125", "la cuenta destino es la de la ficha del proveedor");
+  assert.equal(comprobante(c.id).estado, "EN_ORDEN_PAGO");
+  assert.equal(comprobante(c.id).ordenPago, op.id);
+  falla(anularComprobante(c.id, "x"), /orden de pago/i);
 });
 
-test("pagar con cheque desde el banco emite un cheque propio y, si no se puede, no registra el pago", () => {
-  const c = autorizado("210", 100000);
+test("la OP es de un solo proveedor y sólo admite comprobantes Para liquidar", () => {
+  const a = autorizado("110", 100000);
+  como("marta-diaz");
+  const b = ok(cargarComprobante("PRV-004", datos("111"))).comprobante;
+  como("raul-molina");
+  ok(autorizarComprobante(b.id));
   como("carlos-ibarra");
-  const pagos = P.pagos.get().length;
-  falla(registrarPago({ comprobanteId: c.id, importe: 1000, medio: "CHEQUE", origenTipo: "BANCO", origenId: "CB-001", chequeraId: "CHQ-002" }), /chequera/i);
-  assert.equal(P.pagos.get().length, pagos, "si el cheque falla, el pago no se registra");
-  const pago = ok(registrarPago({ comprobanteId: c.id, importe: 121000, medio: "CHEQUE", origenTipo: "BANCO", origenId: "CB-001", chequeraId: "CHQ-001" })).pago;
-  assert.ok(pago.chequeId, "queda la referencia al cheque emitido");
-  assert.equal(P.comprobantes.get().find((x) => x.id === c.id)?.estado, "PAGADO");
+  falla(armarOrdenPago("PRV-005", [a.id, b.id]), /mezclar proveedores/i);
+  falla(armarOrdenPago("PRV-005", []), /al menos un comprobante/i);
+  falla(armarOrdenPago("PRV-005", ["CMP-0001"]), /mezclar proveedores/i); // es de otro proveedor
+  ok(armarOrdenPago("PRV-005", [a.id]));
+  falla(armarOrdenPago("PRV-005", [a.id]), /Para liquidar/i); // ya está en una orden
+  como("ana-gomez");
+  falla(armarOrdenPago("PRV-004", [b.id]), /perfil financiero/i);
 });
 
-test("un pago en efectivo sale del libro de la caja y exige caja abierta y saldo", () => {
-  const c = autorizado("201", 100000); // total 121.000
-  const pagar = (importe: number, medio: "EFECTIVO" | "TRANSFERENCIA" = "EFECTIVO") =>
-    registrarPago({ comprobanteId: c.id, importe, medio, origenTipo: "CAJA", origenId: "CAJ-003" });
+test("cuatro ojos en la orden de pago: no la autoriza quien la armó, aunque tenga el rol", () => {
+  como("marta-diaz"); // supervisora
+  const c = autorizado("120", 100000);
+  como("marta-diaz");
+  const op = ok(armarOrdenPago("PRV-005", [c.id])).orden;
+  falla(autorizarOrdenPago(op.id), /armaste vos/i);
+  como("carlos-ibarra"); // tesorero: no autoriza órdenes
+  falla(autorizarOrdenPago(op.id), /Tesorero central, el Director o un Supervisor/i);
+  como("raul-molina");
+  ok(autorizarOrdenPago(op.id, "FIRMA-1"));
+  assert.equal(orden(op.id).estado, "AUTORIZADA");
+  assert.equal(orden(op.id).autorizacion?.firmaId, "FIRMA-1");
+});
+
+test("rechazar la OP exige motivo y libera los comprobantes", () => {
+  const c = autorizado("130", 100000);
+  como("carlos-ibarra");
+  const op = ok(armarOrdenPago("PRV-005", [c.id])).orden;
+  como("ricardo-pena");
+  falla(rechazarOrdenPago(op.id, " "), /motivo/i);
+  ok(rechazarOrdenPago(op.id, "Falta la conformidad de compras"));
+  assert.equal(orden(op.id).estado, "RECHAZADA");
+  assert.equal(comprobante(c.id).estado, "PARA_LIQUIDAR");
+  assert.equal(comprobante(c.id).ordenPago, undefined);
+});
+
+test("una transferencia preparada reserva (baja el estimado, no el real) y ejecutada baja el real", () => {
+  const c = autorizado("140", 100000); // 121.000
+  const op = ordenAutorizada([c.id]);
+  const antes = banco("CB-001");
+  assert.equal(antes.real, 7850000);
+  assert.equal(antes.comprometido, 410000, "cheque CHE-0005 (310.000) y transferencia PAG-0003 (100.000) de ejemplo");
+  assert.equal(antes.estimado, 7440000);
+
+  const pago = ok(pagarOrdenPago({ ordenId: op.id, importe: 121000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" })).pago;
+  assert.equal(pago.estado, "PREPARADA");
+  assert.equal(banco("CB-001").real, 7850000, "preparar no mueve el saldo real");
+  assert.equal(banco("CB-001").estimado, 7440000 - 121000);
+  assert.equal(orden(op.id).estado, "PENDIENTE_TRANSFERENCIA");
+  falla(registrarResultadoTransferencia(pago.id, { resultado: "EJECUTADA", comprobante: "OP-1" }), /Pendiente de ejecución/i);
+
+  ok(marcarPendienteEjecucion(pago.id));
+  falla(registrarResultadoTransferencia(pago.id, { resultado: "EJECUTADA" }), /comprobante del banco/i);
+  ok(registrarResultadoTransferencia(pago.id, { resultado: "EJECUTADA", comprobante: "OP-998877" }));
+  assert.equal(banco("CB-001").real, 7850000 - 121000, "ejecutar baja el real");
+  assert.equal(banco("CB-001").estimado, 7440000 - 121000, "y consume la reserva: el estimado no cambia");
+  assert.equal(banco("CB-001").comprometido, 410000);
+  assert.equal(orden(op.id).estado, "PAGADA");
+  assert.equal(comprobante(c.id).estado, "PAGADO");
+
+  ok(confirmarTransferencia(pago.id));
+  falla(confirmarTransferencia(pago.id), /Ejecutada/i);
+});
+
+test("una transferencia rechazada libera la reserva y la orden vuelve a Autorizada", () => {
+  const c = autorizado("150", 100000);
+  const op = ordenAutorizada([c.id]);
+  const pago = ok(pagarOrdenPago({ ordenId: op.id, importe: 121000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" })).pago;
+  ok(marcarPendienteEjecucion(pago.id));
+  falla(registrarResultadoTransferencia(pago.id, { resultado: "RECHAZADA" }), /motivo/i);
+  ok(registrarResultadoTransferencia(pago.id, { resultado: "RECHAZADA", motivo: "El home banking estaba caído" }));
+  assert.equal(orden(op.id).estado, "AUTORIZADA");
+  assert.equal(banco("CB-001").estimado, 7440000, "se liberó la reserva");
+  assert.equal(S.reservas.get().find((r) => r.id === pago.reservaId)?.estado, "LIBERADA");
+  assert.equal(pendienteDeOrden(orden(op.id), P.pagos.get()), 121000, "el importe vuelve a quedar pendiente");
+  assert.equal(comprobante(c.id).estado, "EN_ORDEN_PAGO");
+  // y se puede volver a pagar
+  ok(pagarOrdenPago({ ordenId: op.id, importe: 121000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-002" }));
+});
+
+test("pago parcial: la orden sigue Autorizada, los comprobantes se pagan en orden de vencimiento", () => {
+  // OP-0004 de ejemplo: CMP-0008 (vence 15/7, 72.600) y CMP-0006 (vence 30/9, 181.500).
+  como("ricardo-pena");
+  falla(pagarOrdenPago({ ordenId: "OP-0004", importe: 1000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }), /no está autorizada/i);
+  como("raul-molina");
+  ok(autorizarOrdenPago("OP-0004"));
+  como("ricardo-pena");
+  const p1 = ok(pagarOrdenPago({ ordenId: "OP-0004", importe: 100000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" })).pago;
+  assert.deepEqual(p1.aplicaciones, [
+    { comprobanteId: "CMP-0008", importe: 72600 },
+    { comprobanteId: "CMP-0006", importe: 27400 },
+  ]);
+  assert.equal(pendienteDeOrden(orden("OP-0004"), P.pagos.get()), 154100);
+  falla(pagarOrdenPago({ ordenId: "OP-0004", importe: 154101, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }), /supera lo que queda/i);
+  ok(marcarPendienteEjecucion(p1.id));
+  ok(registrarResultadoTransferencia(p1.id, { resultado: "EJECUTADA", comprobante: "A-1" }));
+  assert.equal(orden("OP-0004").estado, "AUTORIZADA");
+  assert.equal(comprobante("CMP-0008").estado, "PAGADO");
+  assert.equal(comprobante("CMP-0006").estado, "PAGO_PARCIAL");
+
+  const p2 = ok(pagarOrdenPago({ ordenId: "OP-0004", importe: 154100, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" })).pago;
+  ok(marcarPendienteEjecucion(p2.id));
+  ok(registrarResultadoTransferencia(p2.id, { resultado: "EJECUTADA", comprobante: "A-2" }));
+  assert.equal(orden("OP-0004").estado, "PAGADA");
+  assert.equal(comprobante("CMP-0006").estado, "PAGADO");
+  assert.equal(pagadoDeOrden("OP-0004", P.pagos.get()), 254100);
+});
+
+test("ningún egreso supera el estimado: no se paga más de lo que hay sin reservar", () => {
+  const grande = autorizado("160", 8000000); // 9.680.000
+  const op = ordenAutorizada([grande.id]);
+  falla(pagarOrdenPago({ ordenId: op.id, importe: 9680000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }), /saldo estimado/i);
+  // CB-001 tiene 7.850.000 reales pero 410.000 reservados: 7.440.000 es el máximo.
+  ok(pagarOrdenPago({ ordenId: op.id, importe: 7440000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }));
+  falla(pagarOrdenPago({ ordenId: op.id, importe: 1000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }), /saldo estimado/i);
+  falla(pagarOrdenPago({ ordenId: op.id, importe: 1000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-003" }), /en pesos/i);
+  falla(pagarOrdenPago({ ordenId: op.id, importe: 1000, medio: "EFECTIVO", origenTipo: "BANCO", origenId: "CB-001" }), /efectivo sale de una caja/i);
+});
+
+test("pagar con cheque: emitido reserva, entregado deja la orden Pagada y debitado baja el real", () => {
+  const c = autorizado("170", 100000); // 121.000
+  const op = ordenAutorizada([c.id]);
+  falla(pagarOrdenPago({ ordenId: op.id, importe: 1000, medio: "CHEQUE", origenTipo: "BANCO", origenId: "CB-001", chequeraId: "CHQ-002" }), /chequera/i);
+  assert.equal(P.pagos.get().filter((p) => p.ordenPago === op.id).length, 0, "si el cheque falla, no queda pago");
+
+  const pago = ok(pagarOrdenPago({ ordenId: op.id, importe: 121000, medio: "CHEQUE", origenTipo: "BANCO", origenId: "CB-001", chequeraId: "CHQ-001" })).pago;
+  assert.equal(pago.estado, "EMITIDO");
+  assert.ok(pago.chequeId && pago.reservaId);
+  assert.equal(banco("CB-001").real, 7850000);
+  assert.equal(banco("CB-001").estimado, 7440000 - 121000);
+  assert.equal(orden(op.id).estado, "AUTORIZADA", "emitir no es pagar");
+
+  ok(entregarChequePropio(pago.chequeId!, "Distribuidora Cuyo"));
+  assert.equal(orden(op.id).estado, "PAGADA", "con la entrega, el pago al proveedor queda hecho");
+  assert.equal(comprobante(c.id).estado, "PAGADO");
+  assert.equal(banco("CB-001").real, 7850000, "el banco todavía no debitó");
+  ok(presentarChequePropio(pago.chequeId!));
+  ok(debitarChequePropio(pago.chequeId!));
+  assert.equal(banco("CB-001").real, 7850000 - 121000);
+  assert.equal(banco("CB-001").estimado, 7440000 - 121000, "el estimado no cambia al consumirse la reserva");
+  assert.equal(S.reservas.get().find((r) => r.id === pago.reservaId)?.estado, "CONSUMIDA");
+});
+
+test("un cheque rechazado por el banco libera la reserva y reabre la deuda de la orden", () => {
+  const c = autorizado("180", 100000);
+  const op = ordenAutorizada([c.id]);
+  const pago = ok(pagarOrdenPago({ ordenId: op.id, importe: 121000, medio: "CHEQUE", origenTipo: "BANCO", origenId: "CB-001", chequeraId: "CHQ-001" })).pago;
+  ok(entregarChequePropio(pago.chequeId!, "Proveedor"));
+  falla(rechazarChequePropio(pago.chequeId!, "Sin fondos"), /no puede pasar/i); // todavía no se presentó
+  ok(presentarChequePropio(pago.chequeId!));
+  ok(rechazarChequePropio(pago.chequeId!, "Cuenta cerrada"));
+  assert.equal(orden(op.id).estado, "AUTORIZADA");
+  assert.equal(comprobante(c.id).estado, "EN_ORDEN_PAGO");
+  assert.equal(pendienteDeOrden(orden(op.id), P.pagos.get()), 121000);
+  assert.equal(banco("CB-001").estimado, 7440000, "la reserva se liberó");
+});
+
+test("anular una OP cancela lo que está en curso, libera comprobantes y reservas", () => {
+  const c = autorizado("190", 100000);
+  const op = ordenAutorizada([c.id]);
+  const pago = ok(pagarOrdenPago({ ordenId: op.id, importe: 50000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" })).pago;
+  como("ana-gomez");
+  falla(anularOrdenPago(op.id, "x"), /perfil financiero/i);
+  como("carlos-ibarra");
+  falla(anularOrdenPago(op.id, " "), /motivo/i);
+  ok(anularOrdenPago(op.id, "Se pagó por otro medio"));
+  assert.equal(orden(op.id).estado, "ANULADA");
+  assert.equal(comprobante(c.id).estado, "PARA_LIQUIDAR");
+  assert.equal(P.pagos.get().find((p) => p.id === pago.id)?.estado, "RECHAZADA");
+  assert.equal(banco("CB-001").estimado, 7440000);
+  // Con pagos hechos no se anula.
+  como("ricardo-pena");
+  falla(anularOrdenPago("OP-0003", "x"), /no se puede anular en su estado/i);
+  falla(anularOrdenPago("OP-0002", "x"), /pagos hechos/i);
+});
+
+test("un pago en efectivo sale del libro de la caja y exige caja abierta y estimado", () => {
+  const c = autorizado("200", 100000); // 121.000
+  const op = ordenAutorizada([c.id]);
+  const pagar = (importe: number) => pagarOrdenPago({ ordenId: op.id, importe, medio: "EFECTIVO", origenTipo: "CAJA", origenId: "CAJ-004" });
+  como("ricardo-pena");
+  falla(pagar(1000), /asignado a la caja/i);
+  como("ana-gomez"); // no es perfil de pago
+  falla(pagar(1000), /Tesorero central/i);
+  como("tomas-ruiz"); // tesorero y cajero de la caja
   falla(pagar(1000), /no está abierta/i);
 
-  const detalle = recuentoSugerido(DENOMINACIONES_INICIALES, "ARS", saldoCaja(S.libro.get(), "CAJ-003", "ARS"));
-  assert.ok(registrarApertura("CAJ-003", { detalle }).ok);
-  const antes = saldoCaja(S.libro.get(), "CAJ-003", "ARS");
+  const detalle = recuentoSugerido(DENOMINACIONES_INICIALES, "ARS", saldoCaja(S.libro.get(), "CAJ-004", "ARS"));
+  const apertura = registrarApertura("CAJ-004", { detalle });
+  assert.ok(apertura.ok, JSON.stringify(apertura));
+  const antes = saldoCaja(S.libro.get(), "CAJ-004", "ARS");
   const pago = ok(pagar(100000)).pago;
-  assert.equal(saldoCaja(S.libro.get(), "CAJ-003", "ARS"), antes - 100000);
+  assert.equal(pago.estado, "EJECUTADA");
+  assert.equal(saldoCaja(S.libro.get(), "CAJ-004", "ARS"), antes - 100000, "el efectivo baja el real en el momento");
   const asiento = S.libro.get().find((m) => m.id === pago.asientoLibroId);
   assert.equal(asiento?.egreso, 100000);
   assert.equal(asiento?.medio, "EFECTIVO");
-  assert.match(asiento?.descripcion ?? "", /Pago a proveedor Distribuidora Cuyo S\.A\. · OP-0007/);
+  assert.match(asiento?.descripcion ?? "", new RegExp(`Pago a proveedor Distribuidora Cuyo S\\.A\\. · ${op.id}`));
   assert.equal(asiento?.refId, pago.id);
-
-  // Una transferencia desde la caja figura en el libro pero no mueve el efectivo.
-  const transf = ok(pagar(1000, "TRANSFERENCIA")).pago;
-  assert.equal(S.libro.get().find((m) => m.id === transf.asientoLibroId)?.medio, "TRANSFERENCIA");
-  assert.equal(saldoCaja(S.libro.get(), "CAJ-003", "ARS"), antes - 100000);
+  assert.equal(posicionDeCaja("CAJ-004", "ARS").estimado, antes - 100000);
+  assert.equal(orden(op.id).estado, "AUTORIZADA", "quedan 21.000 por pagar");
 
   // No alcanza el efectivo.
-  const grande = autorizado("202", 600000); // total 726.000, más que el efectivo
-  falla(registrarPago({ comprobanteId: grande.id, importe: 726000, medio: "EFECTIVO", origenTipo: "CAJA", origenId: "CAJ-003" }), /saldo suficiente/i);
-  // Sólo quien está asignado a la caja paga en efectivo desde ella.
-  como("marta-diaz");
-  falla(pagar(1000), /asignado a la caja/i);
+  const grande = autorizado("202", 600000); // 726.000, más que el efectivo
+  const opGrande = ordenAutorizada([grande.id]);
+  como("tomas-ruiz");
+  falla(pagarOrdenPago({ ordenId: opGrande.id, importe: 726000, medio: "EFECTIVO", origenTipo: "CAJA", origenId: "CAJ-004" }), /saldo estimado/i);
 });
+
+test("las transferencias se agrupan en lotes por cuenta de origen y se descargan en CSV", () => {
+  const lotes = lotesTransferencia();
+  assert.equal(lotes.length, 1);
+  assert.equal(lotes[0].cuentaId, "CB-001");
+  assert.equal(lotes[0].items[0].pagoId, "PAG-0003");
+  assert.equal(lotes[0].items[0].cbuDestino, "0110441230044129000019");
+  assert.equal(lotes[0].total, 100000);
+
+  const c = autorizado("210", 100000);
+  const op = ordenAutorizada([c.id]);
+  ok(pagarOrdenPago({ ordenId: op.id, importe: 21000, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-002" }));
+  assert.deepEqual(lotesTransferencia().map((l) => l.cuentaId).sort(), ["CB-001", "CB-002"]);
+  const csv = csvLoteTransferencia("CB-001").split("\n");
+  assert.equal(csv.length, 2);
+  assert.match(csv[1], /PAG-0003;OP-0002;Papelera del Plata S\.A\.;30697100128;0110441230044129000019;100000/);
+});
+
+
 
 test("la antigüedad de la deuda agrupa lo pendiente por días de vencida", () => {
   const todos = antiguedadDeuda(P.comprobantes.get(), P.pagos.get(), P.tiposComprobante.get(), "2026-11-18");
@@ -246,14 +452,48 @@ test("la cuenta corriente suma facturas, resta pagos y no cuenta lo no autorizad
   assert.equal(saldoProveedor("PRV-003", P.comprobantes.get(), P.pagos.get(), tipos), 0);
 });
 
-test("la nota de crédito descuenta de la cuenta corriente y no se paga", () => {
-  const nc = ok(cargarComprobante("PRV-001", datos("900", 100000, { tipoId: "TCP-005" }))).comprobante;
+test("la nota de crédito descuenta de la cuenta corriente y, en una OP, resta de las facturas", () => {
+  como("carlos-ibarra");
+  const nc = ok(cargarComprobante("PRV-005", datos("900", 50000, { tipoId: "TCP-005" }))).comprobante; // 60.500
   como("marta-diaz");
   ok(autorizarComprobante(nc.id));
+  const factura = autorizado("300", 100000); // 121.000
   const tipos = P.tiposComprobante.get();
-  assert.equal(saldoProveedor("PRV-001", P.comprobantes.get(), P.pagos.get(), tipos), 213000 - 121000);
-  falla(registrarPago({ comprobanteId: nc.id, importe: 1, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" }), /nota de crédito/i);
+  const antes = saldoProveedor("PRV-005", P.comprobantes.get(), P.pagos.get(), tipos);
+  assert.equal(antes, 181500 + 72600 + 121000 - 60500, "CMP-0006, CMP-0008 y la factura, menos la nota de crédito");
+
+  como("carlos-ibarra");
+  falla(armarOrdenPago("PRV-005", [nc.id]), /nota de crédito sola/i);
+  const op = ok(armarOrdenPago("PRV-005", [nc.id, factura.id])).orden;
+  // La factura (121.000) menos la nota (60.500): quedan 60.500 en dinero.
+  assert.equal(op.total, 60500);
+  assert.deepEqual(op.items.find((i) => i.comprobanteId === factura.id), { comprobanteId: factura.id, credito: 60500, aPagar: 60500 });
+  assert.equal(op.items.find((i) => i.comprobanteId === nc.id)?.credito, 60500);
+  // La nota se consume en la OP: no cambia lo que se le debe al proveedor.
+  assert.equal(saldoProveedor("PRV-005", P.comprobantes.get(), P.pagos.get(), tipos, P.ordenesPago.get()), antes);
+
+  como("ricardo-pena");
+  ok(autorizarOrdenPago(op.id));
+  const pago = ok(pagarOrdenPago({ ordenId: op.id, importe: 60500, medio: "TRANSFERENCIA", origenTipo: "BANCO", origenId: "CB-001" })).pago;
+  ok(marcarPendienteEjecucion(pago.id));
+  ok(registrarResultadoTransferencia(pago.id, { resultado: "EJECUTADA", comprobante: "NC-1" }));
+  assert.equal(orden(op.id).estado, "PAGADA");
+  assert.equal(comprobante(factura.id).estado, "PAGADO");
+  assert.equal(comprobante(nc.id).estado, "PAGADO", "la nota se salda cuando se salda la orden");
+  assert.equal(saldoProveedor("PRV-005", P.comprobantes.get(), P.pagos.get(), tipos, P.ordenesPago.get()), 181500 + 72600, "quedan CMP-0006 y CMP-0008");
 });
+
+test("las notas de crédito no pueden superar las facturas de la orden", () => {
+  const factura = autorizado("301", 100000); // 121.000
+  como("carlos-ibarra");
+  const nc = ok(cargarComprobante("PRV-005", datos("901", 1000000, { tipoId: "TCP-005" }))).comprobante;
+  como("marta-diaz");
+  ok(autorizarComprobante(nc.id));
+  como("carlos-ibarra");
+  falla(armarOrdenPago("PRV-005", [nc.id, factura.id]), /superan/i);
+});
+
+
 
 test("la carga masiva acepta las filas válidas y rechaza las que no, con su motivo", () => {
   const fila = (num: string, extra: Partial<Record<number, string>> = {}) => {

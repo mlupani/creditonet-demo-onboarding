@@ -54,13 +54,15 @@ export interface TipoComprobante {
 export type EstadoComprobanteId =
   | "PREAPROBADO"
   | "PARA_LIQUIDAR"
+  | "EN_ORDEN_PAGO"
   | "RECHAZADO"
   | "PAGO_PARCIAL"
   | "PAGADO"
   | "ANULADO";
 export const ESTADOS_COMPROBANTE: { id: EstadoComprobanteId; label: string; significado: string; propuesto?: boolean }[] = [
   { id: "PREAPROBADO", label: "Preaprobado", significado: "Cargado, espera autorización" },
-  { id: "PARA_LIQUIDAR", label: "Para liquidar", significado: "Autorizado; tiene número de orden de pago" },
+  { id: "PARA_LIQUIDAR", label: "Para liquidar", significado: "Autorizado; disponible para incluirse en una orden de pago" },
+  { id: "EN_ORDEN_PAGO", label: "En orden de pago", significado: "Incluido en una orden de pago" },
   { id: "RECHAZADO", label: "Rechazado", significado: "No autorizado; vuelve al operador" },
   { id: "PAGO_PARCIAL", label: "Pago parcial", significado: "Propuesto", propuesto: true },
   { id: "PAGADO", label: "Pagado", significado: "Propuesto", propuesto: true },
@@ -112,30 +114,126 @@ export interface Comprobante {
   autorizacion?: DecisionComprobante; // quien autorizó (distinto del que cargó)
   rechazo?: DecisionComprobante;
   anulacion?: DecisionComprobante;
-  ordenPago?: string; // se asigna al autorizar (OP-0001)
+  // Orden de pago vigente que lo incluye (OP-0001). Se asigna al armar la OP y se limpia si la OP se
+  // rechaza o se anula (v4: autorizar el comprobante ya no genera número de OP).
+  ordenPago?: string;
 }
 
-// Pago aplicado a un comprobante a través de su orden de pago (v2, 6.3 y 6.4).
+// Orden de pago (v4, 6.2): siempre de un solo proveedor, con una o varias facturas y notas de ese
+// proveedor en estado Para liquidar. Se arma y se autoriza en Proveedores; se paga en la Bandeja.
+export type EstadoOrdenPago =
+  | "BORRADOR"
+  | "EMITIDA"
+  | "AUTORIZADA"
+  | "PENDIENTE_TRANSFERENCIA"
+  | "PAGADA"
+  | "RECHAZADA"
+  | "ANULADA";
+export const ESTADO_ORDEN_LABEL: Record<EstadoOrdenPago, string> = {
+  BORRADOR: "Borrador",
+  EMITIDA: "Emitida",
+  AUTORIZADA: "Autorizada · pendiente de pago",
+  PENDIENTE_TRANSFERENCIA: "Pendiente de transferencia",
+  PAGADA: "Pagada",
+  RECHAZADA: "Rechazada",
+  ANULADA: "Anulada",
+};
+
+// Cada comprobante de la orden: `credito` es lo que se le aplicó de las notas de crédito incluidas (o,
+// en la nota, su importe entero) y `aPagar` lo que hay que pagar en dinero (total − crédito).
+export interface ItemOrdenPago {
+  comprobanteId: string;
+  credito: number;
+  aPagar: number;
+}
+
+export interface EventoOrdenPago {
+  fechaHora: string;
+  usuarioId: string;
+  evento: string;
+  detalle?: string;
+}
+
+export interface OrdenPago {
+  id: string; // OP-0001
+  proveedorId: string;
+  items: ItemOrdenPago[];
+  total: number; // dinero a pagar (facturas − notas de crédito)
+  cuentaDestino: string; // CBU de la ficha del proveedor; no se edita en el pago
+  estado: EstadoOrdenPago;
+  armadaPor: string; // id de usuario
+  fechaArmado: string;
+  autorizacion?: { usuarioId: string; fechaHora: string; firmaId?: string };
+  cierre?: { usuarioId: string; fechaHora: string; motivo: string; tipo: "RECHAZO" | "ANULACION" };
+  historial: EventoOrdenPago[];
+}
+
+// Pago de una orden (v4, 2.5 y Bandeja). Cada medio tiene sus estados: la transferencia pasa por
+// Preparada → Pendiente de ejecución → Ejecutada → Confirmada (o Rechazada); el cheque, por Emitido →
+// Entregado → Presentado → Debitado (o Anulado / Rechazado); el efectivo es Ejecutado al instante.
 export type MedioPago = "TRANSFERENCIA" | "EFECTIVO" | "CHEQUE";
 export const MEDIO_PAGO_LABEL: Record<MedioPago, string> = {
   TRANSFERENCIA: "Transferencia",
   EFECTIVO: "Efectivo",
   CHEQUE: "Cheque",
 };
+
+export type EstadoPago =
+  | "PREPARADA"
+  | "PENDIENTE_EJECUCION"
+  | "EJECUTADA"
+  | "CONFIRMADA"
+  | "RECHAZADA"
+  | "EMITIDO"
+  | "ENTREGADO"
+  | "PRESENTADO"
+  | "DEBITADO"
+  | "ANULADO"
+  | "RECHAZADO";
+export const ESTADO_PAGO_LABEL: Record<EstadoPago, string> = {
+  PREPARADA: "Preparada",
+  PENDIENTE_EJECUCION: "Pendiente de ejecución",
+  EJECUTADA: "Ejecutada",
+  CONFIRMADA: "Confirmada",
+  RECHAZADA: "Rechazada",
+  EMITIDO: "Cheque emitido",
+  ENTREGADO: "Cheque entregado",
+  PRESENTADO: "Cheque presentado",
+  DEBITADO: "Cheque debitado",
+  ANULADO: "Cheque anulado",
+  RECHAZADO: "Cheque rechazado",
+};
+
+export interface AplicacionPago {
+  comprobanteId: string;
+  importe: number;
+}
+
+export interface EventoPago {
+  estado: EstadoPago;
+  usuarioId: string;
+  fechaHora: string;
+  detalle?: string;
+}
+
 export interface PagoProveedor {
   id: string; // PAG-0001
-  ordenPago: string;
-  comprobanteId: string;
+  ordenPago: string; // id de la OP
   proveedorId: string;
   fecha: string; // fecha de pago = fecha contable
   medio: MedioPago;
-  origenTipo: "CAJA" | "BANCO";
+  origenTipo: "CAJA" | "BANCO"; // efectivo sale de una caja; transferencia y cheque, de una cuenta
   origenId: string; // id de caja o de cuenta bancaria
   importe: number;
+  estado: EstadoPago;
+  // Cómo se reparte el importe entre los comprobantes de la OP (en orden de vencimiento).
+  aplicaciones: AplicacionPago[];
   usuarioId: string;
   asiento: string; // número de asiento contable simulado
-  asientoLibroId?: string; // fila del libro de caja (sólo con origen CAJA)
-  chequeId?: string; // cheque propio emitido (medio CHEQUE con origen BANCO)
+  reservaId?: string; // reserva de saldo (transferencia y cheque)
+  asientoLibroId?: string; // fila del libro de caja (efectivo)
+  chequeId?: string; // cheque propio emitido (medio CHEQUE)
+  historial: EventoPago[];
 }
 
 // Lote de carga masiva por Excel: queda registrado quién lo subió, cuándo y qué se aceptó.

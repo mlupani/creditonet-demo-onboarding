@@ -1,19 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { USUARIOS_CAJA } from "@/lib/caja-datos";
 import { errorBajaSucursal, nombreRepetido } from "@/lib/caja-reglas";
 import { cajaStores, siguienteId, hoy, useCajas, usuarioActual, useSucursales } from "@/lib/caja-store";
 import type { Sucursal } from "@/lib/caja-tipos";
 import { FormField } from "@/components/ui/FormField";
+import { nombreRoles } from "../comunes";
 import { AbmCaja, ESTADOS_TRES, ModalFormulario, persistir, type Columna } from "./AbmCaja";
 
 const ENTIDAD = "Sucursal";
+
+// Usuarios habilitados en la sucursal con su rol (7.2). El Director y el Tesorero central, sin sucursal
+// propia, figuran en Casa Central.
+const usuariosDe = (sucursalId: string) =>
+  USUARIOS_CAJA.filter((u) => u.sucursalId === sucursalId || (!u.sucursalId && sucursalId === "SUC-001"))
+    .map((u) => `${u.nombre} (${nombreRoles(u)})`)
+    .join(" · ") || "—";
 
 const COLUMNAS: Columna<Sucursal>[] = [
   { clave: "nombre", label: "Nombre", valor: (s) => s.nombre },
   { clave: "direccion", label: "Dirección", valor: (s) => s.direccion },
   { clave: "ubicacion", label: "Localidad / Provincia", valor: (s) => `${s.localidad} / ${s.provincia}` },
   { clave: "contacto", label: "Contacto", valor: (s) => `${s.telefono} · ${s.mail}` },
+  { clave: "usuarios", label: "Usuarios y roles", valor: (s) => usuariosDe(s.id) },
   { clave: "alta", label: "Alta", ancho: "w-36", valor: (s) => `${s.fechaAlta} · ${s.usuarioAlta}` },
 ];
 

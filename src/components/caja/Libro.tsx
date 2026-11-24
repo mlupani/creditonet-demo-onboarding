@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { USUARIOS_CAJA } from "@/lib/caja-datos";
 import { nombreCaja, bancoTexto } from "@/lib/caja-operaciones";
+import { cajasVisibles, sucursalesVisibles } from "@/lib/caja-reglas";
 import { auditar, nombreUsuario, useCajaDatos } from "@/lib/caja-store";
 import {
   MEDIO_LABEL,
@@ -242,7 +243,11 @@ function DetalleFila({ mov, onClose }: { mov: MovimientoCaja; onClose: () => voi
 }
 
 export function PantallaLibro() {
-  const { sucursales, cajas, libro } = useCajaDatos();
+  const { sucursales: todasSucursales, cajas: todasCajas, libro, usuario } = useCajaDatos();
+  // R5 y 1.5: sólo Director y Tesorero central ven todas las cajas; Tesorero y Supervisor, las de su
+  // sucursal; el Cajero, la suya.
+  const cajas = cajasVisibles(usuario, todasCajas);
+  const sucursales = sucursalesVisibles(usuario, todasSucursales, todasCajas);
   const [f, setF] = useState<Filtros>(VACIOS);
   const [detalle, setDetalle] = useState<MovimientoCaja | null>(null);
   const set = <K extends keyof Filtros>(k: K, v: Filtros[K]) => setF((x) => ({ ...x, [k]: v }));

@@ -5,7 +5,11 @@ import { fechaIso } from "./caja-reglas";
 import type { UsuarioCaja } from "./caja-tipos";
 import {
   ALICUOTAS_IVA,
+  type AplicacionPago,
   type Comprobante,
+  type EstadoPago,
+  type ItemOrdenPago,
+  type OrdenPago,
   type PagoProveedor,
   type Proveedor,
   type TipoComprobante,
@@ -149,16 +153,41 @@ export function erroresComprobante(datos: DatosComprobante, ctx: ContextoComprob
   return e;
 }
 
+// ---------- Estados de los pagos (v4, 2.5) ----------
+
+// Un pago "hecho" baja el saldo del proveedor: la transferencia desde que se ejecuta, el cheque desde que
+// se entrega (la OP queda Pagada con la entrega, aunque el banco todavía no lo debite) y el efectivo al
+// instante. Un pago "en curso" ya reservó el saldo pero todavía no se hizo.
+const PAGO_HECHO: EstadoPago[] = ["EJECUTADA", "CONFIRMADA", "ENTREGADO", "PRESENTADO", "DEBITADO"];
+const PAGO_EN_CURSO: EstadoPago[] = ["PREPARADA", "PENDIENTE_EJECUCION", "EMITIDO"];
+
+export const pagoHecho = (p: Pick<PagoProveedor, "estado">) => PAGO_HECHO.includes(p.estado);
+export const pagoEnCurso = (p: Pick<PagoProveedor, "estado">) => PAGO_EN_CURSO.includes(p.estado);
+// Hecho o en curso: cuenta contra lo que queda por pagar de la orden.
+export const pagoVigente = (p: Pick<PagoProveedor, "estado">) => pagoHecho(p) || pagoEnCurso(p);
+
 // ---------- Saldos ----------
 
 export const pagadoDe = (comprobanteId: string, pagos: PagoProveedor[]): number =>
-  redondear(suma(pagos.filter((p) => p.comprobanteId === comprobanteId).map((p) => p.importe)));
+  redondear(
+    suma(
+      pagos
+        .filter(pagoHecho)
+        .flatMap((p) => p.aplicaciones.filter((a) => a.comprobanteId === comprobanteId).map((a) => a.importe))
+    )
+  );
 
-export const saldoComprobante = (c: Comprobante, pagos: PagoProveedor[]): number =>
-  redondear(c.total - pagadoDe(c.id, pagos));
+const ORDEN_VIGENTE = (o: OrdenPago) => o.estado !== "RECHAZADA" && o.estado !== "ANULADA";
+
+// Crédito de notas de crédito aplicado al comprobante en una orden vigente (en la nota, su importe entero).
+export const creditoDe = (comprobanteId: string, ordenes: OrdenPago[]): number =>
+  redondear(suma(ordenes.filter(ORDEN_VIGENTE).flatMap((o) => o.items.filter((i) => i.comprobanteId === comprobanteId).map((i) => i.credito))));
+
+export const saldoComprobante = (c: Comprobante, pagos: PagoProveedor[], ordenes: OrdenPago[] = []): number =>
+  redondear(c.total - pagadoDe(c.id, pagos) - creditoDe(c.id, ordenes));
 
 // Sólo impactan en la cuenta corriente los comprobantes autorizados o posteriores.
-const IMPACTAN = ["PARA_LIQUIDAR", "PAGO_PARCIAL", "PAGADO"];
+const IMPACTAN = ["PARA_LIQUIDAR", "EN_ORDEN_PAGO", "PAGO_PARCIAL", "PAGADO"];
 
 export interface FilaCuentaCorriente {
   clave: string;
@@ -181,7 +210,8 @@ export function cuentaCorriente(
   comprobantes: Comprobante[],
   pagos: PagoProveedor[],
   tipos: TipoComprobante[],
-  rango: { desde?: string; hasta?: string } = {}
+  rango: { desde?: string; hasta?: string } = {},
+  ordenes: OrdenPago[] = []
 ): { saldoInicial: number; filas: FilaCuentaCorriente[]; saldoActual: number } {
   const efecto = (c: Comprobante) => (tipos.find((t) => t.id === c.tipoId)?.efecto === "RESTA" ? -1 : 1);
   type Mov = Omit<FilaCuentaCorriente, "saldoAcumulado"> & { orden: number };
@@ -200,17 +230,18 @@ export function cuentaCorriente(
       tipoDescripcion: tipo?.descripcion ?? c.tipoId,
       numero: `${c.prefijo}-${c.numero}`,
       importe: efecto(c) * c.total,
-      pagosAplicados: pagadoDe(c.id, pagos),
-      saldoPendiente: saldoComprobante(c, pagos),
+      pagosAplicados: redondear(pagadoDe(c.id, pagos) + creditoDe(c.id, ordenes)),
+      saldoPendiente: saldoComprobante(c, pagos, ordenes),
       orden: 0,
     });
   }
-  for (const p of pagos.filter((x) => x.proveedorId === proveedorId)) {
+  // Sólo los pagos hechos son un movimiento de la cuenta corriente (las notas de crédito ya figuran).
+  for (const p of pagos.filter((x) => x.proveedorId === proveedorId && pagoHecho(x))) {
     movs.push({
       clave: p.id,
       tipoFila: "PAGO",
       id: p.id,
-      comprobanteId: p.comprobanteId,
+      comprobanteId: p.aplicaciones[0]?.comprobanteId ?? "",
       fechaCarga: p.fecha,
       fechaComprobante: "",
       vencimiento: "",
@@ -244,8 +275,9 @@ export const saldoProveedor = (
   proveedorId: string,
   comprobantes: Comprobante[],
   pagos: PagoProveedor[],
-  tipos: TipoComprobante[]
-): number => cuentaCorriente(proveedorId, comprobantes, pagos, tipos).saldoActual;
+  tipos: TipoComprobante[],
+  ordenes: OrdenPago[] = []
+): number => cuentaCorriente(proveedorId, comprobantes, pagos, tipos, {}, ordenes).saldoActual;
 
 // ---------- Vencimientos y antigüedad de deuda ----------
 
@@ -283,14 +315,15 @@ export function antiguedadDeuda(
   pagos: PagoProveedor[],
   tipos: TipoComprobante[],
   fechaCorte: string,
-  proveedorId?: string
+  proveedorId?: string,
+  ordenes: OrdenPago[] = []
 ): { porProveedor: ({ proveedorId: string } & DeudaPorTramo)[]; total: DeudaPorTramo } {
   const porProveedor = new Map<string, DeudaPorTramo>();
   const total = deudaVacia();
   for (const c of comprobantes) {
     if (!IMPACTAN.includes(c.estado) || (proveedorId && c.proveedorId !== proveedorId)) continue;
     if (tipos.find((t) => t.id === c.tipoId)?.efecto === "RESTA") continue;
-    const saldo = saldoComprobante(c, pagos);
+    const saldo = saldoComprobante(c, pagos, ordenes);
     if (!(saldo > 0)) continue;
     const tramo = tramoDeAtraso(diasDeAtraso(vencimientoDe(c), fechaCorte));
     const fila = porProveedor.get(c.proveedorId) ?? deudaVacia();
@@ -312,4 +345,102 @@ export function puedeAutorizar(usuario: UsuarioCaja, comprobante: Comprobante): 
   }
   if (comprobante.cargadoPor === usuario.id) return "No podés autorizar un comprobante que cargaste vos.";
   return null;
+}
+
+
+// ---------- Órdenes de pago (v4, 6.2) ----------
+
+const tieneAlgunRol = (u: UsuarioCaja, roles: string[]) => u.roles.some((r) => roles.includes(r));
+
+// Perfil financiero: arma la orden de pago.
+export function puedeArmarOrden(usuario: UsuarioCaja): string | null {
+  return tieneAlgunRol(usuario, ["TESORERO", "TESORERO_CENTRAL", "SUPERVISOR"])
+    ? null
+    : "Sólo el perfil financiero (Tesorero, Tesorero central o Supervisor) arma órdenes de pago.";
+}
+
+// Autoriza otro usuario (nunca quien la armó, aunque tenga varios roles), con perfil de Casa Central o Supervisor.
+export function puedeAutorizarOrden(usuario: UsuarioCaja, orden: Pick<OrdenPago, "armadaPor">): string | null {
+  if (!tieneAlgunRol(usuario, ["TESORERO_CENTRAL", "DIRECTOR", "SUPERVISOR"]))
+    return "Sólo el Tesorero central, el Director o un Supervisor autoriza órdenes de pago.";
+  if (orden.armadaPor === usuario.id) return "No podés autorizar una orden de pago que armaste vos.";
+  return null;
+}
+
+// Paga el Tesoro central; el Tesorero de una sucursal sólo cuando Casa Central le deriva la orden.
+export function puedePagarOrden(usuario: UsuarioCaja): string | null {
+  return tieneAlgunRol(usuario, ["TESORERO_CENTRAL", "TESORERO"])
+    ? null
+    : "Sólo el Tesorero central (o un Tesorero al que se derive la orden) paga órdenes de pago.";
+}
+
+export const importeDeOrden = (o: Pick<OrdenPago, "items">): number => redondear(suma(o.items.map((i) => i.aPagar)));
+
+// Lo pagado de la orden (pagos hechos) y lo que todavía no está comprometido en un pago.
+export const pagadoDeOrden = (ordenId: string, pagos: PagoProveedor[]): number =>
+  redondear(suma(pagos.filter((p) => p.ordenPago === ordenId && pagoHecho(p)).map((p) => p.importe)));
+export const comprometidoDeOrden = (ordenId: string, pagos: PagoProveedor[]): number =>
+  redondear(suma(pagos.filter((p) => p.ordenPago === ordenId && pagoEnCurso(p)).map((p) => p.importe)));
+// Pendiente de pagar: ni hecho ni en curso (un pago parcial deja saldo para el siguiente).
+export const pendienteDeOrden = (orden: Pick<OrdenPago, "id" | "total">, pagos: PagoProveedor[]): number =>
+  redondear(orden.total - pagadoDeOrden(orden.id, pagos) - comprometidoDeOrden(orden.id, pagos));
+
+const vencimientoOrden = (c: Comprobante | undefined) => (c ? vencimientoDe(c) : "9999-12-31");
+
+// Arma los renglones de una orden con los comprobantes elegidos: un solo proveedor, todos Para liquidar,
+// al menos una factura o nota de débito. Las notas de crédito restan: su importe se aplica, en orden de
+// vencimiento, a las facturas de la orden (no puede superarlas).
+export function itemsDeOrden(
+  seleccion: Comprobante[],
+  tipos: TipoComprobante[],
+  pagos: PagoProveedor[],
+  ordenes: OrdenPago[]
+): { ok: true; items: ItemOrdenPago[]; total: number; proveedorId: string } | { ok: false; error: string } {
+  if (seleccion.length === 0) return { ok: false, error: "Tildá al menos un comprobante." };
+  const proveedorId = seleccion[0].proveedorId;
+  if (seleccion.some((c) => c.proveedorId !== proveedorId)) return { ok: false, error: "Una orden de pago no puede mezclar proveedores." };
+  if (seleccion.some((c) => c.estado !== "PARA_LIQUIDAR")) return { ok: false, error: "Sólo se pueden incluir comprobantes en estado Para liquidar." };
+  const esNota = (c: Comprobante) => tipos.find((t) => t.id === c.tipoId)?.efecto === "RESTA";
+  const facturas = seleccion.filter((c) => !esNota(c)).sort((a, b) => vencimientoOrden(a).localeCompare(vencimientoOrden(b)) || a.id.localeCompare(b.id));
+  const notas = seleccion.filter(esNota);
+  if (facturas.length === 0) return { ok: false, error: "Incluí al menos una factura o nota de débito: una nota de crédito sola no se paga." };
+  let pool = redondear(suma(notas.map((n) => saldoComprobante(n, pagos, ordenes))));
+  const items: ItemOrdenPago[] = [];
+  for (const f of facturas) {
+    const saldo = saldoComprobante(f, pagos, ordenes);
+    const credito = redondear(Math.min(pool, saldo));
+    pool = redondear(pool - credito);
+    items.push({ comprobanteId: f.id, credito, aPagar: redondear(saldo - credito) });
+  }
+  if (pool > 0.001) return { ok: false, error: "Las notas de crédito superan el importe de las facturas de la orden." };
+  for (const n of notas) items.push({ comprobanteId: n.id, credito: saldoComprobante(n, pagos, ordenes), aPagar: 0 });
+  const total = importeDeOrden({ items });
+  if (!(total > 0)) return { ok: false, error: "La orden de pago no puede ser de importe cero." };
+  return { ok: true, items, total, proveedorId };
+}
+
+// Reparte un pago entre los comprobantes de la orden, en orden de vencimiento, sobre lo que a cada uno
+// le falta pagar (sin contar lo ya pagado ni lo comprometido en otros pagos vigentes).
+export function repartirPago(
+  orden: Pick<OrdenPago, "id" | "items">,
+  comprobantes: Comprobante[],
+  pagos: PagoProveedor[],
+  importe: number
+): AplicacionPago[] {
+  const vigentes = pagos.filter((p) => p.ordenPago === orden.id && pagoVigente(p));
+  const yaAplicado = (id: string) => suma(vigentes.flatMap((p) => p.aplicaciones.filter((a) => a.comprobanteId === id).map((a) => a.importe)));
+  const orden_ = [...orden.items]
+    .filter((i) => i.aPagar > 0)
+    .sort((a, b) => vencimientoOrden(comprobantes.find((c) => c.id === a.comprobanteId)).localeCompare(vencimientoOrden(comprobantes.find((c) => c.id === b.comprobanteId))));
+  const aplicaciones: AplicacionPago[] = [];
+  let resto = importe;
+  for (const i of orden_) {
+    if (resto <= 0.001) break;
+    const falta = redondear(i.aPagar - yaAplicado(i.comprobanteId));
+    if (falta <= 0.001) continue;
+    const parte = redondear(Math.min(falta, resto));
+    aplicaciones.push({ comprobanteId: i.comprobanteId, importe: parte });
+    resto = redondear(resto - parte);
+  }
+  return aplicaciones;
 }

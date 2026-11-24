@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   CAJAS_INICIALES,
+  CHEQUES_INICIALES,
   CUENTAS_BANCARIAS_INICIALES,
   LIBRO_INICIAL,
   MOVIMIENTOS_TESORERIA_INICIALES,
@@ -224,10 +225,21 @@ test("las series de caja usan sólo efectivo confirmado y las de banco sólo dep
     { ...ajuste("CAJ-003", "ana-gomez", 0, 10, 1), medio: "TARJETA" as const },
     { ...ajuste("CAJ-003", "ana-gomez", 0, 20, 2), estado: "ANULADO" as const },
   ];
-  const pagoBanco = { ...PAGOS_INICIALES[0], id: "PAG-X", origenTipo: "BANCO" as const, origenId: cuenta.id, importe: 300, fecha: "2026-11-13" };
+  const pagoBanco = { ...PAGOS_INICIALES[0], id: "PAG-X", origenTipo: "BANCO" as const, origenId: cuenta.id, importe: 300, fecha: "2026-11-13", estado: "EJECUTADA" as const };
   const pagoCaja = { ...PAGOS_INICIALES[0], id: "PAG-Y", origenTipo: "CAJA" as const, origenId: "CAJ-003", importe: 50 };
+  // Preparada o rechazada no bajan el real del banco; un cheque propio sólo cuando se debita.
+  const pagoPreparado = { ...pagoBanco, id: "PAG-Z", importe: 700, estado: "PREPARADA" as const };
+  const pagoRechazado = { ...pagoBanco, id: "PAG-W", importe: 800, estado: "RECHAZADA" as const };
+  const propio = { ...CHEQUES_INICIALES.find((c) => c.origen === "PROPIO")!, cuentaId: cuenta.id, importe: 120, fechaPago: "2026-11-14" };
   const series = seriesDe(
-    { cajas: CAJAS_INICIALES, cuentas: CUENTAS_BANCARIAS_INICIALES, libro, movimientos: [dep, sinConciliar], pagos: [pagoBanco, pagoCaja] },
+    {
+      cajas: CAJAS_INICIALES,
+      cuentas: CUENTAS_BANCARIAS_INICIALES,
+      libro,
+      movimientos: [dep, sinConciliar],
+      pagos: [pagoBanco, pagoCaja, pagoPreparado, pagoRechazado],
+      cheques: [{ ...propio, id: "CHE-D", estado: "DEBITADO" }, { ...propio, id: "CHE-E", estado: "EMITIDO" }, { ...propio, id: "CHE-P", estado: "PRESENTADO" }],
+    },
     ["CAJ-003"],
     [cuenta.id],
     ""
@@ -237,11 +249,12 @@ test("las series de caja usan sólo efectivo confirmado y las de banco sólo dep
   const banco = series.find((x) => x.tipo === "BANCO")!;
   assert.deepEqual(
     banco.movimientos.map((m) => [m.descripcion.split(" ")[0], m.fecha, m.ingreso, m.egreso]),
-    [["Saldo", cuenta.fechaAlta, cuenta.saldoInicial, 0], ["Depósito", "2026-11-11", 900, 0], ["Pago", "2026-11-13", 0, 300]],
-    "saldo inicial, depósito conciliado fechado en la acreditación y pago a proveedor (sólo con origen en la cuenta)"
+    [["Saldo", cuenta.fechaAlta, cuenta.saldoInicial, 0], ["Depósito", "2026-11-11", 900, 0], ["Pago", "2026-11-13", 0, 300], ["Cheque", "2026-11-14", 0, 120]],
+    "saldo inicial, depósito conciliado, transferencia ejecutada y cheque debitado: lo preparado, emitido o rechazado no baja el real"
   );
   assert.equal(saldosAFecha([banco], "2026-11-12")[0].saldo, (cuenta.saldoInicial ?? 0) + 900);
   assert.equal(saldosAFecha([banco], "2026-11-13")[0].saldo, (cuenta.saldoInicial ?? 0) + 900 - 300);
+  assert.equal(saldosAFecha([banco], "2026-11-14")[0].saldo, (cuenta.saldoInicial ?? 0) + 900 - 300 - 120);
   assert.equal(seriesDe({ cajas: CAJAS_INICIALES, cuentas: CUENTAS_BANCARIAS_INICIALES, libro, movimientos: [] }, ["CAJ-003", "CAJ-002"], [], "USD").length, 1, "el filtro de moneda aplica");
 });
 

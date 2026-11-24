@@ -19,7 +19,7 @@ const cuentas = CUENTAS_CONTABLES.map((c) => ({ value: c.codigo, label: `${c.cod
 
 const COLUMNAS: Columna<TipoMovimientoTesoreria>[] = [
   { clave: "descripcion", label: "Descripción", valor: (t) => t.descripcion },
-  { clave: "origenes", label: "Origen permitido", valor: (t) => t.origenes.map((o) => LABEL_PUNTA[o]).join(", ") },
+  { clave: "origenes", label: "Origen permitido", valor: (t) => (t.origenBanco ? "Banco (cuenta)" : t.origenes.map((o) => LABEL_PUNTA[o]).join(", ")) },
   { clave: "destinos", label: "Destino permitido", valor: (t) => t.destinos.map((o) => LABEL_PUNTA[o]).join(", ") },
   { clave: "autorizacion", label: "Autorización", ancho: "w-28", valor: (t) => (t.requiereAutorizacion ? "Sí" : "No") },
   { clave: "transito", label: "Cuenta de tránsito", valor: (t) => t.cuentaTransito },
@@ -33,6 +33,7 @@ function FormularioTipo({ inicial, onClose }: { inicial: TipoMovimientoTesoreria
   const [origenes, setOrigenes] = useState<TipoCaja[]>(inicial?.origenes ?? []);
   const [destinos, setDestinos] = useState<PuntaMovimiento[]>(inicial?.destinos ?? []);
   const [requiere, setRequiere] = useState(inicial?.requiereAutorizacion ?? true);
+  const [origenBanco, setOrigenBanco] = useState(inicial?.origenBanco ?? false);
   const [cuentaTransito, setCuentaTransito] = useState(inicial?.cuentaTransito ?? "");
   const [intentado, setIntentado] = useState(false);
 
@@ -40,7 +41,7 @@ function FormularioTipo({ inicial, onClose }: { inicial: TipoMovimientoTesoreria
   if (!descripcion.trim()) errores.descripcion = "Ingresá la descripción del tipo.";
   else if (nombreRepetido(descripcion, lista.map((t) => ({ id: t.id, nombre: t.descripcion })), inicial?.id))
     errores.descripcion = "Ya existe un tipo con esa descripción.";
-  if (origenes.length === 0) errores.origenes = "Elegí al menos un origen permitido.";
+  if (!origenBanco && origenes.length === 0) errores.origenes = "Elegí al menos un origen permitido.";
   if (destinos.length === 0) errores.destinos = "Elegí al menos un destino permitido.";
   if (!cuentaTransito) errores.cuenta = "Elegí la cuenta contable de tránsito.";
   const e = (k: string) => (intentado ? errores[k] : undefined);
@@ -51,10 +52,11 @@ function FormularioTipo({ inicial, onClose }: { inicial: TipoMovimientoTesoreria
     const orden = (l: PuntaMovimiento[]) => [...TIPOS_CAJA, "BANCO" as const].filter((p) => l.includes(p));
     const base = {
       descripcion: descripcion.trim().replace(/\s+/g, " "),
-      origenes: TIPOS_CAJA.filter((t) => origenes.includes(t)),
+      origenes: origenBanco ? [] : TIPOS_CAJA.filter((t) => origenes.includes(t)),
       destinos: orden(destinos),
       requiereAutorizacion: requiere,
       cuentaTransito,
+      ...(origenBanco ? { origenBanco: true } : {}),
     };
     persistir(
       cajaStores.tipos,
@@ -74,11 +76,21 @@ function FormularioTipo({ inicial, onClose }: { inicial: TipoMovimientoTesoreria
         </div>
         <fieldset>
           <legend className="text-sm font-medium text-ink-700">Origen permitido</legend>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            {TIPOS_CAJA.map((t) => (
-              <Checkbox key={t} label={TIPO_CAJA_LABEL[t]} checked={origenes.includes(t)} onChange={(v) => setOrigenes((l) => alternar(l, t, v))} />
-            ))}
+          <div className="mt-2">
+            <Checkbox
+              label="Banco como origen"
+              description="Pedido de refuerzo a banco: el tesoro pide fondos de una cuenta bancaria. Los destinos son los tesoros que los reciben."
+              checked={origenBanco}
+              onChange={setOrigenBanco}
+            />
           </div>
+          {!origenBanco && (
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {TIPOS_CAJA.map((t) => (
+                <Checkbox key={t} label={TIPO_CAJA_LABEL[t]} checked={origenes.includes(t)} onChange={(v) => setOrigenes((l) => alternar(l, t, v))} />
+              ))}
+            </div>
+          )}
           {e("origenes") && <div className="mt-2"><ValidationMessage tipo="error">{e("origenes")}</ValidationMessage></div>}
         </fieldset>
         <fieldset>

@@ -6,11 +6,14 @@ import { hoy, useCajas, useChequeras, useCheques, useCuentasBancarias, useTiposC
 import { ESTADO_CHEQUE_LABEL, FORMA_CHEQUE_LABEL, monedasDe, type Cheque, type EstadoCheque, type FormaCheque, type Moneda } from "@/lib/caja-tipos";
 import {
   anularChequePropio,
+  debitarChequePropio,
   depositarCheque,
   emitirChequePropio,
   entregarCheque,
-  marcarChequeCobrado,
+  entregarChequePropio,
+  presentarChequePropio,
   rechazarCheque,
+  rechazarChequePropio,
   recibirChequeTercero,
 } from "@/lib/cheques-operaciones";
 import { diasHastaPago, formaDeTipo, numeracionDe, totalPorMoneda, vencePronto } from "@/lib/cheques-reglas";
@@ -30,15 +33,19 @@ const TONO_ESTADO: Record<EstadoCheque, Tono> = {
   RECHAZADO: "danger",
   ENTREGADO: "neutral",
   EMITIDO: "info",
-  COBRADO: "success",
+  PRESENTADO: "warning",
+  DEBITADO: "success",
   ANULADO: "neutral",
 };
+
+// Un cheque propio sigue vigente (y con su importe reservado) hasta que el banco lo debita o se anula/rechaza.
+const PROPIO_VIGENTE: EstadoCheque[] = ["EMITIDO", "ENTREGADO", "PRESENTADO"];
 
 const aNumero = (texto: string) => Number(texto.replace(",", "."));
 
 function Vencimiento({ cheque }: { cheque: Cheque }) {
   const dias = diasHastaPago(cheque.fechaPago, hoy());
-  const vivo = cheque.estado === "EN_CUSTODIA" || cheque.estado === "EMITIDO";
+  const vivo = cheque.estado === "EN_CUSTODIA" || PROPIO_VIGENTE.includes(cheque.estado);
   return (
     <span className="whitespace-nowrap">
       {cheque.fechaPago}
@@ -251,7 +258,7 @@ function EmitirModal({ onClose }: { onClose: () => void }) {
 type Accion =
   | { tipo: "recibir" }
   | { tipo: "emitir" }
-  | { tipo: "depositar" | "rechazar" | "entregar" | "anular" | "traza"; cheque: Cheque };
+  | { tipo: "depositar" | "rechazar" | "entregar" | "anular" | "traza" | "entregar-propio" | "rechazar-propio"; cheque: Cheque };
 
 export function PantallaCheques() {
   const cheques = useCheques();
@@ -269,13 +276,13 @@ export function PantallaCheques() {
   const [error, setError] = useState<string | null>(null);
 
   const origen = pestana === "custodia" ? "TERCERO" : "PROPIO";
-  const estados = (Object.keys(ESTADO_CHEQUE_LABEL) as EstadoCheque[]).filter((e) => (pestana === "custodia" ? ["EN_CUSTODIA", "DEPOSITADO", "RECHAZADO", "ENTREGADO"] : ["EMITIDO", "COBRADO", "ANULADO"]).includes(e));
+  const estados = (Object.keys(ESTADO_CHEQUE_LABEL) as EstadoCheque[]).filter((e) => (pestana === "custodia" ? ["EN_CUSTODIA", "DEPOSITADO", "RECHAZADO", "ENTREGADO"] : ["EMITIDO", "ENTREGADO", "PRESENTADO", "DEBITADO", "ANULADO", "RECHAZADO"]).includes(e));
   const filas = cheques
     .filter((c) => c.origen === origen)
     .filter((c) => !estado || c.estado === estado)
     .filter((c) => !forma || c.forma === forma)
     .filter((c) => pestana !== "custodia" || !cajaId || c.cajaId === cajaId)
-    .filter((c) => !soloPronto || vencePronto({ ...c, estado: "EN_CUSTODIA" }, hoy()) || (c.estado === "EMITIDO" && diasHastaPago(c.fechaPago, hoy()) <= 7))
+    .filter((c) => !soloPronto || vencePronto({ ...c, estado: "EN_CUSTODIA" }, hoy()) || (PROPIO_VIGENTE.includes(c.estado) && diasHastaPago(c.fechaPago, hoy()) <= 7))
     .sort((a, b) => a.fechaPago.localeCompare(b.fechaPago));
 
   const enCustodiaTotal = cheques.filter((c) => c.origen === "TERCERO" && c.estado === "EN_CUSTODIA");
@@ -290,7 +297,7 @@ export function PantallaCheques() {
     const caja = cajas.find((x) => x.id === c.cajaId);
     return !!caja && esResponsable(caja, usuario.id);
   };
-  const puedePropios = usuario.roles.includes("TESORERO") || usuario.roles.includes("SUPERVISOR");
+  const puedePropios = usuario.roles.some((r) => r === "TESORERO" || r === "TESORERO_CENTRAL" || r === "SUPERVISOR");
 
   const correr = (r: { ok: true } | { ok: false; error: string }) => setError(r.ok ? null : r.error);
 
@@ -325,7 +332,7 @@ export function PantallaCheques() {
         </Card>
         <Card className="p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Propios emitidos</p>
-          <p className="mt-1 text-lg font-bold text-ink-900">{cheques.filter((c) => c.origen === "PROPIO" && c.estado === "EMITIDO").length} sin cobrar</p>
+          <p className="mt-1 text-lg font-bold text-ink-900">{cheques.filter((c) => c.origen === "PROPIO" && PROPIO_VIGENTE.includes(c.estado)).length} sin debitar</p>
         </Card>
       </div>
 
@@ -434,6 +441,7 @@ export function PantallaCheques() {
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge tone={TONO_ESTADO[c.estado]}>{ESTADO_CHEQUE_LABEL[c.estado]}</StatusBadge>
+                  {c.origen === "PROPIO" && PROPIO_VIGENTE.includes(c.estado) && <span className="mt-1 block text-xs text-ink-400">Importe reservado</span>}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1.5">
@@ -454,11 +462,26 @@ export function PantallaCheques() {
                     )}
                     {c.origen === "PROPIO" && c.estado === "EMITIDO" && (
                       <>
-                        <Button size="sm" variant="outline" disabled={!puedePropios} title={puedePropios ? undefined : "Sólo Tesorero o Supervisor"} onClick={() => correr(marcarChequeCobrado(c.id))}>
-                          Cobrado
+                        <Button size="sm" variant="outline" disabled={!puedePropios} title={puedePropios ? undefined : "Sólo Tesorero, Tesorero central o Supervisor"} onClick={() => setAccion({ tipo: "entregar-propio", cheque: c })}>
+                          Entregar
                         </Button>
                         <Button size="sm" variant="outline" disabled={!puedePropios} onClick={() => setAccion({ tipo: "anular", cheque: c })}>
                           Anular
+                        </Button>
+                      </>
+                    )}
+                    {c.origen === "PROPIO" && c.estado === "ENTREGADO" && (
+                      <Button size="sm" variant="outline" disabled={!puedePropios} title="El beneficiario lo presentó al cobro" onClick={() => correr(presentarChequePropio(c.id))}>
+                        Presentado
+                      </Button>
+                    )}
+                    {c.origen === "PROPIO" && c.estado === "PRESENTADO" && (
+                      <>
+                        <Button size="sm" variant="outline" disabled={!puedePropios} title="Debitado en el extracto: baja el saldo real" onClick={() => correr(debitarChequePropio(c.id))}>
+                          Debitado
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={!puedePropios} onClick={() => setAccion({ tipo: "rechazar-propio", cheque: c })}>
+                          Rechazado por el banco
                         </Button>
                       </>
                     )}
@@ -505,6 +528,37 @@ export function PantallaCheques() {
           onClose={() => setAccion(null)}
           onConfirmar={(nota) => {
             const r = entregarCheque(accion.cheque.id, nota);
+            return r.ok ? null : r.error;
+          }}
+        />
+      )}
+      {accion?.tipo === "entregar-propio" && (
+        <NotaModal
+          open
+          titulo={`Entregar ${accion.cheque.id}`}
+          descripcion="Con la entrega al beneficiario (o el envío del e-cheq) el pago al proveedor queda hecho y su orden de pago pasa a Pagada. El banco todavía no lo debitó: el saldo real no cambia."
+          etiquetaNota="Entregado a"
+          requerida
+          confirmar="Entregar"
+          onClose={() => setAccion(null)}
+          onConfirmar={(nota) => {
+            const r = entregarChequePropio(accion.cheque.id, nota);
+            return r.ok ? null : r.error;
+          }}
+        />
+      )}
+      {accion?.tipo === "rechazar-propio" && (
+        <NotaModal
+          open
+          titulo={`Rechazo del banco: ${accion.cheque.id}`}
+          descripcion="El banco rechazó el cheque presentado: se libera la reserva y la deuda vuelve a quedar pendiente en la orden de pago."
+          etiquetaNota="Motivo del rechazo"
+          requerida
+          confirmar="Registrar rechazo"
+          tono="danger"
+          onClose={() => setAccion(null)}
+          onConfirmar={(nota) => {
+            const r = rechazarChequePropio(accion.cheque.id, nota);
             return r.ok ? null : r.error;
           }}
         />

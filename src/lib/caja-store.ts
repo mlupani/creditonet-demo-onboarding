@@ -16,6 +16,7 @@ import {
   MOTIVOS_DIFERENCIA_INICIALES,
   MOVIMIENTOS_TESORERIA_INICIALES,
   PEDIDOS_REFUERZO_INICIALES,
+  RESERVAS_INICIALES,
   SUCURSALES_INICIALES,
   TIPOS_MOVIMIENTO_INICIALES,
   USUARIOS_CAJA,
@@ -41,6 +42,7 @@ import type {
   MovimientoTesoreria,
   PedidoRefuerzo,
   RegistroAuditoria,
+  Reserva,
   Sucursal,
   TipoMovimientoTesoreria,
   UsuarioCaja,
@@ -75,6 +77,7 @@ export const cajaStores = {
   tiposChequera: crear<TipoChequera>("tipos-chequera", TIPOS_CHEQUERA_INICIALES),
   chequeras: crear<Chequera>("chequeras", CHEQUERAS_INICIALES),
   cheques: crear<Cheque>("cheques", CHEQUES_INICIALES),
+  reservas: crear<Reserva>("reservas", RESERVAS_INICIALES),
   motivos: crear<MotivoDiferencia>("motivos", MOTIVOS_DIFERENCIA_INICIALES),
   tipos: crear<TipoMovimientoTesoreria>("tipos", TIPOS_MOVIMIENTO_INICIALES),
   libro: crear<MovimientoCaja>("libro", LIBRO_INICIAL),
@@ -109,6 +112,7 @@ export const useAcuerdos = cajaStores.acuerdos.useLista;
 export const useTiposChequera = cajaStores.tiposChequera.useLista;
 export const useChequeras = cajaStores.chequeras.useLista;
 export const useCheques = cajaStores.cheques.useLista;
+export const useReservas = cajaStores.reservas.useLista;
 export const useMotivosDiferencia =cajaStores.motivos.useLista;
 export const useTiposMovimiento = cajaStores.tipos.useLista;
 export const useLibro = cajaStores.libro.useLista;
@@ -218,6 +222,7 @@ export function reiniciarCaja() {
   cajaStores.tiposChequera.commit(TIPOS_CHEQUERA_INICIALES);
   cajaStores.chequeras.commit(CHEQUERAS_INICIALES);
   cajaStores.cheques.commit(CHEQUES_INICIALES);
+  cajaStores.reservas.commit(RESERVAS_INICIALES);
   cajaStores.motivos.commit(MOTIVOS_DIFERENCIA_INICIALES);
   cajaStores.tipos.commit(TIPOS_MOVIMIENTO_INICIALES);
   cajaStores.libro.commit(LIBRO_INICIAL);

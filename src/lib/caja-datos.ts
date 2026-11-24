@@ -15,18 +15,21 @@ import type {
   MovimientoCaja,
   MovimientoTesoreria,
   PedidoRefuerzo,
+  Reserva,
   Sucursal,
   TipoMovimientoTesoreria,
   UsuarioCaja,
 } from "./caja-tipos";
 
 export const USUARIOS_CAJA: UsuarioCaja[] = [
-  { id: "ana-gomez", nombre: "Ana Gómez", roles: ["CAJERO"] },
-  { id: "luis-pereyra", nombre: "Luis Pereyra", roles: ["CAJERO"] },
-  { id: "tomas-ruiz", nombre: "Tomás Ruiz", roles: ["TESORERO", "CAJERO"] },
-  { id: "carlos-ibarra", nombre: "Carlos Ibarra", roles: ["TESORERO"] },
-  { id: "marta-diaz", nombre: "Marta Díaz", roles: ["SUPERVISOR"] },
-  { id: "raul-molina", nombre: "Raúl Molina", roles: ["SUPERVISOR"] },
+  { id: "ana-gomez", nombre: "Ana Gómez", roles: ["CAJERO"], sucursalId: "SUC-002" },
+  { id: "luis-pereyra", nombre: "Luis Pereyra", roles: ["CAJERO"], sucursalId: "SUC-002" },
+  { id: "tomas-ruiz", nombre: "Tomás Ruiz", roles: ["TESORERO", "CAJERO"], sucursalId: "SUC-002" },
+  { id: "carlos-ibarra", nombre: "Carlos Ibarra", roles: ["TESORERO"], sucursalId: "SUC-001" },
+  { id: "marta-diaz", nombre: "Marta Díaz", roles: ["SUPERVISOR"], sucursalId: "SUC-002" },
+  { id: "raul-molina", nombre: "Raúl Molina", roles: ["SUPERVISOR"], sucursalId: "SUC-001" },
+  { id: "laura-benitez", nombre: "Laura Benítez", roles: ["DIRECTOR"] },
+  { id: "ricardo-pena", nombre: "Ricardo Peña", roles: ["TESORERO_CENTRAL"] },
 ];
 
 // Usuario con el que arranca el módulo.
@@ -165,8 +168,11 @@ export const CHEQUES_INICIALES: Cheque[] = [
   {
     id: "CHE-0005", origen: "PROPIO", forma: "FISICO", banco: "Banco Nación", numero: "10001", importe: 310000, moneda: "ARS",
     parte: "Papelera Central SA", fechaEmision: "2026-10-28", fechaPago: "2026-11-27", cuentaId: "CB-001", chequeraId: "CHQ-001",
-    referencia: "Factura 0001-00004412", estado: "EMITIDO",
-    traza: trazaAlta("2026-10-28 16:00", "Marina Costa", "EMITIDO", "Emitido desde chequera CHQ-001"),
+    referencia: "Factura 0001-00004412", estado: "ENTREGADO",
+    traza: [
+      { estado: "EMITIDO", usuario: "Marina Costa", fechaHora: "2026-10-28 16:00", detalle: "Emitido desde chequera CHQ-001" },
+      { estado: "ENTREGADO", usuario: "Marina Costa", fechaHora: "2026-10-29 10:15", detalle: "Entregado al beneficiario" },
+    ],
     fechaAlta: "2026-10-28", usuarioAlta: "Marina Costa",
   },
   {
@@ -175,6 +181,24 @@ export const CHEQUES_INICIALES: Cheque[] = [
     referencia: "Factura 0003-00001289", estado: "EMITIDO",
     traza: trazaAlta("2026-11-02 09:40", "Marina Costa", "EMITIDO", "Emitido desde chequera CHQ-002"),
     fechaAlta: "2026-11-02", usuarioAlta: "Marina Costa",
+  },
+];
+
+// Reservas vigentes de los datos de ejemplo: los dos cheques propios todavía no debitados (su
+// `operacionId` es el cheque porque no nacieron de un pago de la demo) y la transferencia PAG-0003
+// preparada (ver proveedores-datos.ts).
+export const RESERVAS_INICIALES: Reserva[] = [
+  {
+    id: "RSV-0001", origenTipo: "BANCO", origenId: "CB-001", moneda: "ARS", importe: 310000, operacionTipo: "PAGO", operacionId: "CHE-0005",
+    estado: "ACTIVA", creada: { usuarioId: "carlos-ibarra", fechaHora: "2026-10-28 16:00" },
+  },
+  {
+    id: "RSV-0002", origenTipo: "BANCO", origenId: "CB-002", moneda: "ARS", importe: 150000, operacionTipo: "PAGO", operacionId: "CHE-0006",
+    estado: "ACTIVA", creada: { usuarioId: "carlos-ibarra", fechaHora: "2026-11-02 09:40" },
+  },
+  {
+    id: "RSV-0003", origenTipo: "BANCO", origenId: "CB-001", moneda: "ARS", importe: 100000, operacionTipo: "PAGO", operacionId: "PAG-0003",
+    estado: "ACTIVA", creada: { usuarioId: "ricardo-pena", fechaHora: "2026-11-17 16:30" },
   },
 ];
 
@@ -359,18 +383,25 @@ const TESOROS: ("TESORO_CENTRAL" | "TESORO_SUCURSAL")[] = ["TESORO_CENTRAL", "TE
 
 export const TIPOS_MOVIMIENTO_INICIALES: TipoMovimientoTesoreria[] = [
   { id: "TMT-001", descripcion: "Fondo inicial", origenes: TESOROS, destinos: ["CAJA_CAJERO", "FONDO_FIJO"], requiereAutorizacion: true, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
-  { id: "TMT-002", descripcion: "Pedido de refuerzo", origenes: ["TESORO_SUCURSAL", "CAJA_CAJERO"], destinos: TESOROS, requiereAutorizacion: false, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
+  { id: "TMT-002", descripcion: "Pedido de refuerzo a tesoro", origenes: ["TESORO_SUCURSAL", "CAJA_CAJERO"], destinos: TESOROS, requiereAutorizacion: false, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
   { id: "TMT-003", descripcion: "Refuerzo", origenes: TESOROS, destinos: ["TESORO_SUCURSAL", "CAJA_CAJERO", "FONDO_FIJO"], requiereAutorizacion: true, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
   { id: "TMT-004", descripcion: "Retiro de excedente", origenes: ["CAJA_CAJERO", "TESORO_SUCURSAL"], destinos: TESOROS, requiereAutorizacion: true, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
   { id: "TMT-005", descripcion: "Remesa", origenes: TESOROS, destinos: TESOROS, requiereAutorizacion: true, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
   { id: "TMT-006", descripcion: "Pase entre cajeros", origenes: ["CAJA_CAJERO"], destinos: ["CAJA_CAJERO"], requiereAutorizacion: false, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
   { id: "TMT-007", descripcion: "Depósito en banco", origenes: TESOROS, destinos: ["BANCO"], requiereAutorizacion: true, cuentaTransito: "1.1.02.01", estado: "ACTIVO" },
-  { id: "TMT-008", descripcion: "Reposición de fondo fijo", origenes: ["TESORO_SUCURSAL"], destinos: ["FONDO_FIJO"], requiereAutorizacion: true, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
+  { id: "TMT-008", descripcion: "Restitución de fondo fijo", origenes: ["TESORO_SUCURSAL"], destinos: ["FONDO_FIJO"], requiereAutorizacion: true, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
   { id: "TMT-009", descripcion: "Fondo de cierre", origenes: ["CAJA_CAJERO", "FONDO_FIJO"], destinos: ["TESORO_SUCURSAL"], requiereAutorizacion: false, cuentaTransito: "1.1.02.02", estado: "ACTIVO" },
+  // El tesoro pide fondos de una cuenta bancaria: se autoriza, alguien va a extraerlos y se cierra con la boleta.
+  { id: "TMT-010", descripcion: "Pedido de refuerzo a banco", origenes: [], destinos: TESOROS, requiereAutorizacion: true, cuentaTransito: "1.1.02.01", origenBanco: true, estado: "ACTIVO" },
 ];
 
 // Los pedidos de refuerzo no mueven dinero: el tipo "Refuerzo" es el del envío que se genera al aprobarlos.
 export const TIPO_REFUERZO_ID = "TMT-003";
+// El pedido a otro tesoro tiene su propia pantalla (Nuevo pedido de refuerzo); no se carga como movimiento.
+export const TIPO_PEDIDO_TESORO_ID = "TMT-002";
+export const TIPO_PEDIDO_BANCO_ID = "TMT-010";
+// La restitución se hace contra la rendición de gastos del fondo fijo.
+export const TIPO_RESTITUCION_ID = "TMT-008";
 
 const saldoInicial = (n: number, cajaId: string, moneda: "ARS" | "USD", importe: number): MovimientoCaja => ({
   id: `LB-${String(n).padStart(4, "0")}`,
@@ -445,12 +476,13 @@ export const MOVIMIENTOS_TESORERIA_INICIALES: MovimientoTesoreria[] = [
     transportista: { tipo: "EMPRESA", nombre: "Transportadora Andina", documento: "30-71234567-8" },
     precinto: "PRE-48812",
     observaciones: "",
-    estado: "ACEPTADO",
+    estado: "FINALIZADO",
     solicitanteId: "carlos-ibarra",
     fechaSolicitud: "2026-11-12 09:40",
     autorizacion: { supervisorId: "marta-diaz", fechaHora: "2026-11-12 10:05", resultado: "APROBADA", nota: "" },
-    envio: { usuarioId: "carlos-ibarra", fechaHora: "2026-11-12 10:30", detalle: {}, importe: 3000000, conformidad: true },
+    envio: { usuarioId: "carlos-ibarra", fechaHora: "2026-11-12 10:30", detalle: {}, importe: 3000000, conformidad: true, portadorConforme: true },
     recepcion: { usuarioId: "tomas-ruiz", fechaHora: "2026-11-12 15:10", detalle: {}, importe: 3000000 },
+    finalizacion: { usuarioId: "tomas-ruiz", fechaHora: "2026-11-12 15:10", documento: "Acta de recepción de remesa MT-0001" },
   },
   {
     id: "MT-0002",

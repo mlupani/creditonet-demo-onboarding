@@ -463,3 +463,66 @@ Tests (npm test):
   queda en la jornada y el acta).
 - Simplificacion: depositar un cheque cambia su estado, sin generar movimiento
   de tesoreria ni asiento en el libro.
+
+
+==========================================================================
+12. ACTUALIZACION v4 (CajaYBancos_v4, Bandeja de autorizaciones v2 y reunion del 20/11)
+==========================================================================
+
+12.1 Bandeja de autorizaciones (/caja/bandeja)
+- Reemplaza a "Movimientos de tesoreria" (/caja/tesoreria ahora redirige a la
+  bandeja, vista Remesas) y al pago de ordenes (que se hacia en 6.2).
+- Pantalla principal con tarjetas de cantidad e importe: Proveedores,
+  Transferencias, Remesas y Pendientes. Prestamos y Comprobantes figuran como
+  "Proximamente" (definidos en el documento, fuera de este alcance).
+- Visibilidad por rol: Director y Tesorero central ven todo; Tesorero de
+  sucursal y Supervisor, su sucursal; Cajero, su caja y el bloque cobrador.
+- Proveedores: ordenes de pago con detalle desplegable (facturas, quien cargo,
+  autorizo y armo, imagen simulada, pagos). Autorizar/rechazar con llave y
+  matriz. Pagar con caja, cheque o transferencia, con pago parcial.
+- Transferencias: lotes por cuenta de origen (copiar, CSV, pendiente de
+  ejecucion, ejecutada/rechazada con llave, confirmada).
+- Pendientes: transferencias y cheques rechazados, ordenes pagadas en parte y
+  remesas con incidencia.
+
+12.2 Ordenes de pago por proveedor (6.2)
+- Una OP agrupa varias facturas de un mismo proveedor (las notas de credito
+  restan). Estados: Emitida, Autorizada, Pendiente de transferencia, Pagada,
+  Rechazada, Anulada. La arma un perfil financiero y la autoriza otro usuario
+  con llave. Autorizar un comprobante ya no asigna numero de OP; el comprobante
+  pasa a "En orden de pago" al armarla.
+
+12.3 Reservas, saldo real, comprometido y estimado (R3)
+- Estimado = real - comprometido. Ningun egreso se aprueba si supera el
+  estimado (se elimino el descubierto bancario). "A recibir" es informativo.
+- Transferencia: Preparada (reserva) -> Pendiente de ejecucion -> Ejecutada
+  (baja el real) -> Confirmada, o Rechazada (libera la reserva).
+- Cheque propio: Emitido (reserva) -> Entregado (OP pagada) -> Presentado ->
+  Debitado (baja el real); Anulado o Rechazado liberan la reserva.
+- Posicion, Conciliaciones e Historico muestran real, comprometido y estimado.
+
+12.4 Llave, matriz, alertas y roles
+- Roles nuevos: Director y Tesorero central. Firma con llave (usuario, clave y
+  codigo temporal de demo; clave de demo 1234); nadie firma lo que cargo.
+  Integrada en comprobantes, diferencias de caja y en la Bandeja.
+- Parametros: "Matriz de autorizaciones y llaves" y "Alertas, destinatarios y
+  plazos". Pantalla "Alertas enviadas" (/caja/alertas): bandeja de salida
+  simulada (no se envian mails reales).
+- Libro por rol: el cajero ve su caja, el supervisor y tesorero su sucursal,
+  Director y Tesorero central todo.
+
+12.5 Remesas (movimientos de tesoreria)
+- Autorizacion con llave y matriz por importe (reserva unica en el origen).
+- Entrega al portador con acta, recepcion firmada, estado Finalizado.
+- Tipos nuevos: Pedido de refuerzo a tesoro, Pedido de refuerzo a banco
+  (extraccion con boleta) y Restitucion de fondo fijo (con rendicion simulada).
+
+12.6 Pendiente de la v4
+- Prestamos en liquidacion y Comprobantes de la bandeja.
+- Acta de diferencia con conformidad del responsable, negativa a firmar y
+  segunda firma remota.
+- Cierre diario con ventana de ajustes, acta y reapertura por rol.
+- Carga diaria de saldos bancarios, medios electronicos y blacklist/contactos
+  de proveedores.
+- Simplificaciones: la llave es simulada; las alertas no envian mail; el pago
+  parcial de OP queda marcado como punto abierto de la especificacion.

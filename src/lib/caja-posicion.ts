@@ -10,6 +10,7 @@ import {
   type Arqueo,
   type Caja,
   type CambioTurno,
+  type Cheque,
   type CuentaBancaria,
   type Jornada,
   type Moneda,
@@ -243,8 +244,10 @@ export const alertasPara = (alertas: Alerta[], roles: RolCaja[]) =>
 // moneda o una cuenta bancaria. Supuestos:
 //  - Caja: saldo = ingresos − egresos del libro, sólo CONFIRMADO y en EFECTIVO (igual que `saldoCaja`).
 //  - Banco: saldo = saldo inicial (fechado el día de alta de la cuenta) + depósitos conciliados (fechados
-//    el día de la acreditación) − pagos a proveedores con origen en la cuenta (fechados el día del pago),
-//    igual que `saldosBancarios`. Lo que está en tránsito o sin conciliar no es saldo.
+//    el día de la acreditación) − transferencias ejecutadas (fechadas el día del pago) − cheques propios
+//    debitados (fechados el día de pago del cheque), igual que el saldo real de `saldosBancarios`. Lo que
+//    está en tránsito o sin conciliar no es saldo, y lo reservado (transferencia preparada, cheque emitido)
+//    tampoco baja el real: sólo el estimado.
 
 export type Periodicidad = "DIARIA" | "MENSUAL";
 
@@ -271,8 +274,9 @@ export interface DatosHistorico {
   cuentas: CuentaBancaria[];
   libro: MovimientoCaja[];
   movimientos: MovimientoTesoreria[];
-  // Pagos a proveedores: los de origen BANCO son los egresos de las cuentas.
+  // Egresos de las cuentas: transferencias ejecutadas (pagos con origen BANCO) y cheques propios debitados.
   pagos?: PagoProveedor[];
+  cheques?: Cheque[];
 }
 
 export function seriesDe(datos: DatosHistorico, cajaIds: string[], cuentaIds: string[], moneda: Moneda | ""): Serie[] {
@@ -314,8 +318,20 @@ export function seriesDe(datos: DatosHistorico, cajaIds: string[], cuentaIds: st
             ingreso: x.importe,
             egreso: 0,
           })),
+        // Extracciones de los pedidos de refuerzo a banco: bajan el real el día que se carga la boleta.
+        ...datos.movimientos
+          .filter((x) => x.origenBancoId === cuenta.id && x.extraccion)
+          .map((x) => ({
+            fecha: x.extraccion!.fechaHora.slice(0, 10),
+            hora: x.extraccion!.fechaHora.slice(11),
+            descripcion: `Extracción ${x.id} · boleta ${x.extraccion!.boleta}`,
+            comprobante: x.extraccion!.boleta,
+            ingreso: 0,
+            egreso: x.extraccion!.importe,
+          })),
+        // Egresos que bajaron el saldo real (v4, 2.5): transferencias ejecutadas, fechadas el día del pago…
         ...(datos.pagos ?? [])
-          .filter((p) => p.origenTipo === "BANCO" && p.origenId === cuenta.id)
+          .filter((p) => p.medio === "TRANSFERENCIA" && p.origenTipo === "BANCO" && p.origenId === cuenta.id && (p.estado === "EJECUTADA" || p.estado === "CONFIRMADA"))
           .map((p) => ({
             fecha: p.fecha,
             hora: "",
@@ -323,6 +339,17 @@ export function seriesDe(datos: DatosHistorico, cajaIds: string[], cuentaIds: st
             comprobante: p.id,
             ingreso: 0,
             egreso: p.importe,
+          })),
+        // …y cheques propios debitados, fechados el día de su pago (vencimiento).
+        ...(datos.cheques ?? [])
+          .filter((c) => c.origen === "PROPIO" && c.cuentaId === cuenta.id && c.estado === "DEBITADO")
+          .map((c) => ({
+            fecha: c.fechaPago,
+            hora: "",
+            descripcion: `Cheque ${c.numero} debitado · ${c.parte}`,
+            comprobante: c.id,
+            ingreso: 0,
+            egreso: c.importe,
           })),
       ],
     });

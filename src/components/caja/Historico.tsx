@@ -12,7 +12,7 @@ import {
   type Periodicidad,
   type Serie,
 } from "@/lib/caja-posicion";
-import { auditar, useCajaDatos, useCuentasBancarias } from "@/lib/caja-store";
+import { auditar, useCajaDatos, useCheques, useCuentasBancarias } from "@/lib/caja-store";
 import { NOMBRE_MONEDA, type Moneda } from "@/lib/caja-tipos";
 import { usePagosProveedor } from "@/lib/proveedores-store";
 import { Button } from "@/components/ui/Button";
@@ -127,6 +127,7 @@ export function PantallaHistorico() {
   const d = useCajaDatos();
   const cuentas = useCuentasBancarias();
   const pagos = usePagosProveedor();
+  const cheques = useCheques();
   const cajasLista = d.cajas.filter((c) => c.estado !== "ELIMINADO");
   const cuentasLista = cuentas.filter((c) => c.estado !== "ELIMINADO");
 
@@ -139,7 +140,7 @@ export function PantallaHistorico() {
   const [detalle, setDetalle] = useState<{ serie: Serie; periodo: string } | null>(null);
 
   const filtro: FiltroHistorico = { desde, hasta, periodicidad };
-  const series = seriesDe({ cajas: d.cajas, cuentas, libro: d.libro, movimientos: d.movimientos, pagos }, cajaIds, cuentaIds, moneda);
+  const series = seriesDe({ cajas: d.cajas, cuentas, libro: d.libro, movimientos: d.movimientos, pagos, cheques }, cajaIds, cuentaIds, moneda);
   const rangoInvalido = !!desde && !!hasta && desde > hasta;
   // Un solo día: se obtiene la foto de todas las cajas y cuentas al cierre de esa fecha.
   const unDia = !!desde && desde === hasta;

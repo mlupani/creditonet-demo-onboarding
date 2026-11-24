@@ -13,7 +13,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActaDatos, ActaFirmas, ActaModal, ActaRecuento } from "./Acta";
 import { FlujoRecuento } from "./RecuentoForm";
-import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, cajasPropias, dinero } from "./comunes";
+import { CLASE_INPUT, ErrorBanner, NotaModal, PaginaCaja, SelectorCaja, cajasPropias, datosDiferencia, dinero } from "./comunes";
 
 const MARGEN_ALERTA_MIN = 30;
 export const aError = (r: Res): string | null => (r.ok ? null : r.error);
@@ -160,8 +160,13 @@ function Pendiente({ jornada, etapa }: { jornada: Jornada; etapa: "apertura" | "
         requerida={accion === "rechazar"}
         confirmar={accion === "aprobar" ? "Aprobar" : "Rechazar"}
         tono={accion === "aprobar" ? "success" : "danger"}
+        llave={
+          accion === "aprobar"
+            ? { operacion: `Aprobación de diferencia de ${etapa}`, referencia: jornada.id, cargadoPor: recuento.usuarioId, ...datosDiferencia(recuento.diferencia) }
+            : undefined
+        }
         onClose={() => setAccion(null)}
-        onConfirmar={(nota) => aError(resolver(jornada.id, accion === "aprobar", nota))}
+        onConfirmar={(nota, firmaId) => aError(resolver(jornada.id, accion === "aprobar", nota, firmaId))}
       />
     </div>
   );

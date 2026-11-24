@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { hoy } from "@/lib/caja-store";
 import { antiguedadDeuda, saldoProveedor, formatearCuit, TRAMOS_DEUDA, type DeudaPorTramo } from "@/lib/proveedores-reglas";
-import { useComprobantes, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
+import { useComprobantes, useOrdenesPago, usePagosProveedor, useProveedores, useTiposComprobante } from "@/lib/proveedores-store";
 import { ESTADO_ABM_LABEL, type EstadoAbm } from "@/lib/caja-tipos";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -21,6 +21,7 @@ export function PantallaPosicionProveedores() {
   const proveedores = useProveedores();
   const comprobantes = useComprobantes();
   const pagos = usePagosProveedor();
+  const ordenes = useOrdenesPago();
   const tipos = useTiposComprobante();
   const [busqueda, setBusqueda] = useState("");
   const [estado, setEstado] = useState<"" | EstadoAbm>("");
@@ -28,7 +29,7 @@ export function PantallaPosicionProveedores() {
   const [elegido, setElegido] = useState<string | null>(null);
 
   // Antigüedad de la deuda a la fecha operativa de la demo.
-  const deudaPorProveedor = new Map(antiguedadDeuda(comprobantes, pagos, tipos, hoy()).porProveedor.map((d) => [d.proveedorId, d]));
+  const deudaPorProveedor = new Map(antiguedadDeuda(comprobantes, pagos, tipos, hoy(), undefined, ordenes).porProveedor.map((d) => [d.proveedorId, d]));
 
   const filas = proveedores
     .filter((p) => p.estado !== "ELIMINADO" || estado === "ELIMINADO")
@@ -38,7 +39,7 @@ export function PantallaPosicionProveedores() {
       if (!q) return true;
       return sinAcentos(p.razonSocial).includes(q) || sinAcentos(p.fantasia).includes(q) || p.cuit.replace(/\D/g, "").includes(q.replace(/\D/g, "") || "x") || sinAcentos(p.id).includes(q);
     })
-    .map((p) => ({ p, saldo: saldoProveedor(p.id, comprobantes, pagos, tipos), deuda: deudaPorProveedor.get(p.id) ?? DEUDA_CERO }))
+    .map((p) => ({ p, saldo: saldoProveedor(p.id, comprobantes, pagos, tipos, ordenes), deuda: deudaPorProveedor.get(p.id) ?? DEUDA_CERO }))
     .sort((a, b) =>
       orden === "SALDO" ? b.saldo - a.saldo : orden === "ID" ? a.p.id.localeCompare(b.p.id) : a.p.razonSocial.localeCompare(b.p.razonSocial)
     );

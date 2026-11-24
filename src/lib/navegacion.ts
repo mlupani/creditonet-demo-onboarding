@@ -129,6 +129,8 @@ export const MENU: readonly MenuEntrada[] = [
           solapaCaja("Motivos de diferencia de caja", "motivos-diferencia"),
           solapaCaja("Tipos de movimiento de tesorería", "tipos-movimiento"),
           solapaCaja("Estados de movimientos de tesorería", "estados-movimiento"),
+          solapaCaja("Matriz de autorizaciones y llaves", "matriz-autorizacion"),
+          solapaCaja("Alertas, destinatarios y plazos", "alertas-destinatarios"),
         ],
       },
       {
@@ -170,15 +172,15 @@ export const MENU: readonly MenuEntrada[] = [
           caja("Conciliaciones", "/caja/bancos"),
         ],
       },
-      // El contenido de la bandeja está por definirse (v2, sección 3); sólo se ubicó acá Movimientos
-      // de tesorería, que salió del menú de Caja.
-      { label: "Bandeja de autorizaciones", children: [caja("Movimientos de tesorería", "/caja/tesoreria")] },
+      // La Bandeja reemplaza a Movimientos de tesorería (vista Remesas) y al pago de órdenes de pago.
+      caja("Bandeja de autorizaciones", "/caja/bandeja"),
       {
         label: "Posición de caja y bancos",
         children: [
           caja("Posición de saldos", "/caja/posicion"),
           caja("Tablero de tesoros", "/caja/tablero"),
           caja("Histórico de saldos", "/caja/historico"),
+          caja("Alertas enviadas", "/caja/alertas"),
         ],
       },
       pronto("Cash flow"),

@@ -16,6 +16,8 @@ import { Feriados } from "@/components/caja/abm/Feriados";
 import { MotivosDiferencia } from "@/components/caja/abm/MotivosDiferencia";
 import { TiposMovimiento } from "@/components/caja/abm/TiposMovimiento";
 import { EstadosMovimiento } from "@/components/caja/abm/EstadosMovimiento";
+import { MatrizAutorizaciones } from "@/components/caja/abm/MatrizAutorizaciones";
+import { AlertasDestinatarios } from "@/components/caja/abm/AlertasDestinatarios";
 import { TiposChequera } from "@/components/caja/abm/TiposChequera";
 import { Proveedores } from "@/components/caja/abm/Proveedores";
 import { TiposComprobante } from "@/components/caja/abm/TiposComprobante";
@@ -48,6 +50,8 @@ const SOLAPAS = [
   { id: "motivos-diferencia", label: "Motivos de diferencia de caja", icon: IconAlertTriangle, Componente: MotivosDiferencia },
   { id: "tipos-movimiento", label: "Tipos de movimiento de tesorería", icon: IconSend, Componente: TiposMovimiento },
   { id: "estados-movimiento", label: "Estados de movimientos de tesorería", icon: IconRows, Componente: EstadosMovimiento },
+  { id: "matriz-autorizacion", label: "Matriz de autorizaciones y llaves", icon: IconLock, Componente: MatrizAutorizaciones },
+  { id: "alertas-destinatarios", label: "Alertas, destinatarios y plazos", icon: IconAlertTriangle, Componente: AlertasDestinatarios },
   { id: "proveedores", label: "Proveedores", icon: IconBuilding, Componente: Proveedores },
   { id: "tipos-comprobante", label: "Tipos de comprobante", icon: IconFileText, Componente: TiposComprobante },
   { id: "estados-comprobante", label: "Estados de comprobantes", icon: IconRows, Componente: EstadosComprobante },
