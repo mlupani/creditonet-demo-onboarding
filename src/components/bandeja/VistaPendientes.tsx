@@ -6,7 +6,7 @@ import { lotesTransferencia } from "@/lib/proveedores-operaciones";
 import { useOrdenesPago, usePagosProveedor, useProveedores } from "@/lib/proveedores-store";
 import { TIPO_PENDIENTE_LABEL, pendientesDeBandeja, type FiltrosBandeja, type TipoPendiente, type VistaBandeja } from "@/lib/bandeja-reglas";
 import { Button } from "@/components/ui/Button";
-import { descargarXlsx, dinero } from "@/components/caja/comunes";
+import { dinero } from "@/components/caja/comunes";
 import { Pill, TablaCompacta, Td, Th, type Fase } from "@/components/caja/compacto";
 import { pesos } from "./comunes";
 
@@ -37,23 +37,12 @@ export function VistaPendientes({ filtros, onIr }: { filtros: FiltrosBandeja; on
     [usuario, ordenes, pagos, proveedores, movimientos, cajas, filtros]
   );
 
-  const exportar = () =>
-    descargarXlsx("bandeja-pendientes.xlsx", "Pendientes", [
-      ["Tipo", "Referencia", "Detalle", "Importe", "Moneda"],
-      ...lista.map((p) => [TIPO_PENDIENTE_LABEL[p.tipo], p.referencia, p.detalle, String(p.importe), p.moneda]),
-    ]);
-
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="max-w-3xl text-[11px] text-ink-500">
-          Una transferencia rechazada vuelve a Autorizado con su comentario y libera la reserva; un cheque rechazado o anulado reabre la deuda; un
-          pago parcial deja saldo. Cada contingencia avisa por mail al Tesorero central y al Director (ver Alertas enviadas).
-        </p>
-        <Button variant="navyOutline" size="xs" onClick={exportar} disabled={lista.length === 0}>
-          Exportar a Excel
-        </Button>
-      </div>
+      <p className="max-w-3xl text-[11px] text-ink-500">
+        Una transferencia rechazada vuelve a Autorizado con su comentario y libera la reserva; un cheque rechazado o anulado reabre la deuda; un
+        pago parcial deja saldo. Cada contingencia avisa por mail al Tesorero central y al Director (ver Alertas enviadas).
+      </p>
 
       <TablaCompacta etiqueta="Contingencias pendientes" minWidth="min-w-[44rem]">
         <thead>

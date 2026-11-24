@@ -625,6 +625,11 @@ export interface MovimientoCaja {
   diferencia?: boolean;
   incidencia?: boolean;
   nota?: string;
+  // Anulación: nada se borra ni se corrige. El movimiento anulado queda visible y apunta a su
+  // contramovimiento (`anuladoPor`); éste apunta al original (`anulaA`) y guarda el motivo.
+  anulaA?: string;
+  anuladoPor?: string;
+  motivoAnulacion?: string;
 }
 
 export interface Transportista {

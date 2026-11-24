@@ -84,6 +84,8 @@ interface Asiento {
   incidencia?: boolean;
   nota?: string;
   medio?: MedioMovimiento; // por defecto, efectivo
+  anulaA?: string;
+  motivoAnulacion?: string;
 }
 
 // Agrega una fila al libro. Los asientos no se editan ni se borran.
@@ -109,9 +111,45 @@ function asentar(a: Asiento): MovimientoCaja {
     diferencia: a.diferencia,
     incidencia: a.incidencia,
     nota: a.nota,
+    anulaA: a.anulaA,
+    motivoAnulacion: a.motivoAnulacion,
   };
   S.libro.commit([...libro, mov]);
   return mov;
+}
+
+// Anula un movimiento del libro con un contramovimiento de signo contrario ("un cobro mal hecho no se
+// corrige ni se borra"). Quedan los dos visibles y vinculados, con el motivo. La autoriza un
+// Supervisor de caja distinto de quien cargó el movimiento. Los movimientos de tesorería y los
+// ajustes por diferencia tienen su propio circuito y no se anulan desde acá.
+export function anularMovimiento(movId: string, motivo: string): Res<{ contramovimiento: MovimientoCaja }> {
+  const original = S.libro.get().find((m) => m.id === movId);
+  if (!original) return error("No existe el movimiento.");
+  if (original.estado !== "CONFIRMADO") return error("Sólo se puede anular un movimiento confirmado.");
+  if (original.anulaA) return error("Un contramovimiento no se anula: se registra un movimiento nuevo.");
+  if (original.refId || original.diferencia) return error("Este movimiento sigue su propio circuito (tesorería o diferencias): no se anula desde el libro.");
+  if (!motivo.trim()) return error("El motivo de la anulación es obligatorio.");
+  if (!puedeAprobar(usuarioActual(), original.responsableId))
+    return error("La anulación la autoriza un Supervisor de caja distinto de quien cargó el movimiento.");
+  const bloqueo = bloqueoCaja(original.cajaId);
+  if (bloqueo) return error(bloqueo);
+  // Al anular un ingreso en efectivo, la caja tiene que tener ese efectivo para devolverlo.
+  if (original.medio === "EFECTIVO" && original.ingreso > 0 && saldoCaja(S.libro.get(), original.cajaId, original.moneda) < original.ingreso)
+    return error("La caja no tiene efectivo suficiente para anular este ingreso.");
+  const contra = asentar({
+    cajaId: original.cajaId,
+    tipo: `Anulación de ${original.tipo.toLowerCase()}`,
+    descripcion: `Anula ${original.id}: ${original.descripcion}`,
+    comprobante: original.comprobante,
+    moneda: original.moneda,
+    ingreso: original.egreso,
+    egreso: original.ingreso,
+    medio: original.medio,
+    anulaA: original.id,
+    motivoAnulacion: motivo.trim(),
+  });
+  S.libro.commit(S.libro.get().map((m) => (m.id === original.id ? { ...m, estado: "ANULADO" as const, anuladoPor: contra.id } : m)));
+  return { ok: true, contramovimiento: contra };
 }
 
 // Una diferencia aprobada genera un movimiento de ajuste propio; nunca modifica el recuento.

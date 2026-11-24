@@ -30,15 +30,28 @@ export function vistasDe(usuario: UsuarioCaja | undefined): VistaBandeja[] {
   return [];
 }
 
-// El bloque "Operar como cobrador" es del Cajero (y del Tesorero que también es cajero).
-export const esCobrador = (usuario: UsuarioCaja | undefined) => !!usuario && usuario.roles.includes("CAJERO");
+// El bloque "Operar como cobrador" es del Cajero y del Tesorero de sucursal (Bandeja p. 1-2); el Tesorero
+// central lo tiene como opcional y el Director no lo usa.
+export const esCobrador = (usuario: UsuarioCaja | undefined) =>
+  !!usuario && (usuario.roles.includes("CAJERO") || usuario.roles.includes("TESORERO"));
 
 export interface FiltrosBandeja {
   busqueda: string;
   sucursalId: string; // "" = todas
   moneda: "" | Moneda;
+  fechaDesde: string; // "" = sin límite (AAAA-MM-DD)
+  fechaHasta: string;
 }
-export const SIN_FILTROS: FiltrosBandeja = { busqueda: "", sucursalId: "", moneda: "" };
+export const SIN_FILTROS: FiltrosBandeja = { busqueda: "", sucursalId: "", moneda: "", fechaDesde: "", fechaHasta: "" };
+
+// Filtro de fecha: se compara el día (los primeros 10 caracteres). Un ítem sin fecha no se filtra.
+export function enRangoDeFechas(fecha: string | undefined, filtros: Pick<FiltrosBandeja, "fechaDesde" | "fechaHasta">): boolean {
+  if (!fecha) return true;
+  const dia = fecha.slice(0, 10);
+  if (filtros.fechaDesde && dia < filtros.fechaDesde) return false;
+  if (filtros.fechaHasta && dia > filtros.fechaHasta) return false;
+  return true;
+}
 
 const normalizar = (s: string) =>
   s
@@ -102,6 +115,7 @@ export function ordenesDeBandeja(
       pendiente = pendienteDeOrden(orden, pagos);
       if (pendiente <= 0.001) continue;
     } else continue;
+    if (!enRangoDeFechas(orden.fechaArmado, filtros)) continue;
     const proveedor = proveedores.find((p) => p.id === orden.proveedorId);
     if (!coincide(filtros.busqueda, orden.id, proveedor?.razonSocial, proveedor?.fantasia, proveedor?.cuit, proveedor?.id)) continue;
     filas.push({ orden, proveedor, fase, pendiente });
@@ -111,12 +125,13 @@ export function ordenesDeBandeja(
 
 // ---------- Transferencias ----------
 
-// Lotes con los ítems que coinciden con la búsqueda; los lotes que quedan vacíos se omiten.
-export function lotesDeBandeja(lotes: LoteTransferencia[], filtros: FiltrosBandeja = SIN_FILTROS): LoteTransferencia[] {
+// Lotes con los ítems que coinciden con la búsqueda y el rango de fechas (la fecha es la del pago, por eso
+// hace falta la lista de pagos); los lotes que quedan vacíos se omiten.
+export function lotesDeBandeja(lotes: LoteTransferencia[], filtros: FiltrosBandeja = SIN_FILTROS, pagos: PagoProveedor[] = []): LoteTransferencia[] {
   if (filtros.moneda === "USD") return [];
   return lotes
     .map((l) => {
-      const items = l.items.filter((i) => coincide(filtros.busqueda, i.pagoId, i.ordenPago, i.proveedor, i.cuit, i.cbuDestino, i.importe));
+      const items = l.items.filter((i) => enRangoDeFechas(pagos.find((p) => p.id === i.pagoId)?.fecha, filtros) && coincide(filtros.busqueda, i.pagoId, i.ordenPago, i.proveedor, i.cuit, i.cbuDestino, i.importe));
       return { ...l, items, total: items.reduce((s, i) => s + i.importe, 0) };
     })
     .filter((l) => l.items.length > 0);
@@ -141,6 +156,7 @@ export function remesasDeBandeja(
     const destinoCaja = m.destino.tipo === "CAJA" ? m.destino.cajaId : undefined;
     if (!ids.has(m.origenId) && !(destinoCaja && ids.has(destinoCaja))) return false;
     if (filtros.moneda && m.moneda !== filtros.moneda) return false;
+    if (!enRangoDeFechas(m.fechaSolicitud, filtros)) return false;
     if (filtros.sucursalId) {
       const s = sucursalDe(cajas, m.origenId);
       const d = destinoCaja ? sucursalDe(cajas, destinoCaja) : undefined;
@@ -170,6 +186,7 @@ export interface Pendiente {
   busqueda: string; // qué buscar al saltar a esa vista
   importe: number;
   moneda: Moneda;
+  fecha?: string; // día del hecho (pago, orden o solicitud), para el filtro de fechas
 }
 
 const motivoDe = (p: PagoProveedor, estado: PagoProveedor["estado"]) =>
@@ -195,6 +212,7 @@ export function pendientesDeBandeja(d: DatosBandeja, filtros: FiltrosBandeja = S
           busqueda: orden.id,
           importe: p.importe,
           moneda: "ARS",
+          fecha: p.fecha,
         });
       } else if (p.estado === "RECHAZADO" || p.estado === "ANULADO") {
         lista.push({
@@ -207,6 +225,7 @@ export function pendientesDeBandeja(d: DatosBandeja, filtros: FiltrosBandeja = S
           busqueda: orden.id,
           importe: p.importe,
           moneda: "ARS",
+          fecha: p.fecha,
         });
       }
     }
@@ -225,6 +244,7 @@ export function pendientesDeBandeja(d: DatosBandeja, filtros: FiltrosBandeja = S
           busqueda: o.id,
           importe: pendiente,
           moneda: "ARS",
+          fecha: o.fechaArmado,
         });
       }
     }
@@ -252,10 +272,11 @@ export function pendientesDeBandeja(d: DatosBandeja, filtros: FiltrosBandeja = S
         busqueda: m.id,
         importe: m.importe,
         moneda: m.moneda,
+        fecha: m.fechaSolicitud,
       });
     }
   }
-  return lista.filter((p) => coincide(filtros.busqueda, p.referencia, p.titulo, p.detalle));
+  return lista.filter((p) => enRangoDeFechas(p.fecha, filtros) && coincide(filtros.busqueda, p.referencia, p.titulo, p.detalle));
 }
 
 // ---------- Tarjetas ----------
@@ -275,7 +296,7 @@ export function resumenBandeja(d: DatosBandeja, filtros: FiltrosBandeja = SIN_FI
     r.proveedores.importe.ARS = filas.reduce((s, f) => s + f.pendiente, 0);
   }
   if (vistas.includes("transferencias")) {
-    const items = lotesDeBandeja(d.lotes, filtros).flatMap((l) => l.items);
+    const items = lotesDeBandeja(d.lotes, filtros, d.pagos).flatMap((l) => l.items);
     r.transferencias.cantidad = items.length;
     r.transferencias.importe.ARS = items.reduce((s, i) => s + i.importe, 0);
   }

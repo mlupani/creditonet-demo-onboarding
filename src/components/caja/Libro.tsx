@@ -2,8 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { USUARIOS_CAJA } from "@/lib/caja-datos";
-import { nombreCaja, bancoTexto } from "@/lib/caja-operaciones";
-import { cajasVisibles, sucursalesVisibles } from "@/lib/caja-reglas";
+import { anularMovimiento, nombreCaja, bancoTexto } from "@/lib/caja-operaciones";
+import { afectaSaldo, cajasVisibles, sucursalesVisibles } from "@/lib/caja-reglas";
 import { auditar, nombreUsuario, useCajaDatos } from "@/lib/caja-store";
 import {
   MEDIO_LABEL,
@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { imprimirDocumento } from "./Acta";
 import { Cifra, PanelVentana, Pill, TablaCompacta, Td, Th } from "./compacto";
-import { CLASE_INPUT, Dato, PaginaCaja, descargarXlsx, dinero, sinAcentos } from "./comunes";
+import { CLASE_INPUT, Dato, NotaModal, PaginaCaja, descargarXlsx, dinero, horaActual, hoy, sinAcentos } from "./comunes";
 
 interface Filtros {
   sucursalId: string;
@@ -78,7 +78,12 @@ interface Bloque {
   final: number;
 }
 
-const cuenta = (m: MovimientoCaja) => m.medio === "EFECTIVO" && m.estado === "CONFIRMADO";
+const cuenta = afectaSaldo;
+
+// Referencia de una fila: una anulación apunta al movimiento que anula y su motivo; el movimiento
+// anulado apunta a su contramovimiento. Los dos quedan en el libro.
+const referenciaDe = (m: MovimientoCaja): string =>
+  m.anulaA ? `anula ${m.anulaA} · motivo: ${m.motivoAnulacion ?? "—"}` : m.anuladoPor ? `anulado por ${m.anuladoPor}` : "";
 
 function Campo({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -172,17 +177,17 @@ interface Consolidado {
 }
 
 // Mayor de caja listo para imprimir: un bloque por caja y moneda y, con varias cajas, el consolidado.
-function htmlLibro(bloques: Bloque[], consolidado: Consolidado[], periodo: string, filtros: string): string {
+function htmlLibro(bloques: Bloque[], consolidado: Consolidado[], periodo: string, filtros: string, exportado: string): string {
   const num = (m: Moneda, v: number) => esc(dinero(m, v));
   const bloquesHtml = bloques
     .map((b) => {
       const filas = b.filas
         .map(
           ({ mov, saldo }) =>
-            `<tr${mov.estado === "ANULADO" ? ' style="color:#888;text-decoration:line-through"' : ""}><td>${esc(`${mov.fecha} ${mov.hora}`)}</td><td>${esc(nombreUsuario(mov.turnoUsuarioId))}</td><td>${esc(mov.tipo)}</td><td>${esc(mov.descripcion)}</td><td>${esc(mov.comprobante)}</td><td class="n">${mov.ingreso > 0 ? num(mov.moneda, mov.ingreso) : ""}</td><td class="n">${mov.egreso > 0 ? num(mov.moneda, mov.egreso) : ""}</td><td class="n">${num(mov.moneda, saldo)}</td><td>${esc(MEDIO_LABEL[mov.medio])}</td><td>${esc(nombreUsuario(mov.responsableId))}</td><td>${mov.estado === "ANULADO" ? "Anulado" : "Confirmado"}</td></tr>`
+            `<tr${mov.estado === "ANULADO" ? ' style="color:#888;text-decoration:line-through"' : ""}><td>${esc(mov.id)}</td><td>${esc(`${mov.fecha} ${mov.hora}`)}</td><td>${esc(nombreUsuario(mov.turnoUsuarioId))}</td><td>${esc(mov.tipo)}</td><td>${esc(mov.descripcion)}</td><td>${esc(mov.comprobante)}</td><td>${esc(referenciaDe(mov))}</td><td class="n">${mov.ingreso > 0 ? num(mov.moneda, mov.ingreso) : ""}</td><td class="n">${mov.egreso > 0 ? num(mov.moneda, mov.egreso) : ""}</td><td class="n">${num(mov.moneda, saldo)}</td><td>${esc(MEDIO_LABEL[mov.medio])}</td><td>${esc(nombreUsuario(mov.responsableId))}</td><td>${mov.estado === "ANULADO" ? "Anulado" : "Confirmado"}</td></tr>`
         )
         .join("");
-      return `<h2>${esc(b.caja.nombre)} · ${b.moneda === "ARS" ? "Pesos" : "Dólares"}</h2><p>Período: ${esc(periodo)} · Saldo inicial: <strong>${num(b.moneda, b.inicial)}</strong></p><table><thead><tr><th>Fecha y hora</th><th>Turno</th><th>Tipo</th><th>Descripción</th><th>Comprobante</th><th class="n">Ingreso</th><th class="n">Egreso</th><th class="n">Saldo</th><th>Medio</th><th>Responsable</th><th>Estado</th></tr></thead><tbody>${filas || '<tr><td colspan="11">Sin movimientos en el período.</td></tr>'}</tbody><tfoot><tr><th colspan="5">Totales (efectivo confirmado)</th><th class="n">${num(b.moneda, b.ingresos)}</th><th class="n">${num(b.moneda, b.egresos)}</th><th class="n">${num(b.moneda, b.final)}</th><th colspan="3">Saldo final</th></tr></tfoot></table>`;
+      return `<h2>${esc(b.caja.nombre)} · ${b.moneda === "ARS" ? "Pesos" : "Dólares"}</h2><p>Período: ${esc(periodo)} · Saldo inicial: <strong>${num(b.moneda, b.inicial)}</strong></p><table><thead><tr><th>ID</th><th>Fecha y hora</th><th>Turno</th><th>Tipo</th><th>Descripción</th><th>Comprobante</th><th>Referencia</th><th class="n">Ingreso</th><th class="n">Egreso</th><th class="n">Saldo</th><th>Medio</th><th>Responsable</th><th>Estado</th></tr></thead><tbody>${filas || '<tr><td colspan="13">Sin movimientos en el período.</td></tr>'}</tbody><tfoot><tr><th colspan="7">Totales (efectivo confirmado)</th><th class="n">${num(b.moneda, b.ingresos)}</th><th class="n">${num(b.moneda, b.egresos)}</th><th class="n">${num(b.moneda, b.final)}</th><th colspan="3">Saldo final</th></tr></tfoot></table>`;
     })
     .join("");
   const consolidadoHtml = consolidado
@@ -192,16 +197,58 @@ function htmlLibro(bloques: Bloque[], consolidado: Consolidado[], periodo: strin
     )
     .join("");
   const cuerpo = bloques.length === 0 ? "<p>Ningún movimiento coincide con los filtros.</p>" : bloquesHtml + consolidadoHtml;
-  return `<h1>Libro de movimientos de caja</h1><p>Período: ${esc(periodo)}${filtros ? ` · Filtros: ${esc(filtros)}` : ""}</p>${cuerpo}`;
+  return `<h1>Libro de movimientos de caja</h1><p>Período: ${esc(periodo)}${filtros ? ` · Filtros: ${esc(filtros)}` : ""}</p>${cuerpo}<p>${esc(exportado)}</p>`;
 }
 
 function DetalleFila({ mov, onClose }: { mov: MovimientoCaja; onClose: () => void }) {
   const { movimientos, libro } = useCajaDatos();
   const ref = mov.refId ?? mov.comprobante;
   const mt = movimientos.find((m) => m.id === ref);
-  const vinculados = libro.filter((m) => m.id !== mov.id && ((mov.refId && m.refId === mov.refId) || (mov.diferencia && m.comprobante === mov.comprobante)));
+  const vinculados = libro.filter(
+    (m) =>
+      m.id !== mov.id &&
+      ((mov.refId && m.refId === mov.refId) ||
+        (mov.diferencia && m.comprobante === mov.comprobante) ||
+        m.id === mov.anulaA ||
+        m.id === mov.anuladoPor)
+  );
+  const [anulando, setAnulando] = useState(false);
+  const anulable = mov.estado === "CONFIRMADO" && !mov.anulaA && !mov.refId && !mov.diferencia;
   return (
-    <Modal open onClose={onClose} title={`Movimiento ${mov.id}`} maxWidth="max-w-xl" footer={<Button onClick={onClose}>Cerrar</Button>}>
+    <Modal
+      open
+      onClose={onClose}
+      title={`Movimiento ${mov.id}`}
+      maxWidth="max-w-xl"
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          {anulable && (
+            <Button size="sm" variant="dangerOutline" onClick={() => setAnulando(true)}>
+              Anular movimiento
+            </Button>
+          )}
+          <Button size="sm" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+      }
+    >
+      <NotaModal
+        open={anulando}
+        titulo={`Anular ${mov.id}`}
+        descripcion="Un movimiento confirmado no se borra ni se corrige: se anula con un contramovimiento. Quedan los dos en el libro, vinculados y con el motivo. La anulación la autoriza un Supervisor de caja distinto de quien lo cargó."
+        etiquetaNota="Motivo de la anulación"
+        requerida
+        confirmar="Anular movimiento"
+        tono="danger"
+        onClose={() => setAnulando(false)}
+        onConfirmar={(motivo) => {
+          const r = anularMovimiento(mov.id, motivo);
+          if (!r.ok) return r.error;
+          onClose();
+          return null;
+        }}
+      />
       <dl className="grid grid-cols-2 gap-3">
         <Dato label="Fecha y hora">{mov.fecha} {mov.hora}</Dato>
         <Dato label="Turno">{nombreUsuario(mov.turnoUsuarioId)}</Dato>
@@ -212,6 +259,9 @@ function DetalleFila({ mov, onClose }: { mov: MovimientoCaja; onClose: () => voi
         <Dato label="Importe">{mov.ingreso > 0 ? `Ingreso ${dinero(mov.moneda, mov.ingreso)}` : `Egreso ${dinero(mov.moneda, mov.egreso)}`}</Dato>
         <Dato label="Responsable">{nombreUsuario(mov.responsableId)}</Dato>
         {mov.nota && <Dato label="Nota">{mov.nota}</Dato>}
+        {mov.anulaA && <Dato label="Anula">{mov.anulaA}</Dato>}
+        {mov.anulaA && <Dato label="Motivo de la anulación">{mov.motivoAnulacion ?? "—"}</Dato>}
+        {mov.anuladoPor && <Dato label="Anulado por">{mov.anuladoPor}</Dato>}
       </dl>
       {mt && (
         <div className="mt-4 rounded-lg border border-ink-200 p-3 text-sm">
@@ -260,20 +310,31 @@ export function PantallaLibro() {
   }).filter((c) => c.bloques > 1);
   const periodo = `${f.desde || "inicio"} a ${f.hasta || "hoy"}`;
 
+  // Quién exportó y cuándo (usuario y fecha y hora operativas), para el pie del archivo.
+  const exportadoPor = () => `Exportado por ${usuario.nombre} el ${hoy()} ${horaActual()}`;
+
   const exportar = () => {
-    const filas: string[][] = [["Caja", "Moneda", "Fecha", "Hora", "Turno", "Tipo", "Descripción", "Comprobante", "Ingreso", "Egreso", "Saldo acumulado", "Medio", "Responsable", "Estado"]];
-    for (const b of bloques)
-      for (const { mov, saldo } of b.filas)
-        filas.push([b.caja.nombre, b.moneda, mov.fecha, mov.hora, nombreUsuario(mov.turnoUsuarioId), mov.tipo, mov.descripcion, mov.comprobante, String(mov.ingreso), String(mov.egreso), String(saldo), MEDIO_LABEL[mov.medio], nombreUsuario(mov.responsableId), mov.estado === "ANULADO" ? "Anulado" : "Confirmado"]);
+    const filas: string[][] = [["ID", "Caja", "Moneda", "Fecha", "Hora", "Turno", "Tipo", "Descripción", "Comprobante", "Referencia", "Ingreso", "Egreso", "Saldo acumulado", "Medio", "Responsable", "Estado"]];
+    let movimientos = 0;
+    for (const b of visibles) {
+      for (const { mov, saldo } of b.filas) {
+        movimientos++;
+        filas.push([mov.id, b.caja.nombre, b.moneda, mov.fecha, mov.hora, nombreUsuario(mov.turnoUsuarioId), mov.tipo, mov.descripcion, mov.comprobante, referenciaDe(mov), String(mov.ingreso), String(mov.egreso), String(saldo), MEDIO_LABEL[mov.medio], nombreUsuario(mov.responsableId), mov.estado === "ANULADO" ? "Anulado" : "Confirmado"]);
+      }
+      filas.push(["", b.caja.nombre, b.moneda, "", "", "", "Totales (efectivo confirmado)", `Saldo inicial ${b.inicial}`, "", "", String(b.ingresos), String(b.egresos), String(b.final), "", "", "Saldo final"]);
+    }
+    for (const c of consolidado)
+      filas.push(["", "Consolidado", c.moneda, "", "", "", `Consolidado de ${c.bloques} cajas`, `Saldo inicial ${c.inicial}`, "", "", String(c.ingresos), String(c.egresos), String(c.final), "", "", "Saldo final"]);
+    filas.push([], [exportadoPor()]);
     descargarXlsx("libro-de-caja.xlsx", "Libro de caja", filas);
-    auditar("Exportación del libro de caja", "LIBRO", "ALTA", null, `Exportó ${filas.length - 1} movimientos a Excel (período ${periodo})`);
+    auditar("Exportación del libro de caja", "LIBRO", "ALTA", null, `${usuario.nombre} exportó ${movimientos} movimientos a Excel (período ${periodo})`);
   };
 
   const exportarPdf = () => {
     const resumen = resumenFiltros(f, sucursales.find((s) => s.id === f.sucursalId)?.nombre, cajas.find((c) => c.id === f.cajaId)?.nombre);
     const movimientos = visibles.reduce((n, b) => n + b.filas.length, 0);
-    imprimirDocumento("Libro de movimientos de caja", htmlLibro(visibles, consolidado, periodo, resumen), "@page{size:landscape} table{font-size:11px} th,td{padding:3px 5px}");
-    auditar("Exportación del libro de caja", "LIBRO", "ALTA", null, `Exportó ${movimientos} movimientos a PDF (período ${periodo})`);
+    imprimirDocumento("Libro de movimientos de caja", htmlLibro(visibles, consolidado, periodo, resumen, exportadoPor()), "@page{size:landscape} table{font-size:11px} th,td{padding:3px 5px}");
+    auditar("Exportación del libro de caja", "LIBRO", "ALTA", null, `${usuario.nombre} exportó ${movimientos} movimientos a PDF (período ${periodo})`);
   };
 
   const cajasLista = cajas.filter((c) => !f.sucursalId || c.sucursalId === f.sucursalId);
@@ -389,14 +450,16 @@ export function PantallaLibro() {
             titulo={`${b.caja.nombre} · ${b.moneda === "ARS" ? "Pesos" : "Dólares"}`}
             accion={<span>Saldo inicial: <strong className="tabular-nums text-ink-900">{dinero(b.moneda, b.inicial)}</strong></span>}
           >
-            <TablaCompacta etiqueta={`Libro de ${b.caja.nombre}`} minWidth="min-w-[64rem]">
+            <TablaCompacta etiqueta={`Libro de ${b.caja.nombre}`} minWidth="min-w-[72rem]">
               <thead>
                 <tr>
+                  <Th>ID</Th>
                   <Th>Fecha y hora</Th>
                   <Th>Turno</Th>
                   <Th>Tipo</Th>
                   <Th>Descripción</Th>
                   <Th>Comprobante</Th>
+                  <Th>Referencia</Th>
                   <Th derecha>Ingreso</Th>
                   <Th derecha>Egreso</Th>
                   <Th derecha>Saldo</Th>
@@ -407,27 +470,33 @@ export function PantallaLibro() {
               </thead>
               <tbody>
                 {b.filas.length === 0 && (
-                  <tr><Td colSpan={11} className="py-3 text-center text-ink-400">Sin movimientos en el período.</Td></tr>
+                  <tr><Td colSpan={13} className="py-3 text-center text-ink-400">Sin movimientos en el período.</Td></tr>
                 )}
-                {b.filas.map(({ mov, saldo }) => (
-                  <tr key={mov.id} onClick={() => setDetalle(mov)} className={`cursor-pointer hover:bg-ink-25 ${mov.estado === "ANULADO" ? "text-ink-400 line-through" : ""}`}>
-                    <Td className="whitespace-nowrap tabular-nums">{mov.fecha} {mov.hora}</Td>
-                    <Td>{nombreUsuario(mov.turnoUsuarioId)}</Td>
-                    <Td>{mov.tipo}</Td>
-                    <Td>{mov.descripcion}</Td>
-                    <Td className="font-mono">{mov.comprobante}</Td>
-                    <Td derecha className="text-success-700">{mov.ingreso > 0 ? dinero(mov.moneda, mov.ingreso) : ""}</Td>
-                    <Td derecha className="text-danger-700">{mov.egreso > 0 ? dinero(mov.moneda, mov.egreso) : ""}</Td>
-                    <Td derecha className="font-semibold">{dinero(mov.moneda, saldo)}</Td>
-                    <Td>{MEDIO_LABEL[mov.medio]}</Td>
-                    <Td>{nombreUsuario(mov.responsableId)}</Td>
-                    <Td><Pill fase={mov.estado === "CONFIRMADO" ? "ok" : "rechazo"}>{mov.estado === "CONFIRMADO" ? "Confirmado" : "Anulado"}</Pill></Td>
-                  </tr>
-                ))}
+                {b.filas.map(({ mov, saldo }) => {
+                  // El anulado se ve tachado; su ID, su referencia y su estado quedan legibles.
+                  const tachado = mov.estado === "ANULADO" ? "text-ink-400 line-through" : "";
+                  return (
+                    <tr key={mov.id} onClick={() => setDetalle(mov)} className="cursor-pointer hover:bg-ink-25">
+                      <Td className="whitespace-nowrap font-mono font-bold text-brand-700">{mov.id}</Td>
+                      <Td className={`whitespace-nowrap tabular-nums ${tachado}`}>{mov.fecha} {mov.hora}</Td>
+                      <Td className={tachado}>{nombreUsuario(mov.turnoUsuarioId)}</Td>
+                      <Td className={tachado}>{mov.tipo}</Td>
+                      <Td className={tachado}>{mov.descripcion}</Td>
+                      <Td className={`font-mono ${tachado}`}>{mov.comprobante}</Td>
+                      <Td className={mov.anulaA || mov.anuladoPor ? "text-danger-700" : "text-ink-500"}>{referenciaDe(mov)}</Td>
+                      <Td derecha className={tachado || "text-success-700"}>{mov.ingreso > 0 ? dinero(mov.moneda, mov.ingreso) : ""}</Td>
+                      <Td derecha className={tachado || "text-danger-700"}>{mov.egreso > 0 ? dinero(mov.moneda, mov.egreso) : ""}</Td>
+                      <Td derecha className="font-semibold">{dinero(mov.moneda, saldo)}</Td>
+                      <Td>{MEDIO_LABEL[mov.medio]}</Td>
+                      <Td>{nombreUsuario(mov.responsableId)}</Td>
+                      <Td><Pill fase={mov.estado === "CONFIRMADO" ? "ok" : "rechazo"}>{mov.estado === "CONFIRMADO" ? "Confirmado" : "Anulado"}</Pill></Td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="bg-ink-25 font-semibold">
-                  <Td colSpan={5} className="text-ink-700">Totales (efectivo confirmado)</Td>
+                  <Td colSpan={7} className="text-ink-700">Totales (efectivo confirmado)</Td>
                   <Td derecha>{dinero(b.moneda, b.ingresos)}</Td>
                   <Td derecha>{dinero(b.moneda, b.egresos)}</Td>
                   <Td derecha>{dinero(b.moneda, b.final)}</Td>

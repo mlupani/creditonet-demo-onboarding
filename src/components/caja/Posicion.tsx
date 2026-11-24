@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { Fragment, useState } from "react";
 import { saldosBancarios } from "@/lib/caja-operaciones";
-import { useCajaDatos, useCheques, useCuentasBancarias, useReservas } from "@/lib/caja-store";
+import { horaActual, hoy, useAcuerdos, useCajaDatos, useCheques, useCuentasBancarias, useFechaDemo, useHoraDemo, useReservas } from "@/lib/caja-store";
+import { acuerdosPorVencer, textoVencimiento } from "@/lib/acuerdos-vencimiento";
 import { usePagosProveedor } from "@/lib/proveedores-store";
 import { MONEDAS, NOMBRE_MONEDA, TIPO_CAJA_LABEL, TIPO_CUENTA_LABEL, monedasDe, type Moneda, type Reserva } from "@/lib/caja-tipos";
 import { posicionCaja } from "@/lib/saldos-reglas";
 import { Button } from "@/components/ui/Button";
 import { Cifra, PanelVentana, TablaCompacta, Td, Th } from "./compacto";
+import { IconAlertTriangle } from "@/components/icons";
 import { PaginaCaja, descargarXlsx, dinero } from "./comunes";
 
 interface Fila {
@@ -35,8 +37,14 @@ export function PantallaPosicion() {
   const reservas = useReservas();
   useCheques(); // los cheques debitados bajan el real: se vuelve a calcular al cambiar
   usePagosProveedor(); // las transferencias ejecutadas, también
+  const acuerdos = useAcuerdos();
+  useFechaDemo(); // la fecha y la hora simuladas cambian el título y los avisos
+  useHoraDemo();
   const [abierta, setAbierta] = useState<string | null>(null);
   const bancarios = saldosBancarios();
+  const [a, m, dd] = hoy().split("-");
+  const fechaHora = `${dd}/${m}/${a} ${horaActual()}`;
+  const avisos = acuerdosPorVencer(acuerdos, hoy());
 
   const filasCaja: Fila[] = d.cajas
     .filter((c) => c.estado === "ACTIVO")
@@ -176,18 +184,40 @@ export function PantallaPosicion() {
       titulo="Posición de saldos"
       descripcion="Saldo real y saldo estimado de todas las cajas y cuentas bancarias, por cuenta y moneda. El estimado (real − comprometido) es el que manda: ningún egreso se autoriza por encima de él."
     >
-      <div className="grid gap-2 sm:grid-cols-2">
-        {MONEDAS.map((m) => (
-          <Cifra key={m} label={`Posición total en ${NOMBRE_MONEDA[m].toLowerCase()}`} tono="bueno">
-            {dinero(m, total(todas, m, "estimado"))}
-            <span className="mt-0.5 block text-[11px] font-normal text-ink-500">
-              Estimado · real {dinero(m, total(todas, m, "real"))} − comprometido {dinero(m, total(todas, m, "comprometido"))}
-              {total(todas, m, "aRecibir") > 0 && ` · a recibir ${dinero(m, total(todas, m, "aRecibir"))} (no suma hasta que entra)`}
-            </span>
-          </Cifra>
-        ))}
-      </div>
-
+      <PanelVentana titulo={`Posición de saldos — ${fechaHora}`}>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {MONEDAS.map((m) => (
+            <Cifra key={m} label={`Posición total en ${NOMBRE_MONEDA[m].toLowerCase()}`} tono="bueno">
+              {dinero(m, total(todas, m, "estimado"))}
+              <span className="mt-0.5 block text-[11px] font-normal text-ink-500">
+                Estimado · real {dinero(m, total(todas, m, "real"))} − comprometido {dinero(m, total(todas, m, "comprometido"))}
+                {total(todas, m, "aRecibir") > 0 && ` · a recibir ${dinero(m, total(todas, m, "aRecibir"))} (no suma hasta que entra)`}
+              </span>
+            </Cifra>
+          ))}
+        </div>
+        {avisos.length > 0 && (
+          <ul aria-label="Avisos" className="mt-3 space-y-1">
+            {avisos.map((v) => {
+              const cuenta = cuentas.find((c) => c.id === v.cuentaId);
+              return (
+                <li
+                  key={v.acuerdoId}
+                  className={`flex flex-wrap items-center gap-1.5 text-xs font-bold ${v.vencido ? "text-danger-700" : "text-warning-700"}`}
+                >
+                  <IconAlertTriangle width={14} height={14} />
+                  <span>
+                    Acuerdo {cuenta?.banco ?? v.cuentaId} {textoVencimiento(v.dias)}
+                  </span>
+                  <Link href="/caja/acuerdos" className="font-semibold text-brand-700 hover:underline">
+                    Ver acuerdos
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </PanelVentana>
       {tabla(
         "Cajas y tesoros",
         filasCaja,

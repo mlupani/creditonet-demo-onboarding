@@ -2,6 +2,7 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   SIN_FILTROS,
+  enRangoDeFechas,
   esCobrador,
   lotesDeBandeja,
   ordenesDeBandeja,
@@ -44,11 +45,41 @@ test("cada rol ve sólo sus botones de la bandeja", () => {
   assert.deepEqual(vistasDe(undefined), []);
 });
 
-test("el bloque de cobrador es del cajero", () => {
+test("el bloque de cobrador es del cajero y del tesorero de sucursal", () => {
   assert.equal(esCobrador(usuarioPorId("ana-gomez")), true);
   assert.equal(esCobrador(usuarioPorId("tomas-ruiz")), true);
+  assert.equal(esCobrador(usuarioPorId("carlos-ibarra")), true);
   assert.equal(esCobrador(usuarioPorId("marta-diaz")), false);
   assert.equal(esCobrador(usuarioPorId("ricardo-pena")), false);
+  assert.equal(esCobrador(usuarioPorId("laura-benitez")), false);
+});
+
+test("el filtro de fechas recorta órdenes, transferencias, remesas y pendientes por día", () => {
+  assert.equal(enRangoDeFechas("2026-11-10 09:40", SIN_FILTROS), true);
+  assert.equal(enRangoDeFechas(undefined, { fechaDesde: "2026-11-01", fechaHasta: "2026-11-02" }), true, "sin fecha no se filtra");
+  assert.equal(enRangoDeFechas("2026-11-10 09:40", { fechaDesde: "2026-11-10", fechaHasta: "2026-11-10" }), true, "incluye ambos extremos");
+  assert.equal(enRangoDeFechas("2026-11-10", { fechaDesde: "2026-11-11", fechaHasta: "" }), false);
+  assert.equal(enRangoDeFechas("2026-11-10", { fechaDesde: "", fechaHasta: "2026-11-09" }), false);
+
+  const todas = ordenesDeBandeja(P.ordenesPago.get(), P.pagos.get(), P.proveedores.get());
+  const futuras = ordenesDeBandeja(P.ordenesPago.get(), P.pagos.get(), P.proveedores.get(), { ...SIN_FILTROS, fechaDesde: "2099-01-01" });
+  assert.ok(todas.length > 0);
+  assert.deepEqual(futuras, []);
+  const dia = todas[0].orden.fechaArmado;
+  const delDia = ordenesDeBandeja(P.ordenesPago.get(), P.pagos.get(), P.proveedores.get(), { ...SIN_FILTROS, fechaDesde: dia, fechaHasta: dia });
+  assert.ok(delDia.length > 0 && delDia.every((f) => f.orden.fechaArmado === dia));
+
+  const lotes = lotesTransferencia();
+  assert.ok(lotes.length > 0);
+  assert.deepEqual(lotesDeBandeja(lotes, { ...SIN_FILTROS, fechaDesde: "2099-01-01" }, P.pagos.get()), []);
+  assert.ok(lotesDeBandeja(lotes, SIN_FILTROS, P.pagos.get()).length > 0);
+
+  const central = usuarioPorId("ricardo-pena")!;
+  assert.deepEqual(remesasDeBandeja(S.movimientos.get(), S.cajas.get(), central, { ...SIN_FILTROS, fechaDesde: "2099-01-01" }), []);
+  assert.deepEqual(pendientesDeBandeja(datos("ricardo-pena"), { ...SIN_FILTROS, fechaDesde: "2099-01-01" }), []);
+  // Las tarjetas respetan el rango.
+  const r = resumenBandeja(datos("ricardo-pena"), { ...SIN_FILTROS, fechaDesde: "2099-01-01" });
+  assert.equal(totalBandeja(r).cantidad, 0);
 });
 
 test("Proveedores lista las órdenes emitidas (por autorizar) y las autorizadas con saldo (por pagar)", () => {

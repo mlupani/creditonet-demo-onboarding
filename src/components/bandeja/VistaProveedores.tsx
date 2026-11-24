@@ -11,7 +11,7 @@ import { ESTADO_PAGO_LABEL, MEDIO_PAGO_LABEL, type Comprobante, type OrdenPago }
 import { ordenesDeBandeja, type FiltrosBandeja } from "@/lib/bandeja-reglas";
 import { Button } from "@/components/ui/Button";
 import { LlaveModal } from "@/components/caja/LlaveModal";
-import { NotaModal, descargarXlsx } from "@/components/caja/comunes";
+import { NotaModal } from "@/components/caja/comunes";
 import { Pill, TablaCompacta, Td, Th, type Fase } from "@/components/caja/compacto";
 import { Flecha, ImagenComprobanteModal, cuitTexto, formatearCbu, nombreProveedor, numeroComprobante, origenTexto, pesos } from "./comunes";
 import { EstadoOrdenBadge } from "./comunes";
@@ -65,32 +65,11 @@ export function VistaProveedores({ filtros }: { filtros: FiltrosBandeja }) {
   const proveedorTildado = seleccion[0]?.orden.proveedorId;
   const totalSeleccion = seleccion.reduce((s, f) => s + f.pendiente, 0);
 
-  const exportar = () =>
-    descargarXlsx("bandeja-ordenes-pago.xlsx", "Órdenes de pago", [
-      ["Orden", "Proveedor", "CUIT", "Facturas", "Total", "Pendiente", "Estado", "Armó", "Autorizó"],
-      ...filas.map((f) => [
-        f.orden.id,
-        f.proveedor?.razonSocial ?? f.orden.proveedorId,
-        cuitTexto(f.proveedor),
-        String(f.orden.items.length),
-        String(f.orden.total),
-        String(f.pendiente),
-        f.fase === "AUTORIZAR" ? "Por autorizar" : "Autorizada · por pagar",
-        nombreUsuario(f.orden.armadaPor),
-        f.orden.autorizacion ? nombreUsuario(f.orden.autorizacion.usuarioId) : "",
-      ]),
-    ]);
-
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] text-ink-500">
-          Las órdenes salen del armado en Proveedores. Una orden agrupa las facturas de un solo proveedor.
-        </p>
-        <Button variant="navyOutline" size="xs" onClick={exportar} disabled={filas.length === 0}>
-          Exportar a Excel
-        </Button>
-      </div>
+      <p className="text-[11px] text-ink-500">
+        Las órdenes salen del armado en Proveedores. Una orden agrupa las facturas de un solo proveedor.
+      </p>
 
       <TablaCompacta etiqueta="Órdenes de pago de la bandeja" minWidth="min-w-[58rem]">
         <thead>

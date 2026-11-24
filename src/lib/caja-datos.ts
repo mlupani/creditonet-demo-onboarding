@@ -462,6 +462,43 @@ export const LIBRO_INICIAL: MovimientoCaja[] = [
     estado: "CONFIRMADO",
     refId: "MT-0001",
   },
+  // Ejemplo de anulación (v4, 2.2): el cobro con el importe erróneo y su contramovimiento quedan los
+  // dos en el libro, vinculados y con el motivo. Se compensan: no cambian el saldo de la caja.
+  {
+    id: "LB-0009",
+    cajaId: "CAJ-003",
+    fecha: "2026-11-12",
+    hora: "11:02",
+    turnoUsuarioId: "ana-gomez",
+    tipo: "Cobro cuota",
+    descripcion: "Cobro de cuota 4 · crédito CRED-5521",
+    comprobante: "CRED-5521 cuota 4",
+    moneda: "ARS",
+    ingreso: 45000,
+    egreso: 0,
+    medio: "EFECTIVO",
+    responsableId: "ana-gomez",
+    estado: "ANULADO",
+    anuladoPor: "LB-0010",
+  },
+  {
+    id: "LB-0010",
+    cajaId: "CAJ-003",
+    fecha: "2026-11-12",
+    hora: "11:15",
+    turnoUsuarioId: "ana-gomez",
+    tipo: "Anulación de cobro cuota",
+    descripcion: "Anula LB-0009: Cobro de cuota 4 · crédito CRED-5521",
+    comprobante: "CRED-5521 cuota 4",
+    moneda: "ARS",
+    ingreso: 0,
+    egreso: 45000,
+    medio: "EFECTIVO",
+    responsableId: "marta-diaz",
+    estado: "CONFIRMADO",
+    anulaA: "LB-0009",
+    motivoAnulacion: "Importe erróneo",
+  },
 ];
 
 export const MOVIMIENTOS_TESORERIA_INICIALES: MovimientoTesoreria[] = [

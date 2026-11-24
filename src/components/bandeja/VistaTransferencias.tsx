@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { IconCopy } from "@/components/icons";
-import { ErrorBanner, NotaModal, descargarXlsx } from "@/components/caja/comunes";
+import { ErrorBanner, NotaModal } from "@/components/caja/comunes";
 import { LlaveCampos } from "@/components/caja/LlaveCampos";
 import { INPUT_COMPACTO, PanelVentana, Pill, TablaCompacta, Td, Th, type Fase } from "@/components/caja/compacto";
 import { descargarTexto, formatearCbu, pesos } from "./comunes";
@@ -148,7 +148,7 @@ export function VistaTransferencias({ filtros }: { filtros: FiltrosBandeja }) {
 
   // Los lotes se recalculan cuando cambian los pagos, las órdenes o los proveedores.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const lotes = useMemo(() => lotesDeBandeja(lotesTransferencia(), filtros), [pagos, ordenes, proveedores, filtros]);
+  const lotes = useMemo(() => lotesDeBandeja(lotesTransferencia(), filtros, pagos), [pagos, ordenes, proveedores, filtros]);
   const denegado = puedePagarOrden(usuario);
 
   const resultado = (r: { ok: boolean; error?: string }, ok: string) => setAviso(r.ok ? { tipo: "ok", texto: ok } : { tipo: "error", texto: r.error ?? "No se pudo completar." });
@@ -181,14 +181,6 @@ export function VistaTransferencias({ filtros }: { filtros: FiltrosBandeja }) {
     }
   };
 
-  const exportar = () =>
-    descargarXlsx("bandeja-transferencias.xlsx", "Transferencias", [
-      ["Cuenta de origen", "Pago", "Orden", "Proveedor", "CUIT", "CBU destino", "Importe", "Estado"],
-      ...lotes.flatMap((l) =>
-        l.items.map((i) => [bancoTexto(l.cuentaId), i.pagoId, i.ordenPago, i.proveedor, i.cuit, i.cbuDestino, String(i.importe), ESTADO_PAGO_LABEL[i.estado]])
-      ),
-    ]);
-
   // Abre la llave con las filas tildadas que tienen resultado marcado; antes exige el dato de cada una.
   const registrar = (items: ItemLoteTransferencia[]) => {
     const filas = items.filter((i) => i.estado === "PENDIENTE_EJECUCION" && tildadas[i.pagoId] && marcas[i.pagoId]).map((i) => ({ item: i, marca: marcas[i.pagoId] }));
@@ -211,15 +203,10 @@ export function VistaTransferencias({ filtros }: { filtros: FiltrosBandeja }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="max-w-3xl text-xs text-ink-500">
-          Reúne lo que tiene banco de origen asignado y espera ser transferido. Preparada: reserva el saldo. Pendiente de ejecución: se envió a quien opera el home
-          banking. Ejecutada: baja el real y consume la reserva. Confirmada: se verificó contra el extracto.
-        </p>
-        <Button variant="navyOutline" size="xs" onClick={exportar} disabled={lotes.length === 0}>
-          Exportar a Excel
-        </Button>
-      </div>
+      <p className="max-w-3xl text-xs text-ink-500">
+        Reúne lo que tiene banco de origen asignado y espera ser transferido. Preparada: reserva el saldo. Pendiente de ejecución: se envió a quien opera el home
+        banking. Ejecutada: baja el real y consume la reserva. Confirmada: se verificó contra el extracto.
+      </p>
       {denegado && <p className="text-xs text-ink-500">{denegado}</p>}
       {aviso && (
         <p role="status" className={`rounded-md border px-3 py-1.5 text-xs ${aviso.tipo === "ok" ? "border-success-200 bg-success-50 text-success-700" : "border-danger-200 bg-danger-50 text-danger-700"}`}>

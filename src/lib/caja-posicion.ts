@@ -1,7 +1,7 @@
 // Posición de caja y bancos: tablero de tesoros, resumen y alertas. Funciones puras sobre los datos del
 // módulo (sin React ni stores): la pantalla les pasa el estado y la fecha y hora operativas.
 
-import { aMinutos, arqueoVencido, cero, enTransito, jornadaVigente, saldosCaja } from "./caja-reglas";
+import { afectaSaldo, aMinutos, arqueoVencido, cero, enTransito, jornadaVigente, saldosCaja } from "./caja-reglas";
 import {
   MONEDAS,
   NOMBRE_MONEDA,
@@ -291,7 +291,7 @@ export function seriesDe(datos: DatosHistorico, cajaIds: string[], cuentaIds: st
         nombre: caja.nombre,
         moneda: m,
         movimientos: datos.libro
-          .filter((x) => x.cajaId === caja.id && x.moneda === m && x.estado === "CONFIRMADO" && x.medio === "EFECTIVO")
+          .filter((x) => x.cajaId === caja.id && x.moneda === m && afectaSaldo(x))
           .map((x) => ({ fecha: x.fecha, hora: x.hora, descripcion: x.descripcion, comprobante: x.comprobante, ingreso: x.ingreso, egreso: x.egreso })),
       });
     }

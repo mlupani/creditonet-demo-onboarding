@@ -40,9 +40,13 @@ export const aMinutos = (hhmm: string) => {
 // ---------- Saldos ----------
 
 // Sólo el efectivo confirmado mueve el saldo; tarjeta y transferencia figuran en el libro sin tocarlo.
+// Un movimiento anulado y su contramovimiento se compensan: ninguno de los dos cuenta, así el saldo
+// queda como si el movimiento no hubiera existido y los dos siguen visibles en el libro.
+export const afectaSaldo = (m: MovimientoCaja) => m.medio === "EFECTIVO" && m.estado === "CONFIRMADO" && !m.anulaA;
+
 export function saldoCaja(libro: MovimientoCaja[], cajaId: string, moneda: Moneda): number {
   return libro
-    .filter((m) => m.cajaId === cajaId && m.moneda === moneda && m.medio === "EFECTIVO" && m.estado === "CONFIRMADO")
+    .filter((m) => m.cajaId === cajaId && m.moneda === moneda && afectaSaldo(m))
     .reduce((s, m) => s + m.ingreso - m.egreso, 0);
 }
 

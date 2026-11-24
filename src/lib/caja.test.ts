@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { CAJAS_INICIALES, DENOMINACIONES_INICIALES, SUCURSALES_INICIALES, USUARIOS_CAJA } from "./caja-datos";
 import {
+  anularMovimiento,
   autorizarMovimiento,
   bloqueoCaja,
   cargarArqueoRelevo,
@@ -468,4 +469,51 @@ test("ABM: reglas de sucursales y cajas", () => {
   assert.match(erroresCaja(solapada, CAJAS_INICIALES, SUCURSALES_INICIALES, USUARIOS_CAJA).cajeros ?? "", /superponer/);
   const fuera = { ...solapada, cajeros: [{ usuarioId: "ana-gomez", desde: "09:00", hasta: "12:00", estado: "ACTIVO" as const }] };
   assert.match(erroresCaja(fuera, CAJAS_INICIALES, SUCURSALES_INICIALES, USUARIOS_CAJA).cajeros ?? "", /horario/);
+});
+
+test("libro: la anulación deja los dos movimientos vinculados y no cambia el saldo", () => {
+  // Semilla: el cobro anulado y su contramovimiento ya están en el libro y se compensan.
+  const sembrado = S.libro.get();
+  const orig = sembrado.find((m) => m.id === "LB-0009");
+  const contra = sembrado.find((m) => m.id === "LB-0010");
+  assert.equal(orig?.estado, "ANULADO");
+  assert.equal(orig?.anuladoPor, "LB-0010");
+  assert.equal(contra?.anulaA, "LB-0009");
+  assert.equal(contra?.motivoAnulacion, "Importe erróneo");
+  assert.equal(saldo("CAJ-003"), 600000, "el anulado y su contramovimiento no mueven el saldo");
+
+  // Un cobro nuevo en efectivo, cargado por la cajera.
+  S.libro.commit([
+    ...S.libro.get(),
+    { ...(orig as NonNullable<typeof orig>), id: "LB-0020", ingreso: 10000, estado: "CONFIRMADO", anuladoPor: undefined },
+  ]);
+  assert.equal(saldo("CAJ-003"), 610000);
+
+  como("ana-gomez");
+  assert.ok(!anularMovimiento("LB-0020", "Error de carga").ok, "la cajera no es supervisora");
+  como("marta-diaz");
+  assert.ok(!anularMovimiento("LB-0020", "  ").ok, "el motivo es obligatorio");
+  const r = anularMovimiento("LB-0020", "Error de carga");
+  assert.ok(r.ok);
+  const libro = S.libro.get();
+  const original = libro.find((m) => m.id === "LB-0020");
+  const nueva = libro.find((m) => m.id === (r.ok ? r.contramovimiento.id : ""));
+  assert.equal(original?.estado, "ANULADO");
+  assert.equal(original?.anuladoPor, nueva?.id);
+  assert.equal(nueva?.anulaA, "LB-0020");
+  assert.equal(nueva?.motivoAnulacion, "Error de carga");
+  assert.equal(nueva?.egreso, 10000, "el contramovimiento tiene el signo contrario");
+  assert.equal(nueva?.estado, "CONFIRMADO");
+  assert.equal(saldo("CAJ-003"), 600000, "queda como si el cobro no hubiera existido");
+
+  assert.ok(!anularMovimiento("LB-0020", "otra vez").ok, "no se anula dos veces");
+  assert.ok(!anularMovimiento(nueva?.id ?? "", "x").ok, "un contramovimiento no se anula");
+  assert.ok(!anularMovimiento("LB-0007", "remesa").ok, "los movimientos de tesorería siguen su propio circuito");
+});
+
+test("libro: quien cargó el movimiento no puede autorizar su anulación", () => {
+  const base = S.libro.get().find((m) => m.id === "LB-0009");
+  S.libro.commit([...S.libro.get(), { ...(base as NonNullable<typeof base>), id: "LB-0021", estado: "CONFIRMADO", anuladoPor: undefined, responsableId: "marta-diaz" }]);
+  como("marta-diaz");
+  assert.match((anularMovimiento("LB-0021", "x") as { error: string }).error, /distinto/);
 });
