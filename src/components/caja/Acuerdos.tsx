@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { cajaStores, hoy, siguienteId, useAcuerdos, useCuentasBancarias, usuarioActual } from "@/lib/caja-store";
 import type { AcuerdoBancario, CuentaBancaria } from "@/lib/caja-tipos";
+import { isoAFecha } from "@/lib/format";
 import { FormField } from "@/components/ui/FormField";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SelectField } from "@/components/ui/SelectField";
@@ -85,7 +86,7 @@ export function PantallaAcuerdos() {
 
   const columnas: Columna<AcuerdoBancario>[] = [
     { clave: "cuenta", label: "Cuenta bancaria", valor: (a) => textoCuenta(cuentaDe(a)) },
-    { clave: "fecha", label: "Fecha", valor: (a) => a.fecha },
+    { clave: "fecha", label: "Fecha", valor: (a) => a.fecha, render: (a) => isoAFecha(a.fecha) },
     { clave: "importe", label: "Importe", valor: (a) => a.importe, render: (a) => dinero(cuentaDe(a)?.moneda ?? "ARS", a.importe) },
     { clave: "tasa", label: "Tasa", valor: (a) => a.tasa, render: (a) => `${String(a.tasa).replace(".", ",")} %` },
     {
@@ -96,7 +97,7 @@ export function PantallaAcuerdos() {
         const d = diasHasta(a.vencimiento);
         return (
           <span className="inline-flex flex-wrap items-center gap-2">
-            {a.vencimiento}
+            {isoAFecha(a.vencimiento)}
             {a.estado === "ACTIVO" && d < 0 && <StatusBadge tone="danger">Vencido</StatusBadge>}
             {a.estado === "ACTIVO" && d >= 0 && d <= DIAS_AVISO && <StatusBadge tone="warning">Vence en {d} {d === 1 ? "día" : "días"}</StatusBadge>}
           </span>

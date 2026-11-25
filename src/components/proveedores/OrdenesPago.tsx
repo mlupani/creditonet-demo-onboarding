@@ -16,6 +16,7 @@ import {
   pagadoDeOrden,
   puedeArmarOrden,
   puedeAutorizarOrden,
+  resumenCuentaDestino,
   saldoComprobante,
   vencimientoDe,
 } from "@/lib/proveedores-reglas";
@@ -101,7 +102,7 @@ function Armado({ onArmada }: { onArmada: () => void }) {
         </Campo>
         <CampoLectura label="Cuenta destino del proveedor">
           {proveedor ? (
-            proveedor.cbu ? <span className="font-mono">{proveedor.cbu}</span> : <span className="text-warning-700">Sin CBU en la ficha</span>
+            proveedor.cbu ? <span title={`CBU ${proveedor.cbu}`}>{resumenCuentaDestino(proveedor.cbu)}</span> : <span className="text-warning-700">Sin CBU en la ficha</span>
           ) : (
             <span className="text-ink-400">—</span>
           )}

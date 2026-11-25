@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
-import { useDenominaciones, nombreUsuario } from "@/lib/caja-store";
+import { useDenominaciones, useMotivosDiferencia, nombreUsuario } from "@/lib/caja-store";
 import { formatNumber } from "@/lib/format";
 import { denominacionesDe } from "@/lib/caja-reglas";
 import {
@@ -87,6 +87,7 @@ export function ActaDatos({ filas }: { filas: [string, ReactNode][] }) {
 // Recuento, esperado, diferencia, responsable y supervisor de un conteo.
 export function ActaRecuento({ caja, titulo, recuento }: { caja: Caja; titulo: string; recuento: Recuento }) {
   const denominaciones = useDenominaciones();
+  const motivos = useMotivosDiferencia();
   const monedas = monedasDe(caja.moneda);
   return (
     <div>
@@ -118,7 +119,7 @@ export function ActaRecuento({ caja, titulo, recuento }: { caja: Caja; titulo: s
                 <td className="n border border-ink-200 px-2 py-1 text-right">{dinero(m, recuento.contado[m])}</td>
                 <td className="n border border-ink-200 px-2 py-1 text-right">{dinero(m, recuento.esperado[m])}</td>
                 <td className="n border border-ink-200 px-2 py-1 text-right">{dineroConSigno(m, recuento.diferencia[m])}</td>
-                <td className="border border-ink-200 px-2 py-1">{ajuste ? `${ajuste.motivoId}${ajuste.nota ? ` · ${ajuste.nota}` : ""}` : recuento.diferencia[m] === 0 ? "—" : "Dentro de la tolerancia"}</td>
+                <td className="border border-ink-200 px-2 py-1">{ajuste ? `${motivos.find((x) => x.id === ajuste.motivoId)?.descripcion ?? ajuste.motivoId}${ajuste.nota ? ` · ${ajuste.nota}` : ""}` : recuento.diferencia[m] === 0 ? "—" : "Dentro de la tolerancia"}</td>
               </tr>
             );
           })}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { aMinutos, esSupervisor, jornadaVigente } from "@/lib/caja-reglas";
 import { pendientesDeCaja, registrarApertura, registrarCierre, resolverApertura, resolverCierre, nombreCaja, type Res } from "@/lib/caja-operaciones";
 import { actaDe as actaDeEvento } from "@/lib/actas";
-import { hoy, nombreUsuario, useActas, useCajaDatos, useCheques } from "@/lib/caja-store";
+import { hoy, nombreUsuario, useActas, useCajaDatos, useCheques, useMotivosDiferencia } from "@/lib/caja-store";
 import { ESTADO_JORNADA_LABEL, monedasDe, type Caja, type ConteoValores, type Jornada, type MovimientoCaja } from "@/lib/caja-tipos";
 import { registrarConteoValores } from "@/lib/cheques-operaciones";
 import { enCustodia, totalPorMoneda } from "@/lib/cheques-reglas";
@@ -115,7 +115,13 @@ function ActaJornada({ jornada, caja, etapa, onClose }: { jornada: Jornada; caja
         ]}
       />
       <ActaRecuento caja={caja} titulo={etapa === "apertura" ? "Recuento de apertura" : "Recuento de cierre"} recuento={recuento} />
-      <ActaFirmas firmas={[`Responsable: ${nombreUsuario(recuento.usuarioId)}`, `Supervisor: ${recuento.aprobacion ? nombreUsuario(recuento.aprobacion.supervisorId) : "no requerido"}`]} />
+      <ActaFirmas firmas={[`Responsable: ${nombreUsuario(recuento.usuarioId)}`, `Supervisor: ${
+        recuento.aprobacion
+          ? nombreUsuario(recuento.aprobacion.supervisorId)
+          : recuento.ajustes.length > 0
+            ? "pendiente de autorización"
+            : "no requerido"
+      }`]} />
     </ActaModal>
   );
 }
@@ -126,6 +132,7 @@ function Pendiente({ jornada, etapa }: { jornada: Jornada; etapa: "apertura" | "
   const recuento = etapa === "apertura" ? jornada.apertura : jornada.cierre;
   const [accion, setAccion] = useState<"aprobar" | "rechazar" | null>(null);
   const actas = useActas();
+  const motivos = useMotivosDiferencia();
   const eventoTipo = etapa === "apertura" ? "JORNADA_APERTURA" : "JORNADA_CIERRE";
   const eventoId = etapa === "apertura" ? jornada.id : `${jornada.id}-C`;
   const tieneActa = !!actaDeEvento(eventoTipo, eventoId, actas);
@@ -142,7 +149,7 @@ function Pendiente({ jornada, etapa }: { jornada: Jornada; etapa: "apertura" | "
           return (
             <li key={m}>
               {m}: contado {dinero(m, recuento.contado[m])}, esperado {dinero(m, recuento.esperado[m])}, diferencia {dinero(m, recuento.diferencia[m])}
-              {ajuste && ` · motivo ${ajuste.motivoId}${ajuste.nota ? ` (${ajuste.nota})` : ""}`}
+              {ajuste && ` · motivo ${motivos.find((x) => x.id === ajuste.motivoId)?.descripcion ?? ajuste.motivoId}${ajuste.nota ? ` (${ajuste.nota})` : ""}`}
             </li>
           );
         })}

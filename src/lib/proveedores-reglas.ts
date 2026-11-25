@@ -72,7 +72,20 @@ export function calcularTotal(c: DatosComprobante): number {
   );
 }
 
-export const fechaValida = (f: string): boolean => {
+const BANCOS_POR_CODIGO: Record<string, string> = {
+  "007": "Galicia", "011": "Nación", "014": "Provincia", "015": "ICBC", "017": "BBVA", "020": "Córdoba",
+  "027": "Supervielle", "029": "Ciudad", "034": "Patagonia", "044": "Hipotecario", "072": "Santander",
+  "150": "HSBC", "191": "Credicoop", "285": "Macro", "299": "Comafi",
+};
+
+// Banco según el código de entidad (primeros 3 dígitos del CBU) y CBU abreviado para identificar la cuenta.
+export function resumenCuentaDestino(cbu: string): string {
+  const banco = BANCOS_POR_CODIGO[cbu.slice(0, 3)];
+  const corto = cbu.length > 8 ? `${cbu.slice(0, 3)}…${cbu.slice(-4)}` : cbu;
+  return `${banco ? `${banco} · ` : ""}CBU ${corto}`;
+}
+
+export const fechaValida =(f: string): boolean => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return false;
   const [a, m, d] = f.split("-").map(Number);
   const fecha = new Date(a, m - 1, d);
